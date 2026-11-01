@@ -54,15 +54,20 @@ void main() {
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 50));
+    // The season summary provider resolves asynchronously as well.
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // Game shell with the four tabs.
+    // Game shell with the five tabs.
+    expect(find.text('Season'), findsWidgets);
     expect(find.text('Match'), findsWidgets);
     expect(find.text('Packs'), findsWidgets);
     expect(find.text('Squad'), findsWidgets);
     expect(find.text('Collection'), findsWidgets);
 
-    // The Match tab opens first: the friendly match entry point renders.
-    expect(find.text('Play friendly match'), findsOneWidget);
+    // The Season tab opens first: the first campaign entry point renders.
+    expect(find.text('Start your first season'), findsOneWidget);
 
     // Switch to the Packs tab and check the starting packs render.
     await tester.tap(find.text('Packs'));

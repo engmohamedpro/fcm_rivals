@@ -1,9 +1,11 @@
 /// FCM Rivals — local persistence schema (SRS 25).
 ///
-/// Tables for this iteration: global player dataset cache + dataset versions,
-/// user club, owned player instances (upgrade state per SRS 25.1), packs and
-/// the coin transaction ledger (FR-016). Division/season/match tables come
-/// with their feature iteration — the schema is versioned for migrations.
+/// v1: global player dataset cache + dataset versions, user club, owned
+/// player instances (upgrade state per SRS 25.1), packs and the coin
+/// transaction ledger (FR-016).
+/// v2: division/season tables — seasons, league teams, fixtures and match
+/// results (SRS 25; AI clubs reuse [Clubs] with isUser = false, their
+/// squads reuse [OwnedPlayers] with status 'ai').
 library;
 
 import 'package:drift/drift.dart';
@@ -116,10 +118,110 @@ class CoinTransactions extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
-@DriftDatabase(tables: [Players, DatasetVersions, Clubs, OwnedPlayers, Packs, CoinTransactions])
+/// One league season (GDD 9.2): a division of 20 clubs, 38 rounds.
+/// Division 1 is the starting division; higher numbers are harder
+/// (GDD 9.1). The season ordinal is global across divisions.
+class Seasons extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get division => integer()();
+  IntColumn get ordinal => integer()();
+  IntColumn get userClubId => integer()();
+
+  /// active | completed.
+  TextColumn get status => text().withDefault(const Constant('active'))();
+  DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get endedAt => dateTime().nullable()();
+  IntColumn get finalPosition => integer().nullable()();
+
+  /// promoted | stayed | relegated (user outcome, GDD 9.3).
+  TextColumn get outcome => text().nullable()();
+}
+
+/// Season participation (SRS 25: LeagueTeams): which club played which
+/// season, with the final position kept for history (FR-038).
+class LeagueTeams extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get seasonId => integer()();
+  IntColumn get clubId => integer()();
+  BoolColumn get isUser => boolean().withDefault(const Constant(false))();
+  IntColumn get finalPosition => integer().nullable()();
+}
+
+/// Match schedule (SRS 25: Fixtures): double round-robin, 38 rounds
+/// (FR-036). Played state derives from [MatchResults].
+class Fixtures extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get seasonId => integer()();
+  IntColumn get round => integer()();
+  IntColumn get homeClubId => integer()();
+  IntColumn get awayClubId => integer()();
+}
+
+/// Final results (SRS 25: MatchResults; FR-038 history). The seed and
+/// engine version are stored for deterministic replay (GDD 12.5); user
+/// matches also persist the full event JSON in [detail].
+class MatchResults extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get fixtureId => integer()();
+  IntColumn get seasonId => integer()();
+  IntColumn get round => integer()();
+  IntColumn get homeClubId => integer()();
+  IntColumn get awayClubId => integer()();
+  IntColumn get homeGoals => integer()();
+  IntColumn get awayGoals => integer()();
+  IntColumn get seed => integer()();
+  IntColumn get engineVersion => integer()();
+  TextColumn get detail => text().nullable()();
+  DateTimeColumn get playedAt => dateTime()();
+}
+
+/// Synthetic squads of AI clubs (GDD 9.4). Kept separate from
+/// [OwnedPlayers]: AI players are generated, not drawn from the global
+/// dataset, and they are retired with their club at season end (GDD 9.5)
+/// while historical results stay (FR-038). Rows 0–10 are the starting XI
+/// in formation slot order, 11+ the bench.
+class AiPlayers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get clubId => integer()();
+  TextColumn get playerName => text()();
+  TextColumn get position => text()();
+  IntColumn get attack => integer()();
+  IntColumn get support => integer()();
+  IntColumn get defence => integer()();
+  IntColumn get goalkeeping => integer()();
+  IntColumn get staminaPercent => integer().withDefault(const Constant(100))();
+}
+
+@DriftDatabase(tables: [
+  Players,
+  DatasetVersions,
+  Clubs,
+  OwnedPlayers,
+  Packs,
+  CoinTransactions,
+  Seasons,
+  LeagueTeams,
+  Fixtures,
+  MatchResults,
+  AiPlayers,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(seasons);
+            await m.createTable(leagueTeams);
+            await m.createTable(fixtures);
+            await m.createTable(matchResults);
+            await m.createTable(aiPlayers);
+          }
+        },
+      );
 }

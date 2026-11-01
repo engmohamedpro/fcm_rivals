@@ -13,6 +13,8 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import '../core/database/app_database.dart';
 import '../features/collection/collection_store.dart';
+import '../features/season/season_engine.dart' show StandingEntry;
+import '../features/season/season_store.dart';
 import '../features/squad/formations.dart';
 import '../features/squad/squad_engine.dart';
 
@@ -77,3 +79,28 @@ final squadEngineProvider = Provider<SquadEngine>((ref) => const SquadEngine());
 /// All formation definitions (GDD 6.4).
 final formationsProvider =
     Provider<List<Formation>>((ref) => formations);
+
+/// Season store (GDD 9): divisions, fixtures and standings.
+final seasonStoreProvider = FutureProvider<SeasonStore>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  await ref.watch(datasetBootstrapProvider.future);
+  return SeasonStore(db: db, random: ref.watch(randomProvider));
+});
+
+/// Active or latest season summary (FR-035/FR-036).
+final seasonSummaryProvider = FutureProvider<SeasonSummary?>((ref) async {
+  final store = await ref.watch(seasonStoreProvider.future);
+  return store.getSeasonSummary();
+});
+
+/// Current standings (GDD 9.3).
+final standingsProvider = FutureProvider<List<StandingEntry>>((ref) async {
+  final store = await ref.watch(seasonStoreProvider.future);
+  return store.getStandings();
+});
+
+/// The user's next fixture, null when idle or done.
+final nextFixtureProvider = FutureProvider<NextFixture?>((ref) async {
+  final store = await ref.watch(seasonStoreProvider.future);
+  return store.getNextFixture();
+});

@@ -127,7 +127,9 @@ class CollectionStore {
     if (managerName.trim().isEmpty) {
       throw const CollectionException('Manager name is required');
     }
-    final existing = await db.select(db.clubs).getSingleOrNull();
+    final existing = await (db.select(db.clubs)
+          ..where((c) => c.isUser.equals(true)))
+        .getSingleOrNull();
     if (existing != null) {
       throw const CollectionException('A club already exists on this device');
     }
@@ -162,7 +164,9 @@ class CollectionStore {
   /// The user club, or null before onboarding completes. Uses
   /// getSingleOrNull — watchSingle would throw on the empty table on a
   /// fresh install, crashing club creation.
-  Future<Club?> getClub() => db.select(db.clubs).getSingleOrNull();
+  Future<Club?> getClub() => (db.select(db.clubs)
+        ..where((c) => c.isUser.equals(true)))
+      .getSingleOrNull();
 
   // ---------------------------------------------------------------------------
   // Dataset
@@ -216,7 +220,9 @@ class CollectionStore {
     await _ensureRegistry();
     final importResult = _registry.importDataset(dataset);
 
-    final club = await db.select(db.clubs).getSingleOrNull();
+    final club = await (db.select(db.clubs)
+          ..where((c) => c.isUser.equals(true)))
+        .getSingleOrNull();
     final compensations = <RemovalCompensation>[];
 
     await db.transaction(() async {

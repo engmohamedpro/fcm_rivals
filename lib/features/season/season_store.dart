@@ -1,0 +1,656 @@
+/// FCM Rivals — season store (GDD 9, GDD 18, FR-035..FR-039).
+///
+/// Orchestrates the SeasonEngine over the Drift database: season creation
+/// with 19 AI clubs and their persisted squads, the 38-round fixture list,
+/// playing the user's fixtures through the MatchEngine (live via
+/// MatchSession, or quick-simulated), standings, and season completion
+/// with promotion/relegation, rewards and next-season generation.
+library;
+
+import 'dart:math' as math;
+
+import 'package:drift/drift.dart';
+
+import '../../core/database/app_database.dart';
+import '../../core/domain/players.dart';
+import '../collection/collection_store.dart';
+import '../match/match_engine.dart';
+import '../match/match_session.dart';
+import '../match/tactics.dart' show PlayingStyle, Mentality;
+import 'season_engine.dart';
+
+/// Season-specific errors.
+class SeasonException implements Exception {
+  const SeasonException(this.message);
+  final String message;
+  @override
+  String toString() => 'SeasonException: $message';
+}
+
+/// Snapshot of the active (or last) season for the UI.
+class SeasonSummary {
+  const SeasonSummary({
+    required this.seasonId,
+    required this.division,
+    required this.ordinal,
+    required this.status,
+    required this.roundsPlayed,
+    required this.roundsTotal,
+    this.finalPosition,
+    this.outcome,
+  });
+
+  final int seasonId;
+  final int division;
+  final int ordinal;
+
+  /// active | completed.
+  final String status;
+  final int roundsPlayed;
+  final int roundsTotal;
+  final int? finalPosition;
+  final String? outcome;
+
+  bool get isCompleted => status == 'completed';
+}
+
+/// The user's next fixture, if any.
+class NextFixture {
+  const NextFixture({
+    required this.fixtureId,
+    required this.round,
+    required this.isHome,
+    required this.opponentClubId,
+    required this.opponentName,
+  });
+
+  final int fixtureId;
+  final int round;
+
+  /// Whether the user hosts this fixture.
+  final bool isHome;
+  final int opponentClubId;
+  final String opponentName;
+}
+
+/// Season completion outcome for the user (GDD 18 rewards).
+class SeasonCompletion {
+  const SeasonCompletion({
+    required this.seasonId,
+    required this.division,
+    required this.finalPosition,
+    required this.outcome,
+    required this.nextDivision,
+    required this.rewardCoins,
+    required this.rewardPackCategory,
+  });
+
+  final int seasonId;
+  final int division;
+  final int finalPosition;
+
+  /// promoted | stayed | relegated.
+  final String outcome;
+  final int nextDivision;
+  final int rewardCoins;
+
+  /// GDD 18 pack reward: 'premium' for 1st, 'normal' for 2nd–3rd,
+  /// 'choice' for other promotions, null when staying/relegated.
+  final String? rewardPackCategory;
+}
+
+/// AI opponent squad loaded for a fixture.
+class AiOpponentSquad {
+  const AiOpponentSquad({required this.club, required this.starters, required this.bench});
+
+  final Club club;
+  final List<MatchPlayer> starters;
+  final List<MatchPlayer> bench;
+}
+
+class SeasonStore {
+  SeasonStore({
+    required this.db,
+    this.engine = const SeasonEngine(),
+    math.Random? random,
+  }) : _random = random ?? math.Random();
+
+  final AppDatabase db;
+  final SeasonEngine engine;
+  final math.Random _random;
+
+  /// Starts a new season in [division] for the user club (FR-035/FR-036):
+  /// creates the season row, 19 AI clubs with persisted squads (FR-039),
+  /// league team rows and the 38-round fixture list.
+  Future<int> startSeason({
+    required int division,
+    int? aiCount,
+  }) async {
+    final club = await _userClub();
+    final existing = await getActiveSeason();
+    if (existing != null) {
+      throw const SeasonException('A season is already in progress');
+    }
+
+    final ordinal = (await (db.select(db.seasons)).get()).length + 1;
+    final count = aiCount ?? engine.config.clubsPerDivision - 1;
+    final definitions = engine.generateAiClubs(
+      division,
+      random: _random,
+      count: count,
+      excludeNames: {club.name},
+    );
+
+    final now = DateTime.now();
+    return db.transaction(() async {
+      final seasonId = await db.into(db.seasons).insert(SeasonsCompanion.insert(
+            division: division,
+            ordinal: ordinal,
+            userClubId: club.id,
+            startedAt: now,
+          ));
+
+      // User participates as league team index 0 (the rotation anchor).
+      await db.into(db.leagueTeams).insert(LeagueTeamsCompanion.insert(
+            seasonId: seasonId,
+            clubId: club.id,
+            isUser: const Value(true),
+          ));
+
+      final clubIds = [club.id];
+      final names = [club.name];
+      for (final def in definitions) {
+        final aiClubId = await db.into(db.clubs).insert(ClubsCompanion.insert(
+              name: def.name,
+              managerName: def.managerName,
+              crestIndex: Value(def.crestIndex),
+              formationCode: Value(def.formationCode),
+              playingStyle: Value(def.style.name),
+              mentality: Value(def.mentality.name),
+              coins: 0,
+              isUser: const Value(false),
+              createdAt: now,
+            ));
+        clubIds.add(aiClubId);
+        names.add(def.name);
+        await db.into(db.leagueTeams).insert(LeagueTeamsCompanion.insert(
+              seasonId: seasonId,
+              clubId: aiClubId,
+            ));
+        // Persist the AI squad (GDD 9.4): XI in slot order, bench after.
+        for (final p in def.players) {
+          await db.into(db.aiPlayers).insert(AiPlayersCompanion.insert(
+                clubId: aiClubId,
+                playerName: p.name,
+                position: p.position.code,
+                attack: p.attack,
+                support: p.support,
+                defence: p.defence,
+                goalkeeping: p.goalkeeping,
+              ));
+        }
+      }
+
+      // Fixtures (FR-036): anchor = user club for a natural home/away
+      // pattern; store rounds 1-based.
+      final pairings = engine.generateFixtures(clubIds.length, anchorIndex: 0);
+      for (final p in pairings) {
+        await db.into(db.fixtures).insert(FixturesCompanion.insert(
+              seasonId: seasonId,
+              round: p.round + 1,
+              homeClubId: clubIds[p.homeIndex],
+              awayClubId: clubIds[p.awayIndex],
+            ));
+      }
+      return seasonId;
+    });
+  }
+
+  /// The active season summary, or the latest completed one.
+  Future<SeasonSummary?> getSeasonSummary() async {
+    final rows = await (db.select(db.seasons)
+          ..orderBy([(s) => OrderingTerm.desc(s.id)]))
+        .get();
+    if (rows.isEmpty) return null;
+    final s = rows.first;
+    final played = await _resultsFor(s.id);
+    final userRounds = played
+        .where((r) =>
+            r.homeClubId == s.userClubId || r.awayClubId == s.userClubId)
+        .length;
+    return SeasonSummary(
+      seasonId: s.id,
+      division: s.division,
+      ordinal: s.ordinal,
+      status: s.status,
+      roundsPlayed: userRounds,
+      roundsTotal: engine.config.roundsPerSeason(),
+      finalPosition: s.finalPosition,
+      outcome: s.outcome,
+    );
+  }
+
+  Future<Season?> getActiveSeason() async {
+    final rows = await (db.select(db.seasons)
+          ..where((s) => s.status.equals('active'))
+          ..orderBy([(s) => OrderingTerm.desc(s.id)]))
+        .get();
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  /// The user's next unplayed fixture (FR-037 flow), or null when the
+  /// season is done.
+  Future<NextFixture?> getNextFixture() async {
+    final season = await getActiveSeason();
+    if (season == null) return null;
+    final playedIds = (await _resultsFor(season.id)).map((r) => r.fixtureId).toSet();
+    final fixtures = await (db.select(db.fixtures)
+          ..where((f) => f.seasonId.equals(season.id))
+          ..orderBy([
+            (f) => OrderingTerm.asc(f.round),
+            (f) => OrderingTerm.asc(f.id),
+          ]))
+        .get();
+    Fixture? next;
+    for (final f in fixtures) {
+      if (playedIds.contains(f.id)) continue;
+      if (f.homeClubId != season.userClubId && f.awayClubId != season.userClubId) {
+        continue;
+      }
+      next = f;
+      break;
+    }
+    if (next == null) return null;
+    final isHome = next.homeClubId == season.userClubId;
+    final opponentId = isHome ? next.awayClubId : next.homeClubId;
+    final opponent = await (db.select(db.clubs)
+          ..where((c) => c.id.equals(opponentId)))
+        .getSingle();
+    return NextFixture(
+      fixtureId: next.id,
+      round: next.round,
+      isHome: isHome,
+      opponentClubId: opponentId,
+      opponentName: opponent.name,
+    );
+  }
+
+  /// Loads the AI opponent squad for a fixture (GDD 9.4 persisted squads).
+  Future<AiOpponentSquad> loadOpponent(int clubId) async {
+    final club = await (db.select(db.clubs)..where((c) => c.id.equals(clubId)))
+        .getSingle();
+    final rows = await (db.select(db.aiPlayers)
+          ..where((p) => p.clubId.equals(clubId)))
+        .get();
+    if (rows.isEmpty) {
+      throw const SeasonException('AI club has no squad');
+    }
+    List<MatchPlayer> toPlayers(Iterable<AiPlayer> rs) => [
+          for (final r in rs)
+            MatchPlayer(
+              playerId: -10_000 - r.id,
+              name: r.playerName,
+              position: Position.fromCode(r.position),
+              attack: r.attack,
+              support: r.support,
+              defence: r.defence,
+              goalkeeping: r.goalkeeping,
+              stamina: r.staminaPercent.toDouble(),
+            ),
+        ];
+    final starters = toPlayers(rows.take(11));
+    final bench = toPlayers(rows.skip(11));
+    return AiOpponentSquad(club: club, starters: starters, bench: bench);
+  }
+
+  /// Creates a live match session for the user's next fixture. The UI
+  /// drives it; call [commitFixtureResult] with the finished session.
+  Future<MatchSession> startNextFixture(CollectionStore store) async {
+    final next = await getNextFixture();
+    if (next == null) {
+      throw const SeasonException('No fixture to play');
+    }
+    final opponent = await loadOpponent(next.opponentClubId);
+    return MatchSession.createAgainstClub(
+      store: store,
+      seed: _random.nextInt(1 << 31),
+      opponentClub: opponent.club,
+      opponentStarters: opponent.starters,
+      opponentBench: opponent.bench,
+      userAtHome: next.isHome,
+    );
+  }
+
+  /// Records a played fixture: the MatchResult row (FR-038). Stamina and
+  /// match rewards were already applied by [MatchSession.finish].
+  Future<void> commitFixtureResult(MatchSession session, NextFixture fixture) async {
+    final state = session.engine.state;
+    final season = await getActiveSeason();
+    if (season == null) {
+      throw const SeasonException('No active season');
+    }
+    await _insertResult(
+      season,
+      fixtureId: fixture.fixtureId,
+      round: fixture.round,
+      homeClubId: fixture.isHome ? season.userClubId : fixture.opponentClubId,
+      awayClubId: fixture.isHome ? fixture.opponentClubId : season.userClubId,
+      homeGoals: fixture.isHome ? state.scoreHome : state.scoreAway,
+      awayGoals: fixture.isHome ? state.scoreAway : state.scoreHome,
+      seed: session.engine.seed,
+    );
+  }
+
+  /// Quick-simulates every unplayed fixture of the active season,
+  /// including AI-vs-AI matches (GDD 9.6 difficulty must be testable
+  /// through automated season simulations). User matches run through the
+  /// full MatchEngine with the persisted squads; stamina and rewards are
+  /// applied for user fixtures only.
+  Future<int> simulateRemainingFixtures(CollectionStore store) async {
+    final season = await getActiveSeason();
+    if (season == null) {
+      throw const SeasonException('No active season');
+    }
+    final playedIds = (await _resultsFor(season.id)).map((r) => r.fixtureId).toSet();
+    final fixtures = await (db.select(db.fixtures)
+          ..where((f) => f.seasonId.equals(season.id))
+          ..orderBy([
+            (f) => OrderingTerm.asc(f.round),
+            (f) => OrderingTerm.asc(f.id),
+          ]))
+        .get();
+
+    var simulated = 0;
+    for (final f in fixtures) {
+      if (playedIds.contains(f.id)) continue;
+      final involvesUser =
+          f.homeClubId == season.userClubId || f.awayClubId == season.userClubId;
+      if (involvesUser) {
+        final isHome = f.homeClubId == season.userClubId;
+        final opponentId = isHome ? f.awayClubId : f.homeClubId;
+        final opponent = await loadOpponent(opponentId);
+        final session = await MatchSession.createAgainstClub(
+          store: store,
+          seed: _random.nextInt(1 << 31),
+          opponentClub: opponent.club,
+          opponentStarters: opponent.starters,
+          opponentBench: opponent.bench,
+          userAtHome: isHome,
+        );
+        session.simulateToEnd();
+        await session.finish();
+        await _insertResult(
+          season,
+          fixtureId: f.id,
+          round: f.round,
+          homeClubId: f.homeClubId,
+          awayClubId: f.awayClubId,
+          homeGoals: isHome ? session.engine.state.scoreHome : session.engine.state.scoreAway,
+          awayGoals: isHome ? session.engine.state.scoreAway : session.engine.state.scoreHome,
+          seed: session.engine.seed,
+        );
+      } else {
+        await _simulateAiFixture(season, f);
+      }
+      simulated++;
+    }
+    return simulated;
+  }
+
+  Future<void> _simulateAiFixture(Season season, Fixture f) async {
+    final home = await loadOpponent(f.homeClubId);
+    final away = await loadOpponent(f.awayClubId);
+    final match = MatchEngine(
+      seed: _random.nextInt(1 << 31),
+      home: MatchTeamInput(
+        teamId: home.club.id,
+        teamName: home.club.name,
+        formationCode: home.club.formationCode,
+        style: _styleOf(home.club.playingStyle),
+        mentality: _mentalityOf(home.club.mentality),
+        starters: home.starters,
+        bench: home.bench,
+        aiControlled: true,
+      ),
+      away: MatchTeamInput(
+        teamId: away.club.id,
+        teamName: away.club.name,
+        formationCode: away.club.formationCode,
+        style: _styleOf(away.club.playingStyle),
+        mentality: _mentalityOf(away.club.mentality),
+        starters: away.starters,
+        bench: away.bench,
+        aiControlled: true,
+      ),
+    );
+    match.simulateToEnd();
+    await _insertResult(
+      season,
+      fixtureId: f.id,
+      round: f.round,
+      homeClubId: f.homeClubId,
+      awayClubId: f.awayClubId,
+      homeGoals: match.state.scoreHome,
+      awayGoals: match.state.scoreAway,
+      seed: match.seed,
+    );
+  }
+
+  Future<void> _insertResult(
+    Season season, {
+    required int fixtureId,
+    required int round,
+    required int homeClubId,
+    required int awayClubId,
+    required int homeGoals,
+    required int awayGoals,
+    required int seed,
+  }) async {
+    await db.transaction(() async {
+      await db.into(db.matchResults).insert(MatchResultsCompanion.insert(
+            fixtureId: fixtureId,
+            seasonId: season.id,
+            round: round,
+            homeClubId: homeClubId,
+            awayClubId: awayClubId,
+            homeGoals: homeGoals,
+            awayGoals: awayGoals,
+            seed: seed,
+            engineVersion: matchEngineVersion,
+            playedAt: DateTime.now(),
+          ));
+    });
+  }
+
+  /// Current standings of the active season (GDD 9.3).
+  Future<List<StandingEntry>> getStandings() async {
+    final season = await getActiveSeason() ??
+        (await (db.select(db.seasons)
+              ..orderBy([(s) => OrderingTerm.desc(s.id)]))
+            .get())
+            .firstOrNull;
+    if (season == null) return const [];
+    final teams = await (db.select(db.leagueTeams)
+          ..where((t) => t.seasonId.equals(season.id)))
+        .get();
+    final clubRows = await db.select(db.clubs).get();
+    final clubNames = {for (final c in clubRows) c.id: c.name};
+    final clubIds = [for (final t in teams) t.clubId];
+    final names = [for (final id in clubIds) clubNames[id] ?? '?'];
+
+    final results = await _resultsFor(season.id);
+    final indexByClub = {
+      for (var i = 0; i < clubIds.length; i++) clubIds[i]: i,
+    };
+    final tuples = [
+      for (final r in results)
+        (
+          round: r.round,
+          homeIndex: indexByClub[r.homeClubId]!,
+          awayIndex: indexByClub[r.awayClubId]!,
+          homeGoals: r.homeGoals,
+          awayGoals: r.awayGoals,
+        )
+    ];
+    return engine.computeStandings(
+        clubIds: clubIds, names: names, results: tuples);
+  }
+
+  /// Recent user results (FR-038 history), newest first.
+  Future<List<MatchResult>> getMatchHistory({int limit = 10}) async {
+    final seasons = await db.select(db.seasons).get();
+    if (seasons.isEmpty) return const [];
+    final userClubId = seasons.first.userClubId;
+    final results = await (db.select(db.matchResults)
+          ..where((r) => r.homeClubId.equals(userClubId) |
+              r.awayClubId.equals(userClubId))
+          ..orderBy([
+            (r) => OrderingTerm.desc(r.playedAt),
+            (r) => OrderingTerm.desc(r.id),
+          ])
+          ..limit(limit))
+        .get();
+    return results;
+  }
+
+  /// Completes the active season (GDD 9.3/9.5, GDD 18): computes final
+  /// standings, writes final positions, resolves promotion/relegation,
+  /// pays season rewards with a ledger row, grants reward packs, retires
+  /// the AI clubs' squads and returns the completion summary. A new
+  /// season is NOT started automatically — the UI asks the player.
+  Future<SeasonCompletion> completeSeason(CollectionStore store) async {
+    final season = await getActiveSeason();
+    if (season == null) {
+      throw const SeasonException('No active season');
+    }
+    // Ensure every fixture has a result first (AI-vs-AI remainder).
+    await simulateRemainingFixtures(store);
+
+    final standings = await getStandings();
+    if (standings.isEmpty) {
+      throw const SeasonException('Season has no standings');
+    }
+    final userEntry = standings.firstWhere(
+      (e) => e.clubId == season.userClubId,
+      orElse: () => throw const SeasonException('User missing from standings'),
+    );
+    final outcome = engine.outcomeForPosition(userEntry.position);
+    final nextDivision = engine.nextDivisionFor(season.division, outcome);
+    final rewardCoins =
+        engine.seasonRewardCoins(division: season.division, position: userEntry.position);
+
+    // GDD 18 pack rewards.
+    final packCategory = switch (outcome) {
+      SeasonOutcome.promoted => userEntry.position == 1 ? 'premium' : (userEntry.position <= 3 ? 'normal' : 'choice'),
+      _ => null,
+    };
+
+    final now = DateTime.now();
+    await db.transaction(() async {
+      // Final positions for every league team (FR-038).
+      for (final e in standings) {
+        await (db.update(db.leagueTeams)
+              ..where((t) =>
+                  t.seasonId.equals(season.id) & t.clubId.equals(e.clubId)))
+            .write(LeagueTeamsCompanion(finalPosition: Value(e.position)));
+      }
+      await (db.update(db.seasons)..where((s) => s.id.equals(season.id)))
+          .write(SeasonsCompanion(
+        status: const Value('completed'),
+        endedAt: Value(now),
+        finalPosition: Value(userEntry.position),
+        outcome: Value(outcome.name),
+      ));
+
+      // Retire AI squads (GDD 9.5): the next season generates a fresh
+      // division; historical RESULTS stay (FR-038), only squads go.
+      final teams = await (db.select(db.leagueTeams)
+            ..where((t) => t.seasonId.equals(season.id) & t.isUser.equals(false)))
+          .get();
+      for (final t in teams) {
+        await (db.delete(db.aiPlayers)
+              ..where((p) => p.clubId.equals(t.clubId)))
+            .go();
+      }
+
+      // Season rewards (GDD 18): coins + ledger row.
+      final club = await (db.select(db.clubs)
+            ..where((c) => c.id.equals(season.userClubId)))
+          .getSingle();
+      await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
+          .write(ClubsCompanion(coins: Value(club.coins + rewardCoins)));
+      await db.into(db.coinTransactions).insert(CoinTransactionsCompanion.insert(
+            clubId: club.id,
+            amount: rewardCoins,
+            balanceAfter: club.coins + rewardCoins,
+            reason: 'season_reward',
+            detail: Value('Season ${season.ordinal} · division ${season.division} · '
+                'finished ${userEntry.position} (${outcome.name})'),
+            createdAt: now,
+          ));
+
+      // Reward packs (GDD 18 table): 1st = premium, 2nd–3rd = normal pack,
+      // other promotions = a pack of the user's choice (stored with a
+      // 'season_choice' source the UI scopes when opening).
+      if (packCategory != null) {
+        await db.into(db.packs).insert(PacksCompanion.insert(
+              clubId: club.id,
+              category: 'global',
+              source: Value('season_$packCategory'),
+              createdAt: now,
+            ));
+      }
+    });
+
+    return SeasonCompletion(
+      seasonId: season.id,
+      division: season.division,
+      finalPosition: userEntry.position,
+      outcome: outcome.name,
+      nextDivision: nextDivision,
+      rewardCoins: rewardCoins,
+      rewardPackCategory: packCategory,
+    );
+  }
+
+  /// Starts the next season in [division] after completion (GDD 9.5:
+  /// fresh opponents are generated; carried-over promoted/relegated clubs
+  /// are a future refinement — v1 generates a fresh division each season,
+  /// which the GDD's 17-new-clubs rule permits).
+  Future<int> startNextSeason(CollectionStore store) async {
+    final summary = await getSeasonSummary();
+    if (summary == null) {
+      throw const SeasonException('No previous season');
+    }
+    if (!summary.isCompleted) {
+      throw const SeasonException('The current season is still active');
+    }
+    final outcome = summary.outcome == null
+        ? SeasonOutcome.stayed
+        : SeasonOutcome.values.firstWhere(
+            (o) => o.name == summary.outcome,
+            orElse: () => SeasonOutcome.stayed);
+    final division = engine.nextDivisionFor(summary.division, outcome);
+    return startSeason(division: division);
+  }
+
+  Future<Club> _userClub() async {
+    final rows = await (db.select(db.clubs)
+          ..where((c) => c.isUser.equals(true)))
+        .get();
+    if (rows.isEmpty) {
+      throw const SeasonException('No user club');
+    }
+    return rows.first;
+  }
+
+  Future<List<MatchResult>> _resultsFor(int seasonId) =>
+      (db.select(db.matchResults)..where((r) => r.seasonId.equals(seasonId)))
+          .get();
+
+  PlayingStyle _styleOf(String name) => PlayingStyle.values
+      .firstWhere((s) => s.name == name, orElse: () => PlayingStyle.balanced);
+
+  Mentality _mentalityOf(String name) => Mentality.values
+      .firstWhere((m) => m.name == name, orElse: () => Mentality.balanced);
+}

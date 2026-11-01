@@ -5,6 +5,7 @@ import 'app/providers.dart';
 import 'features/collection/collection_collection_screen.dart';
 import 'features/match/match_screen.dart';
 import 'features/packs/packs_screen.dart';
+import 'features/season/season_screen.dart';
 import 'features/squad/squad_screen.dart';
 import 'features/onboarding/club_creation_screen.dart';
 
@@ -46,21 +47,24 @@ class _EntryGate extends ConsumerWidget {
   }
 }
 
-/// Bottom-navigation shell over packs, squad and collection.
+/// Bottom-navigation shell over season, match, packs, squad and collection.
 class GameShell extends StatelessWidget {
   const GameShell({super.key});
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: const Text('FCM Rivals'),
           actions: const [_CoinBalance()],
           bottom: const TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: [
+              Tab(text: 'Season'),
               Tab(text: 'Match'),
               Tab(text: 'Packs'),
               Tab(text: 'Squad'),
@@ -70,6 +74,7 @@ class GameShell extends StatelessWidget {
         ),
         body: const TabBarView(
           children: [
+            SeasonScreen(),
             MatchScreen(),
             PacksScreen(),
             SquadScreen(),

@@ -45,15 +45,21 @@ class MatchReportResult {
 
 /// Live session over one match (GDD 26.1 MatchState + command queue).
 class MatchSession {
-  MatchSession._(this.engine, this._store, this._club, this._opponentName);
+  MatchSession._(this.engine, this._store, this._club, this._opponentName,
+      this._opponentTeamId);
 
   final MatchEngine engine;
   final CollectionStore _store;
   final db.Club? _club;
   final String _opponentName;
 
+  /// Engine team id of the away side (-1 for synthetic friendly opponents,
+  /// the persisted club id for season fixtures).
+  final int _opponentTeamId;
+
   /// Creates a session from the user's current squad (FR-025: player
-  /// attributes and stamina feed the engine, GDD 12.2).
+  /// attributes and stamina feed the engine, GDD 12.2) against a synthetic
+  /// friendly opponent.
   static Future<MatchSession> create({
     required CollectionStore store,
     required int seed,
@@ -61,54 +67,18 @@ class MatchSession {
     required int opponentAverageOverall,
     MatchEngineConfig config = defaultMatchEngineConfig,
   }) async {
-    final club = await store.getClub();
-    if (club == null) {
-      throw const CollectionException('No club');
-    }
-    final squad = await store.getSquad();
-    if (squad.length < Formation.startingXiSize) {
-      throw const CollectionException(
-          'A full starting XI is required to play a match');
-    }
-
-    final userStyle = PlayingStyle.values.firstWhere(
-        (s) => s.name == club.playingStyle,
-        orElse: () => PlayingStyle.balanced);
-    final userMentality = Mentality.values.firstWhere(
-        (m) => m.name == club.mentality,
-        orElse: () => Mentality.balanced);
-
-    final starters = <MatchPlayer>[
-      for (var slot = 0; slot < Formation.startingXiSize; slot++)
-        _toMatchPlayer(squad[slot]!),
-    ];
-    final bench = <MatchPlayer>[
-      for (var slot = Formation.startingXiSize;
-          slot < Formation.squadSize && squad.containsKey(slot);
-          slot++)
-        _toMatchPlayer(squad[slot]!),
-    ];
-
-    // AI opponent (GDD 12.6): mirrored squad at the requested strength.
+    final inputs = await _userTeamInputs(store);
+    // Friendly opponent (GDD 12.6): mirrored squad at the requested strength.
     final opponent = _generateOpponent(
       teamId: -1,
       name: opponentName,
       averageOverall: opponentAverageOverall,
       formationCode: '4-3-3',
     );
-
     final engine = MatchEngine(
       seed: seed,
       config: config,
-      home: MatchTeamInput(
-        teamId: club.id,
-        teamName: club.name,
-        formationCode: club.formationCode,
-        style: userStyle,
-        mentality: userMentality,
-        starters: starters,
-        bench: bench,
-      ),
+      home: inputs.$1,
       away: MatchTeamInput(
         teamId: -1,
         teamName: opponentName,
@@ -120,7 +90,88 @@ class MatchSession {
         aiControlled: true,
       ),
     );
-    return MatchSession._(engine, store, club, opponentName);
+    return MatchSession._(engine, store, inputs.$2, opponentName, -1);
+  }
+
+  /// Creates a session against a persisted AI club (season fixtures): the
+  /// opponent's squad, formation and tactics come from the database, and
+  /// statistics/ratings carry the real club ids.
+  static Future<MatchSession> createAgainstClub({
+    required CollectionStore store,
+    required int seed,
+    required db.Club opponentClub,
+    required List<MatchPlayer> opponentStarters,
+    required List<MatchPlayer> opponentBench,
+    bool userAtHome = true,
+    MatchEngineConfig config = defaultMatchEngineConfig,
+  }) async {
+    final inputs = await _userTeamInputs(store);
+    final style = PlayingStyle.values.firstWhere(
+        (s) => s.name == opponentClub.playingStyle,
+        orElse: () => PlayingStyle.balanced);
+    final mentality = Mentality.values.firstWhere(
+        (m) => m.name == opponentClub.mentality,
+        orElse: () => Mentality.balanced);
+    final opponentTeam = MatchTeamInput(
+      teamId: opponentClub.id,
+      teamName: opponentClub.name,
+      formationCode: opponentClub.formationCode,
+      style: style,
+      mentality: mentality,
+      starters: opponentStarters,
+      bench: opponentBench,
+      aiControlled: true,
+    );
+    final engine = MatchEngine(
+      seed: seed,
+      config: config,
+      home: userAtHome ? inputs.$1 : opponentTeam,
+      away: userAtHome ? opponentTeam : inputs.$1,
+    );
+    return MatchSession._(
+        engine, store, inputs.$2, opponentClub.name, opponentClub.id);
+  }
+
+  /// The user's engine input + club row, shared by both factories.
+  static Future<(MatchTeamInput, db.Club)> _userTeamInputs(
+      CollectionStore store) async {
+    final club = await store.getClub();
+    if (club == null) {
+      throw const CollectionException('No club');
+    }
+    final squad = await store.getSquad();
+    if (squad.length < Formation.startingXiSize) {
+      throw const CollectionException(
+          'A full starting XI is required to play a match');
+    }
+    final style = PlayingStyle.values.firstWhere(
+        (s) => s.name == club.playingStyle,
+        orElse: () => PlayingStyle.balanced);
+    final mentality = Mentality.values.firstWhere(
+        (m) => m.name == club.mentality,
+        orElse: () => Mentality.balanced);
+    final starters = <MatchPlayer>[
+      for (var slot = 0; slot < Formation.startingXiSize; slot++)
+        _toMatchPlayer(squad[slot]!),
+    ];
+    final bench = <MatchPlayer>[
+      for (var slot = Formation.startingXiSize;
+          slot < Formation.squadSize && squad.containsKey(slot);
+          slot++)
+        _toMatchPlayer(squad[slot]!),
+    ];
+    return (
+      MatchTeamInput(
+        teamId: club.id,
+        teamName: club.name,
+        formationCode: club.formationCode,
+        style: style,
+        mentality: mentality,
+        starters: starters,
+        bench: bench,
+      ),
+      club
+    );
   }
 
   static MatchPlayer _toMatchPlayer(PlayerCard card) => MatchPlayer(
@@ -191,7 +242,7 @@ class MatchSession {
     final stats = computeStats(
       events,
       homeTeamId: _club!.id,
-      awayTeamId: -1,
+      awayTeamId: _opponentTeamId,
     );
     final homeRatings = computePlayerRatings(
       events: events,
@@ -203,7 +254,7 @@ class MatchSession {
     final awayRatings = computePlayerRatings(
       events: events,
       players: engine.playersOf(MatchSide.away),
-      teamId: -1,
+      teamId: _opponentTeamId,
       teamGoals: state.scoreAway,
       teamGoalsConceded: state.scoreHome,
     );
