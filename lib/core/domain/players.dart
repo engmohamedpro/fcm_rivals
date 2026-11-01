@@ -56,6 +56,20 @@ class BaseStats {
   final int defence;
   final int goalkeeping;
 
+  /// Attribute value by enum (GDD 7.1 primary attributes).
+  int valueOf(PlayerAttribute attribute) {
+    switch (attribute) {
+      case PlayerAttribute.attack:
+        return attack;
+      case PlayerAttribute.support:
+        return support;
+      case PlayerAttribute.defence:
+        return defence;
+      case PlayerAttribute.goalkeeping:
+        return goalkeeping;
+    }
+  }
+
   @override
   bool operator ==(Object other) =>
       other is BaseStats &&

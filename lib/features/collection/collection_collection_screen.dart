@@ -1,0 +1,220 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../app/providers.dart';
+import '../../features/economy/economy_engine.dart';
+import '../../features/squad/squad_engine.dart';
+
+/// Collection tab: owned players with sell and duplicate-merge actions
+/// (GDD 5.7/8.1). Squad members cannot be sold (enforced by the store).
+class CollectionScreen extends ConsumerWidget {
+  const CollectionScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final collection = ref.watch(collectionProvider);
+    const economy = EconomyEngine();
+
+    return collection.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (cards) {
+        if (cards.isEmpty) {
+          return const Center(
+              child: Text('Open your starting packs to build a squad.'));
+        }
+        // group duplicates by base player id (GDD 5.7 merge)
+        final byPlayer = <int, List<PlayerCard>>{};
+        for (final c in cards) {
+          byPlayer.putIfAbsent(c.base.playerId, () => []).add(c);
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 16),
+          itemCount: cards.length,
+          itemBuilder: (context, index) {
+            final card = cards[index];
+            final duplicates =
+                byPlayer[card.base.playerId] ?? const <PlayerCard>[];
+            final sellPrice = economy.sellPriceOfUpgraded(
+                card.base, card.upgradeLevel);
+            return _CollectionTile(
+              card: card,
+              duplicateCount: duplicates.length,
+              sellPrice: sellPrice,
+              onSell: () => _sell(context, ref, card),
+              onMerge: duplicates.length >= 2
+                  ? () => _merge(context, ref, duplicates[0], duplicates[1])
+                  : null,
+              inSquad: squadContains(ref, card),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  bool squadContains(WidgetRef ref, PlayerCard card) {
+    final squad = ref.watch(squadProvider).valueOrNull ?? const {};
+    return squad.values.any((c) => c.ownedId == card.ownedId);
+  }
+
+  Future<void> _sell(BuildContext context, WidgetRef ref, PlayerCard card) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sell player?'),
+        content: Text(
+            '${card.base.name} will be sold for ${formatCoins(_price(card))} coins. '
+            'This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Sell')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final store = await ref.read(collectionStoreProvider.future);
+    try {
+      final result = await store.sellPlayers([card.ownedId]);
+      ref.invalidate(collectionProvider);
+      ref.invalidate(clubProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text('Sold for ${formatCoins(result.credit)} coins')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  int _price(PlayerCard card) => EconomyEngine()
+      .sellPriceOfUpgraded(card.base, card.upgradeLevel);
+
+  Future<void> _merge(BuildContext context, WidgetRef ref,
+      PlayerCard target, PlayerCard duplicate) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    final random = ref.read(randomProvider);
+    try {
+      final result = await store.mergeDuplicates(
+        targetOwnedId: target.ownedId,
+        duplicateOwnedId: duplicate.ownedId,
+        random: random,
+      );
+      ref.invalidate(collectionProvider);
+      ref.invalidate(squadProvider);
+      if (context.mounted) {
+        final gains = result.attributeGain.entries
+            .map((e) => '+${e.value} ${e.key.name}')
+            .join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                '${target.base.name} upgraded to +${result.newUpgradeLevel}'
+                '${gains.isEmpty ? '' : ' ($gains)'}')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+}
+
+class _CollectionTile extends StatelessWidget {
+  const _CollectionTile({
+    required this.card,
+    required this.duplicateCount,
+    required this.sellPrice,
+    required this.onSell,
+    required this.onMerge,
+    required this.inSquad,
+  });
+
+  final PlayerCard card;
+  final int duplicateCount;
+  final int sellPrice;
+  final VoidCallback onSell;
+  final VoidCallback? onMerge;
+  final bool inSquad;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final stats = card.base.baseStats;
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: card.upgradeLevel > 0
+              ? Colors.amber.shade800
+              : theme.colorScheme.primaryContainer,
+          child: Text('${card.overall}',
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.white)),
+        ),
+        title: Row(
+          children: [
+            Flexible(
+                child: Text(card.base.name,
+                    overflow: TextOverflow.ellipsis)),
+            if (card.upgradeLevel > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade800,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('+${card.upgradeLevel}',
+                    style: const TextStyle(
+                        fontSize: 11, color: Colors.white)),
+              ),
+            ],
+            if (duplicateCount >= 2) ...[
+              const SizedBox(width: 6),
+              Text('×$duplicateCount',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.primary)),
+            ],
+          ],
+        ),
+        subtitle: Text(
+          '${card.position.code} · ${card.base.age}y · ${card.base.nationality} · '
+          '${card.base.club}\n'
+          'ATT ${stats.attack + card.upgradedAttack} · '
+          'SUP ${stats.support + card.upgradedSupport} · '
+          'DEF ${stats.defence + card.upgradedDefence} · '
+          'GK ${stats.goalkeeping + card.upgradedGoalkeeping}'
+          '${inSquad ? ' · in squad' : ''}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall,
+        ),
+        isThreeLine: true,
+        trailing: PopupMenuButton<String>(
+          onSelected: (v) {
+            if (v == 'sell') onSell();
+            if (v == 'merge') onMerge?.call();
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+                value: 'sell',
+                child: Text('Sell · ${formatCoins(sellPrice)} coins')),
+            if (onMerge != null)
+              const PopupMenuItem(
+                  value: 'merge', child: Text('Merge duplicate (+1)')),
+          ],
+        ),
+      ),
+    );
+  }
+}

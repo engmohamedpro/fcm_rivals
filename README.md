@@ -7,9 +7,9 @@ The full game design and requirements live in [`docs/fcm_rivals_GDD_SRS.md`](doc
 
 ## Current state (development build)
 
-The foundation iteration is complete — the domain engines required by the
-GDD's development rules (§36: data model first, Player Database Engine first,
-Economy Engine separate, Match Engine independent of widgets):
+Two iterations are complete — the foundation engines and the collection
+layer. The GDD's development rules (§36) are followed: data model first,
+engines as pure Dart with no UI dependencies, atomic coin transactions.
 
 | Module | Path | Covers |
 | --- | --- | --- |
@@ -18,7 +18,11 @@ Economy Engine separate, Match Engine independent of widgets):
 | Player Database Engine | `lib/features/player_database/` | dataset validation, import, update rules, removal detection (GDD 4.6–4.8, FR-002..FR-008) |
 | Economy Engine | `lib/features/economy/` | economic value curve, selling (incl. upgraded), upgrade costs, match rewards (GDD 17) |
 | Pack Engine | `lib/features/packs/` | five categories, 3-player tier draws, value-weighted odds, dynamic pricing (GDD 5) |
-| Development shell | `lib/main.dart` | loads the bundled dataset and renders top players |
+| Squad Engine | `lib/features/squad/` | 10 data-driven formations, compatibility matrix, position-sensitive ratings, Auto Pick (GDD 6/7) |
+| Upgrade Engine | `lib/features/upgrades/` | duplicate-merge progression, controlled attribute allocation (GDD 8) |
+| Collection Store | `lib/features/collection/` | atomic pack open/sell/merge, club creation with 36 starting packs, dataset-update compensation, coin ledger (FR-012..FR-016) |
+| Persistence | `lib/core/database/` | Drift/SQLite schema: players, dataset versions, clubs, owned players, packs, coin transactions (SRS 25) |
+| App UI | `lib/app/`, `lib/features/*/` screens | Riverpod providers, club creation, pack opening with reveal, pitch squad view, collection management |
 
 All engines are pure Dart with no Flutter UI dependencies, ready for the
 future authoritative server port (GDD §29). All balancing constants live in
@@ -48,8 +52,9 @@ stats byte-for-byte; upgrades live on owned instances and survive updates.
 
 ```bash
 flutter pub get
+dart run build_runner build --delete-conflicting-outputs  # regenerate drift code
 flutter analyze
-flutter test     # 55 tests: engines, update rules, real-dataset integration
+flutter test     # 100 tests: engines, update rules, store integration, UI flow
 flutter run
 ```
 
@@ -57,6 +62,6 @@ Requires Flutter 3.47.9 stable / Dart 3.13.7 (`sdk: ^3.13.7`).
 
 ## Roadmap
 
-Next per the GDD's Definition of Done (§37): Drift/SQLite persistence and
-the owned-collection store, then packs UI, squad management, and the Match
-Engine with deterministic seeded simulation.
+Next per the GDD's Definition of Done (§37): the Match Engine (deterministic
+seeded event pipeline, §12/§26) with divisions, seasons, fixtures and AI
+clubs (§9), then stamina, pep talks and live match actions.

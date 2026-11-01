@@ -29,6 +29,7 @@ class EconomyConfig {
     this.packOddsSmoothing = 0.55,
     this.baseMatchReward = 1_500,
     this.matchRewardPerGoal = 250,
+    this.startingCoins = 25_000,
   });
 
   /// Stable reference market value so imports don't shift every player's
@@ -65,6 +66,9 @@ class EconomyConfig {
   /// Match rewards (GDD 17.6).
   final int baseMatchReward;
   final int matchRewardPerGoal;
+
+  /// Coins granted to a newly created club (GDD 3 starting state).
+  final int startingCoins;
 }
 
 const EconomyConfig defaultEconomyConfig = EconomyConfig();
