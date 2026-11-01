@@ -1,30 +1,35 @@
-// This is a basic Flutter widget test.
+// Smoke test for the development shell: the app boots, loads the bundled
+// player dataset asset and renders the database screen.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+// The asset is loaded through the real asset bundle, so this also verifies
+// pubspec asset wiring end to end.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('app boots and imports the bundled player database',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const FcmRivalsApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Real asset I/O doesn't advance under FakeAsync; run it outside the
+    // fake clock, then pump frames until the loaded state renders.
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(find.text('FCM Rivals — Player Database'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // header card reports the imported count
+    final header =
+        find.textContaining('real players imported from the bundled');
+    expect(header, findsOneWidget);
+
+    // top of the imported database renders real player names
+    expect(find.text('Erling Haaland'), findsWidgets);
   });
 }
