@@ -16,6 +16,7 @@ import 'package:drift/drift.dart';
 import '../../core/database/app_database.dart';
 import '../../core/domain/players.dart';
 import '../economy/economy_engine.dart';
+import '../match/stamina.dart' show StaminaConfig, PepTalk, recoverStamina, applyPepTalkBonus;
 import '../packs/pack_engine.dart';
 import '../player_database/player_database.dart';
 import '../squad/formations.dart';
@@ -607,6 +608,80 @@ class CollectionStore {
     await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
         .write(ClubsCompanion(formationCode: Value(formation.code)));
     await autoPickSquad();
+  }
+
+  /// Updates the club's tactical setup for future matches (GDD 10.2/10.3).
+  Future<void> changeTactics({String? formationCode, String? playingStyle, String? mentality}) async {
+    final club = await getClub();
+    if (club == null) {
+      throw const CollectionException('No club');
+    }
+    await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
+        .write(ClubsCompanion(
+      formationCode: formationCode != null ? Value(formationByCode(formationCode).code) : const Value.absent(),
+      playingStyle: playingStyle != null ? Value(playingStyle) : const Value.absent(),
+      mentality: mentality != null ? Value(mentality) : const Value.absent(),
+    ));
+    if (formationCode != null) {
+      await autoPickSquad();
+    }
+  }
+
+  /// Applies a finished match (GDD 11 recovery + 17.6 rewards, FR-016):
+  /// stamina recovery with the optional pep talk bonus, the reward credit
+  /// and its ledger row — all in one transaction. Bench players who did
+  /// not come on keep their stamina untouched.
+  Future<void> applyMatchResult({
+    required int clubId,
+    required int rewardCoins,
+    required List<({int ownedId, double stamina, int minutesPlayed})> players,
+    PepTalk? pepTalk,
+    int restDays = 3,
+  }) async {
+    final staminaConfig = const StaminaConfig();
+    await db.transaction(() async {
+      for (final p in players) {
+        final row = await (db.select(db.ownedPlayers)
+              ..where((o) => o.id.equals(p.ownedId)))
+            .getSingleOrNull();
+        if (row == null) continue;
+        var next = row.staminaPercent.toDouble();
+        if (p.minutesPlayed > 0) {
+          final afterNatural = recoverStamina(
+            config: staminaConfig,
+            currentStamina: p.stamina,
+            minutesPlayed: p.minutesPlayed,
+            restDays: restDays,
+          );
+          if (pepTalk != null) {
+            next = applyPepTalkBonus(
+              pepTalk: pepTalk,
+              currentStamina: p.stamina,
+              naturalRecovery: afterNatural - p.stamina,
+              staminaAfterNaturalRecovery: afterNatural,
+              minutesPlayed: p.minutesPlayed,
+            );
+          } else {
+            next = afterNatural;
+          }
+        }
+        // Players who didn't feature keep their current stamina.
+        await (db.update(db.ownedPlayers)
+              ..where((o) => o.id.equals(p.ownedId)))
+            .write(OwnedPlayersCompanion(
+                staminaPercent: Value(next.round().clamp(0, 100))));
+      }
+      if (rewardCoins > 0) {
+        final club = await (db.select(db.clubs)
+              ..where((c) => c.id.equals(clubId)))
+            .getSingle();
+        await (db.update(db.clubs)..where((c) => c.id.equals(clubId)))
+            .write(ClubsCompanion(coins: Value(club.coins + rewardCoins)));
+        await db.coinLedger(clubId, rewardCoins,
+            reason: 'match_reward',
+            detail: 'Match reward for ${players.length} squad players');
+      }
+    });
   }
 
   /// Adapts a persisted player row to the domain model.

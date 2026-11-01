@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/providers.dart';
 import 'features/collection/collection_collection_screen.dart';
+import 'features/match/match_screen.dart';
 import 'features/packs/packs_screen.dart';
 import 'features/squad/squad_screen.dart';
 import 'features/onboarding/club_creation_screen.dart';
@@ -52,7 +53,7 @@ class GameShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -60,6 +61,7 @@ class GameShell extends StatelessWidget {
           actions: const [_CoinBalance()],
           bottom: const TabBar(
             tabs: [
+              Tab(text: 'Match'),
               Tab(text: 'Packs'),
               Tab(text: 'Squad'),
               Tab(text: 'Collection'),
@@ -67,7 +69,12 @@ class GameShell extends StatelessWidget {
           ),
         ),
         body: const TabBarView(
-          children: [PacksScreen(), SquadScreen(), CollectionScreen()],
+          children: [
+            MatchScreen(),
+            PacksScreen(),
+            SquadScreen(),
+            CollectionScreen(),
+          ],
         ),
       ),
     );

@@ -55,13 +55,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 50));
 
-    // Game shell with the three tabs.
+    // Game shell with the four tabs.
+    expect(find.text('Match'), findsWidgets);
     expect(find.text('Packs'), findsWidgets);
     expect(find.text('Squad'), findsWidgets);
     expect(find.text('Collection'), findsWidgets);
 
-    // 36 starting packs exist; the on-screen list renders the first packs
-    // in insertion order (ST first) without scrolling.
+    // The Match tab opens first: the friendly match entry point renders.
+    expect(find.text('Play friendly match'), findsOneWidget);
+
+    // Switch to the Packs tab and check the starting packs render.
+    await tester.tap(find.text('Packs'));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
     expect(find.text('ST Position Pack'), findsNWidgets(3));
     expect(find.text('LW Position Pack'), findsNWidgets(3));
 
