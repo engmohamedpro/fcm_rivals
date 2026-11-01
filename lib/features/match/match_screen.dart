@@ -24,17 +24,31 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   bool _finished = false;
   MatchReportResult? _report;
   PepTalk? _pepTalk;
+  bool _usedAdBoost = false;
   String? _error;
+  bool _halfTimeOffered = false;
 
   Future<void> _kickOff() async {
     try {
       final store = await ref.read(collectionStoreProvider.future);
       final random = ref.read(randomProvider);
+      setState(() {
+        _halfTimeOffered = false;
+      });
+      // Pre-match pep talk (GDD 15.1): one optional choice, ad-free.
+      final talk = await _chooseTalk(
+        title: 'Pre-match pep talk',
+        subtitle:
+            'One motivational choice before kick-off — effects last the '
+            'whole match.',
+        talks: preMatchPepTalks,
+      );
       final session = await MatchSession.create(
         store: store,
         seed: random.nextInt(1 << 31),
         opponentName: 'Cairo XI',
         opponentAverageOverall: 68,
+        preMatchTalk: talk,
       );
       setState(() {
         _session = session;
@@ -42,6 +56,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
         _finished = false;
         _report = null;
         _pepTalk = null;
+        _usedAdBoost = false;
       });
       _advance();
     } catch (e) {
@@ -53,17 +68,83 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
     final session = _session;
     if (session == null || session.isFinished) return;
     final events = session.advanceMinute();
-    if (events.isEmpty) return;
-    final lines = generateCommentary(
-      events,
-      playerNames: session.userPlayerNames,
-      homeTeamName: 'FC Rivals',
-      awayTeamName: 'Cairo XI',
-    );
-    setState(() => _lines.addAll(lines));
+    if (events.isNotEmpty) {
+      final lines = generateCommentary(
+        events,
+        playerNames: session.userPlayerNames,
+        homeTeamName: 'FC Rivals',
+        awayTeamName: 'Cairo XI',
+      );
+      setState(() => _lines.addAll(lines));
+    }
+    _maybeOfferHalfTimeTalk();
     if (session.isFinished) {
       _finishMatch();
     }
+  }
+
+  void _maybeOfferHalfTimeTalk() {
+    final session = _session;
+    if (session == null || _halfTimeOffered) return;
+    final state = session.engine.state;
+    // Offer once when the clock first reaches/reaches past half time.
+    if (state.minute >= 45 && !state.isFinished) {
+      _halfTimeOffered = true;
+      _chooseHalfTimeTalk();
+    }
+  }
+
+  Future<void> _chooseHalfTimeTalk() async {
+    final session = _session;
+    if (session == null) return;
+    // Half-time pep talk (GDD 15.2): effects apply to the second half,
+    // ad-free like every pep talk (FR-043).
+    final talk = await _chooseTalk(
+      title: 'Half-time pep talk',
+      subtitle: 'One choice for the second half — applies from kick-off '
+          'of the second half.',
+      talks: halfTimePepTalks,
+    );
+    if (talk != null && session == _session && !session.isFinished) {
+      session.queueHalfTimeTalk(talk);
+    }
+  }
+
+  /// Shows the pep-talk chooser; returns null when skipped. Never gated
+  /// by an ad (FR-043).
+  Future<MatchPepTalk?> _chooseTalk({
+    required String title,
+    required String subtitle,
+    required List<MatchPepTalk> talks,
+  }) {
+    final theme = Theme.of(context);
+    return showModalBottomSheet<MatchPepTalk>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(title, style: theme.textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(subtitle, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 12),
+            for (final talk in talks)
+              ListTile(
+                title: Text(talk.label),
+                subtitle: Text('${talk.effectSummary}\n${talk.description}'),
+                isThreeLine: true,
+                onTap: () => Navigator.pop(sheetContext, talk),
+              ),
+            ListTile(
+              title: Text('Skip',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              onTap: () => Navigator.pop(sheetContext),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _simToEnd() {
@@ -85,20 +166,95 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   Future<void> _finishMatch() async {
     final session = _session;
     if (session == null) return;
-    final report = await session.finish(pepTalk: null);
+
+    // Post-match pep talk (GDD 15.3/11.6) or the ad-supported boosted
+    // recovery (GDD 19.3) — mutually exclusive (GDD 19.4), chosen BEFORE
+    // persistence runs so the choice is real this time.
+    var usedAdBoost = false;
+    PepTalk? talk;
+    final choice = await _choosePostMatchRecovery();
+    if (choice == null) {
+      // nothing chosen: default recovery
+    } else if (choice.boosted) {
+      usedAdBoost = true;
+    } else {
+      talk = choice.pepTalk;
+    }
+
+    final report = await session.finish(
+        pepTalk: talk, adBoostedRecovery: usedAdBoost);
     setState(() {
       _finished = true;
       _report = report;
+      _pepTalk = talk;
+      _usedAdBoost = usedAdBoost;
     });
     ref.invalidate(clubProvider);
     ref.invalidate(collectionProvider);
     ref.invalidate(squadProvider);
   }
 
+  /// Chooses the post-match recovery path: a normal pep talk (free,
+  /// FR-043) or the ad-boosted +15% recovery (GDD 19.3) when ads remain.
+  Future<_RecoveryChoice?> _choosePostMatchRecovery() async {
+    final theme = Theme.of(context);
+    final session = _session;
+    if (session == null) return null;
+    final report = _report;
+    final userAtHome = session.userSide == MatchSide.home;
+    final userGoals =
+        userAtHome ? session.engine.state.scoreHome : session.engine.state.scoreAway;
+    final opponentGoals = userAtHome
+        ? session.engine.state.scoreAway
+        : session.engine.state.scoreHome;
+    final won = userGoals > opponentGoals;
+
+    return showModalBottomSheet<_RecoveryChoice>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Post-match recovery', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+                'Choose one recovery focus for the squad (bonus to natural '
+                'recovery, GDD 11.6):',
+                style: theme.textTheme.bodySmall),
+            const SizedBox(height: 8),
+            for (final choice in PepTalk.values)
+              ListTile(
+                title: Text(choice.displayName),
+                subtitle: Text(
+                    '+${(choice.recoveryBonus * 100).round()}% natural recovery'),
+                onTap: () => Navigator.pop(
+                    sheetContext, _RecoveryChoice(pepTalk: choice)),
+              ),
+            if (!won)
+              ListTile(
+                leading: const Icon(Icons.movie),
+                title: const Text('Watch ad: boosted recovery'),
+                subtitle: const Text(
+                    '+15% natural recovery for the whole squad (GDD 19.3)'),
+                onTap: () =>
+                    Navigator.pop(sheetContext, const _RecoveryChoice.boosted()),
+              ),
+            ListTile(
+              title: Text('No pep talk',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              subtitle: report == null ? null : const Text('Default recovery'),
+              onTap: () => Navigator.pop(sheetContext),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _applyPepTalk(PepTalk pepTalk) async {
-    // The pep talk choice made at full time is informational here: the
-    // reward/stamina persistence ran in _finishMatch with the default
-    // recovery; choosing now shows the effect preview for the next match.
+    // Informational selection on the report screen; the persistence
+    // already ran with the choice made at full time.
     setState(() => _pepTalk = pepTalk);
   }
 
@@ -210,6 +366,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
               ? MatchReportView(
                   report: _report!,
                   pepTalk: _pepTalk,
+                  adBoostedRecovery: _usedAdBoost,
                   onPepTalk: _applyPepTalk,
                 )
               : ListView.builder(
@@ -350,11 +507,15 @@ class MatchReportView extends StatelessWidget {
     required this.report,
     required this.pepTalk,
     required this.onPepTalk,
+    this.adBoostedRecovery = false,
   });
 
   final MatchReportResult report;
   final PepTalk? pepTalk;
   final ValueChanged<PepTalk> onPepTalk;
+
+  /// Whether the ad-supported boosted recovery was applied (GDD 19.3).
+  final bool adBoostedRecovery;
 
   @override
   Widget build(BuildContext context) {
@@ -415,9 +576,27 @@ class MatchReportView extends StatelessWidget {
           ),
         const SizedBox(height: 12),
         Text('Pep talk', style: theme.textTheme.titleSmall),
-        Text(
-            'Choose one recovery focus for the squad (bonus to natural recovery, GDD 11.6):',
-            style: theme.textTheme.bodySmall),
+        if (adBoostedRecovery)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                Icon(Icons.movie, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                      'Ad-boosted recovery applied: +15% natural recovery '
+                      '(GDD 19.3)',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.primary)),
+                ),
+              ],
+            ),
+          )
+        else
+          Text(
+              'Choose one recovery focus for the squad (bonus to natural recovery, GDD 11.6):',
+              style: theme.textTheme.bodySmall),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -527,4 +706,13 @@ class _StatsTable extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Post-match recovery choice: one free Pep Talk or the ad-boosted path.
+class _RecoveryChoice {
+  const _RecoveryChoice({this.pepTalk}) : boosted = false;
+  const _RecoveryChoice.boosted() : pepTalk = null, boosted = true;
+
+  final PepTalk? pepTalk;
+  final bool boosted;
 }

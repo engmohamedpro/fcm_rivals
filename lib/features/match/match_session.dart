@@ -59,12 +59,14 @@ class MatchSession {
 
   /// Creates a session from the user's current squad (FR-025: player
   /// attributes and stamina feed the engine, GDD 12.2) against a synthetic
-  /// friendly opponent.
+  /// friendly opponent. [preMatchTalk] applies its multipliers from
+  /// kick-off (GDD 15.1) — it never requires an ad (FR-043).
   static Future<MatchSession> create({
     required CollectionStore store,
     required int seed,
     required String opponentName,
     required int opponentAverageOverall,
+    MatchPepTalk? preMatchTalk,
     MatchEngineConfig config = defaultMatchEngineConfig,
   }) async {
     final inputs = await _userTeamInputs(store);
@@ -90,12 +92,17 @@ class MatchSession {
         aiControlled: true,
       ),
     );
+    if (preMatchTalk != null) {
+      engine.queueCommand(PepTalkCommand(
+          atMinute: 0, side: MatchSide.home, talk: preMatchTalk));
+    }
     return MatchSession._(engine, store, inputs.$2, opponentName, -1);
   }
 
   /// Creates a session against a persisted AI club (season fixtures): the
   /// opponent's squad, formation and tactics come from the database, and
-  /// statistics/ratings carry the real club ids.
+  /// statistics/ratings carry the real club ids. [preMatchTalk] applies
+  /// from kick-off (GDD 15.1).
   static Future<MatchSession> createAgainstClub({
     required CollectionStore store,
     required int seed,
@@ -103,6 +110,7 @@ class MatchSession {
     required List<MatchPlayer> opponentStarters,
     required List<MatchPlayer> opponentBench,
     bool userAtHome = true,
+    MatchPepTalk? preMatchTalk,
     MatchEngineConfig config = defaultMatchEngineConfig,
   }) async {
     final inputs = await _userTeamInputs(store);
@@ -128,6 +136,12 @@ class MatchSession {
       home: userAtHome ? inputs.$1 : opponentTeam,
       away: userAtHome ? opponentTeam : inputs.$1,
     );
+    if (preMatchTalk != null) {
+      engine.queueCommand(PepTalkCommand(
+          atMinute: 0,
+          side: userAtHome ? MatchSide.home : MatchSide.away,
+          talk: preMatchTalk));
+    }
     return MatchSession._(
         engine, store, inputs.$2, opponentClub.name, opponentClub.id);
   }
@@ -217,6 +231,18 @@ class MatchSession {
   /// Queues a live tactical change (GDD 10.4/16).
   void queueCommand(MatchCommand command) => engine.queueCommand(command);
 
+  /// Queues the half-time pep talk (GDD 15.2): applied at the first
+  /// minute of the second half, affecting future events only.
+  void queueHalfTimeTalk(MatchPepTalk talk) {
+    engine.queueCommand(PepTalkCommand(
+        atMinute: 46, side: userSide, talk: talk));
+  }
+
+  /// The engine side carrying the user's club.
+  MatchSide get userSide => engine.playersOf(MatchSide.home).any((p) => p.playerId >= 0)
+      ? MatchSide.home
+      : MatchSide.away;
+
   /// Advances one minute of live play (FR-029: commands applied at their
   /// minute affect future events only).
   List<MatchEvent> advanceMinute() => engine.advanceMinute();
@@ -229,32 +255,50 @@ class MatchSession {
   /// Full-time processing: builds the report, persists stamina (GDD 11),
   /// credits match rewards with a ledger row (GDD 17.6) and applies the
   /// optional post-match pep talk (GDD 11.6) in one transaction.
+  ///
+  /// [adBoostedRecovery] switches the recovery path to the ad-supported
+  /// +15% natural recovery bonus (GDD 19.3) INSTEAD of a normal pep talk —
+  /// ad bonuses never stack with pep talk bonuses on one transaction
+  /// (GDD 19.4).
   Future<MatchReportResult> finish({
     PepTalk? pepTalk,
     int restDays = 3,
+    bool adBoostedRecovery = false,
   }) async {
+    assert(!(pepTalk != null && adBoostedRecovery),
+        'Ad bonus and pep talk cannot stack on one transaction (GDD 19.4)');
     if (!engine.isFinished) {
       engine.simulateToEnd();
     }
+    final club = _club!;
     final state = engine.state;
     final events = engine.events;
 
+    // Side orientation: the user is NOT always home (away season
+    // fixtures) — stats, ratings, rewards and stamina persistence must
+    // follow the user's actual side.
+    final userAtHome = userSide == MatchSide.home;
+    final userGoals = userAtHome ? state.scoreHome : state.scoreAway;
+    final opponentGoals = userAtHome ? state.scoreAway : state.scoreHome;
+    final homeTeamId = userAtHome ? club.id : _opponentTeamId;
+    final awayTeamId = userAtHome ? _opponentTeamId : club.id;
+
     final stats = computeStats(
       events,
-      homeTeamId: _club!.id,
-      awayTeamId: _opponentTeamId,
+      homeTeamId: homeTeamId,
+      awayTeamId: awayTeamId,
     );
     final homeRatings = computePlayerRatings(
       events: events,
       players: engine.playersOf(MatchSide.home),
-      teamId: _club.id,
+      teamId: homeTeamId,
       teamGoals: state.scoreHome,
       teamGoalsConceded: state.scoreAway,
     );
     final awayRatings = computePlayerRatings(
       events: events,
       players: engine.playersOf(MatchSide.away),
-      teamId: _opponentTeamId,
+      teamId: awayTeamId,
       teamGoals: state.scoreAway,
       teamGoalsConceded: state.scoreHome,
     );
@@ -267,25 +311,27 @@ class MatchSession {
         ])
           p.playerId: p.name,
       },
-      homeTeamName: _club.name,
-      awayTeamName: _opponentName,
+      homeTeamName: userAtHome ? club.name : _opponentName,
+      awayTeamName: userAtHome ? _opponentName : club.name,
     );
 
-    // Match rewards (GDD 17.6): base + per-goal, win bonus.
+    // Match rewards (GDD 17.6): base + per-goal for the USER's goals,
+    // win bonus for the user's result.
     final economy = const EconomyEngine();
     var reward = economy.config.baseMatchReward +
-        state.scoreHome * economy.config.matchRewardPerGoal;
-    if (state.scoreHome > state.scoreAway) reward = (reward * 1.5).round();
+        userGoals * economy.config.matchRewardPerGoal;
+    if (userGoals > opponentGoals) reward = (reward * 1.5).round();
 
     await _store.applyMatchResult(
-      clubId: _club.id,
+      clubId: club.id,
       rewardCoins: reward,
       players: [
-        for (final p in engine.playersOf(MatchSide.home))
+        for (final p in engine.playersOf(userSide))
           (ownedId: p.playerId, stamina: p.stamina, minutesPlayed: p.minutesPlayed),
       ],
       pepTalk: pepTalk,
       restDays: restDays,
+      adBoostedRecovery: adBoostedRecovery,
     );
 
     return MatchReportResult(

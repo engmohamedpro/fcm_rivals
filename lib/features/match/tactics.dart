@@ -114,3 +114,99 @@ class ActionModifiers {
   final double defence;
   final double stamina;
 }
+
+/// Pre-match / half-time pep talk (GDD 15): motivational choices with
+/// visible percentage-based performance effects, expressed as team-wide
+/// multipliers. A pre-match talk runs from kick-off; a half-time talk
+/// applies from the second half. Unlike Live Match Actions these never
+/// expire, and a later talk replaces an earlier one (no stacking).
+///
+/// Values are pre-balance placeholders (GDD rule 14).
+class MatchPepTalk {
+  const MatchPepTalk({
+    required this.id,
+    required this.label,
+    required this.modifiers,
+    required this.description,
+  });
+
+  /// Stable identifier for persistence/replay.
+  final String id;
+  final String label;
+  final ActionModifiers modifiers;
+  final String description;
+
+  /// Human-visible effect summary (GDD 15: effects must be visible).
+  String get effectSummary {
+    final parts = <String>[];
+
+    void describe(String name, double multiplier) {
+      final percent = ((multiplier - 1) * 100).round();
+      if (percent == 0) return;
+      parts.add('$name ${percent > 0 ? '+' : ''}$percent%');
+    }
+
+    describe('Attack', modifiers.attack);
+    describe('Defence', modifiers.defence);
+    describe('Stamina use', modifiers.stamina);
+    return parts.isEmpty ? 'No effect' : parts.join(' · ');
+  }
+}
+
+/// Pre-match talks (GDD 15.1): one choice before kick-off, effects last
+/// the whole match.
+const List<MatchPepTalk> preMatchPepTalks = [
+  MatchPepTalk(
+    id: 'fearNoOne',
+    label: 'Fear no one!',
+    modifiers: ActionModifiers(attack: 1.04, defence: 1.04, stamina: 1.00),
+    description: 'A confident talk: both lines step up a little.',
+  ),
+  MatchPepTalk(
+    id: 'staySolid',
+    label: 'Stay solid at the back!',
+    modifiers: ActionModifiers(attack: 0.97, defence: 1.07, stamina: 1.00),
+    description: 'Safety first: harder to break, blunter going forward.',
+  ),
+  MatchPepTalk(
+    id: 'allOutAttack',
+    label: 'Go at them from the start!',
+    modifiers: ActionModifiers(attack: 1.08, defence: 0.95, stamina: 1.05),
+    description: 'High tempo pressing game — costs legs over 90 minutes.',
+  ),
+  MatchPepTalk(
+    id: 'calmMinds',
+    label: 'Calm minds, clear plan',
+    modifiers: ActionModifiers(attack: 1.00, defence: 1.02, stamina: 0.92),
+    description: 'Measured football that saves energy for the final stages.',
+  ),
+];
+
+/// Half-time talks (GDD 15.2): one choice at the interval, effects apply
+/// to the second half only.
+const List<MatchPepTalk> halfTimePepTalks = [
+  MatchPepTalk(
+    id: 'keepGoing',
+    label: 'Keep going!',
+    modifiers: ActionModifiers(attack: 1.03, defence: 1.03, stamina: 1.00),
+    description: 'Steady encouragement across both phases.',
+  ),
+  MatchPepTalk(
+    id: 'pushForGoal',
+    label: 'We need a goal!',
+    modifiers: ActionModifiers(attack: 1.08, defence: 0.94, stamina: 1.06),
+    description: 'Chase the game — more attack, more risk, more tired legs.',
+  ),
+  MatchPepTalk(
+    id: 'protectLead',
+    label: 'Protect what we have!',
+    modifiers: ActionModifiers(attack: 0.93, defence: 1.08, stamina: 1.00),
+    description: 'Shut up shop and hold onto the result.',
+  ),
+  MatchPepTalk(
+    id: 'saveLegs',
+    label: 'Save your legs!',
+    modifiers: ActionModifiers(attack: 1.00, defence: 1.00, stamina: 0.85),
+    description: 'Manage the workload: noticeably lighter second half.',
+  ),
+];

@@ -6004,6 +6004,369 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
   }
 }
 
+class $AdUsagesTable extends AdUsages with TableInfo<$AdUsagesTable, AdUsage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AdUsagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _clubIdMeta = const VerificationMeta('clubId');
+  @override
+  late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
+    'club_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardKindMeta = const VerificationMeta(
+    'rewardKind',
+  );
+  @override
+  late final GeneratedColumn<String> rewardKind = GeneratedColumn<String>(
+    'reward_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardKeyMeta = const VerificationMeta(
+    'rewardKey',
+  );
+  @override
+  late final GeneratedColumn<String> rewardKey = GeneratedColumn<String>(
+    'reward_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    clubId,
+    rewardKind,
+    rewardKey,
+    completedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ad_usages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AdUsage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('club_id')) {
+      context.handle(
+        _clubIdMeta,
+        clubId.isAcceptableOrUnknown(data['club_id']!, _clubIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clubIdMeta);
+    }
+    if (data.containsKey('reward_kind')) {
+      context.handle(
+        _rewardKindMeta,
+        rewardKind.isAcceptableOrUnknown(data['reward_kind']!, _rewardKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rewardKindMeta);
+    }
+    if (data.containsKey('reward_key')) {
+      context.handle(
+        _rewardKeyMeta,
+        rewardKey.isAcceptableOrUnknown(data['reward_key']!, _rewardKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rewardKeyMeta);
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_completedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AdUsage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AdUsage(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      clubId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}club_id'],
+      )!,
+      rewardKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reward_kind'],
+      )!,
+      rewardKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reward_key'],
+      )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AdUsagesTable createAlias(String alias) {
+    return $AdUsagesTable(attachedDatabase, alias);
+  }
+}
+
+class AdUsage extends DataClass implements Insertable<AdUsage> {
+  final int id;
+  final int clubId;
+
+  /// Reward kind: 'boostedRecovery' | 'matchReplay' | 'freePack' | ... —
+  /// the ad-granted reward identifier.
+  final String rewardKind;
+
+  /// Unique key of the rewarded transaction (e.g. 'match:<fixtureId>');
+  /// one reward per key prevents duplicate callbacks.
+  final String rewardKey;
+  final DateTime completedAt;
+  const AdUsage({
+    required this.id,
+    required this.clubId,
+    required this.rewardKind,
+    required this.rewardKey,
+    required this.completedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['club_id'] = Variable<int>(clubId);
+    map['reward_kind'] = Variable<String>(rewardKind);
+    map['reward_key'] = Variable<String>(rewardKey);
+    map['completed_at'] = Variable<DateTime>(completedAt);
+    return map;
+  }
+
+  AdUsagesCompanion toCompanion(bool nullToAbsent) {
+    return AdUsagesCompanion(
+      id: Value(id),
+      clubId: Value(clubId),
+      rewardKind: Value(rewardKind),
+      rewardKey: Value(rewardKey),
+      completedAt: Value(completedAt),
+    );
+  }
+
+  factory AdUsage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AdUsage(
+      id: serializer.fromJson<int>(json['id']),
+      clubId: serializer.fromJson<int>(json['clubId']),
+      rewardKind: serializer.fromJson<String>(json['rewardKind']),
+      rewardKey: serializer.fromJson<String>(json['rewardKey']),
+      completedAt: serializer.fromJson<DateTime>(json['completedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'clubId': serializer.toJson<int>(clubId),
+      'rewardKind': serializer.toJson<String>(rewardKind),
+      'rewardKey': serializer.toJson<String>(rewardKey),
+      'completedAt': serializer.toJson<DateTime>(completedAt),
+    };
+  }
+
+  AdUsage copyWith({
+    int? id,
+    int? clubId,
+    String? rewardKind,
+    String? rewardKey,
+    DateTime? completedAt,
+  }) => AdUsage(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    rewardKind: rewardKind ?? this.rewardKind,
+    rewardKey: rewardKey ?? this.rewardKey,
+    completedAt: completedAt ?? this.completedAt,
+  );
+  AdUsage copyWithCompanion(AdUsagesCompanion data) {
+    return AdUsage(
+      id: data.id.present ? data.id.value : this.id,
+      clubId: data.clubId.present ? data.clubId.value : this.clubId,
+      rewardKind: data.rewardKind.present
+          ? data.rewardKind.value
+          : this.rewardKind,
+      rewardKey: data.rewardKey.present ? data.rewardKey.value : this.rewardKey,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AdUsage(')
+          ..write('id: $id, ')
+          ..write('clubId: $clubId, ')
+          ..write('rewardKind: $rewardKind, ')
+          ..write('rewardKey: $rewardKey, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, clubId, rewardKind, rewardKey, completedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AdUsage &&
+          other.id == this.id &&
+          other.clubId == this.clubId &&
+          other.rewardKind == this.rewardKind &&
+          other.rewardKey == this.rewardKey &&
+          other.completedAt == this.completedAt);
+}
+
+class AdUsagesCompanion extends UpdateCompanion<AdUsage> {
+  final Value<int> id;
+  final Value<int> clubId;
+  final Value<String> rewardKind;
+  final Value<String> rewardKey;
+  final Value<DateTime> completedAt;
+  const AdUsagesCompanion({
+    this.id = const Value.absent(),
+    this.clubId = const Value.absent(),
+    this.rewardKind = const Value.absent(),
+    this.rewardKey = const Value.absent(),
+    this.completedAt = const Value.absent(),
+  });
+  AdUsagesCompanion.insert({
+    this.id = const Value.absent(),
+    required int clubId,
+    required String rewardKind,
+    required String rewardKey,
+    required DateTime completedAt,
+  }) : clubId = Value(clubId),
+       rewardKind = Value(rewardKind),
+       rewardKey = Value(rewardKey),
+       completedAt = Value(completedAt);
+  static Insertable<AdUsage> custom({
+    Expression<int>? id,
+    Expression<int>? clubId,
+    Expression<String>? rewardKind,
+    Expression<String>? rewardKey,
+    Expression<DateTime>? completedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (clubId != null) 'club_id': clubId,
+      if (rewardKind != null) 'reward_kind': rewardKind,
+      if (rewardKey != null) 'reward_key': rewardKey,
+      if (completedAt != null) 'completed_at': completedAt,
+    });
+  }
+
+  AdUsagesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? clubId,
+    Value<String>? rewardKind,
+    Value<String>? rewardKey,
+    Value<DateTime>? completedAt,
+  }) {
+    return AdUsagesCompanion(
+      id: id ?? this.id,
+      clubId: clubId ?? this.clubId,
+      rewardKind: rewardKind ?? this.rewardKind,
+      rewardKey: rewardKey ?? this.rewardKey,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (clubId.present) {
+      map['club_id'] = Variable<int>(clubId.value);
+    }
+    if (rewardKind.present) {
+      map['reward_kind'] = Variable<String>(rewardKind.value);
+    }
+    if (rewardKey.present) {
+      map['reward_key'] = Variable<String>(rewardKey.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AdUsagesCompanion(')
+          ..write('id: $id, ')
+          ..write('clubId: $clubId, ')
+          ..write('rewardKind: $rewardKind, ')
+          ..write('rewardKey: $rewardKey, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6022,6 +6385,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FixturesTable fixtures = $FixturesTable(this);
   late final $MatchResultsTable matchResults = $MatchResultsTable(this);
   late final $AiPlayersTable aiPlayers = $AiPlayersTable(this);
+  late final $AdUsagesTable adUsages = $AdUsagesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6038,6 +6402,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     fixtures,
     matchResults,
     aiPlayers,
+    adUsages,
   ];
 }
 
@@ -9096,6 +9461,205 @@ typedef $$AiPlayersTableProcessedTableManager =
       AiPlayer,
       PrefetchHooks Function()
     >;
+typedef $$AdUsagesTableCreateCompanionBuilder = AdUsagesCompanion Function({
+  Value<int> id,
+  required int clubId,
+  required String rewardKind,
+  required String rewardKey,
+  required DateTime completedAt,
+});
+typedef $$AdUsagesTableUpdateCompanionBuilder = AdUsagesCompanion Function({
+  Value<int> id,
+  Value<int> clubId,
+  Value<String> rewardKind,
+  Value<String> rewardKey,
+  Value<DateTime> completedAt,
+});
+
+class $$AdUsagesTableFilterComposer
+    extends Composer<_$AppDatabase, $AdUsagesTable> {
+  $$AdUsagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rewardKind => $composableBuilder(
+    column: $table.rewardKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rewardKey => $composableBuilder(
+    column: $table.rewardKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AdUsagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AdUsagesTable> {
+  $$AdUsagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rewardKind => $composableBuilder(
+    column: $table.rewardKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rewardKey => $composableBuilder(
+    column: $table.rewardKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AdUsagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AdUsagesTable> {
+  $$AdUsagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get clubId =>
+      $composableBuilder(column: $table.clubId, builder: (column) => column);
+
+  GeneratedColumn<String> get rewardKind => $composableBuilder(
+    column: $table.rewardKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rewardKey =>
+      $composableBuilder(column: $table.rewardKey, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$AdUsagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AdUsagesTable,
+          AdUsage,
+          $$AdUsagesTableFilterComposer,
+          $$AdUsagesTableOrderingComposer,
+          $$AdUsagesTableAnnotationComposer,
+          $$AdUsagesTableCreateCompanionBuilder,
+          $$AdUsagesTableUpdateCompanionBuilder,
+          (AdUsage, BaseReferences<_$AppDatabase, $AdUsagesTable, AdUsage>),
+          AdUsage,
+          PrefetchHooks Function()
+        > {
+  $$AdUsagesTableTableManager(_$AppDatabase db, $AdUsagesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AdUsagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AdUsagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AdUsagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> clubId = const Value.absent(),
+                Value<String> rewardKind = const Value.absent(),
+                Value<String> rewardKey = const Value.absent(),
+                Value<DateTime> completedAt = const Value.absent(),
+              }) => AdUsagesCompanion(
+                id: id,
+                clubId: clubId,
+                rewardKind: rewardKind,
+                rewardKey: rewardKey,
+                completedAt: completedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int clubId,
+                required String rewardKind,
+                required String rewardKey,
+                required DateTime completedAt,
+              }) => AdUsagesCompanion.insert(
+                id: id,
+                clubId: clubId,
+                rewardKind: rewardKind,
+                rewardKey: rewardKey,
+                completedAt: completedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AdUsagesTable, AdUsage>(table),
+                  BaseReferences<_$AppDatabase, $AdUsagesTable, AdUsage>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AdUsagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AdUsagesTable,
+      AdUsage,
+      $$AdUsagesTableFilterComposer,
+      $$AdUsagesTableOrderingComposer,
+      $$AdUsagesTableAnnotationComposer,
+      $$AdUsagesTableCreateCompanionBuilder,
+      $$AdUsagesTableUpdateCompanionBuilder,
+      (AdUsage, BaseReferences<_$AppDatabase, $AdUsagesTable, AdUsage>),
+      AdUsage,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9122,4 +9686,6 @@ class $AppDatabaseManager {
       $$MatchResultsTableTableManager(_db, _db.matchResults);
   $$AiPlayersTableTableManager get aiPlayers =>
       $$AiPlayersTableTableManager(_db, _db.aiPlayers);
+  $$AdUsagesTableTableManager get adUsages =>
+      $$AdUsagesTableTableManager(_db, _db.adUsages);
 }

@@ -192,6 +192,24 @@ class AiPlayers extends Table {
   IntColumn get staminaPercent => integer().withDefault(const Constant(100))();
 }
 
+/// Rewarded-ad usage ledger (SRS 25: AdUsage; GDD 19.4, FR-040..FR-042).
+/// One row per successfully completed ad: rewards are granted only on
+/// completion, duplicates are prevented by checking the reward key, and
+/// daily limits count rows of the same reward kind.
+class AdUsages extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get clubId => integer()();
+
+  /// Reward kind: 'boostedRecovery' | 'matchReplay' | 'freePack' | ... —
+  /// the ad-granted reward identifier.
+  TextColumn get rewardKind => text()();
+
+  /// Unique key of the rewarded transaction (e.g. 'match:fixtureId');
+  /// one reward per key prevents duplicate callbacks.
+  TextColumn get rewardKey => text()();
+  DateTimeColumn get completedAt => dateTime()();
+}
+
 @DriftDatabase(tables: [
   Players,
   DatasetVersions,
@@ -204,12 +222,13 @@ class AiPlayers extends Table {
   Fixtures,
   MatchResults,
   AiPlayers,
+  AdUsages,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -221,6 +240,9 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(fixtures);
             await m.createTable(matchResults);
             await m.createTable(aiPlayers);
+          }
+          if (from < 3) {
+            await m.createTable(adUsages);
           }
         },
       );

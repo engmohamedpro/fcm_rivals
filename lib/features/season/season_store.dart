@@ -341,6 +341,46 @@ class SeasonStore {
     );
   }
 
+  /// Rewinds one played user fixture so it can be replayed (GDD 19.3
+  /// Match Replay, ad-gated): deletes the result row. The original match
+  /// reward must not be duplicated, so the caller refunds the recorded
+  /// reward before re-playing — the new finish() credits the fresh reward
+  /// for the new result only.
+  Future<int> rewindFixtureForReplay({
+    required int fixtureId,
+    required int rewardCoinsToRefund,
+    required int userClubId,
+  }) async {
+    final existing = await (db.select(db.matchResults)
+          ..where((r) => r.fixtureId.equals(fixtureId)))
+        .get();
+    if (existing.isEmpty) {
+      throw const SeasonException('Fixture has no result to replay');
+    }
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await (db.delete(db.matchResults)
+            ..where((r) => r.fixtureId.equals(fixtureId)))
+          .go();
+      if (rewardCoinsToRefund > 0) {
+        final club = await (db.select(db.clubs)
+              ..where((c) => c.id.equals(userClubId)))
+            .getSingle();
+        await (db.update(db.clubs)..where((c) => c.id.equals(userClubId)))
+            .write(ClubsCompanion(coins: Value(club.coins - rewardCoinsToRefund)));
+        await db.into(db.coinTransactions).insert(CoinTransactionsCompanion.insert(
+              clubId: userClubId,
+              amount: -rewardCoinsToRefund,
+              balanceAfter: club.coins - rewardCoinsToRefund,
+              reason: 'match_replay_refund',
+              detail: Value('Refund before replay of fixture $fixtureId'),
+              createdAt: now,
+            ));
+      }
+    });
+    return fixtureId;
+  }
+
   /// Quick-simulates every unplayed fixture of the active season,
   /// including AI-vs-AI matches (GDD 9.6 difficulty must be testable
   /// through automated season simulations). User matches run through the

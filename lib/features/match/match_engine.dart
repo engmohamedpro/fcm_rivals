@@ -294,6 +294,20 @@ class LiveActionCommand extends MatchCommand {
   final LiveMatchAction action;
 }
 
+/// A pre-match or half-time pep talk (GDD 15): team-wide multipliers that
+/// never expire — a pre-match talk runs from kick-off, a half-time talk
+/// from the second half. Replaces any earlier talk (no stacking), and
+/// like every command it affects future events only.
+class PepTalkCommand extends MatchCommand {
+  const PepTalkCommand({
+    required super.atMinute,
+    required super.side,
+    required this.talk,
+  });
+
+  final MatchPepTalk talk;
+}
+
 /// Effective team totals (GDD 12.2): stamina-scaled individual attributes
 /// aggregated with slot role weights, then modified by mentality, playing
 /// style and home advantage — in that exact order.
@@ -880,7 +894,8 @@ class MatchEngine {
       final rt = _runtimeOf(side);
       final styleStamina = rt.style.modifiers.stamina *
           rt.mentality.staminaMod *
-          _activeActionModifiersOf(side).stamina;
+          _activeActionModifiersOf(side).stamina *
+          rt.pepTalkModifiers.stamina;
       for (final p in rt.onPitch.whereType<MatchPlayer>()) {
         final drain = staminaDrainForMinute(
           config: config.staminaConfig,
@@ -953,6 +968,13 @@ class MatchEngine {
             type: MatchEventType.liveAction,
             side: command.side,
             metadata: {'action': action.name});
+      case PepTalkCommand(:final talk):
+        rt.pepTalkModifiers = talk.modifiers;
+        event = _event(
+            minute: minute,
+            type: MatchEventType.tacticalChange,
+            side: command.side,
+            metadata: {'change': 'pepTalk', 'value': talk.id});
     }
     if (event != null) _events.add(event);
     _applied.add(command);
@@ -1125,6 +1147,11 @@ class _TeamRuntime {
   int aiChanges = 0;
   int lastAiChangeMinute = 0;
 
+  /// Active pep talk (GDD 15): persistent multipliers, at most one at a
+  /// time — a later talk replaces the earlier one.
+  ActionModifiers pepTalkModifiers =
+      const ActionModifiers(attack: 1, defence: 1, stamina: 1);
+
   /// Team totals (GDD 12.2): 1. stamina scaling per player, 2. mentality,
   /// 3. playing style, 4. home advantage — in this order.
   TeamTotals computeTotals({
@@ -1159,13 +1186,15 @@ class _TeamRuntime {
     final attack = (attackW > 0 ? attackSum / attackW : 0) *
         mentality.attackMod *
         style.modifiers.attack *
-        actionModifiers.attack;
+        actionModifiers.attack *
+        pepTalkModifiers.attack;
     final support = (supportW > 0 ? supportSum / supportW : 0) *
         style.modifiers.possession;
     final defence = (defenceW > 0 ? defenceSum / defenceW : 0) *
         mentality.defenceMod *
         style.modifiers.defence *
-        actionModifiers.defence;
+        actionModifiers.defence *
+        pepTalkModifiers.defence;
     final goalkeeping =
         gkEff * mentality.defenceMod * style.modifiers.defence;
     final homeFactor = isHome ? homeAdvantage : 1.0;

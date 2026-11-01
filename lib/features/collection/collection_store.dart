@@ -15,6 +15,7 @@ import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/domain/players.dart';
+import '../ads/ad_engine.dart';
 import '../economy/economy_engine.dart';
 import '../match/stamina.dart' show StaminaConfig, PepTalk, recoverStamina, applyPepTalkBonus;
 import '../packs/pack_engine.dart';
@@ -643,8 +644,10 @@ class CollectionStore {
     required List<({int ownedId, double stamina, int minutesPlayed})> players,
     PepTalk? pepTalk,
     int restDays = 3,
+    bool adBoostedRecovery = false,
   }) async {
     final staminaConfig = const StaminaConfig();
+    final adEngine = const AdEngine();
     await db.transaction(() async {
       for (final p in players) {
         final row = await (db.select(db.ownedPlayers)
@@ -659,7 +662,15 @@ class CollectionStore {
             minutesPlayed: p.minutesPlayed,
             restDays: restDays,
           );
-          if (pepTalk != null) {
+          if (adBoostedRecovery) {
+            // Ad-supported boosted recovery (GDD 19.3): +15% natural
+            // recovery for eligible players. Mutually exclusive with a
+            // pep talk on the same transaction (GDD 19.4).
+            next = adEngine.boostedRecovery(
+              staminaAfterNaturalRecovery: afterNatural,
+              naturalRecovery: afterNatural - p.stamina,
+            );
+          } else if (pepTalk != null) {
             next = applyPepTalkBonus(
               pepTalk: pepTalk,
               currentStamina: p.stamina,
