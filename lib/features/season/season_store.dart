@@ -461,9 +461,12 @@ class SeasonStore {
         }()
     ];
 
+    // Top-3 rated players of the whole squad (starters and bench), with
+    // their position code for the analysis list.
     final keyMen = [
-      for (final p in [...opponent.starters]..sort((a, b) => _overallOf(b).compareTo(_overallOf(a))))
-        (name: p.name, overall: _overallOf(p)),
+      for (final p in [...opponent.starters, ...opponent.bench]
+          ..sort((a, b) => _overallOf(b).compareTo(_overallOf(a))))
+        (name: p.name, position: p.position.code, overall: _overallOf(p)),
     ].take(3).toList();
 
     return PreMatchData(

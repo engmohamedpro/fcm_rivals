@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart' show Scrollable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -146,12 +147,22 @@ void main() {
       expect(find.text('Play match'), findsOneWidget);
 
       // Kick-off: the matchday build-up screen comes first (GDD 13): the
-      // VS header with the forecast, then the dressing-room pep talk.
+      // opponent analysis (header with position and form, loss/draw/win
+      // row, strength, top players), then the dressing-room pep talk.
       await tester.tap(find.text('Play match'));
       await _flush(tester, wait: const Duration(milliseconds: 900));
-      expect(find.text('MATCH FORECAST'), findsOneWidget);
+      expect(find.text(opponent.opponentName), findsOneWidget);
+      expect(find.text('LOSS'), findsOneWidget);
+      expect(find.text('WIN'), findsOneWidget);
       expect(find.text('STRENGTH'), findsOneWidget);
-      expect(find.textContaining('simulated matches'), findsOneWidget);
+      // The top-players card sits below the fold: scroll the analysis.
+      await tester.dragUntilVisible(
+        find.text('TOP PLAYERS'),
+        find.byType(Scrollable).first,
+        const Offset(0, -120),
+      );
+      await _flush(tester, wait: const Duration(milliseconds: 200));
+      expect(find.text('TOP PLAYERS'), findsOneWidget);
 
       // Continue into the tactics phase (GDD 10.4): the SAME screen as the
       // Tactics tab — a compact control card (team rating + TACTICS button)

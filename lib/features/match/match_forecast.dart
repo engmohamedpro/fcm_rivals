@@ -109,8 +109,9 @@ class PreMatchData {
   final int opponentPosition;
   final int userPosition;
 
-  /// Opponent's highest-rated starters: name + overall.
-  final List<({String name, int overall})> opponentKeyMen;
+  /// Opponent's three highest-rated players in the squad (starters and
+  /// bench): name, position code and overall.
+  final List<({String name, String position, int overall})> opponentKeyMen;
 
   /// The club's persisted formation / playing style / mentality (GDD 10) —
   /// the starting point of the pre-match tactics selection.

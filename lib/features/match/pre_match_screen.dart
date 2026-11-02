@@ -205,7 +205,7 @@ class _AnalysisPhase extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 16),
       children: [
-        _VsHeader(data: data),
+        _OpponentHeader(data: data),
         const SizedBox(height: 14),
         FcmEntrance(
           index: 1,
@@ -219,147 +219,155 @@ class _AnalysisPhase extends StatelessWidget {
         const SizedBox(height: 12),
         FcmEntrance(
           index: 3,
-          child: _OpponentCard(data: data),
+          child: _TopPlayersCard(data: data),
         ),
       ],
     );
   }
 }
 
-/// Crest-to-crest header with the fixture label and venue chip.
-class _VsHeader extends StatelessWidget {
-  const _VsHeader({required this.data});
+/// The opponent under the microscope: crest, table position and last-five
+/// form pips (W/D/L) — the user's own club stays out of the analysis.
+class _OpponentHeader extends StatelessWidget {
+  const _OpponentHeader({required this.data});
 
   final PreMatchData data;
 
   @override
   Widget build(BuildContext context) {
     final d = data;
+    final formPip = {
+      'W': FcmColors.success,
+      'D': FcmColors.silver,
+      'L': FcmColors.danger,
+    };
+    final initials = d.opponentClubName
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
     return FcmEntrance(
       child: Column(
         children: [
-          Text(
-            d.fixtureLabel.toUpperCase(),
-            style: const TextStyle(
-              color: FcmColors.gold,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 3,
-            ),
-          ),
-          const SizedBox(height: 14),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: _Crest(name: d.userClubName, gold: true, position: d.userPosition),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Column(
-                  children: [
-                    Text(
-                      'VS',
-                      style: TextStyle(
-                        color: FcmColors.bronze.withValues(alpha: 0.9),
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 2,
-                      ),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    d.fixtureLabel.toUpperCase(),
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 3,
                     ),
-                    const SizedBox(height: 4),
-                    FcmPill(
-                      d.userAtHome ? 'HOME' : 'AWAY',
-                      color: d.userAtHome ? FcmColors.gold : FcmColors.silver,
-                      filled: false,
-                    ),
-                  ],
+                  ),
                 ),
               ),
-              Expanded(
-                child: _Crest(name: d.opponentClubName, gold: false, position: d.opponentPosition),
+              const SizedBox(width: 10),
+              FcmPill(
+                d.userAtHome ? 'HOME' : 'AWAY',
+                color: d.userAtHome ? FcmColors.gold : FcmColors.silver,
+                filled: false,
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Container(
+            width: 64,
+            height: 64,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: FcmColors.steelGradient,
+              border: Border.all(
+                  color: FcmColors.bronze.withValues(alpha: 0.7), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: FcmColors.bronze.withValues(alpha: 0.35),
+                  blurRadius: 18,
+                ),
+              ],
+            ),
+            child: FitText(initials,
+                align: Alignment.center,
+                style: const TextStyle(
+                    color: FcmColors.goldSoft,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            d.opponentClubName,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '${ordinalOf(d.opponentPosition)} in the table',
+            style: const TextStyle(
+              color: FcmColors.goldSoft,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (d.opponentForm.isEmpty)
+            const Text('First round of the season',
+                style: TextStyle(color: FcmColors.textDim, fontSize: 12))
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < d.opponentForm.length; i++)
+                  Container(
+                    width: 22,
+                    height: 22,
+                    margin: EdgeInsets.only(left: i == 0 ? 0 : 5),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: formPip[d.opponentForm[i]]!
+                          .withValues(alpha: 0.18),
+                      border: Border.all(
+                        color: formPip[d.opponentForm[i]]!
+                            .withValues(alpha: 0.7),
+                      ),
+                    ),
+                    child: FcmEntrance(
+                      index: i,
+                      dy: 0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Text(
+                        d.opponentForm[i],
+                        style: TextStyle(
+                          color: formPip[d.opponentForm[i]],
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );
   }
 }
 
-class _Crest extends StatelessWidget {
-  const _Crest({required this.name, required this.gold, required this.position});
-
-  final String name;
-  final bool gold;
-  final int position;
-
-  @override
-  Widget build(BuildContext context) {
-    final initials = name
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
-    return Column(
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: gold ? FcmColors.goldGradient : FcmColors.steelGradient,
-            border: Border.all(
-              color: gold
-                  ? FcmColors.goldSoft.withValues(alpha: 0.8)
-                  : FcmColors.bronze.withValues(alpha: 0.7),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: (gold ? FcmColors.gold : FcmColors.bronze)
-                    .withValues(alpha: 0.35),
-                blurRadius: 18,
-              ),
-            ],
-          ),
-          child: FitText(initials,
-              align: Alignment.center,
-              style: TextStyle(
-                  color: gold ? FcmColors.ink : FcmColors.goldSoft,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18)),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          name,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: gold ? FcmColors.gold : Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 13,
-            height: 1.15,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '#$position',
-          style: const TextStyle(
-            color: FcmColors.textDim,
-            fontWeight: FontWeight.w800,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Win/draw/loss bars animated from zero, with expected goals.
+/// Loss/draw/win share of the simulated matches, one row, one line.
 class _ForecastCard extends StatelessWidget {
   const _ForecastCard({required this.forecast});
 
@@ -372,59 +380,30 @@ class _ForecastCard extends StatelessWidget {
       accent: FcmColors.gold,
       glow: true,
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          const Text(
-            'MATCH FORECAST',
-            style: TextStyle(
-              color: FcmColors.gold,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
+          Expanded(
+            child: _OutcomeStat(
+              label: 'LOSS',
+              percent: f.lossPercent,
+              color: FcmColors.danger,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${f.samples} simulated matches with today\'s squads',
-            style: const TextStyle(
-                color: FcmColors.textDim, fontSize: 11),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _OutcomeStat(
+              label: 'DRAW',
+              percent: f.drawPercent,
+              color: FcmColors.silver,
+            ),
           ),
-          const SizedBox(height: 10),
-          _OutcomeBar(
-            label: 'WIN',
-            percent: f.winPercent,
-            color: FcmColors.success,
-          ),
-          const SizedBox(height: 8),
-          _OutcomeBar(
-            label: 'DRAW',
-            percent: f.drawPercent,
-            color: FcmColors.silver,
-          ),
-          const SizedBox(height: 8),
-          _OutcomeBar(
-            label: 'LOSS',
-            percent: f.lossPercent,
-            color: FcmColors.danger,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _GoalChip(
-                  label: 'Expected goals',
-                  value: f.avgUserGoals.toStringAsFixed(1),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _GoalChip(
-                  label: 'Clean sheets',
-                  value: '${f.cleanSheetPercent}%',
-                ),
-              ),
-            ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: _OutcomeStat(
+              label: 'WIN',
+              percent: f.winPercent,
+              color: FcmColors.success,
+            ),
           ),
         ],
       ),
@@ -432,8 +411,9 @@ class _ForecastCard extends StatelessWidget {
   }
 }
 
-class _OutcomeBar extends StatelessWidget {
-  const _OutcomeBar({
+/// One loss/draw/win stat: caps label over an animated count-up percent.
+class _OutcomeStat extends StatelessWidget {
+  const _OutcomeStat({
     required this.label,
     required this.percent,
     required this.color,
@@ -445,107 +425,28 @@ class _OutcomeBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        SizedBox(
-          width: 42,
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: FcmColors.textDim,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1,
-            ),
+        Text(
+          label,
+          style: TextStyle(
+            color: color.withValues(alpha: 0.85),
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              height: 12,
-              child: Stack(
-                children: [
-                  Container(color: Colors.white.withValues(alpha: 0.07)),
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: percent / 100),
-                    duration: const Duration(milliseconds: 1100),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, v, _) => FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: v.clamp(0.0, 1.0),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            color.withValues(alpha: 0.55),
-                            color,
-                          ]),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 40,
-          child: FcmCountUp(
-            value: percent,
-            format: (n) => '$n%',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
-            ),
+        const SizedBox(height: 3),
+        FcmCountUp(
+          value: percent,
+          format: (n) => '$n%',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
           ),
         ),
       ],
-    );
-  }
-}
-
-class _GoalChip extends StatelessWidget {
-  const _GoalChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border.all(color: FcmColors.bronze.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              color: FcmColors.textDim,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 3),
-          FitText(
-            value,
-            style: const TextStyle(
-              color: FcmColors.goldSoft,
-              fontWeight: FontWeight.w900,
-              fontSize: 17,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -667,7 +568,10 @@ class _StrengthCard extends StatelessWidget {
           row('OVERALL', f.strength(f.userTotals).toDouble(),
               f.strength(f.opponentTotals).toDouble()),
           row('ATTACK', f.userTotals.attack, f.opponentTotals.attack),
+          row('SUPPORT', f.userTotals.support, f.opponentTotals.support),
           row('DEFENCE', f.userTotals.defence, f.opponentTotals.defence),
+          row('GOALKEEPING', f.userTotals.goalkeeping,
+              f.opponentTotals.goalkeeping),
         ],
       ),
     );
@@ -720,137 +624,90 @@ class _MirrorBar extends StatelessWidget {
   }
 }
 
-/// Opponent form line (W/D/L pips) and key men.
-class _OpponentCard extends StatelessWidget {
-  const _OpponentCard({required this.data});
+/// The opponent's three highest-rated players in the squad: overall badge,
+/// position tag and name.
+class _TopPlayersCard extends StatelessWidget {
+  const _TopPlayersCard({required this.data});
 
   final PreMatchData data;
 
   @override
   Widget build(BuildContext context) {
     final d = data;
-    final formPip = {
-      'W': FcmColors.success,
-      'D': FcmColors.silver,
-      'L': FcmColors.danger,
-    };
     return FcmPanel(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'THEIR SEASON',
-                style: TextStyle(
-                  color: FcmColors.gold,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
-              ),
-              Row(
-                children: [
-                  for (var i = 0; i < d.opponentForm.length; i++)
+          const Text(
+            'TOP PLAYERS',
+            style: TextStyle(
+              color: FcmColors.gold,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < d.opponentKeyMen.length; i++)
+            FcmEntrance(
+              index: i,
+              dx: 18,
+              dy: 0,
+              duration: const Duration(milliseconds: 360),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
                     Container(
-                      width: 22,
-                      height: 22,
-                      margin: const EdgeInsets.only(left: 5),
+                      width: 30,
+                      height: 30,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: formPip[d.opponentForm[i]]!
-                            .withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white.withValues(alpha: 0.06),
                         border: Border.all(
-                          color: formPip[d.opponentForm[i]]!
-                              .withValues(alpha: 0.7),
-                        ),
+                            color: FcmColors.bronze.withValues(alpha: 0.4)),
                       ),
-                      child: FcmEntrance(
-                        index: i,
-                        dy: 0,
-                        duration: const Duration(milliseconds: 300),
-                        child: Text(
-                          d.opponentForm[i],
-                          style: TextStyle(
-                            color: formPip[d.opponentForm[i]],
-                            fontWeight: FontWeight.w900,
-                            fontSize: 11,
-                          ),
+                      child: FitText(
+                        '${d.opponentKeyMen[i].overall}',
+                        style: const TextStyle(
+                          color: FcmColors.goldSoft,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
                         ),
                       ),
                     ),
-                ],
-              ),
-            ],
-          ),
-          if (d.opponentKeyMen.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text('No matches played yet — first round of the season.',
-                  style: TextStyle(color: FcmColors.textDim, fontSize: 12)),
-            )
-          else ...[
-            const SizedBox(height: 10),
-            const Text(
-              'KEY MEN',
-              style: TextStyle(
-                color: FcmColors.textDim,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 4),
-            for (var i = 0; i < d.opponentKeyMen.length; i++)
-              FcmEntrance(
-                index: i,
-                dx: 18,
-                dy: 0,
-                duration: const Duration(milliseconds: 360),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.white.withValues(alpha: 0.06),
-                          border: Border.all(
-                              color: FcmColors.bronze.withValues(alpha: 0.4)),
-                        ),
-                        child: FitText(
-                          '${d.opponentKeyMen[i].overall}',
-                          style: const TextStyle(
-                            color: FcmColors.goldSoft,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                          ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 34,
+                      child: FitText(
+                        d.opponentKeyMen[i].position,
+                        style: const TextStyle(
+                          color: FcmColors.textDim,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          letterSpacing: 1,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          d.opponentKeyMen[i].name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        d.opponentKeyMen[i].name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-          ],
+            ),
         ],
       ),
     );

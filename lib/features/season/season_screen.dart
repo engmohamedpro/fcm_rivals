@@ -424,7 +424,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                           if (opponentPos != null)
                             TextSpan(
                               text:
-                                  '  ·  ${_ordinal(opponentPos)} in the table',
+                                  '  ·  ${ordinalOf(opponentPos)} in the table',
                               style: const TextStyle(
                                   color: FcmColors.goldSoft,
                                   fontWeight: FontWeight.w700),
@@ -529,17 +529,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     );
   }
 }
-
-/// 1st, 2nd, 3rd, 4th… for table positions.
-String _ordinal(int n) => switch (n % 100) {
-      11 || 12 || 13 => '${n}th',
-      _ => switch (n % 10) {
-          1 => '${n}st',
-          2 => '${n}nd',
-          3 => '${n}rd',
-          _ => '${n}th',
-        },
-    };
 
 class _Hdr extends StatelessWidget {
   const _Hdr(this.text, {this.end = false});

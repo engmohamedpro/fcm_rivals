@@ -136,6 +136,18 @@ enum CardRarity {
       };
 }
 
+/// 1st, 2nd, 3rd, 4th… with the 11th/12th/13th exceptions handled —
+/// used for league positions on the Season and pre-match screens.
+String ordinalOf(int n) => switch (n % 100) {
+      11 || 12 || 13 => '${n}th',
+      _ => switch (n % 10) {
+          1 => '${n}st',
+          2 => '${n}nd',
+          3 => '${n}rd',
+          _ => '${n}th',
+        },
+    };
+
 /// Fade + gentle rise for every route (replaces the platform default).
 class FcmPageTransitions extends PageTransitionsBuilder {
   const FcmPageTransitions();
