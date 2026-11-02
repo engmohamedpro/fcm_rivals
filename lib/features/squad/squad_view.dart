@@ -154,47 +154,68 @@ class _ControlCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('TEAM RATING',
-                      style: TextStyle(
-                          color: FcmColors.textDim,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2)),
-                  FcmCountUp(
-                    value: teamRating,
-                    style: TextStyle(
-                      color: ratingColor(teamRating),
-                      fontSize: 34,
-                      fontWeight: FontWeight.w900,
-                      height: 1.15,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              if (onAutoPick != null) ...[
-                FcmButton(
-                  compact: true,
-                  style: FcmButtonStyle.steel,
-                  icon: Icons.auto_awesome,
-                  label: 'Auto Pick',
-                  onPressed: onAutoPick,
-                ),
-                const SizedBox(width: 8),
-              ],
-              FcmButton(
-                compact: true,
-                icon: Icons.tune_rounded,
-                label: 'TACTICS',
-                onPressed: onTactics,
-              ),
-            ],
-          ),
+          LayoutBuilder(builder: (context, constraints) {
+            // One line needs the rating column (~105px) beside the action
+            // buttons (~280px with Auto Pick, ~130px without) plus spacing;
+            // anything narrower stacks the actions on their own row instead
+            // of overflowing the card.
+            final oneLine = constraints.maxWidth >=
+                (onAutoPick != null ? 400.0 : 260.0);
+            return oneLine
+                ? Row(
+                    children: [
+                      _rating(),
+                      const Spacer(),
+                      if (onAutoPick != null) ...[
+                        FcmButton(
+                          compact: true,
+                          style: FcmButtonStyle.steel,
+                          icon: Icons.auto_awesome,
+                          label: 'Auto Pick',
+                          onPressed: onAutoPick,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      FcmButton(
+                        compact: true,
+                        icon: Icons.tune_rounded,
+                        label: 'TACTICS',
+                        onPressed: onTactics,
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _rating(),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          if (onAutoPick != null) ...[
+                            Expanded(
+                              child: FcmButton(
+                                compact: true,
+                                style: FcmButtonStyle.steel,
+                                icon: Icons.auto_awesome,
+                                label: 'Auto Pick',
+                                onPressed: onAutoPick,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: FcmButton(
+                              compact: true,
+                              icon: Icons.tune_rounded,
+                              label: 'TACTICS',
+                              onPressed: onTactics,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+          }),
           const SizedBox(height: 8),
           Text(
             '${formation.name}  ·  ${style.displayName}  ·  ${mentality.displayName}',
@@ -209,6 +230,29 @@ class _ControlCard extends StatelessWidget {
       ),
     );
   }
+
+  /// The rating block of the control card: dim label over the big
+  /// colour-coded number.
+  Widget _rating() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('TEAM RATING',
+              style: TextStyle(
+                  color: FcmColors.textDim,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 2)),
+          FcmCountUp(
+            value: teamRating,
+            style: TextStyle(
+              color: ratingColor(teamRating),
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
+              height: 1.15,
+            ),
+          ),
+        ],
+      );
 }
 
 /// Opens the tactic options sheet (GDD 10): the three dropdowns —
