@@ -54,9 +54,22 @@ class _T {
 }
 
 class PackOpeningScreen extends StatefulWidget {
-  const PackOpeningScreen({super.key, required this.players});
+  const PackOpeningScreen({
+    super.key,
+    required this.players,
+    this.ownedIds = const [],
+    this.onSell,
+  });
 
   final List<BasePlayer> players;
+
+  /// Owned-player row ids of the drawn players, index-aligned with
+  /// [players] — SELL straight from the reveal sells through the caller.
+  final List<int> ownedIds;
+
+  /// Sells the currently revealed player. Null (or a player without an
+  /// owned id) hides the SELL button — e.g. key-man previews.
+  final Future<void> Function(int ownedId)? onSell;
 
   @override
   State<PackOpeningScreen> createState() => _PackOpeningScreenState();
@@ -70,10 +83,33 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   int _index = 0;
   bool _started = false;
+  bool _selling = false;
   double _lastT = 0;
   late List<Spark> _sparks;
 
   BasePlayer get _player => widget.players[_index];
+
+  /// SELL exists only when the caller wired the sale and this draw has an
+  /// owned id — preview draws (key men) have nothing to sell.
+  bool get _canSell =>
+      widget.onSell != null && _index < widget.ownedIds.length;
+
+  /// Sells the revealed player, then advances exactly like KEEP.
+  Future<void> _sell() async {
+    if (_selling) return;
+    setState(() => _selling = true);
+    _haptic(HapticFeedback.lightImpact);
+    try {
+      await widget.onSell!(widget.ownedIds[_index]);
+    } catch (_) {
+      // Selling failed upstream (e.g. player somehow in the squad): stay
+      // on the card so the player sees the error and can KEEP instead.
+      if (mounted) setState(() => _selling = false);
+      return;
+    }
+    if (!mounted) return;
+    _next();
+  }
 
   /// Same rating → rarity rule as the collection and squad, so a card looks
   /// identical everywhere in the game.
@@ -128,14 +164,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     setState(() => _started = true);
     _haptic(HapticFeedback.lightImpact);
     _seq.forward(from: 0);
-  }
-
-  void _skip() {
-    if (_seq.value < 0.50) {
-      _seq.animateTo(0.50, duration: const Duration(milliseconds: 350));
-    } else {
-      _seq.animateTo(1.0, duration: const Duration(milliseconds: 350));
-    }
   }
 
   void _next() {
@@ -310,7 +338,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
 
-        // Top bar: close before opening, skip while it plays.
+        // Top bar: close while the pack is still sealed. The reveal
+        // itself is never skippable — the full sequence always plays.
         SafeArea(
           child: Align(
             alignment: Alignment.topRight,
@@ -321,21 +350,13 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                       icon: const Icon(Icons.close, color: Colors.white70),
                       onPressed: () => Navigator.of(context).pop(),
                     )
-                  : (!done
-                      ? TextButton(
-                          onPressed: _skip,
-                          child: const Text('SKIP',
-                              style: TextStyle(
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 2)),
-                        )
-                      : const SizedBox.shrink()),
+                  : const SizedBox.shrink(),
             ),
           ),
         ),
 
-        // Keep / next button once the stats have counted up.
+        // Sell / Keep once the stats have counted up: SELL first, then
+        // KEEP — both always visible so the choice is one glance.
         SafeArea(
           child: Align(
             alignment: Alignment.bottomCenter,
@@ -347,17 +368,31 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                 opacity: done ? 1 : 0,
                 child: IgnorePointer(
                   ignoring: !done,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FcmButton(
-                      onPressed: _next,
-                      icon: _index < widget.players.length - 1
-                          ? Icons.arrow_forward_rounded
-                          : Icons.check_rounded,
-                      label: _index < widget.players.length - 1
-                          ? 'NEXT PLAYER  ${_index + 1}/${widget.players.length}'
-                          : 'KEEP PLAYER',
-                    ),
+                  child: Row(
+                    children: [
+                      if (_canSell)
+                        Expanded(
+                          child: FcmButton(
+                            style: FcmButtonStyle.steel,
+                            icon: Icons.sell_rounded,
+                            label: 'SELL',
+                            loading: _selling,
+                            onPressed: _selling ? null : _sell,
+                          ),
+                        ),
+                      if (_canSell) const SizedBox(width: 10),
+                      Expanded(
+                        child: FcmButton(
+                          onPressed: _next,
+                          icon: _index < widget.players.length - 1
+                              ? Icons.arrow_forward_rounded
+                              : Icons.check_rounded,
+                          label: _index < widget.players.length - 1
+                              ? 'NEXT PLAYER  ${_index + 1}/${widget.players.length}'
+                              : 'KEEP PLAYER',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

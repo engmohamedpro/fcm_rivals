@@ -27,6 +27,9 @@ import '../match/match_engine.dart';
 import '../player_database/player_database.dart';
 import '../season/season_engine.dart';
 import '../season/season_store.dart';
+import '../squad/formations.dart';
+import '../squad/squad_engine.dart' show PlayerCard;
+import '../upgrades/upgrade_engine.dart';
 import 'economy_simulator_dataset.dart';
 
 /// Per-season economy measurement (GDD 30 list).
@@ -127,6 +130,10 @@ class EconomySimulator {
 
   final math.Random _random;
 
+  /// Level-cap check before attempting a merge (mirrors the store's
+  /// validation so the simulation never trips on a capped pair).
+  static const UpgradeEngine upgrades = UpgradeEngine();
+
   /// Runs one simulated save: [seasonCount] full seasons.
   ///
   /// [valueBand] picks the dataset's market values (GDD 30 low/medium/
@@ -180,6 +187,21 @@ class EconomySimulator {
         final earnedBefore = await _sumLedger(db, positive: true);
         final spentBefore = await _sumLedger(db, positive: false);
         var mergesThisSeason = 0;
+
+        // Bootstrap: the 12 free starting packs (cheapest four positions)
+        // cannot field a full XI, so the simulated manager signs players
+        // before the first fixture — exactly like a real player must.
+        await _buyAndOpenPacks(collection);
+        await collection.autoPickSquad();
+        while (!await _canFieldXI(collection)) {
+          final before = (await collection.getClub())!.coins;
+          packOpenings += await _buyAndOpenPacks(collection);
+          await collection.autoPickSquad();
+          if (!await _canFieldXI(collection) &&
+              (await collection.getClub())!.coins >= before) {
+            break; // out of money and still incomplete — nothing to buy
+          }
+        }
 
         // Play every user fixture through the real pipeline.
         while (true) {
@@ -295,6 +317,16 @@ class EconomySimulator {
     }
   }
 
+  /// Whether the persisted squad fills all eleven starting-XI slots.
+  Future<bool> _canFieldXI(CollectionStore collection) async {
+    final squad = await collection.getSquad();
+    var inXi = 0;
+    for (final slot in squad.keys) {
+      if (slot < Formation.startingXiSize) inXi++;
+    }
+    return inXi >= Formation.startingXiSize;
+  }
+
   /// Sums the ledger in one direction; spent comes back as negative rows.
   Future<int> _sumLedger(AppDatabase db, {required bool positive}) async {
     final rows = await db.select(db.coinTransactions).get();
@@ -309,6 +341,7 @@ class EconomySimulator {
   /// Buys and immediately opens global packs while the bank covers the
   /// price, keeping a small reserve — the natural player loop that turns
   /// match earnings into collection growth (GDD 30 spend measurement).
+  /// The best affordable tier wins, mirroring a real player's instinct.
   Future<int> _buyAndOpenPacks(CollectionStore collection) async {
     var opened = 0;
     while (true) {
@@ -316,21 +349,26 @@ class EconomySimulator {
       if (club == null) return opened;
       // Keep a reserve so match-day stamina/recovery spending is never
       // blocked; stop at two unaffordable attempts in a row.
-      try {
-        final pack = await collection.buyPack(
-            category: PackCategory.global);
-        if (club.coins - pack.price < 2_000) {
-          // Bought the last affordable pack — open it, then stop.
-          await collection.openPack(
-              packId: pack.id, random: math.Random(_random.nextInt(1 << 31)));
-          return opened + 1;
+      Pack? bought;
+      for (final tier in [PackTier.gold, PackTier.silver, PackTier.bronze]) {
+        try {
+          bought = await collection.buyPack(
+              category: PackCategory.global, tier: tier);
+          break;
+        } on CollectionException {
+          continue; // this tier is beyond the wallet — try the next down
         }
-        await collection.openPack(
-            packId: pack.id, random: math.Random(_random.nextInt(1 << 31)));
-        opened++;
-      } on CollectionException {
-        return opened; // not enough coins — done for now
       }
+      if (bought == null) return opened; // not enough coins — done for now
+      if (club.coins - bought.price < 2_000) {
+        // Bought the last affordable pack — open it, then stop.
+        await collection.openPack(
+            packId: bought.id, random: math.Random(_random.nextInt(1 << 31)));
+        return opened + 1;
+      }
+      await collection.openPack(
+          packId: bought.id, random: math.Random(_random.nextInt(1 << 31)));
+      opened++;
     }
   }
 
@@ -338,19 +376,27 @@ class EconomySimulator {
   /// frequency measurement, GDD 8/30). Returns the number of merges.
   Future<int> _mergeOneDuplicateIfAny(CollectionStore collection) async {
     final cards = await collection.getCollection();
-    final byPlayer = <int, List<int>>{};
+    final byPlayer = <int, List<PlayerCard>>{};
     for (final c in cards) {
-      byPlayer.putIfAbsent(c.base.playerId, () => []).add(c.ownedId);
+      byPlayer.putIfAbsent(c.base.playerId, () => []).add(c);
     }
-    for (final entry in byPlayer.values) {
-      if (entry.length >= 2) {
-        await collection.mergeDuplicates(
-          targetOwnedId: entry[0],
-          duplicateOwnedId: entry[1],
-          random: math.Random(_random.nextInt(1 << 31)),
-        );
-        return 1;
+    for (final copies in byPlayer.values) {
+      if (copies.length < 2) continue;
+      final target = copies[0];
+      final duplicate =
+          copies.skip(1).firstWhere((c) => c.ownedId != target.ownedId);
+      // Capped pairs stay unmerged — a maxed copy is kept, not consumed.
+      if (!upgrades.canMerge(
+          targetLevel: target.upgradeLevel,
+          duplicateLevel: duplicate.upgradeLevel)) {
+        continue;
       }
+      await collection.mergeDuplicates(
+        targetOwnedId: target.ownedId,
+        duplicateOwnedId: duplicate.ownedId,
+        random: math.Random(_random.nextInt(1 << 31)),
+      );
+      return 1;
     }
     return 0;
   }

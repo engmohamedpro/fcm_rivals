@@ -68,6 +68,44 @@ void main() {
       final b = gen.generate(Position.cam, 42_000_000);
       expect(a, b);
     });
+
+    test('market value distributes into position-appropriate stats', () {
+      // The overall is fixed by the value; the position decides where
+      // that quality lives — and the split must be pronounced, not a
+      // few points of noise.
+      final st = gen.generate(Position.st, 100_000_000);
+      final cb = gen.generate(Position.cb, 100_000_000);
+      final gk = gen.generate(Position.gk, 100_000_000);
+      final cdm = gen.generate(Position.cdm, 100_000_000);
+      final lw = gen.generate(Position.lw, 100_000_000);
+
+      // Striker: attack is his identity, defence clearly secondary.
+      expect(st.attack - st.defence, greaterThan(12));
+      // Centre-back mirrors the striker.
+      expect(cb.defence - cb.attack, greaterThan(12));
+      // Keeper: goalkeeping towers over everything else.
+      expect(gk.goalkeeping - gk.defence, greaterThan(12));
+      expect(gk.attack, 0);
+      // Anchor: defence-first with support ahead of attack.
+      expect(cdm.defence - cdm.attack, greaterThan(10));
+      expect(cdm.support - cdm.attack, greaterThan(5));
+      // Winger: attacker with support, defence behind both.
+      expect(lw.attack, greaterThan(lw.support));
+      expect(lw.support, greaterThan(lw.defence));
+      // And every outfield player's goalkeeping stays at zero.
+      expect(st.goalkeeping, 0);
+      expect(cb.goalkeeping, 0);
+    });
+
+    test('the same value yields different stat shapes per position', () {
+      // Two €50M players in different positions must not be clones:
+      // only the overall is shared, the attribute profile is the job.
+      final st = gen.generate(Position.st, 50_000_000);
+      final cb = gen.generate(Position.cb, 50_000_000);
+      expect(st.overall, cb.overall);
+      expect([st.attack, st.support, st.defence],
+          isNot(equals([cb.attack, cb.support, cb.defence])));
+    });
   });
 
   group('Position', () {

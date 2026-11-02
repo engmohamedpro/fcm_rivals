@@ -41,7 +41,9 @@ final List<List<dynamic>> seedRows = [
       ],
 ];
 
-/// Opens every pack and auto-picks a full 23-man squad.
+/// Opens every pack and auto-picks a full 23-man squad. The 12 free
+/// starting packs (cheapest four positions) leave the collection short,
+/// so the remaining seed players are added directly before Auto Pick.
 Future<CollectionStore> seededSquadStore(AppDatabase db) async {
   final store = CollectionStore(db: db);
   await store.applyDatasetUpdate(PlayerDataset.fromJson(datasetJson(seedRows)));
@@ -49,6 +51,18 @@ Future<CollectionStore> seededSquadStore(AppDatabase db) async {
       clubName: 'FC Rivals', managerName: 'Mohamed', crestIndex: 0);
   for (final pack in await store.getAvailablePacks()) {
     await store.openPack(packId: pack.id, random: math.Random(17));
+  }
+  final club = await store.getClub();
+  final drawnIds =
+      (await store.getCollection()).map((c) => c.base.playerId).toSet();
+  final now = DateTime.now();
+  for (final row in seedRows) {
+    if (drawnIds.contains(row[0] as int)) continue;
+    await db.into(db.ownedPlayers).insert(OwnedPlayersCompanion.insert(
+          clubId: club!.id,
+          playerId: row[0] as int,
+          acquiredAt: now,
+        ));
   }
   await store.autoPickSquad();
   return store;

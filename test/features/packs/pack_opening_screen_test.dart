@@ -1,6 +1,9 @@
 // Pack opening sequence (GDD 5.6): tap → charge → burst → nationality and
-// position walkout → card flip → stats count up → NAME reveal → keep
-// button. The player's name is hidden until the stats have appeared.
+// position walkout → card flip → stats count up → NAME reveal → SELL /
+// KEEP buttons. The player's name is hidden until the stats have appeared.
+// The reveal is never skippable — the SKIP control is gone and the full
+// timeline always plays; SELL sits left of KEEP and sells the drawn player
+// through the caller's callback.
 //
 // The screen has repeating idle animations, so the test advances time with
 // explicit pumps instead of pumpAndSettle.
@@ -21,6 +24,14 @@ BasePlayer _player({int overall = 87}) => BasePlayer(
           overall: overall, attack: 91, support: 72, defence: 40, goalkeeping: 0),
     );
 
+Future<void> _revealAll(WidgetTester tester) async {
+  await tester.tap(find.text('TAP TO OPEN'));
+  await tester.pump();
+  // The full 8s sequence, then the button fade-in.
+  await tester.pump(const Duration(seconds: 8));
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
   testWidgets('sequence runs from sealed pack to the revealed stat card',
       (tester) async {
@@ -28,7 +39,7 @@ void main() {
       home: PackOpeningScreen(players: [_player()]),
     ));
 
-    // Sealed pack waits for a tap; the keep button is not offered yet.
+    // Sealed pack waits for a tap; the action row is not offered yet.
     expect(find.text('TAP TO OPEN'), findsOneWidget);
     final keepOpacity = tester
         .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
@@ -52,6 +63,9 @@ void main() {
     expect(find.text('ATT'), findsOneWidget);
     expect(find.text('TEST STRIKER'), findsNothing);
 
+    // No SKIP control exists anywhere in the timeline.
+    expect(find.text('SKIP'), findsNothing);
+
     // Stats complete exactly at t = 0.88 (7040ms of 8s): final rating
     // has landed, the name is still masked for one more beat.
     await tester.pump(const Duration(milliseconds: 840));
@@ -70,22 +84,86 @@ void main() {
     expect(done.opacity, 1);
   });
 
-  testWidgets('skip jumps ahead without waiting for the full timeline',
+  testWidgets('no skip control — the reveal always plays in full',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_player(overall: 55)]),
+      home: PackOpeningScreen(
+        players: [_player(overall: 55)],
+        ownedIds: const [77],
+        onSell: (ownedId) async {},
+      ),
     ));
     await tester.tap(find.text('TAP TO OPEN'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(find.text('SKIP'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    // After the first skip the card flip is under way; skip again to the end.
-    await tester.tap(find.text('SKIP'));
-    await tester.pump();
+    // Halfway through the timeline there is still no way to skip.
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('SKIP'), findsNothing);
+    // The action row exists but stays invisible until the done mark.
+    final mid = tester
+        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    expect(mid.opacity, 0);
+    await tester.pump(const Duration(seconds: 4));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('BRONZE'), findsOneWidget);
     expect(find.text('KEEP PLAYER'), findsOneWidget);
+    expect(find.text('SELL'), findsOneWidget);
+    final done = tester
+        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    expect(done.opacity, 1);
+  });
+
+  testWidgets('SELL sells the revealed player and moves on', (tester) async {
+    final sold = <int>[];
+    await tester.pumpWidget(MaterialApp(
+      home: PackOpeningScreen(
+        players: [_player(), _player(overall: 60)],
+        ownedIds: const [501, 502],
+        onSell: (ownedId) async => sold.add(ownedId),
+      ),
+    ));
+    await _revealAll(tester);
+
+    await tester.tap(find.text('SELL'));
+    await tester.pump();
+    // The sale ran for the FIRST player's owned id…
+    expect(sold, [501]);
+    // …and the sequence advanced to the second (last) player, whose
+    // action row offers KEEP PLAYER.
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('KEEP PLAYER'), findsOneWidget);
+  });
+
+  testWidgets('KEEP advances without selling', (tester) async {
+    final sold = <int>[];
+    await tester.pumpWidget(MaterialApp(
+      home: PackOpeningScreen(
+        players: [_player(), _player(overall: 60)],
+        ownedIds: const [501, 502],
+        onSell: (ownedId) async => sold.add(ownedId),
+      ),
+    ));
+    await _revealAll(tester);
+
+    await tester.tap(find.text('NEXT PLAYER  1/2'));
+    await tester.pump();
+    expect(sold, isEmpty);
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('KEEP PLAYER'), findsOneWidget);
+  });
+
+  testWidgets('no onSell callback — SELL is hidden, KEEP works alone',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: PackOpeningScreen(players: [_player()]),
+    ));
+    await _revealAll(tester);
+    expect(find.text('SELL'), findsNothing);
+    expect(find.text('KEEP PLAYER'), findsOneWidget);
+    await tester.tap(find.text('KEEP PLAYER'));
+    await tester.pump();
+    // The single player is kept and the screen pops.
+    expect(find.text('TAP TO OPEN'), findsNothing);
   });
 }

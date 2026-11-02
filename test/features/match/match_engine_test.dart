@@ -376,8 +376,11 @@ void main() {
       var strongWins = 0;
       const matches = 100;
       for (var m = 0; m < matches; m++) {
+        // The position-weighted distribution gives every squad viable
+        // per-position attributes, so the value gap must be wide for a
+        // decisive favourite.
         final engine = buildEngine(m,
-            homeValue: 80_000_000, awayValue: 2_000_000);
+            homeValue: 180_000_000, awayValue: 2_000_000);
         engine.simulateToEnd();
         final s = engine.state;
         if (s.scoreHome > s.scoreAway) strongWins++;

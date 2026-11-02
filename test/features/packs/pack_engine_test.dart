@@ -143,11 +143,12 @@ void main() {
           lessThan(highTierOdds[cheapestHigh.playerId]!));
       expect(highTierOdds[priciestHigh.playerId]!, greaterThan(0));
 
-      // each tier's probabilities sum to 1
-      for (final t in [0, 1, 2]) {
-        final sum = odds[t]!.values.fold<double>(0, (a, b) => a + b);
-        expect(sum, closeTo(1, 1e-9));
-      }
+      // per-player probabilities now include the tier roll, so the whole
+      // table sums to 1 (tier shares × within-tier shares)
+      final total = odds.values
+          .expand((tier) => tier.values)
+          .fold<double>(0, (a, b) => a + b);
+      expect(total, closeTo(1, 1e-9));
     });
 
     test('GDD 5.4: empirically, cheap players are drawn more often', () {
@@ -208,6 +209,86 @@ void main() {
       expect(scope.matches(mkPlayer(2, 1, nationality: 'Brazil')), isFalse);
       expect(const PackScope(category: PackCategory.global)
           .matches(mkPlayer(3, 1)), isTrue);
+    });
+  });
+
+  group('PackTier (GDD 5.5 variety)', () {
+    final pool = buildPool(30);
+
+    test('gold packs draw the high tier far more often than bronze', () {
+      final bronze = PackEngine(random: math.Random(3));
+      final gold = PackEngine(random: math.Random(3));
+      const bronzeScope =
+          PackScope(category: PackCategory.global, tier: PackTier.bronze);
+      const goldScope =
+          PackScope(category: PackCategory.global, tier: PackTier.gold);
+      var bronzeHigh = 0, goldHigh = 0;
+      const runs = 600;
+      for (var i = 0; i < runs; i++) {
+        if (bronze.open(bronzeScope, pool).single.tier == 2) bronzeHigh++;
+        if (gold.open(goldScope, pool).single.tier == 2) goldHigh++;
+      }
+      // bronze weights [1, .12, 0]: the high tier is only reachable via
+      // fallback when the rolled low/mid tier is somehow empty — never
+      // here. gold weights [.05, .45, 1]: high dominates.
+      expect(bronzeHigh, 0);
+      expect(goldHigh, greaterThan(runs * 0.6));
+    });
+
+    test('gold packs cost more than silver, silver more than bronze', () {
+      final engine = PackEngine(random: math.Random(1));
+      int priceOf(PackTier tier) => engine.packPriceFor(
+          PackScope(category: PackCategory.global, tier: tier), pool);
+      final bronze = priceOf(PackTier.bronze);
+      final silver = priceOf(PackTier.silver);
+      final gold = priceOf(PackTier.gold);
+      expect(bronze, greaterThan(0));
+      expect(silver, greaterThan(bronze));
+      expect(gold, greaterThan(silver));
+    });
+
+    test('tier pricing holds per position scope too', () {
+      final engine = PackEngine(random: math.Random(1));
+      // Mixed-position pool so every position scope has candidates.
+      final mixed = [
+        for (final position in Position.values)
+          ...buildPool(3).map((p) => mkPlayer(
+                p.playerId * 100 + position.index,
+                p.marketValueEur,
+                position: position,
+              )),
+      ];
+      for (final position in [Position.st, Position.gk, Position.cb]) {
+        int priceOf(PackTier tier) => engine.packPriceFor(
+            PackScope(
+                category: PackCategory.position,
+                position: position,
+                tier: tier),
+            mixed);
+        expect(priceOf(PackTier.bronze), greaterThan(0));
+        expect(priceOf(PackTier.silver), greaterThan(priceOf(PackTier.bronze)));
+        expect(priceOf(PackTier.gold), greaterThan(priceOf(PackTier.silver)));
+      }
+    });
+
+    test('fromName round-trips and falls back to bronze', () {
+      for (final tier in PackTier.values) {
+        expect(PackTier.fromName(tier.name), tier);
+      }
+      expect(PackTier.fromName(null), PackTier.bronze);
+      expect(PackTier.fromName('platinum'), PackTier.bronze);
+    });
+
+    test('scope tier overrides the engine tierWeights', () {
+      // Engine biased entirely to low, but the scope's gold weights win.
+      final engine = PackEngine(random: math.Random(8), tierWeights: const [1, 0, 0]);
+      const scope =
+          PackScope(category: PackCategory.global, tier: PackTier.gold);
+      var high = 0;
+      for (var i = 0; i < 100; i++) {
+        if (engine.open(scope, pool).single.tier == 2) high++;
+      }
+      expect(high, greaterThan(60));
     });
   });
 }

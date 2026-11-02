@@ -7,8 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
+import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/squad/formations.dart';
+import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
 
 AppDatabase memoryDb() => AppDatabase(NativeDatabase.memory());
 
@@ -71,18 +73,57 @@ void main() {
 
     tearDown(() async => db.close());
 
-    test('creates the club with starting coins and 36 packs', () async {
+    test('creates the club with starting coins and free packs from the '
+        'cheapest positions (GDD 5.8)', () async {
       final club = await store.getClub();
       expect(club, isNotNull);
       expect(club!.name, 'FC Rivals');
       expect(club.managerName, 'Mohamed');
       expect(club.coins, const EconomyEngine().config.startingCoins);
 
+      // The free packs: three of each of the four cheapest positions —
+      // for this seed pool GK / CB / CM / RW — plus one of every other
+      // position so a full XI is always fieldable: 4×3 + 8×1 = 20 packs,
+      // all bronze.
       final packs = await store.getAvailablePacks();
-      expect(packs.length, 36); // 3 per position × 12 positions
+      expect(packs.length, 20);
+      expect(packs.every((p) => p.category == 'position' && !p.opened), isTrue);
+      expect(packs.every((p) => p.tier == 'bronze'), isTrue);
+      final counts = <String, int>{};
+      for (final p in packs) {
+        counts[p.scopeValue!] = (counts[p.scopeValue!] ?? 0) + 1;
+      }
       expect(
-          packs.every((p) => p.category == 'position' && !p.opened), isTrue);
-      expect(packs.map((p) => p.scopeValue).toSet().length, 12);
+          counts,
+          equals({
+            for (final code in ['GK', 'CB', 'CM', 'RW']) code: 3,
+            for (final code in [
+              'ST', 'LW', 'CAM', 'LM', 'RM', 'CDM', 'LB', 'RB'
+            ])
+              code: 1,
+          }));
+
+      // And they really are the cheapest: every other position's bronze
+      // pack costs more than any of the free four.
+      final offers = await store.getStoreOffers();
+      final freePrices = [
+        for (final o in offers)
+          if (o.category == PackCategory.position &&
+              {'GK', 'CB', 'CM', 'RW'}.contains(o.scopeValue) &&
+              o.tier == PackTier.bronze)
+            o.price
+      ];
+      expect(freePrices.length, 4);
+      final otherPrices = [
+        for (final o in offers)
+          if (o.category == PackCategory.position &&
+              !{'GK', 'CB', 'CM', 'RW'}.contains(o.scopeValue) &&
+              o.tier == PackTier.bronze)
+            o.price
+      ];
+      expect(otherPrices.length, 8);
+      expect(
+          otherPrices.every((p) => p > freePrices.reduce(math.max)), isTrue);
     });
 
     test('ledger records the starting grant (FR-016)', () async {
@@ -124,47 +165,143 @@ void main() {
 
     test('position pack yields one player of that position, once', () async {
       final packs = await store.getAvailablePacks();
-      final stPack = packs.firstWhere((p) => p.scopeValue == 'ST');
+      final gkPack = packs.firstWhere((p) => p.scopeValue == 'GK');
       final result = await store.openPack(
-          packId: stPack.id, random: math.Random(11));
+          packId: gkPack.id, random: math.Random(11));
       expect(result.players.length, 1);
-      expect(result.players.every((p) => p.position.code == 'ST'), isTrue);
+      expect(result.players.every((p) => p.position.code == 'GK'), isTrue);
+      // The owned id of the drawn player rides along for sell-from-reveal.
+      expect(result.ownedIds.length, 1);
+      final collection = await store.getCollection();
+      expect(collection.first.ownedId, result.ownedIds.first);
 
       // pack consumed
       final remaining = await store.getAvailablePacks();
-      expect(remaining.length, 35);
-      expect(remaining.any((p) => p.id == stPack.id), isFalse);
+      expect(remaining.length, 19);
+      expect(remaining.any((p) => p.id == gkPack.id), isFalse);
 
       // players persisted as owned instances
-      final collection = await store.getCollection();
       expect(collection.length, 1);
 
       // double-open rejected
       expect(
-          () => store.openPack(packId: stPack.id, random: math.Random(1)),
+          () => store.openPack(packId: gkPack.id, random: math.Random(1)),
           throwsA(isA<CollectionException>()));
     });
 
     test('collection grows across packs and duplicates are separate copies',
         () async {
       final packs = await store.getAvailablePacks();
-      // first packs in insertion order: 3×ST then LW
-      for (final pack in packs.take(4)) {
+      // Open the whole free inventory: 20 packs, one player each.
+      for (final pack in packs) {
         await store.openPack(packId: pack.id, random: math.Random(5));
       }
       final collection = await store.getCollection();
-      expect(collection.length, 4); // 4 packs × 1 player
+      expect(collection.length, 20); // 20 packs × 1 player
       // every draw matches its pack's position scope
-      expect(collection.every((c) => c.position.code == 'ST' || c.position.code == 'LW'),
-          isTrue);
-      // duplicates (same base player) are separate owned copies — the raw
-      // material for merging (GDD 5.7)
-      final byPlayer = <int, int>{};
-      for (final c in collection) {
-        byPlayer[c.base.playerId] = (byPlayer[c.base.playerId] ?? 0) + 1;
+      for (final pack in packs) {
+        expect(
+            collection.any((c) => c.position.code == pack.scopeValue), isTrue,
+            reason: 'pack ${pack.scopeValue} contributed a player');
       }
-      expect(byPlayer.values.any((v) => v >= 2) || collection.length == 12,
+      // duplicates (same base player) are separate owned copies — the raw
+      // material for merging (GDD 5.7): same base id, distinct owned ids.
+      final byPlayer = <int, List<PlayerCard>>{};
+      for (final c in collection) {
+        byPlayer.putIfAbsent(c.base.playerId, () => []).add(c);
+      }
+      final allOwnedIds = collection.map((c) => c.ownedId).toSet();
+      expect(allOwnedIds.length, 20,
+          reason: 'every drawn card is its own owned instance');
+      // when a base player was drawn twice, the copies stay separate
+      final dupes =
+          byPlayer.values.where((copies) => copies.length >= 2).length;
+      if (dupes > 0) {
+        for (final copies in byPlayer.values) {
+          final ids = copies.map((c) => c.ownedId).toSet();
+          expect(ids.length, copies.length);
+        }
+      }
+    });
+  });
+
+  group('store offers (GDD 5.5 variety)', () {
+    late AppDatabase db;
+    late CollectionStore store;
+
+    setUp(() async {
+      db = memoryDb();
+      store = await seededStore(db);
+    });
+
+    tearDown(() async => db.close());
+
+    test('three tiers of global pack and per position — 39 offers', () async {
+      final offers = await store.getStoreOffers();
+      expect(offers.length, 3 + 12 * 3);
+      final globals = offers.where((o) => o.category == PackCategory.global);
+      expect(globals.length, 3);
+      expect(globals.map((o) => o.tier).toSet(), PackTier.values.toSet());
+      expect(
+          offers.where((o) => o.scopeValue == 'ST').map((o) => o.tier).toSet(),
+          PackTier.values.toSet());
+      // Titles carry the tier, e.g. 'Gold Global Pack'.
+      expect(offers.map((o) => o.title).contains('Gold Global Pack'), isTrue);
+      expect(
+          offers.map((o) => o.title).contains('Silver ST Position Pack'),
           isTrue);
+    });
+
+    test('gold costs most, bronze least, for the same scope', () async {
+      final offers = await store.getStoreOffers();
+      for (final scope in ['${null}', 'ST', 'GK']) {
+        final scoped = offers.where((o) =>
+            scope == '${null}'
+                ? o.category == PackCategory.global
+                : o.scopeValue == scope);
+        final byTier = {for (final o in scoped) o.tier: o.price};
+        expect(byTier[PackTier.silver]!, greaterThan(byTier[PackTier.bronze]!));
+        expect(byTier[PackTier.gold]!, greaterThan(byTier[PackTier.silver]!));
+      }
+    });
+
+    test('buyPack records the tier on the pack and charges its price',
+        () async {
+      final offers = await store.getStoreOffers();
+      final goldGlobal =
+          offers.firstWhere((o) => o.tier == PackTier.gold && o.scopeValue == null);
+      final before = (await store.getClub())!.coins;
+      final pack = await store.buyPack(
+          category: PackCategory.global, tier: PackTier.gold);
+      expect(pack.tier, 'gold');
+      expect(pack.price, goldGlobal.price);
+      expect(pack.scopeValue, isNull);
+      expect((await store.getClub())!.coins, before - goldGlobal.price);
+      // it is unopened and openable with gold odds
+      expect(pack.opened, isFalse);
+      final result =
+          await store.openPack(packId: pack.id, random: math.Random(3));
+      expect(result.players.length, 1);
+    });
+
+    test('getPackPlayers lists the scope sorted by overall, best first',
+        () async {
+      final players = await store.getPackPlayers(
+          category: PackCategory.position,
+          scopeValue: 'GK',
+          tier: PackTier.gold);
+      expect(players.length, 5); // the seed pool's GK count
+      expect(players.every((p) => p.position.code == 'GK'), isTrue);
+      final overalls = players.map((p) => p.baseStats.overall).toList();
+      expect(overalls, isNot(equals(overalls.toList()..sort())));
+      expect(
+          overalls,
+          equals(overalls.toList()
+            ..sort((a, b) => b.compareTo(a))));
+      // Global scope covers the whole pool.
+      final global = await store.getPackPlayers(
+          category: PackCategory.global, tier: PackTier.bronze);
+      expect(global.length, 60);
     });
   });
 
@@ -212,7 +349,7 @@ void main() {
     });
 
     test('squad players cannot be sold', () async {
-      final ownedId = await openOne('ST');
+      final ownedId = await openOne('GK');
       await store.autoPickSquad();
       final inSquad = (await store.getSquad()).values.isNotEmpty;
       if (inSquad) {
@@ -340,6 +477,22 @@ void main() {
       // bench and reserves unranked even though Auto Pick persisted the
       // ranked assignment. The map must iterate slot 0, 1, 2, …
       await openAll();
+      // The 12 free packs leave the squad short of a full 23; top the
+      // collection up straight from the seed pool so bench AND reserves
+      // have ranked rows to verify.
+      final club = await store.getClub();
+      final now = DateTime.now();
+      final drawnIds = (await store.getCollection())
+          .map((c) => c.base.playerId)
+          .toSet();
+      for (final row in seedRows) {
+        if (drawnIds.contains(row[0] as int)) continue;
+        await db.into(db.ownedPlayers).insert(OwnedPlayersCompanion.insert(
+              clubId: club!.id,
+              playerId: row[0] as int,
+              acquiredAt: now,
+            ));
+      }
       await store.autoPickSquad();
       final squad = await store.getSquad();
 

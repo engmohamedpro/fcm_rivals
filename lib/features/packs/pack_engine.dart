@@ -8,6 +8,8 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart' show Color;
+
 import '../../core/domain/players.dart';
 import '../economy/economy_engine.dart';
 
@@ -22,17 +24,61 @@ enum PackCategory {
   final String label;
 }
 
+/// Store pack varieties: each tier biases the Market Value tier roll
+/// toward better players — a Gold pack heavily favours the high tier, a
+/// Bronze pack almost never leaves the low tier — and is priced by its
+/// own expected contents, so better odds cost proportionally more Coins.
+enum PackTier {
+  bronze('Bronze', [1.0, 0.12, 0.0]),
+  silver('Silver', [0.35, 1.0, 0.18]),
+  gold('Gold', [0.05, 0.45, 1.0]);
+
+  const PackTier(this.label, this.weights);
+
+  /// Display label used in pack titles and badges.
+  final String label;
+
+  /// Relative chance of the low / mid / high Market Value tier, aligned
+  /// with [PackEngine.tierWeights] ordering.
+  final List<double> weights;
+
+  /// Parses a persisted tier name; unknown values fall back to bronze.
+  static PackTier fromName(String? name) => values
+      .firstWhere((t) => t.name == name, orElse: () => PackTier.bronze);
+}
+
+/// Store-tier accent colours, aligned with the rarity palette in the UI
+/// style (bronze → warm bronze, silver → cool silver, gold → champion
+/// gold). Cells, badges and foils draw from these so a pack's tier reads
+/// at a glance.
+extension PackTierColor on PackTier {
+  Color get accent => switch (this) {
+        PackTier.bronze => const Color(0xFFC89A5B),
+        PackTier.silver => const Color(0xFFD9D9E2),
+        PackTier.gold => const Color(0xFFF2D488),
+      };
+}
+
 /// Filter describing which players a pack draws from.
 class PackScope {
   const PackScope({
     required this.category,
     this.nationality,
     this.position,
+    this.tier,
   });
 
   final PackCategory category;
   final String? nationality;
   final Position? position;
+
+  /// Store tier of the pack (GDD 5.5 variety); null keeps the engine's
+  /// constructor-configured tier roll (backwards compatibility).
+  final PackTier? tier;
+
+  /// Weights this scope draws with: its own tier's, or the engine's.
+  List<double> rollWeights(PackEngine engine) =>
+      tier?.weights ?? engine.tierWeights;
 
   bool matches(BasePlayer p) {
     switch (category) {
@@ -147,30 +193,31 @@ class PackEngine {
     return const [];
   }
 
-  /// Opens a pack: exactly one player. A tier (low/mid/high) is rolled using
-  /// [tierWeights], then one player is drawn from it with value-weighted
-  /// odds. Empty pool returns an empty draw list.
+  /// Opens a pack: exactly one player. A tier (low/mid/high) is rolled —
+  /// with the scope's store tier weights when it has one — then one
+  /// player is drawn from it with value-weighted odds. Empty pool returns
+  /// an empty draw list.
   List<PackDraw> open(PackScope scope, List<BasePlayer> pool, {double? oddsSmoothing}) {
     final eligible = pool.where(scope.matches).toList()..sort(_byValue);
     if (eligible.isEmpty) return const [];
     final tiers = tiersOf(eligible);
     final smoothing =
         oddsSmoothing ?? economy.config.packOddsSmoothing;
-    final tierIndex = _rollTier();
+    final tierIndex = _rollTier(scope.rollWeights(this));
     final player = _drawFromTier(_fallbackTier(tiers, tierIndex), smoothing);
     if (player == null) return const [];
     return [PackDraw(player: player, tier: tierIndex)];
   }
 
   /// Rolls which tier the pack's single player comes from.
-  int _rollTier() {
-    final total = tierWeights.fold<double>(0, (a, b) => a + b);
+  int _rollTier(List<double> weights) {
+    final total = weights.fold<double>(0, (a, b) => a + b);
     var roll = random.nextDouble() * total;
-    for (var i = 0; i < tierWeights.length; i++) {
-      roll -= tierWeights[i];
+    for (var i = 0; i < weights.length; i++) {
+      roll -= weights[i];
       if (roll <= 0) return i;
     }
-    return tierWeights.length - 1;
+    return weights.length - 1;
   }
 
   /// The per-tier probability of drawing each eligible player, for the
@@ -184,10 +231,12 @@ class PackEngine {
     final eligible = pool.where(scope.matches).toList();
     final tiers = tiersOf(eligible);
     final smoothing = oddsSmoothing ?? economy.config.packOddsSmoothing;
+    final rollWeights = scope.rollWeights(this);
+    final rollTotal = rollWeights.fold<double>(0, (a, b) => a + b);
     final result = <int, Map<int, double>>{};
     for (var t = 0; t < 3; t++) {
       final tier = _fallbackTier(tiers, t);
-      if (tier.isEmpty) {
+      if (tier.isEmpty || rollTotal <= 0 || rollWeights[t] <= 0) {
         result[t] = const {};
         continue;
       }
@@ -196,9 +245,12 @@ class PackEngine {
               math.pow(economy.economicValueOf(p.marketValueEur).toDouble(), smoothing))
           .toList();
       final total = weights.fold<double>(0, (a, b) => a + b);
+      // Per-player probability = P(tier roll) × P(player | tier).
+      final tierShare = rollWeights[t] / rollTotal;
       final probs = <int, double>{};
       for (var i = 0; i < tier.length; i++) {
-        probs[tier[i].playerId] = total > 0 ? weights[i] / total : 0;
+        probs[tier[i].playerId] =
+            total > 0 ? tierShare * weights[i] / total : 0;
       }
       result[t] = probs;
     }
@@ -207,16 +259,19 @@ class PackEngine {
 
   /// Expected economic value of one pack's single player under the actual
   /// draw odds (GDD 5.5): the tier-weighted average of each tier's
-  /// odds-weighted expected economic value.
+  /// odds-weighted expected economic value. The scope's store tier weights
+  /// drive the roll, so a Gold pack's expectation — and therefore its
+  /// price — sits well above a Bronze pack's over the same pool.
   int expectedPackValue(PackScope scope, List<BasePlayer> pool) {
     final eligible = pool.where(scope.matches).toList();
     if (eligible.isEmpty) return 0;
     final tiers = tiersOf(eligible);
     final smoothing = economy.config.packOddsSmoothing;
-    final weightTotal = tierWeights.fold<double>(0, (a, b) => a + b);
+    final rollWeights = scope.rollWeights(this);
+    final weightTotal = rollWeights.fold<double>(0, (a, b) => a + b);
     var total = 0.0;
     for (var t = 0; t < 3; t++) {
-      final tierShare = tierWeights[t] / weightTotal;
+      final tierShare = rollWeights[t] / weightTotal;
       if (tierShare == 0) continue;
       final tier = _fallbackTier(tiers, t);
       if (tier.length <= 1) {

@@ -22,6 +22,8 @@ class BaseStatsConfig {
     this.referenceValueEur = 50_000_000,
     this.valueAtReference = 84,
     this.ratingPerDoubling = 4,
+    this.attributeSpread = 30,
+    this.attributeAnchor = 0.25,
   });
 
   /// Floor for the lowest-value professionals.
@@ -38,6 +40,16 @@ class BaseStatsConfig {
 
   /// Rating gained for each doubling of market value above/below reference.
   final double ratingPerDoubling;
+
+  /// How far an attribute may deviate from the overall rating because of
+  /// its position weight: primary attributes land roughly
+  /// `overall + attributeSpread * (weight - attributeAnchor)` — a striker's
+  /// attack clearly outranks his defence, and vice versa for a centre-back.
+  final double attributeSpread;
+
+  /// The position weight that maps onto the overall rating itself.
+  /// Weights above the anchor push the attribute up, below pull it down.
+  final double attributeAnchor;
 }
 
 const BaseStatsConfig defaultBaseStatsConfig = BaseStatsConfig();
@@ -142,13 +154,19 @@ class BaseStatsGenerator {
   }
 
   /// Position-weighted attribute distribution around [baseRatingFor].
+  ///
+  /// The market value fixes the overall rating; the position then decides
+  /// where that quality lives: each attribute sits at
+  /// `overall + spread * (weight - anchor)`, so a striker converts his
+  /// rating mostly into attack, a centre-back into defence and a keeper
+  /// into goalkeeping. Zero-weight attributes (an outfield player's
+  /// goalkeeping) stay at 0.
   BaseStats generate(Position position, int marketValueEur) {
     final base = baseRatingFor(marketValueEur);
     final weights = positionWeights[position]!;
+    final spread = config.attributeSpread;
+    final anchor = config.attributeAnchor;
 
-    // Spread attributes around the base rating while keeping the weighted
-    // average anchored to it: attributes with weight > 0.5 sit above the
-    // base, minor attributes below.
     final attrs = <PlayerAttribute, int>{};
     for (final entry in weights.entries) {
       final w = entry.value;
@@ -156,9 +174,7 @@ class BaseStatsGenerator {
         attrs[entry.key] = 0;
         continue;
       }
-      // deviation: +8 * (w - meanPositiveWeight) keeps the weighted sum at
-      // the base rating while differentiating attributes.
-      final deviation = 10.0 * (w - 0.375);
+      final deviation = spread * (w - anchor);
       final v = (base + deviation).round().clamp(1, 99);
       attrs[entry.key] = v;
     }

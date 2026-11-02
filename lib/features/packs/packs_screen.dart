@@ -7,17 +7,20 @@ import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../features/collection/collection_store.dart' show StorePackOffer;
-import '../../features/packs/pack_engine.dart' show PackCategory;
+import '../../features/packs/pack_engine.dart' show PackCategory, PackTierColor;
+import 'pack_contents_screen.dart';
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_opening_screen.dart';
 
-/// Packs tab — the store (GDD 5.5): ONE grid of packs, every cell drawn as
-/// the sealed foil pack the player later sees in the opening cinematic.
-/// Owned (free) packs of a type show a FREE ×N pill in place of the price;
-/// otherwise the cell shows the coin price from the Economy Engine with a
-/// BUY button under it. Tapping a cell opens the next owned pack, or opens
-/// a YES/NO purchase confirmation when none are left — free and bought
-/// packs live side by side, never separated.
+/// Packs tab — the store (GDD 5.5): ONE grid of packs in three tiers per
+/// scope — Bronze / Silver / Gold — each with its own odds of better
+/// players and its own price. Every cell is drawn as the sealed foil pack
+/// the player later sees in the opening cinematic, tinted by its tier.
+/// Owned (free) packs of a type show a FREE ×N pill in place of the
+/// price; otherwise the cell shows the coin price with a BUY button.
+/// Tapping a cell (or its INFO badge) shows the pack's full contents —
+/// every obtainable player, highest rated first — while BUY opens the
+/// YES/NO purchase confirmation.
 class PacksScreen extends ConsumerStatefulWidget {
   const PacksScreen({super.key});
 
@@ -79,6 +82,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             opening: _opening,
             onOpen: (packId) => _open(context, packId),
             onBuy: (offer) => _buy(context, offer),
+            onInfo: (offer) => _showContents(context, offer),
           ),
         ),
       ),
@@ -95,9 +99,22 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ref.invalidate(availablePacksProvider);
       ref.invalidate(collectionProvider);
       if (!context.mounted) return;
+      // Captured before the push: the sell callback fires much later,
+      // inside the reveal, when this context may already be unmounted.
+      final messenger = ScaffoldMessenger.of(context);
+      final sellMessage = (int credit) => SnackBar(
+          content: Text('Sold for ${_groupDigits(credit)} coins'));
       await Navigator.of(context).push(MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => PackOpeningScreen(players: result.players),
+        builder: (_) => PackOpeningScreen(
+          players: result.players,
+          ownedIds: result.ownedIds,
+          onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
+            ref.invalidate(clubProvider);
+            ref.invalidate(collectionProvider);
+            if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
+          }),
+        ),
       ));
     } catch (e) {
       if (context.mounted) {
@@ -107,6 +124,26 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     } finally {
       if (mounted) setState(() => _opening = false);
     }
+  }
+
+  /// Shows the pack's obtainable players, highest rated first.
+  Future<void> _showContents(
+      BuildContext context, StorePackOffer offer) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    if (!context.mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => PackContentsScreen(
+        title: offer.title,
+        category: offer.category,
+        scopeValue: offer.scopeValue,
+        tier: offer.tier,
+        loadPlayers: () => store.getPackPlayers(
+            category: offer.category,
+            scopeValue: offer.scopeValue,
+            tier: offer.tier),
+      ),
+    ));
   }
 
   /// Buy flow: coins are the game's hard currency, so the purchase always
@@ -188,6 +225,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       final store = await ref.read(collectionStoreProvider.future);
       await store.buyPack(
         category: offer.category,
+        tier: offer.tier,
         position: offer.category == PackCategory.position
             ? Position.fromCode(offer.scopeValue!)
             : null,
@@ -212,12 +250,14 @@ String _groupDigits(int value) => value
     .toString()
     .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
 
-/// Scope key shared by owned packs and store offers, e.g. 'global' or
-/// 'position:ST' — the join between inventory and grid cell.
-String _scopeKey(String category, String? scopeValue) =>
-    scopeValue == null ? category : '$category:$scopeValue';
+/// Scope key shared by owned packs and store offers, e.g.
+/// 'global:bronze' or 'position:ST:gold' — the join between inventory
+/// and grid cell: owned starting packs are bronze, so they stack under
+/// the bronze cells only.
+String _scopeKey(String category, String? scopeValue, String tier) =>
+    '$category:${scopeValue ?? 'ANY'}:$tier';
 
-/// The store grid: every pack cell.
+/// The store grid: every pack cell, tier-coloured.
 class _StoreGrid extends StatelessWidget {
   const _StoreGrid({
     required this.packs,
@@ -226,6 +266,7 @@ class _StoreGrid extends StatelessWidget {
     required this.opening,
     required this.onOpen,
     required this.onBuy,
+    required this.onInfo,
   });
 
   final List<Pack> packs;
@@ -234,14 +275,18 @@ class _StoreGrid extends StatelessWidget {
   final bool opening;
   final void Function(int packId) onOpen;
   final void Function(StorePackOffer offer) onBuy;
+  final void Function(StorePackOffer offer) onInfo;
 
   @override
   Widget build(BuildContext context) {
-    // Owned unopened packs grouped by scope: their count replaces the
+    // Owned unopened packs grouped by scope+tier: their count replaces the
     // price on the matching cell (free packs, GDD 5.8).
     final owned = <String, List<Pack>>{};
     for (final p in packs) {
-      owned.putIfAbsent(_scopeKey(p.category, p.scopeValue), () => []).add(p);
+      owned
+          .putIfAbsent(
+              _scopeKey(p.category, p.scopeValue, p.tier), () => [])
+          .add(p);
     }
     // Wide screens (the app clamps at 820) get more columns so cells
     // keep phone-like proportions.
@@ -260,9 +305,9 @@ class _StoreGrid extends StatelessWidget {
             for (var i = 0; i < offers.length; i++)
               () {
                 final offer = offers[i];
-                final ownedHere =
-                    owned[_scopeKey(offer.category.name, offer.scopeValue)] ??
-                        const <Pack>[];
+                final ownedHere = owned[_scopeKey(
+                        offer.category.name, offer.scopeValue, offer.tier.name)] ??
+                    const <Pack>[];
                 return FcmEntrance(
                   index: i,
                   dx: 0,
@@ -276,6 +321,7 @@ class _StoreGrid extends StatelessWidget {
                         : ownedHere.isNotEmpty
                             ? () => onOpen(ownedHere.first.id)
                             : () => onBuy(offer),
+                    onInfo: () => onInfo(offer),
                   ),
                 );
               }(),
@@ -287,28 +333,33 @@ class _StoreGrid extends StatelessWidget {
 }
 
 /// One store cell: the sealed foil pack exactly as it looks before
-/// opening (same [FoilPackPainter] as the reveal cinematic), a scope
-/// badge, the title, and under it either the FREE ×N pill — when the
+/// opening (same [FoilPackPainter] as the reveal cinematic), tinted by
+/// the pack's tier — bronze, silver or gold — with a scope badge, the
+/// tier name, the title, and under it either the FREE ×N pill — when the
 /// club owns packs of this type — or the coin price with a BUY button
-/// that opens the purchase confirmation.
+/// that opens the purchase confirmation. The ⓘ badge opens the pack's
+/// contents list.
 class _StorePackCell extends StatelessWidget {
   const _StorePackCell({
     required this.offer,
     required this.ownedCount,
     required this.coins,
     required this.onTap,
+    required this.onInfo,
   });
 
   final StorePackOffer offer;
   final int ownedCount;
   final int? coins;
   final VoidCallback? onTap;
+  final VoidCallback onInfo;
 
   @override
   Widget build(BuildContext context) {
     final isFree = ownedCount > 0;
     final affordable = coins == null || coins! >= offer.price;
     final scopeLabel = offer.scopeValue ?? 'ANY';
+    final tierColor = offer.tier.accent;
     final shortTitle =
         offer.scopeValue == null ? 'Global Pack' : '${offer.scopeValue} Pack';
 
@@ -328,7 +379,8 @@ class _StorePackCell extends StatelessWidget {
                         painter: FoilPackPainter(
                           shimmer: 0.42,
                           charge: 0,
-                          glowColor: FcmColors.gold,
+                          glowColor: tierColor,
+                          tint: tierColor.withValues(alpha: 0.22),
                         ),
                       ),
                     ),
@@ -344,17 +396,33 @@ class _StorePackCell extends StatelessWidget {
                             color: FcmColors.night.withValues(alpha: 0.88),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                                color: FcmColors.gold.withValues(alpha: 0.7)),
+                                color: tierColor.withValues(alpha: 0.8)),
                           ),
                           child: Text(
                             scopeLabel,
-                            style: const TextStyle(
-                              color: FcmColors.gold,
+                            style: TextStyle(
+                              color: tierColor,
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1,
                             ),
                           ),
+                        ),
+                      ),
+                    ),
+                    // Contents list entry point.
+                    Positioned(
+                      right: 2,
+                      top: 2,
+                      child: SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          iconSize: 15,
+                          icon: Icon(Icons.info_outline_rounded,
+                              color: Colors.white.withValues(alpha: 0.75)),
+                          onPressed: onInfo,
                         ),
                       ),
                     ),
@@ -370,6 +438,16 @@ class _StorePackCell extends StatelessWidget {
               color: Colors.white,
               fontSize: 11,
               fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          FitText(
+            offer.tier.label.toUpperCase(),
+            style: TextStyle(
+              color: tierColor,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
             ),
           ),
           const SizedBox(height: 3),

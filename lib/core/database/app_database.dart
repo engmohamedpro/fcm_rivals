@@ -10,6 +10,9 @@ library;
 
 import 'package:drift/drift.dart';
 
+import '../domain/base_stats_generator.dart';
+import '../domain/players.dart' show Position;
+
 part 'app_database.g.dart';
 
 /// Imported global players (SRS 25: PlayerDatabase).
@@ -97,6 +100,7 @@ class Packs extends Table {
   IntColumn get clubId => integer()();
   TextColumn get category => text()();
   TextColumn get scopeValue => text().nullable()();
+  TextColumn get tier => text().withDefault(const Constant('bronze'))();
   IntColumn get price => integer().withDefault(const Constant(0))();
   TextColumn get source => text().withDefault(const Constant('starting'))();
   BoolColumn get opened => boolean().withDefault(const Constant(false))();
@@ -231,7 +235,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -255,6 +259,27 @@ class AppDatabase extends _$AppDatabase {
             // age, club and leagueCode dropped. TableMigration rebuilds the
             // table, preserving every remaining row and column.
             await m.alterTable(TableMigration(players));
+          }
+          if (from < 6) {
+            // Packs gained the store tier (bronze/silver/gold variety).
+            await m.addColumn(packs, packs.tier);
+            // Base stats move to the position-weighted distribution: every
+            // existing player row is regenerated from its market value and
+            // position so the collection reflects the new curve (GDD 4.6).
+            final generator = const BaseStatsGenerator();
+            final rows = await select(players).get();
+            for (final row in rows) {
+              final stats = generator.generate(
+                  Position.fromCode(row.position), row.marketValueEur);
+              await (update(players)
+                    ..where((p) => p.playerId.equals(row.playerId)))
+                  .write(PlayersCompanion(
+                attack: Value(stats.attack),
+                support: Value(stats.support),
+                defence: Value(stats.defence),
+                goalkeeping: Value(stats.goalkeeping),
+              ));
+            }
           }
         },
       );

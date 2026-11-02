@@ -26,7 +26,7 @@ Future<void> _settle(WidgetTester tester) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('club creation leads to the game shell with 36 packs',
+  testWidgets('club creation leads to the game shell with tiered packs and 12 free starting packs',
       (WidgetTester tester) async {
     // Phone-like portrait surface (800x1200 logical): the default 800x600
     // test surface leaves only ~466px of list viewport after the AppBar and
@@ -86,19 +86,26 @@ void main() {
     // The Season tab opens first: the first campaign entry point renders.
     expect(find.text('Start your first season'), findsOneWidget);
 
-    // Switch to the Packs tab (now last in the nav) and check the store
-    // grid renders: every cell shows the sealed pack, and the owned
-    // starting packs display FREE ×N in place of the price.
+    // Switch to the Packs tab (now last in the nav) and check the tiered
+    // store grid renders: three tiers per scope — Bronze / Silver / Gold —
+    // and the free starting packs stack as FREE ×N under their bronze
+    // cells (3 of each cheapest position, 1 of every other).
     await tester.tap(find.text('Packs'));
     await _settle(tester);
-    expect(find.text('ST Pack'), findsOneWidget);
-    expect(find.text('LW Pack'), findsOneWidget);
-    expect(find.text('Global Pack'), findsOneWidget);
-    expect(find.text('FREE ×3'), findsNWidgets(12));
+    expect(find.text('ST Pack'), findsNWidgets(3));
+    expect(find.text('LW Pack'), findsNWidgets(3));
+    expect(find.text('Global Pack'), findsNWidgets(3));
+    expect(find.text('BRONZE'), findsNWidgets(13));
+    expect(find.text('SILVER'), findsNWidgets(13));
+    expect(find.text('GOLD'), findsNWidgets(13));
+    expect(find.text('FREE ×3'), findsNWidgets(4));
+    expect(find.text('FREE ×1'), findsNWidgets(8));
 
-    // store-level check: all 36 packs exist and remain unopened
+    // store-level check: the 20 free packs (4 cheapest positions × 3 plus
+    // one per other position, all bronze) exist and remain unopened
     final packs = await store.getAvailablePacks();
-    expect(packs.length, 36);
+    expect(packs.length, 20);
+    expect(packs.every((p) => p.tier == 'bronze'), isTrue);
     expect(packs.map((p) => p.scopeValue).toSet().length, 12);
     await db.close();
   });

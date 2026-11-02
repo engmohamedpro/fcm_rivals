@@ -49,6 +49,7 @@ class FoilPackPainter extends CustomPainter {
     required this.shimmer,
     required this.charge,
     required this.glowColor,
+    this.tint,
   });
 
   /// 0..1 loop position of the idle foil shimmer.
@@ -60,6 +61,10 @@ class FoilPackPainter extends CustomPainter {
   /// Colour the pack's inner light turns toward while charging.
   final Color glowColor;
 
+  /// Store-tier wash over the foil body (bronze / silver / gold). Null
+  /// keeps the untinted charcoal leather — the classic sealed look.
+  final Color? tint;
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
@@ -68,35 +73,45 @@ class FoilPackPainter extends CustomPainter {
     // Drop shadow.
     canvas.drawShadow(path, Colors.black, 18, true);
 
-    // Foil body: charcoal leather with a warm metal sheen (brand look).
+    // Foil body: charcoal leather with a warm metal sheen (brand look),
+    // washed with the store tier's colour when one is given.
+    final bodyColors = tint == null
+        ? const [Color(0xFF3A342C), Color(0xFF17161A), Color(0xFF0B0A0E)]
+        : [
+            Color.lerp(const Color(0xFF3A342C), tint!, 0.55)!,
+            Color.lerp(const Color(0xFF17161A), tint!, 0.30)!,
+            const Color(0xFF0B0A0E),
+          ];
     canvas.drawPath(
       path,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF3A342C), Color(0xFF17161A), Color(0xFF0B0A0E)],
-          stops: [0.0, 0.5, 1.0],
+          colors: bodyColors,
+          stops: const [0.0, 0.5, 1.0],
         ).createShader(rect),
     );
 
     canvas.save();
     canvas.clipPath(path);
 
-    // Gold band across the middle.
+    // Metal band across the middle — tier-tinted, plain gold otherwise.
     final bandTop = size.height * 0.40;
     final bandRect =
         Rect.fromLTWH(0, bandTop, size.width, size.height * 0.20);
+    final bandColors = tint == null
+        ? const [Color(0xFF8A6E42), Color(0xFFF5E3B0), Color(0xFF8A6E42)]
+        : [
+            Color.lerp(const Color(0xFF8A6E42), tint!, 0.5)!,
+            Color.lerp(const Color(0xFFF5E3B0), tint!, 0.75)!,
+            Color.lerp(const Color(0xFF8A6E42), tint!, 0.5)!,
+          ];
     canvas.drawRect(
       bandRect,
       Paint()
-        ..shader = const LinearGradient(
-          colors: [
-            Color(0xFF8A6E42),
-            Color(0xFFF5E3B0),
-            Color(0xFF8A6E42),
-          ],
-        ).createShader(bandRect),
+        ..shader = LinearGradient(colors: bandColors)
+            .createShader(bandRect),
     );
 
     // Wordmark.
@@ -111,7 +126,7 @@ class FoilPackPainter extends CustomPainter {
     _text(canvas, '★  ★  ★', size.width * 0.07, FcmColors.gold,
         Offset(size.width / 2, size.height * 0.30));
     _text(canvas, 'PLAYER PACK', size.width * 0.075,
-        FcmColors.goldSoft.withValues(alpha: 0.85),
+        (tint ?? FcmColors.goldSoft).withValues(alpha: 0.9),
         Offset(size.width / 2, size.height * 0.76),
         spacing: 3);
 

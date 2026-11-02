@@ -36,7 +36,11 @@ class CollectionException implements Exception {
 
 /// The players drawn from one opened pack, in reveal order.
 class PackOpenResult {
-  const PackOpenResult({required this.players, this.tiers = const []});
+  const PackOpenResult({
+    required this.players,
+    this.tiers = const [],
+    this.ownedIds = const [],
+  });
 
   /// Drawn players (one per pack).
   final List<BasePlayer> players;
@@ -44,20 +48,28 @@ class PackOpenResult {
   /// Market Value tier each player was drawn from (0 low, 1 mid, 2 high),
   /// index-aligned with [players]. Drives reveal effects (GDD 5.6).
   final List<int> tiers;
+
+  /// Owned-player row ids of the drawn players, index-aligned with
+  /// [players] — the handle for sell- straight-from-the-reveal.
+  final List<int> ownedIds;
 }
 
-/// One buyable pack in the store (GDD 5.5): category, scope and the
-/// Economy-Engine-derived coin price.
+/// One buyable pack in the store (GDD 5.5): category, scope, store tier
+/// and the Economy-Engine-derived coin price.
 class StorePackOffer {
   const StorePackOffer({
     required this.category,
     required this.title,
     required this.scopeValue,
+    required this.tier,
     required this.price,
     required this.eligibleCount,
   });
 
   final PackCategory category;
+
+  /// Store tier: bronze / silver / gold odds variety (GDD 5.5).
+  final PackTier tier;
 
   /// Display title, e.g. 'ST Position Pack'.
   final String title;
@@ -175,6 +187,38 @@ class CollectionStore {
 
   static const int startingPacksPerPosition = 3;
 
+  /// Positions whose packs are the cheapest in the store — the free
+  /// starting packs come from these, so the gifted inventory is worth the
+  /// least and buying stays meaningful (GDD 5.8).
+  static const int freeStartingPositionCount = 4;
+
+  /// The [freeStartingPositionCount] positions with the cheapest store
+  /// packs, derived from the current dataset's Bronze-tier position-pack
+  /// prices (cheapest pools first, ties by pool size).
+  Future<List<Position>> cheapestPackPositions() async {
+    final registry = await _ensureRegistry();
+    final pool = registry.all.toList(growable: false);
+    final engine = PackEngine(random: math.Random(0), economy: economy);
+    final priced = [
+      for (final position in Position.values)
+        (
+          position: position,
+          price: engine.packPriceFor(
+              PackScope(category: PackCategory.position, position: position, tier: PackTier.bronze),
+              pool),
+          poolSize:
+              pool.where((p) => p.position == position).length,
+        ),
+    ]..sort((a, b) {
+        final byPrice = a.price.compareTo(b.price);
+        if (byPrice != 0) return byPrice;
+        return a.poolSize.compareTo(b.poolSize);
+      });
+    return [
+      for (final entry in priced.take(freeStartingPositionCount)) entry.position
+    ];
+  }
+
   // ---------------------------------------------------------------------------
   // Club lifecycle
   // ---------------------------------------------------------------------------
@@ -210,13 +254,21 @@ class CollectionStore {
           ));
       await db.coinLedger(clubId, economy.config.startingCoins,
           reason: 'starting_grant', detail: 'Club creation grant');
-      // 36 starting packs: three per supported position (GDD 5.8).
+      // Free starting packs (GDD 5.8): three packs of each of the four
+      // CHEAPEST positions — the least valuable packs in the store — so
+      // the gifted inventory never rivals what coins can buy, plus one
+      // pack of every other position: opening the free inventory always
+      // fields a full XI, so a new club is never stuck unable to play.
+      final freePositions = await cheapestPackPositions();
       for (final position in Position.values) {
-        for (var i = 0; i < startingPacksPerPosition; i++) {
+        final freeCount =
+            freePositions.contains(position) ? startingPacksPerPosition : 1;
+        for (var i = 0; i < freeCount; i++) {
           await db.into(db.packs).insert(PacksCompanion.insert(
                 clubId: clubId,
                 category: 'position',
                 scopeValue: Value(position.code),
+                tier: const Value('bronze'),
                 source: const Value('starting'),
                 createdAt: now,
               ));
@@ -387,6 +439,7 @@ class CollectionStore {
       position: pack.scopeValue != null && category == PackCategory.position
           ? Position.fromCode(pack.scopeValue!)
           : null,
+      tier: PackTier.fromName(pack.tier),
     );
     final pool = registry.all.toList(growable: false);
     final engine = PackEngine(random: random, economy: economy);
@@ -396,14 +449,16 @@ class CollectionStore {
     }
 
     final now = DateTime.now();
+    final ownedIds = <int>[];
     await db.transaction(() async {
       for (final draw in draws) {
-        await db.into(db.ownedPlayers).insert(OwnedPlayersCompanion.insert(
+        final ownedId = await db.into(db.ownedPlayers).insert(OwnedPlayersCompanion.insert(
               clubId: pack.clubId,
               playerId: draw.player.playerId,
               acquisitionSource: Value('pack'),
               acquiredAt: now,
             ));
+        ownedIds.add(ownedId);
       }
       await (db.update(db.packs)
             ..where((p) => p.id.equals(packId)))
@@ -412,7 +467,35 @@ class CollectionStore {
     return PackOpenResult(
       players: [for (final d in draws) d.player],
       tiers: [for (final d in draws) d.tier],
+      ownedIds: ownedIds,
     );
+  }
+
+  /// Every player a pack of this scope could draw, best overall first —
+  /// the contents list behind tapping a store cell (no stats shown there,
+  /// just the rating ladder).
+  Future<List<BasePlayer>> getPackPlayers({
+    required PackCategory category,
+    String? scopeValue,
+    required PackTier tier,
+  }) async {
+    final registry = await _ensureRegistry();
+    final scope = PackScope(
+      category: category,
+      position: category == PackCategory.position && scopeValue != null
+          ? Position.fromCode(scopeValue)
+          : null,
+      tier: tier,
+    );
+    final eligible =
+        registry.all.where(scope.matches).toList(growable: false);
+    eligible.sort((a, b) {
+      final byOverall =
+          b.baseStats.overall.compareTo(a.baseStats.overall);
+      if (byOverall != 0) return byOverall;
+      return a.playerId.compareTo(b.playerId);
+    });
+    return eligible;
   }
 
   /// All unopened packs of the club.
@@ -424,45 +507,52 @@ class CollectionStore {
         .get();
   }
 
-  /// The store's buyable packs (GDD 5.5): the global pack plus one per
-  /// outfield position and goalkeeper, each priced by the Economy Engine's
-  /// expected-contents formula. Prices are stable per dataset.
+  /// The store's buyable packs (GDD 5.5): three tiers of the global pack
+  /// — Bronze / Silver / Gold — and three tiers for every position, each
+  /// tier with its own odds of better players and its own price from the
+  /// Economy Engine's expected-contents formula (better odds cost more).
+  /// Prices are stable per dataset.
   Future<List<StorePackOffer>> getStoreOffers() async {
     final registry = await _ensureRegistry();
     final pool = registry.all.toList(growable: false);
-    final engine = PackEngine(random: math.Random(0), economy: economy);
-    final global = PackScope(category: PackCategory.global);
+
+    StorePackOffer offerFor(PackCategory category, String? scopeValue,
+        PackTier tier, String baseTitle) {
+      final scope = PackScope(
+        category: category,
+        position: category == PackCategory.position && scopeValue != null
+            ? Position.fromCode(scopeValue)
+            : null,
+        tier: tier,
+      );
+      return StorePackOffer(
+        category: category,
+        title: '${tier.label} $baseTitle',
+        scopeValue: scopeValue,
+        tier: tier,
+        price: PackEngine(random: math.Random(0), economy: economy)
+            .packPriceFor(scope, pool),
+        eligibleCount: pool.where(scope.matches).length,
+      );
+    }
+
     return [
-      StorePackOffer(
-        category: PackCategory.global,
-        title: 'Global Pack',
-        scopeValue: null,
-        price: engine.packPriceFor(global, pool),
-        eligibleCount: pool.length,
-      ),
+      for (final tier in PackTier.values)
+        offerFor(PackCategory.global, null, tier, 'Global Pack'),
       for (final position in Position.values)
-        () {
-          final scope = PackScope(
-              category: PackCategory.position, position: position);
-          final eligible =
-              pool.where(scope.matches).toList(growable: false);
-          return StorePackOffer(
-            category: PackCategory.position,
-            title: '${position.code} Position Pack',
-            scopeValue: position.code,
-            price: engine.packPriceFor(scope, pool),
-            eligibleCount: eligible.length,
-          );
-        }(),
+        for (final tier in PackTier.values)
+          offerFor(PackCategory.position, position.code, tier,
+              '${position.code} Position Pack'),
     ];
   }
 
   /// Buys one pack with Coins (GDD 5.5: prices come from the Economy
-  /// Engine's expected-contents formula, charged atomically with a
-  /// ledger row). The bought pack lands in the club's inventory like any
-  /// other and is opened via [openPack].
+  /// Engine's expected-contents formula — driven by the pack's [tier] —
+  /// and are charged atomically with a ledger row). The bought pack lands
+  /// in the club's inventory like any other and is opened via [openPack].
   Future<Pack> buyPack({
     required PackCategory category,
+    PackTier tier = PackTier.bronze,
     String? nationality,
     Position? position,
   }) async {
@@ -475,6 +565,7 @@ class CollectionStore {
       category: category,
       nationality: nationality,
       position: position,
+      tier: tier,
     );
     final pool = registry.all
         .where((p) => scope.matches(p))
@@ -497,11 +588,12 @@ class CollectionStore {
           .write(ClubsCompanion(coins: Value(userClub.coins - price)));
       await db.coinLedger(userClub.id, -price,
           reason: 'pack_purchase',
-          detail: 'Bought ${category.name} pack');
+          detail: 'Bought ${tier.label} ${category.name} pack');
       final id = await db.into(db.packs).insert(PacksCompanion.insert(
             clubId: userClub.id,
             category: category.name,
             scopeValue: Value(position?.code ?? nationality),
+            tier: Value(tier.name),
             price: Value(price),
             source: const Value('purchase'),
             createdAt: now,

@@ -2386,6 +2386,16 @@ class $PacksTable extends Packs with TableInfo<$PacksTable, Pack> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _tierMeta = const VerificationMeta('tier');
+  @override
+  late final GeneratedColumn<String> tier = GeneratedColumn<String>(
+    'tier',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('bronze'),
+  );
   static const VerificationMeta _priceMeta = const VerificationMeta('price');
   @override
   late final GeneratedColumn<int> price = GeneratedColumn<int>(
@@ -2447,6 +2457,7 @@ class $PacksTable extends Packs with TableInfo<$PacksTable, Pack> {
     clubId,
     category,
     scopeValue,
+    tier,
     price,
     source,
     opened,
@@ -2488,6 +2499,12 @@ class $PacksTable extends Packs with TableInfo<$PacksTable, Pack> {
       context.handle(
         _scopeValueMeta,
         scopeValue.isAcceptableOrUnknown(data['scope_value']!, _scopeValueMeta),
+      );
+    }
+    if (data.containsKey('tier')) {
+      context.handle(
+        _tierMeta,
+        tier.isAcceptableOrUnknown(data['tier']!, _tierMeta),
       );
     }
     if (data.containsKey('price')) {
@@ -2547,6 +2564,10 @@ class $PacksTable extends Packs with TableInfo<$PacksTable, Pack> {
         DriftSqlType.string,
         data['${effectivePrefix}scope_value'],
       ),
+      tier: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tier'],
+      )!,
       price: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}price'],
@@ -2581,6 +2602,7 @@ class Pack extends DataClass implements Insertable<Pack> {
   final int clubId;
   final String category;
   final String? scopeValue;
+  final String tier;
   final int price;
   final String source;
   final bool opened;
@@ -2591,6 +2613,7 @@ class Pack extends DataClass implements Insertable<Pack> {
     required this.clubId,
     required this.category,
     this.scopeValue,
+    required this.tier,
     required this.price,
     required this.source,
     required this.opened,
@@ -2606,6 +2629,7 @@ class Pack extends DataClass implements Insertable<Pack> {
     if (!nullToAbsent || scopeValue != null) {
       map['scope_value'] = Variable<String>(scopeValue);
     }
+    map['tier'] = Variable<String>(tier);
     map['price'] = Variable<int>(price);
     map['source'] = Variable<String>(source);
     map['opened'] = Variable<bool>(opened);
@@ -2624,6 +2648,7 @@ class Pack extends DataClass implements Insertable<Pack> {
       scopeValue: scopeValue == null && nullToAbsent
           ? const Value.absent()
           : Value(scopeValue),
+      tier: Value(tier),
       price: Value(price),
       source: Value(source),
       opened: Value(opened),
@@ -2644,6 +2669,7 @@ class Pack extends DataClass implements Insertable<Pack> {
       clubId: serializer.fromJson<int>(json['clubId']),
       category: serializer.fromJson<String>(json['category']),
       scopeValue: serializer.fromJson<String?>(json['scopeValue']),
+      tier: serializer.fromJson<String>(json['tier']),
       price: serializer.fromJson<int>(json['price']),
       source: serializer.fromJson<String>(json['source']),
       opened: serializer.fromJson<bool>(json['opened']),
@@ -2659,6 +2685,7 @@ class Pack extends DataClass implements Insertable<Pack> {
       'clubId': serializer.toJson<int>(clubId),
       'category': serializer.toJson<String>(category),
       'scopeValue': serializer.toJson<String?>(scopeValue),
+      'tier': serializer.toJson<String>(tier),
       'price': serializer.toJson<int>(price),
       'source': serializer.toJson<String>(source),
       'opened': serializer.toJson<bool>(opened),
@@ -2672,6 +2699,7 @@ class Pack extends DataClass implements Insertable<Pack> {
     int? clubId,
     String? category,
     Value<String?> scopeValue = const Value.absent(),
+    String? tier,
     int? price,
     String? source,
     bool? opened,
@@ -2682,6 +2710,7 @@ class Pack extends DataClass implements Insertable<Pack> {
     clubId: clubId ?? this.clubId,
     category: category ?? this.category,
     scopeValue: scopeValue.present ? scopeValue.value : this.scopeValue,
+    tier: tier ?? this.tier,
     price: price ?? this.price,
     source: source ?? this.source,
     opened: opened ?? this.opened,
@@ -2696,6 +2725,7 @@ class Pack extends DataClass implements Insertable<Pack> {
       scopeValue: data.scopeValue.present
           ? data.scopeValue.value
           : this.scopeValue,
+      tier: data.tier.present ? data.tier.value : this.tier,
       price: data.price.present ? data.price.value : this.price,
       source: data.source.present ? data.source.value : this.source,
       opened: data.opened.present ? data.opened.value : this.opened,
@@ -2711,6 +2741,7 @@ class Pack extends DataClass implements Insertable<Pack> {
           ..write('clubId: $clubId, ')
           ..write('category: $category, ')
           ..write('scopeValue: $scopeValue, ')
+          ..write('tier: $tier, ')
           ..write('price: $price, ')
           ..write('source: $source, ')
           ..write('opened: $opened, ')
@@ -2726,6 +2757,7 @@ class Pack extends DataClass implements Insertable<Pack> {
     clubId,
     category,
     scopeValue,
+    tier,
     price,
     source,
     opened,
@@ -2740,6 +2772,7 @@ class Pack extends DataClass implements Insertable<Pack> {
           other.clubId == this.clubId &&
           other.category == this.category &&
           other.scopeValue == this.scopeValue &&
+          other.tier == this.tier &&
           other.price == this.price &&
           other.source == this.source &&
           other.opened == this.opened &&
@@ -2752,6 +2785,7 @@ class PacksCompanion extends UpdateCompanion<Pack> {
   final Value<int> clubId;
   final Value<String> category;
   final Value<String?> scopeValue;
+  final Value<String> tier;
   final Value<int> price;
   final Value<String> source;
   final Value<bool> opened;
@@ -2762,6 +2796,7 @@ class PacksCompanion extends UpdateCompanion<Pack> {
     this.clubId = const Value.absent(),
     this.category = const Value.absent(),
     this.scopeValue = const Value.absent(),
+    this.tier = const Value.absent(),
     this.price = const Value.absent(),
     this.source = const Value.absent(),
     this.opened = const Value.absent(),
@@ -2773,6 +2808,7 @@ class PacksCompanion extends UpdateCompanion<Pack> {
     required int clubId,
     required String category,
     this.scopeValue = const Value.absent(),
+    this.tier = const Value.absent(),
     this.price = const Value.absent(),
     this.source = const Value.absent(),
     this.opened = const Value.absent(),
@@ -2786,6 +2822,7 @@ class PacksCompanion extends UpdateCompanion<Pack> {
     Expression<int>? clubId,
     Expression<String>? category,
     Expression<String>? scopeValue,
+    Expression<String>? tier,
     Expression<int>? price,
     Expression<String>? source,
     Expression<bool>? opened,
@@ -2797,6 +2834,7 @@ class PacksCompanion extends UpdateCompanion<Pack> {
       if (clubId != null) 'club_id': clubId,
       if (category != null) 'category': category,
       if (scopeValue != null) 'scope_value': scopeValue,
+      if (tier != null) 'tier': tier,
       if (price != null) 'price': price,
       if (source != null) 'source': source,
       if (opened != null) 'opened': opened,
@@ -2810,6 +2848,7 @@ class PacksCompanion extends UpdateCompanion<Pack> {
     Value<int>? clubId,
     Value<String>? category,
     Value<String?>? scopeValue,
+    Value<String>? tier,
     Value<int>? price,
     Value<String>? source,
     Value<bool>? opened,
@@ -2821,6 +2860,7 @@ class PacksCompanion extends UpdateCompanion<Pack> {
       clubId: clubId ?? this.clubId,
       category: category ?? this.category,
       scopeValue: scopeValue ?? this.scopeValue,
+      tier: tier ?? this.tier,
       price: price ?? this.price,
       source: source ?? this.source,
       opened: opened ?? this.opened,
@@ -2843,6 +2883,9 @@ class PacksCompanion extends UpdateCompanion<Pack> {
     }
     if (scopeValue.present) {
       map['scope_value'] = Variable<String>(scopeValue.value);
+    }
+    if (tier.present) {
+      map['tier'] = Variable<String>(tier.value);
     }
     if (price.present) {
       map['price'] = Variable<int>(price.value);
@@ -2869,6 +2912,7 @@ class PacksCompanion extends UpdateCompanion<Pack> {
           ..write('clubId: $clubId, ')
           ..write('category: $category, ')
           ..write('scopeValue: $scopeValue, ')
+          ..write('tier: $tier, ')
           ..write('price: $price, ')
           ..write('source: $source, ')
           ..write('opened: $opened, ')
@@ -7505,6 +7549,7 @@ typedef $$PacksTableCreateCompanionBuilder = PacksCompanion Function({
   required int clubId,
   required String category,
   Value<String?> scopeValue,
+  Value<String> tier,
   Value<int> price,
   Value<String> source,
   Value<bool> opened,
@@ -7516,6 +7561,7 @@ typedef $$PacksTableUpdateCompanionBuilder = PacksCompanion Function({
   Value<int> clubId,
   Value<String> category,
   Value<String?> scopeValue,
+  Value<String> tier,
   Value<int> price,
   Value<String> source,
   Value<bool> opened,
@@ -7548,6 +7594,11 @@ class $$PacksTableFilterComposer extends Composer<_$AppDatabase, $PacksTable> {
 
   ColumnFilters<String> get scopeValue => $composableBuilder(
     column: $table.scopeValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tier => $composableBuilder(
+    column: $table.tier,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7606,6 +7657,11 @@ class $$PacksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get tier => $composableBuilder(
+    column: $table.tier,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get price => $composableBuilder(
     column: $table.price,
     builder: (column) => ColumnOrderings(column),
@@ -7655,6 +7711,9 @@ class $$PacksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get tier =>
+      $composableBuilder(column: $table.tier, builder: (column) => column);
+
   GeneratedColumn<int> get price =>
       $composableBuilder(column: $table.price, builder: (column) => column);
 
@@ -7703,6 +7762,7 @@ class $$PacksTableTableManager
                 Value<int> clubId = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<String?> scopeValue = const Value.absent(),
+                Value<String> tier = const Value.absent(),
                 Value<int> price = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<bool> opened = const Value.absent(),
@@ -7713,6 +7773,7 @@ class $$PacksTableTableManager
                 clubId: clubId,
                 category: category,
                 scopeValue: scopeValue,
+                tier: tier,
                 price: price,
                 source: source,
                 opened: opened,
@@ -7725,6 +7786,7 @@ class $$PacksTableTableManager
                 required int clubId,
                 required String category,
                 Value<String?> scopeValue = const Value.absent(),
+                Value<String> tier = const Value.absent(),
                 Value<int> price = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<bool> opened = const Value.absent(),
@@ -7735,6 +7797,7 @@ class $$PacksTableTableManager
                 clubId: clubId,
                 category: category,
                 scopeValue: scopeValue,
+                tier: tier,
                 price: price,
                 source: source,
                 opened: opened,
