@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../features/ads/ad_engine.dart' show AdEngine, AdRewardKind;
 import '../../features/economy/economy_engine.dart';
 import '../../features/squad/squad_engine.dart';
+import '../../features/upgrades/upgrade_engine.dart' show UpgradeEngine;
 
 /// Collection tab: owned players with sell and duplicate-merge actions
 /// (GDD 5.7/8.1). Squad members cannot be sold (enforced by the store).
@@ -37,11 +39,18 @@ class CollectionScreen extends ConsumerWidget {
                 byPlayer[card.base.playerId] ?? const <PlayerCard>[];
             final sellPrice = economy.sellPriceOfUpgraded(
                 card.base, card.upgradeLevel);
+            final upgradeCost = card.upgradeLevel < UpgradeEngine.maxUpgradeLevel
+                ? economy.upgradeCostOf(card.base, card.upgradeLevel)
+                : null;
             return _CollectionTile(
               card: card,
               duplicateCount: duplicates.length,
               sellPrice: sellPrice,
+              upgradeCost: upgradeCost,
               onSell: () => _sell(context, ref, card),
+              onUpgrade: upgradeCost != null
+                  ? () => _upgrade(context, ref, card)
+                  : null,
               onMerge: duplicates.length >= 2
                   ? () => _merge(context, ref, duplicates[0], duplicates[1])
                   : null,
@@ -59,12 +68,57 @@ class CollectionScreen extends ConsumerWidget {
   }
 
   Future<void> _sell(BuildContext context, WidgetRef ref, PlayerCard card) async {
+    // GDD 19.3 'Player selling bonus': offer the ad before the sale so
+    // the boosted price is the one confirmed. Optional, skippable.
+    final ads = await ref.read(adStoreProvider.future);
+    final club = await ref.read(clubProvider.future);
+    final canBoost = club != null &&
+        await ads.remainingToday(club.id, AdRewardKind.sellingBonus) > 0;
+    var bonusWatched = false;
+    if (canBoost) {
+      if (!context.mounted) return;
+      bonusWatched = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Boost this sale?'),
+              content: const Text(
+                  'Watch a rewarded ad to add +20% to the selling price of '
+                  'this sale. Ads are always optional.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('No thanks')),
+                FilledButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.play_circle_outline),
+                    label: const Text('Watch ad')),
+              ],
+            ),
+          ) ??
+          false;
+      if (bonusWatched) {
+        try {
+          await ads.grantBoost(
+            clubId: club.id,
+            kind: AdRewardKind.sellingBonus,
+            playbackCompleted: true,
+          );
+        } catch (_) {
+          bonusWatched = false;
+        }
+      }
+    }
+    if (!context.mounted) return;
+
+    final price = _price(card);
+    final boostedPrice =
+        bonusWatched ? const AdEngine().sellingBonus(price) : price;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Sell player?'),
         content: Text(
-            '${card.base.name} will be sold for ${formatCoins(_price(card))} coins. '
+            '${card.base.name} will be sold for ${formatCoins(boostedPrice)} coins. '
             'This cannot be undone.'),
         actions: [
           TextButton(
@@ -97,6 +151,66 @@ class CollectionScreen extends ConsumerWidget {
 
   int _price(PlayerCard card) => EconomyEngine()
       .sellPriceOfUpgraded(card.base, card.upgradeLevel);
+
+  /// Buys one upgrade level with coins (GDD 8.4). When the user has
+  /// watched an upgrade-discount ad (GDD 19.3) the dialog shows the
+  /// discounted price; the store charges and consumes it.
+  Future<void> _upgrade(BuildContext context, WidgetRef ref, PlayerCard card) async {
+    const economy = EconomyEngine();
+    final store = await ref.read(collectionStoreProvider.future);
+    final club = await ref.read(clubProvider.future);
+    if (club == null) return;
+    if (!context.mounted) return;
+    final ads = await ref.read(adStoreProvider.future);
+    final fullCost =
+        economy.upgradeCostOf(card.base, card.upgradeLevel);
+    final discounted = await ads.upgradeDiscountActive(club.id);
+    final price = discounted
+        ? const AdEngine().discountedUpgradeCost(fullCost)
+        : fullCost;
+
+    if (!context.mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Upgrade ${card.base.name}?'),
+        content: Text(
+            'Next level: +${card.upgradeLevel + 1}\n'
+            'Cost: ${formatCoins(price)} coins'
+            '${discounted ? ' (ad discount applied)' : ''}\n'
+            'Balance: ${formatCoins(club.coins)} coins'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Upgrade')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final result = await store.buyUpgrade(
+        ownedId: card.ownedId,
+        random: ref.read(randomProvider),
+      );
+      ref.invalidate(collectionProvider);
+      ref.invalidate(clubProvider);
+      ref.invalidate(squadProvider);
+      if (context.mounted) {
+        final gains = result.upgradeLevel;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                '${card.base.name} upgraded to +$gains for ${formatCoins(result.coins)} coins')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
 
   Future<void> _merge(BuildContext context, WidgetRef ref,
       PlayerCard target, PlayerCard duplicate) async {
@@ -133,7 +247,9 @@ class _CollectionTile extends StatelessWidget {
     required this.card,
     required this.duplicateCount,
     required this.sellPrice,
+    required this.upgradeCost,
     required this.onSell,
+    required this.onUpgrade,
     required this.onMerge,
     required this.inSquad,
   });
@@ -141,7 +257,9 @@ class _CollectionTile extends StatelessWidget {
   final PlayerCard card;
   final int duplicateCount;
   final int sellPrice;
+  final int? upgradeCost;
   final VoidCallback onSell;
+  final VoidCallback? onUpgrade;
   final VoidCallback? onMerge;
   final bool inSquad;
 
@@ -204,8 +322,14 @@ class _CollectionTile extends StatelessWidget {
           onSelected: (v) {
             if (v == 'sell') onSell();
             if (v == 'merge') onMerge?.call();
+            if (v == 'upgrade') onUpgrade?.call();
           },
           itemBuilder: (context) => [
+            if (onUpgrade != null)
+              PopupMenuItem(
+                  value: 'upgrade',
+                  child: Text(
+                      'Upgrade · ${formatCoins(upgradeCost!)} coins')),
             PopupMenuItem(
                 value: 'sell',
                 child: Text('Sell · ${formatCoins(sellPrice)} coins')),

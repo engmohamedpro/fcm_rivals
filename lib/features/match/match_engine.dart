@@ -422,6 +422,20 @@ class MatchEngine {
     ];
   }
 
+  /// Players currently on the pitch for [side], formation-slot order —
+  /// for the live substitution UI. Empty slots (sent off) are skipped.
+  List<MatchPlayer> onPitchOf(MatchSide side) {
+    final rt = _runtimeOf(side);
+    return [for (final p in rt.onPitch.whereType<MatchPlayer>()) p];
+  }
+
+  /// Bench players for [side] still available to come on.
+  List<MatchPlayer> benchOf(MatchSide side) => [..._runtimeOf(side).bench];
+
+  /// Substitutions used so far by [side] (of config.maxSubstitutions).
+  int substitutionsUsedOf(MatchSide side) =>
+      _runtimeOf(side).substitutionsUsed;
+
   /// Queues a command; it is applied at the next minute boundary with
   /// atMinute <= that minute (GDD 10.4: changes affect future events
   /// immediately, never past ones).

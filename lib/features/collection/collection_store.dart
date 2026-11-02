@@ -16,6 +16,7 @@ import 'package:drift/drift.dart';
 import '../../core/database/app_database.dart';
 import '../../core/domain/players.dart';
 import '../ads/ad_engine.dart';
+import '../ads/ad_store.dart';
 import '../economy/economy_engine.dart';
 import '../match/stamina.dart' show StaminaConfig, PepTalk, recoverStamina, applyPepTalkBonus;
 import '../packs/pack_engine.dart';
@@ -91,18 +92,51 @@ class DatasetUpdateReport {
       compensations.fold(0, (a, c) => a + c.coins);
 }
 
+/// Result of buying one upgrade level with coins (GDD 8.4).
+class UpgradePurchaseResult {
+  const UpgradePurchaseResult({
+    required this.ownedId,
+    required this.playerName,
+    required this.upgradeLevel,
+    required this.coins,
+    required this.fullCost,
+    required this.discountApplied,
+  });
+
+  final int ownedId;
+  final String playerName;
+  final int upgradeLevel;
+
+  /// Coins actually charged (the discounted price when an ad discount
+  /// applied).
+  final int coins;
+
+  /// Undiscounted Economy Engine price.
+  final int fullCost;
+
+  /// Whether the GDD 19.3 ad discount was applied (and consumed).
+  final bool discountApplied;
+}
+
 class CollectionStore {
   CollectionStore({
     required this.db,
     this.economy = const EconomyEngine(),
     this.upgrades = const UpgradeEngine(),
     this.squad = const SquadEngine(),
+    this.adStore,
   });
 
   final AppDatabase db;
   final EconomyEngine economy;
   final UpgradeEngine upgrades;
   final SquadEngine squad;
+
+  /// Rewarded-ad store for the economy ad surfaces (GDD 19.3 'Other
+  /// Proposed'): upgrade discount, selling bonus, daily reward
+  /// multiplier. Optional — when absent, all ad boosts are simply
+  /// inactive and the coin paths charge full price.
+  final AdStore? adStore;
 
   /// Packs draw from the in-memory registry mirrored into SQLite; kept in
   /// sync by [applyDatasetUpdate] and lazily loaded on first use.
@@ -483,6 +517,12 @@ class CollectionStore {
 
     var credit = 0;
     final sold = <int>[];
+    // GDD 19.3 'Player selling bonus': one ad boosts this sale by +20%.
+    final ads = adStore;
+    var bonusActive = false;
+    if (ads != null && await ads.sellingBonusActive(club.id)) {
+      bonusActive = true;
+    }
     await db.transaction(() async {
       for (final id in ownedIds) {
         final copy = await (db.select(db.ownedPlayers)
@@ -496,8 +536,12 @@ class CollectionStore {
         final base = await (db.select(db.players)
               ..where((p) => p.playerId.equals(copy.playerId)))
             .getSingle();
-        credit += economy.sellPriceOfUpgraded(
+        var price = economy.sellPriceOfUpgraded(
             _toBasePlayer(base), copy.upgradeLevel);
+        if (bonusActive) {
+          price = const AdEngine().sellingBonus(price);
+        }
+        credit += price;
         sold.add(id);
         await (db.update(db.ownedPlayers)..where((o) => o.id.equals(id)))
             .write(const OwnedPlayersCompanion(
@@ -508,7 +552,11 @@ class CollectionStore {
             .write(ClubsCompanion(coins: Value(club.coins + credit)));
         await db.coinLedger(club.id, credit,
             reason: 'player_sale',
-            detail: '${sold.length} players sold');
+            detail:
+                '${sold.length} players sold${bonusActive ? ' (ad selling bonus)' : ''}');
+        if (bonusActive) {
+          await ads!.consumeSellingBonus(club.id);
+        }
       }
     });
     return SaleResult(soldOwnedIds: sold, credit: credit);
@@ -595,6 +643,86 @@ class CollectionStore {
       duplicateOwnedId: duplicateOwnedId,
       newUpgradeLevel: outcome.newUpgradeLevel,
       attributeGain: outcome.attributeGain,
+    );
+  }
+
+  /// Buys one upgrade level with Coins (GDD 8.4: cost = Economy Engine
+  /// formula on Market Value and current Upgrade Level). When an ad
+  /// discount is active (GDD 19.3 'Upgrade cost discount') the discounted
+  /// price is charged and the boost consumed. The attribute points land
+  /// through the same UpgradeEngine allocation as merges.
+  Future<UpgradePurchaseResult> buyUpgrade({
+    required int ownedId,
+    required math.Random random,
+  }) async {
+    final club = await getClub();
+    if (club == null) {
+      throw const CollectionException('No club');
+    }
+    final copy = await (db.select(db.ownedPlayers)
+          ..where((o) => o.id.equals(ownedId) & o.status.equals('owned')))
+        .getSingleOrNull();
+    if (copy == null) {
+      throw const CollectionException('Player not owned');
+    }
+    if (copy.upgradeLevel >= UpgradeEngine.maxUpgradeLevel) {
+      throw const CollectionException('Maximum upgrade level reached');
+    }
+    final base = await (db.select(db.players)
+          ..where((p) => p.playerId.equals(copy.playerId)))
+        .getSingle();
+    final fullCost = economy.upgradeCostOf(_toBasePlayer(base), copy.upgradeLevel);
+
+    var price = fullCost;
+    var discounted = false;
+    final ads = adStore;
+    if (ads != null && await ads.upgradeDiscountActive(club.id)) {
+      price = const AdEngine().discountedUpgradeCost(fullCost);
+      discounted = true;
+    }
+    if (club.coins < price) {
+      throw CollectionException('Not enough coins (need $price)');
+    }
+
+    final outcome = upgrades.merge(
+      position: Position.fromCode(base.position),
+      targetLevel: copy.upgradeLevel,
+      duplicateLevel: 0,
+      random: random,
+    );
+
+    await db.transaction(() async {
+      await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
+          .write(ClubsCompanion(coins: Value(club.coins - price)));
+      await db.coinLedger(club.id, -price,
+          reason: 'upgrade_purchase',
+          detail:
+              'Bought upgrade to +${outcome.newUpgradeLevel} for ${base.name}');
+      await (db.update(db.ownedPlayers)
+            ..where((o) => o.id.equals(ownedId)))
+          .write(OwnedPlayersCompanion(
+        upgradeLevel: Value(outcome.newUpgradeLevel),
+        upgradedAttack: Value(
+            copy.upgradedAttack + (outcome.attributeGain[PlayerAttribute.attack] ?? 0)),
+        upgradedSupport: Value(
+            copy.upgradedSupport + (outcome.attributeGain[PlayerAttribute.support] ?? 0)),
+        upgradedDefence: Value(
+            copy.upgradedDefence + (outcome.attributeGain[PlayerAttribute.defence] ?? 0)),
+        upgradedGoalkeeping: Value(copy.upgradedGoalkeeping +
+            (outcome.attributeGain[PlayerAttribute.goalkeeping] ?? 0)),
+      ));
+      if (discounted) {
+        await ads!.consumeUpgradeDiscount(club.id);
+      }
+    });
+
+    return UpgradePurchaseResult(
+      ownedId: ownedId,
+      playerName: base.name,
+      upgradeLevel: outcome.newUpgradeLevel,
+      coins: price,
+      discountApplied: discounted,
+      fullCost: fullCost,
     );
   }
 
@@ -711,9 +839,25 @@ class CollectionStore {
     PepTalk? pepTalk,
     int restDays = 3,
     bool adBoostedRecovery = false,
+    DateTime? now,
   }) async {
+    final timestamp = now ?? DateTime.now();
     final staminaConfig = const StaminaConfig();
     final adEngine = const AdEngine();
+    // GDD 19.3 'Daily reward multiplier': rewards earned today are boosted
+    // while a daily-multiplier ad was watched (no consumption — it lasts
+    // the whole day it was granted).
+    final ads = adStore;
+    var reward = rewardCoins;
+    if (ads != null && rewardCoins > 0) {
+      final club = await (db.select(db.clubs)
+            ..where((c) => c.id.equals(clubId)))
+          .getSingleOrNull();
+      if (club != null &&
+          await ads.dailyMultiplierActive(club.id, now: timestamp)) {
+        reward = adEngine.boostedMatchReward(rewardCoins);
+      }
+    }
     await db.transaction(() async {
       for (final p in players) {
         final row = await (db.select(db.ownedPlayers)
@@ -754,15 +898,16 @@ class CollectionStore {
             .write(OwnedPlayersCompanion(
                 staminaPercent: Value(next.round().clamp(0, 100))));
       }
-      if (rewardCoins > 0) {
+      if (reward > 0) {
         final club = await (db.select(db.clubs)
               ..where((c) => c.id.equals(clubId)))
             .getSingle();
         await (db.update(db.clubs)..where((c) => c.id.equals(clubId)))
-            .write(ClubsCompanion(coins: Value(club.coins + rewardCoins)));
-        await db.coinLedger(clubId, rewardCoins,
+            .write(ClubsCompanion(coins: Value(club.coins + reward)));
+        await db.coinLedger(clubId, reward,
             reason: 'match_reward',
-            detail: 'Match reward for ${players.length} squad players');
+            detail: 'Match reward for ${players.length} squad players'
+                '${reward != rewardCoins ? ' (ad daily multiplier)' : ''}');
       }
     });
   }

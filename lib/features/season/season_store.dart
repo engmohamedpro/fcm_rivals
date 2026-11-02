@@ -13,6 +13,8 @@ import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/domain/players.dart';
+import '../ads/ad_engine.dart';
+import '../ads/ad_store.dart';
 import '../collection/collection_store.dart';
 import '../match/match_engine.dart';
 import '../match/match_session.dart';
@@ -690,8 +692,18 @@ class SeasonStore {
     );
     final outcome = engine.outcomeForPosition(userEntry.position);
     final nextDivision = engine.nextDivisionFor(season.division, outcome);
-    final rewardCoins =
+    final baseRewardCoins =
         engine.seasonRewardCoins(division: season.division, position: userEntry.position);
+
+    // GDD 19.3 'Season reward multiplier': one ad watched during the
+    // season boosts this payout by +25%; the boost is consumed here.
+    final ads = AdStore(db: db);
+    var seasonMultiplierUsed = false;
+    var rewardCoins = baseRewardCoins;
+    if (await ads.seasonMultiplierActive(season.userClubId)) {
+      rewardCoins = const AdEngine().boostedSeasonReward(baseRewardCoins);
+      seasonMultiplierUsed = true;
+    }
 
     // GDD 18 pack rewards.
     final packCategory = switch (outcome) {
@@ -769,9 +781,13 @@ class SeasonStore {
             balanceAfter: club.coins + rewardCoins,
             reason: 'season_reward',
             detail: Value('Season ${season.ordinal} · division ${season.division} · '
-                'finished ${userEntry.position} (${outcome.name})'),
+                'finished ${userEntry.position} (${outcome.name})'
+                '${seasonMultiplierUsed ? ' · ad season multiplier' : ''}'),
             createdAt: now,
           ));
+      if (seasonMultiplierUsed) {
+        await ads.consumeSeasonMultiplier(club.id, now: now);
+      }
 
       // Reward packs (GDD 18 table): 1st = premium, 2nd–3rd = normal pack,
       // other promotions = a pack of the user's choice (stored with a

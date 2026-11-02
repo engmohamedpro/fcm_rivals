@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/domain/leagues.dart';
 import '../../core/domain/players.dart';
+import '../../features/ads/ad_engine.dart' show AdRewardKind;
+import '../../features/packs/pack_engine.dart' show PackCategory;
 
 /// Packs tab: lists unopened packs (36 starting position packs on a new
 /// club, GDD 5.8) and handles opening with a reveal sequence.
@@ -22,20 +24,14 @@ class PacksScreen extends ConsumerWidget {
               onTap: () => ref.invalidate(availablePacksProvider)),
         ]),
         data: (packs) {
-          if (packs.isEmpty) {
-            return ListView(children: const [
-              Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(
-                    child: Text('No packs available yet.\n'
-                        'Season rewards grant more packs.')),
-              ),
-            ]);
-          }
           return ListView.builder(
-            itemCount: packs.length,
+            // +1 slot for the rewarded-ad free pack offer (GDD 19.3).
+            itemCount: packs.length + 1,
             itemBuilder: (context, index) {
-              final pack = packs[index];
+              if (index == 0) {
+                return const _FreePackAdCard();
+              }
+              final pack = packs[index - 1];
               final position = pack.scopeValue != null
                   ? Position.fromCode(pack.scopeValue!)
                   : null;
@@ -77,6 +73,87 @@ class PacksScreen extends ConsumerWidget {
       fullscreenDialog: true,
       builder: (_) => PackRevealScreen(players: result.players),
     ));
+  }
+}
+
+/// Rewarded-ad free pack offer (GDD 19.3 'Free user-selected pack'):
+/// one global pack per day for one completed ad. Always optional.
+class _FreePackAdCard extends ConsumerStatefulWidget {
+  const _FreePackAdCard();
+
+  @override
+  ConsumerState<_FreePackAdCard> createState() => _FreePackAdCardState();
+}
+
+class _FreePackAdCardState extends ConsumerState<_FreePackAdCard> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return FutureBuilder<AdRewardKind?>(
+      future: _adAvailable(),
+      builder: (context, snapshot) {
+        final available = snapshot.data != null;
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          color: available
+              ? theme.colorScheme.secondaryContainer
+              : theme.colorScheme.surfaceContainerHighest,
+          child: ListTile(
+            leading: const Icon(Icons.play_circle_outline),
+            title: const Text('Free pack — watch an ad'),
+            subtitle: Text(available
+                ? 'One global pack (3 players) for a completed rewarded ad'
+                : 'Already claimed today · ads are always optional'),
+            trailing: _busy
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : null,
+            onTap: available && !_busy ? _claim : null,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Non-null when the free-pack ad is still available today.
+  Future<AdRewardKind?> _adAvailable() async {
+    final ads = await ref.read(adStoreProvider.future);
+    final club = await ref.read(clubProvider.future);
+    if (club == null) return null;
+    return await ads.remainingToday(club.id, AdRewardKind.freePack) > 0
+        ? AdRewardKind.freePack
+        : null;
+  }
+
+  Future<void> _claim() async {
+    setState(() => _busy = true);
+    try {
+      final ads = await ref.read(adStoreProvider.future);
+      final club = await ref.read(clubProvider.future);
+      if (club == null) return;
+      // Playback is simulated in v1; the store validates completion.
+      await ads.grantFreePack(
+        clubId: club.id,
+        category: PackCategory.global,
+        playbackCompleted: true,
+      );
+      ref.invalidate(availablePacksProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Free pack added to your packs')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ad reward unavailable')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
 

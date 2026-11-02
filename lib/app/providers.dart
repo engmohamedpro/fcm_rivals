@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../core/database/app_database.dart';
+import '../features/ads/ad_store.dart';
 import '../features/collection/collection_store.dart';
 import '../features/season/season_engine.dart' show StandingEntry;
 import '../features/season/season_store.dart';
@@ -40,10 +41,16 @@ final datasetBootstrapProvider = FutureProvider<void>((ref) async {
   await store.importBundledDataset(jsonText);
 });
 
+/// Rewarded-ad store (GDD 19): economy ad surfaces for the collection.
+final adStoreProvider = FutureProvider<AdStore>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  return AdStore(db: db);
+});
+
 final collectionStoreProvider = FutureProvider<CollectionStore>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   await ref.watch(datasetBootstrapProvider.future);
-  return CollectionStore(db: db);
+  return CollectionStore(db: db, adStore: await ref.watch(adStoreProvider.future));
 });
 
 /// Random source for pack draws and merges; seedable in tests.

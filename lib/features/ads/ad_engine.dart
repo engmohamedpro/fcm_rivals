@@ -17,6 +17,11 @@ class AdConfig {
     this.boostedRecoveryBonus = 0.15,
     this.boostedRecoveryCap = 100,
     this.matchReplayWindowHours = 24,
+    this.upgradeDiscountFraction = 0.20,
+    this.sellingBonusFraction = 0.20,
+    this.dailyRewardMultiplier = 1.5,
+    this.seasonRewardMultiplier = 1.25,
+    this.freePackValueTargetEur = 20_000_000,
   });
 
   /// Maximum completed ads of one reward kind per day (GDD 19.3/19.4).
@@ -34,14 +39,37 @@ class AdConfig {
 
   /// How long after full time a match replay stays available.
   final int matchReplayWindowHours;
+
+  /// Upgrade cost discount fraction (GDD 19.3 'Upgrade cost discount').
+  final double upgradeDiscountFraction;
+
+  /// Selling bonus fraction (GDD 19.3 'Player selling bonus').
+  final double sellingBonusFraction;
+
+  /// Match reward multiplier while active (GDD 19.3 'Daily reward
+  /// multiplier' — lasts the day it was watched).
+  final double dailyRewardMultiplier;
+
+  /// Season reward multiplier (GDD 19.3 'Season reward multiplier').
+  final double seasonRewardMultiplier;
+
+  /// The free ad pack draws at roughly this market-value target so its
+  /// contents stay comparable to a normal purchasable pack.
+  final int freePackValueTargetEur;
 }
 
 const AdConfig defaultAdConfig = AdConfig();
 
-/// Reward kinds offered in Version 1 (GDD 19.3).
+/// Reward kinds offered in Version 1 (GDD 19.3): the two mandatory
+/// surfaces plus the 'Other Proposed' list.
 enum AdRewardKind {
   boostedRecovery('Boosted recovery'),
-  matchReplay('Match replay');
+  matchReplay('Match replay'),
+  freePack('Free pack'),
+  upgradeDiscount('Upgrade discount'),
+  sellingBonus('Selling bonus'),
+  dailyRewardMultiplier('Daily reward multiplier'),
+  seasonRewardMultiplier('Season reward multiplier');
 
   const AdRewardKind(this.displayName);
   final String displayName;
@@ -174,4 +202,33 @@ class AdEngine {
         staminaAfterNaturalRecovery + naturalRecovery * config.boostedRecoveryBonus;
     return boosted.clamp(0, config.boostedRecoveryCap.toDouble());
   }
+
+  /// Discounted upgrade price (GDD 19.3 'Upgrade cost discount'): the
+  /// flat fraction off, floored at 50 coins so an upgrade never becomes
+  /// free (or at the full price when that is already lower). Exactly one
+  /// discount applies per purchase — the store consumes the boost when
+  /// it is used.
+  int discountedUpgradeCost(int fullCost) {
+    final discounted = (fullCost * (1 - config.upgradeDiscountFraction)).round();
+    if (fullCost <= 50) return fullCost;
+    return discounted.clamp(50, fullCost);
+  }
+
+  /// Selling bonus (GDD 19.3 'Player selling bonus'): the fraction added
+  /// on top of the normal selling price, per copy sold while the boost is
+  /// active. The store consumes the boost with the sale it applies to.
+  int sellingBonus(int normalPrice) {
+    return (normalPrice * (1 + config.sellingBonusFraction)).round();
+  }
+
+  /// Match reward while the daily multiplier is active (GDD 19.3 'Daily
+  /// reward multiplier'). The multiplier applies to the whole reward —
+  /// base, goals and win bonus alike — and lasts the day.
+  int boostedMatchReward(int normalReward) =>
+      (normalReward * config.dailyRewardMultiplier).round();
+
+  /// Season reward while the season multiplier is active (GDD 19.3
+  /// 'Season reward multiplier'). Applies once, at season completion.
+  int boostedSeasonReward(int normalReward) =>
+      (normalReward * config.seasonRewardMultiplier).round();
 }

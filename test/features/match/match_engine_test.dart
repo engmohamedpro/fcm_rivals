@@ -258,6 +258,36 @@ void main() {
       }, throwsStateError);
     });
 
+    test('UI accessors expose the live substitution state', () {
+      final engine = buildEngine(9);
+      // Before any change: full XI on the pitch, full bench, zero used.
+      expect(engine.onPitchOf(MatchSide.home).length, 11);
+      expect(engine.benchOf(MatchSide.home).length, 5);
+      expect(engine.substitutionsUsedOf(MatchSide.home), 0);
+
+      for (var m = 0; m < 10; m++) {
+        engine.advanceMinute();
+      }
+      engine.queueCommand(SubstitutionCommand(
+          atMinute: 11,
+          side: MatchSide.home,
+          outPlayerId: 100 + 10, // ST
+          inPlayerId: 200)); // bench ST
+      engine.advanceMinute();
+
+      expect(engine.substitutionsUsedOf(MatchSide.home), 1);
+      // The substitute joined the XI; the bench lost him.
+      expect(engine.onPitchOf(MatchSide.home).length, 11);
+      expect(engine.benchOf(MatchSide.home).length, 4);
+      expect(
+          engine.onPitchOf(MatchSide.home)
+              .any((p) => p.playerId == 200),
+          isTrue);
+      expect(
+          engine.benchOf(MatchSide.home).any((p) => p.playerId == 200),
+          isFalse);
+    });
+
     test('red cards reduce the team on the pitch over many matches', () {
       // With ~0.8% straight red + second yellows, some matches in 300
       // should contain one. The on-pitch count must drop when they do.

@@ -413,7 +413,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   }
 
   /// Live tactical changes (GDD 10.4): formation, style, mentality and
-  /// live actions with their explicit percentage effects (GDD 16).
+  /// live actions with their explicit percentage effects (GDD 16), plus
+  /// substitutions (FR-023: five available).
   void _showTacticsSheet(BuildContext context) {
     final session = _session!;
     final nextMinute = session.engine.state.minute + 1;
@@ -477,6 +478,11 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                 ),
               ],
             ),
+            _SubstitutionSection(
+              session: session,
+              side: session.userSide,
+              onSubstitutionQueued: () => Navigator.pop(sheetContext),
+            ),
             section(
               'Effects',
               [
@@ -496,6 +502,118 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
         );
       },
     );
+  }
+}
+
+/// Substitution picker (FR-023: five subs, engine-enforced): tap the
+/// player coming off, then the substitute coming on. Commands take
+/// effect at the next minute boundary like every live change.
+class _SubstitutionSection extends StatefulWidget {
+  const _SubstitutionSection({
+    required this.session,
+    required this.side,
+    required this.onSubstitutionQueued,
+  });
+
+  final MatchSession session;
+  final MatchSide side;
+  final VoidCallback onSubstitutionQueued;
+
+  @override
+  State<_SubstitutionSection> createState() => _SubstitutionSectionState();
+}
+
+class _SubstitutionSectionState extends State<_SubstitutionSection> {
+  MatchPlayer? _selectedOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final session = widget.session;
+    final used = session.engine.substitutionsUsedOf(widget.side);
+    final max = session.engine.config.maxSubstitutions;
+    final onPitch = session.engine.onPitchOf(widget.side);
+    final bench = session.engine.benchOf(widget.side);
+    final remaining = max - used;
+
+    if (remaining <= 0 || bench.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+        child: Text(
+            'Substitutions ($used/$max used — none remaining)',
+            style: theme.textTheme.titleSmall),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          child: Text('Substitutions ($used/$max used)',
+              style: theme.textTheme.titleSmall),
+        ),
+        if (_selectedOut != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+                'Coming off: ${_selectedOut!.name} — pick the substitute:',
+                style: theme.textTheme.bodySmall),
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (_selectedOut == null)
+                for (final p in onPitch)
+                  ActionChip(
+                    avatar: CircleAvatar(
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      child: Text('${p.stamina.round()}%',
+                          style: theme.textTheme.labelSmall),
+                    ),
+                    label: Text('${p.name} (${p.position.code})'),
+                    onPressed: () =>
+                        setState(() => _selectedOut = p),
+                  )
+              else
+                for (final p in bench)
+                  ActionChip(
+                    avatar: CircleAvatar(
+                      backgroundColor: theme.colorScheme.secondaryContainer,
+                      child: Text('${p.stamina.round()}%',
+                          style: theme.textTheme.labelSmall),
+                    ),
+                    label: Text('${p.name} (${p.position.code})'),
+                    onPressed: () => _queueSubstitution(p),
+                  ),
+            ],
+          ),
+        ),
+        if (_selectedOut != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextButton(
+              onPressed: () => setState(() => _selectedOut = null),
+              child: const Text('Cancel selection'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _queueSubstitution(MatchPlayer inPlayer) {
+    final out = _selectedOut;
+    if (out == null) return;
+    widget.session.queueCommand(SubstitutionCommand(
+      atMinute: widget.session.engine.state.minute + 1,
+      side: widget.side,
+      outPlayerId: out.playerId,
+      inPlayerId: inPlayer.playerId,
+    ));
+    widget.onSubstitutionQueued();
   }
 }
 
