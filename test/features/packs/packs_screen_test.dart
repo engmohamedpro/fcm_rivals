@@ -1,6 +1,7 @@
-// Packs tab store behaviour (GDD 5.5): the tiered grid — three tiers of
-// the global pack and three per position, cells coloured by tier — plus
-// the BUY confirmation flow and the contents list behind tapping a cell.
+// Packs tab store behaviour (GDD 5.5): one section per scope — global
+// first, then every position — grouping its three tier varieties under
+// a shared title and a shared strip of obtainable players, plus the BUY
+// confirmation flow and the contents list behind tapping a cell.
 //
 // The store runs real drift I/O over an in-memory database, so async
 // flushes use tester.runAsync (FakeAsync doesn't perform real I/O).
@@ -14,10 +15,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmButton;
+import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/packs/pack_contents_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart'
-    show PackTier;
+    show PackCategory, PackTier;
 import 'package:fcm_rivals/features/packs/packs_screen.dart';
 
 void main() {
@@ -65,15 +67,24 @@ void main() {
     await pumpScreen(tester);
   }
 
-  testWidgets('tiered store grid: three global tiers, cells labelled by '
-      'tier, owned packs stack under their tier', (WidgetTester tester) async {
+  testWidgets('sectioned store: shared scope titles, three tier cells per '
+      'section, owned packs stack under their tier', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // The three global tiers render with tier labels under the titles.
-    expect(find.text('Global Pack'), findsNWidgets(3));
+    // 13 scope sections (global + 12 positions), one shared title each —
+    // and no per-cell titles left over from the old flat grid.
+    expect(find.text('Global Pack'), findsOneWidget);
+    expect(find.text('ST Pack'), findsOneWidget);
+    expect(find.text('LW Pack'), findsOneWidget);
+    expect(find.text('FREE ×3'), findsNWidgets(4));
+    // Every section header carries the shared pool size as a pill.
+    final offers = await tester.runAsync(() => store.getStoreOffers());
+    final global = offers!.firstWhere((o) => o.scopeValue == null);
+    expect(find.text('${global.eligibleCount} PLAYERS'), findsOneWidget);
+    // Three tier cells per section: 13 sections × 3.
     expect(find.text('BRONZE'), findsNWidgets(13));
     expect(find.text('SILVER'), findsNWidgets(13));
     expect(find.text('GOLD'), findsNWidgets(13));
@@ -83,7 +94,6 @@ void main() {
     // Free bronze packs: three of each of the 4 cheapest positions
     // (RM/GK/RB/CM for the bundled dataset) — FREE ×3 under those bronze
     // cells — plus one of every other position (FREE ×1).
-    expect(find.text('FREE ×3'), findsNWidgets(4));
     expect(find.text('FREE ×1'), findsNWidgets(8));
     final packs = await tester.runAsync(() => store.getAvailablePacks());
     expect(packs!.length, 20);
@@ -93,6 +103,27 @@ void main() {
     // ×1 stack under their bronze cells).
     expect(find.text('CLAIM'), findsNWidgets(12));
     expect(find.text('BUY'), findsNWidgets(27));
+    // Every section closes with a VIEW ALL card into the shared pool.
+    expect(find.text('VIEW ALL'), findsNWidgets(13));
+  });
+
+  testWidgets('the shared player strip shows the scope pool, best first',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester);
+
+    // Scroll to the ST section so its strip is on screen.
+    await tester.scrollUntilVisible(
+        find.text('ST Pack'), 300, scrollable: find.byType(Scrollable).first);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The pool strip loads the shared scope pool as mini cards.
+    final pool = await tester.runAsync(
+        () => store.getPackPlayers(category: PackCategory.position, scopeValue: 'ST', tier: PackTier.bronze));
+    expect(pool, isNotEmpty);
+    expect(find.byType(FcmMiniCard), findsWidgets);
   });
 
   testWidgets('CLAIM opens the owned pack straight into the reveal — no dialog',
@@ -142,14 +173,23 @@ void main() {
     await tester.tap(find.text('BUY').first);
     await tester.pump();
 
-    // Confirmation shows the price and the balance, with YES and NO.
+    // Confirmation shows the price with YES and NO side by side in one
+    // row — no balance line.
     expect(find.text('Buy Bronze Global Pack?'), findsOneWidget);
     expect(
         find.textContaining('${_group(bronzeGlobal.price)} Coins'),
         findsOneWidget);
-    expect(find.textContaining('Balance:'), findsOneWidget);
+    expect(find.textContaining('Balance:'), findsNothing);
+    expect(find.textContaining('after'), findsNothing);
     expect(find.text('YES'), findsOneWidget);
     expect(find.text('NO'), findsOneWidget);
+    // NO and YES share one row — same line, clear space between them.
+    final noTop = tester.getTopLeft(find.widgetWithText(FcmButton, 'NO'));
+    final yesTop = tester.getTopLeft(find.widgetWithText(FcmButton, 'YES'));
+    expect((yesTop.dy - noTop.dy).abs(), lessThan(4),
+        reason: 'NO and YES sit on the same line');
+    expect(yesTop.dx - noTop.dx, greaterThan(110),
+        reason: 'clear horizontal space between NO and YES');
 
     await tester.tap(find.text('YES'));
     await tester.pump();
@@ -213,7 +253,7 @@ void main() {
     final yes =
         tester.widget<FcmButton>(find.widgetWithText(FcmButton, 'YES'));
     expect(yes.onPressed, isNull, reason: 'YES must be disabled');
-    expect(find.textContaining('Balance:'), findsOneWidget);
+    expect(find.textContaining('Balance:'), findsNothing);
     expect(find.textContaining('after'), findsNothing);
   });
 

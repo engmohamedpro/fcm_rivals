@@ -105,6 +105,31 @@ void main() {
     expect((tactics.dy - autoPick.dy).abs(), lessThan(8));
   });
 
+  testWidgets('bench and reserves always show their full quota of slots',
+      (WidgetTester tester) async {
+    // One bench player, no reserves: 6 bench placeholders + all 5
+    // reserve placeholders render after the real card.
+    await tester.pumpWidget(_host(bench: [_card(1, Position.st)]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bench (1/7)'), findsOneWidget);
+    expect(find.text('Reserves (0/5)'), findsOneWidget);
+    expect(find.byType(FcmMiniCard), findsOneWidget);
+    expect(find.text('EMPTY'), findsNWidgets(6 + 5));
+
+    // The placeholders sit after the real card in the bench strip.
+    final cardLeft = tester.getTopLeft(find.byType(FcmMiniCard).first);
+    final firstEmpty = tester.getTopLeft(find.text('EMPTY').first);
+    expect(firstEmpty.dx, greaterThan(cardLeft.dx));
+
+    // Even a completely empty squad keeps both sections visible.
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+    expect(find.text('Bench (0/7)'), findsOneWidget);
+    expect(find.text('Reserves (0/5)'), findsOneWidget);
+    expect(find.text('EMPTY'), findsNWidgets(7 + 5));
+  });
+
   testWidgets('stamina bars render only when shown',
       (WidgetTester tester) async {
     final bench = [_card(1, Position.st, stamina: 50)];

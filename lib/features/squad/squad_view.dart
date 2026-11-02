@@ -126,23 +126,24 @@ class TacticsSetupView extends StatelessWidget {
             onPlayerTap: onPlayerTap,
           ),
         ),
-        if (bench.isNotEmpty) ...[
-          FcmSectionTitle('Bench (${bench.length}/${Formation.benchSize})'),
-          SquadCardRow(
-              cards: bench,
-              showStamina: showStamina,
-              showStats: showStats,
-              onPlayerTap: onPlayerTap),
-        ],
-        if (reserves.isNotEmpty) ...[
-          FcmSectionTitle(
-              'Reserves (${reserves.length}/${Formation.reservesSize})'),
-          SquadCardRow(
-              cards: reserves,
-              showStamina: showStamina,
-              showStats: showStats,
-              onPlayerTap: onPlayerTap),
-        ],
+        // Bench and reserves never hide: the sections stay with their
+        // full quota of slots, unassigned ones rendered as empty cards
+        // (GDD 11 — the 23-man surface is always visible as a whole).
+        FcmSectionTitle('Bench (${bench.length}/${Formation.benchSize})'),
+        SquadCardRow(
+            cards: bench,
+            emptySlots: Formation.benchSize - bench.length,
+            showStamina: showStamina,
+            showStats: showStats,
+            onPlayerTap: onPlayerTap),
+        FcmSectionTitle(
+            'Reserves (${reserves.length}/${Formation.reservesSize})'),
+        SquadCardRow(
+            cards: reserves,
+            emptySlots: Formation.reservesSize - reserves.length,
+            showStamina: showStamina,
+            showStats: showStats,
+            onPlayerTap: onPlayerTap),
       ],
     );
   }
@@ -577,16 +578,25 @@ class SquadPitch extends StatelessWidget {
 /// Horizontal strip of mini cards (bench / reserves): the surname under
 /// each shield, the stat row and — when [showStamina] is set — the
 /// stamina bar.
+/// Horizontal strip of mini cards (bench / reserves): the surname under
+/// each shield, the stat row and — when [showStamina] is set — the
+/// stamina bar. [emptySlots] pads the strip with placeholder cards, so
+/// an un-filled bench or reserves still shows its full quota of slots.
 class SquadCardRow extends StatelessWidget {
   const SquadCardRow({
     super.key,
     required this.cards,
+    this.emptySlots = 0,
     this.showStamina = true,
     this.showStats = true,
     this.onPlayerTap,
   });
 
   final List<PlayerCard> cards;
+
+  /// Placeholder cards appended after the real ones (quota minus the
+  /// assigned players).
+  final int emptySlots;
 
   /// Whether cards carry their stamina bar (hidden in the Tactics tab).
   final bool showStamina;
@@ -611,9 +621,12 @@ class SquadCardRow extends StatelessWidget {
       height: stripHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: cards.length,
+        itemCount: cards.length + emptySlots,
         separatorBuilder: (_, __) => const SizedBox(width: 6),
         itemBuilder: (context, i) {
+          if (i >= cards.length) {
+            return const _EmptyBenchCard();
+          }
           final c = cards[i];
           return FcmEntrance(
             index: i,
@@ -667,6 +680,75 @@ class _EmptySlot extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Placeholder for an unassigned bench / reserves slot: a dashed steel
+/// outline the shape and size of a real mini card with a plus mark —
+/// same footprint, clearly empty.
+class _EmptyBenchCard extends StatelessWidget {
+  const _EmptyBenchCard();
+
+  static const double width = SquadCardRow.cardWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width + 12,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CustomPaint(
+            size: Size(width, width / kPlayerCardAspect),
+            painter: _EmptyCardPainter(),
+            child: Center(
+              child: Icon(Icons.add_rounded,
+                  color: Colors.white.withValues(alpha: 0.35), size: 22),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'EMPTY',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.30),
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Dashed rounded rectangle matching a mini card's silhouette.
+class _EmptyCardPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+        Offset.zero & size, const Radius.circular(8));
+    final path = Path()..addRRect(rrect);
+    final metric = path.computeMetrics().first;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = Colors.white.withValues(alpha: 0.22);
+    // Dash pattern: 5 on, 4 off, walked along the card outline.
+    const on = 5.0, off = 4.0;
+    var dist = 0.0;
+    while (dist < metric.length) {
+      canvas.drawPath(metric.extractPath(dist, (dist + on).clamp(0, metric.length)), paint);
+      dist += on + off;
+    }
+    // Faint fill so the slot reads as a card-shaped hole, not a gap.
+    canvas.drawRRect(
+        rrect,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.045));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Mown-grass stripes, white markings and a soft floodlight vignette.

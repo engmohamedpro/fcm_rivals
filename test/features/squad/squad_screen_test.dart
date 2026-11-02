@@ -71,6 +71,12 @@ void main() {
     expect(find.text('TEAM RATING'), findsOneWidget);
     expect(find.text('TACTICS'), findsOneWidget);
 
+    // Bench and reserves stay visible even with nothing assigned: full
+    // quota of placeholder cards — 7 bench slots, 5 reserve slots.
+    expect(find.text('Bench (0/7)'), findsOneWidget);
+    expect(find.text('Reserves (0/5)'), findsOneWidget);
+    expect(find.text('EMPTY'), findsNWidgets(12));
+
     // Auto Pick works with an empty collection: it simply assigns
     // nothing and confirms.
     await tester.tap(find.text('Auto Pick'));

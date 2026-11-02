@@ -3,24 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/database/app_database.dart' show Pack;
-import '../../core/domain/players.dart';
+import '../../core/domain/players.dart' show BasePlayer, Position;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../../core/ui/player_card.dart' show FcmMiniCard, kPlayerCardAspect;
 import '../../features/collection/collection_store.dart' show StorePackOffer;
-import '../../features/packs/pack_engine.dart' show PackCategory, PackTierColor;
+import '../../features/packs/pack_engine.dart'
+    show PackCategory, PackTier, PackTierColor;
+import '../../features/squad/squad_view.dart' show SquadCardRow;
 import 'pack_contents_screen.dart';
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_opening_screen.dart';
 
-/// Packs tab — the store (GDD 5.5): ONE grid of packs in three tiers per
-/// scope — Bronze / Silver / Gold — each with its own odds of better
-/// players and its own price. Every cell is drawn as the sealed foil pack
-/// the player later sees in the opening cinematic, tinted by its tier.
-/// Owned (free) packs of a type show a FREE ×N pill in place of the
-/// price; otherwise the cell shows the coin price with a BUY button.
-/// Tapping a cell (or its INFO badge) shows the pack's full contents —
-/// every obtainable player, highest rated first — while BUY opens the
-/// YES/NO purchase confirmation.
+/// Packs tab — the store (GDD 5.5): one SECTION per scope — the global
+/// pack or one position — grouping its three tier varieties — Bronze /
+/// Silver / Gold, each with its own odds of better players and its own
+/// price — under a shared title and a shared strip of obtainable
+/// players: the three rarities of one scope draw from the exact same
+/// pool, so the section shows it once. Owned (free) packs of a type
+/// show a FREE ×N pill in place of the price; otherwise the cell shows
+/// the coin price with a BUY button. The section header's player count
+/// and each cell's INFO badge open the full contents list, highest
+/// rated first; BUY opens the YES/NO purchase confirmation.
 class PacksScreen extends ConsumerStatefulWidget {
   const PacksScreen({super.key});
 
@@ -83,6 +87,19 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             onOpen: (packId) => _open(context, packId),
             onBuy: (offer) => _buy(context, offer),
             onInfo: (offer) => _showContents(context, offer),
+            // The section strips share one pool loader: all tiers of a
+            // scope match the same players, so the tier is irrelevant.
+            onLoadPool: (category, scopeValue) async {
+              final store = await ref.read(collectionStoreProvider.future);
+              return store.getPackPlayers(
+                  category: category,
+                  scopeValue: scopeValue,
+                  tier: PackTier.bronze);
+            },
+            onViewAll: (offer) => _showContents(context, offer,
+                title: offer.scopeValue == null
+                    ? 'Global Pack — All Players'
+                    : '${offer.scopeValue} Pack — All Players'),
           ),
         ),
       ),
@@ -127,14 +144,14 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   }
 
   /// Shows the pack's obtainable players, highest rated first.
-  Future<void> _showContents(
-      BuildContext context, StorePackOffer offer) async {
+  Future<void> _showContents(BuildContext context, StorePackOffer offer,
+      {String? title}) async {
     final store = await ref.read(collectionStoreProvider.future);
     if (!context.mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
       fullscreenDialog: true,
       builder: (_) => PackContentsScreen(
-        title: offer.title,
+        title: title ?? offer.title,
         category: offer.category,
         scopeValue: offer.scopeValue,
         tier: offer.tier,
@@ -147,7 +164,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   }
 
   /// Buy flow: coins are the game's hard currency, so the purchase always
-  /// passes an explicit YES/NO confirmation first (price, balance and an
+  /// passes an explicit YES/NO confirmation first (price and an
   /// affordability check up front); the store still validates atomically.
   Future<void> _buy(BuildContext context, StorePackOffer offer) async {
     final coins = ref.read(clubProvider).valueOrNull?.coins;
@@ -184,17 +201,6 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
                 ),
               ],
             ),
-            if (coins != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                canAfford
-                    ? 'Balance: ${_groupDigits(coins)} Coins '
-                        '· ${_groupDigits(coins - offer.price)} after'
-                    : 'Balance: ${_groupDigits(coins)} Coins',
-                style: const TextStyle(
-                    color: FcmColors.textDim, fontWeight: FontWeight.w600),
-              ),
-            ],
             if (!canAfford) ...[
               const SizedBox(height: 10),
               const Text('Not enough coins',
@@ -203,21 +209,31 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             ],
           ],
         ),
+        // NO and YES share one row — equal width, a clear gap between
+        // them — instead of the default action column.
         actions: [
-          FcmButton(
-            compact: true,
-            style: FcmButtonStyle.steel,
-            label: 'NO',
-            onPressed: () => Navigator.of(dialogContext).pop(false),
+          SizedBox(
+            width: 110,
+            child: FcmButton(
+              compact: true,
+              style: FcmButtonStyle.steel,
+              label: 'NO',
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
           ),
-          FcmButton(
-            compact: true,
-            label: 'YES',
-            onPressed: canAfford
-                ? () => Navigator.of(dialogContext).pop(true)
-                : null,
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 110,
+            child: FcmButton(
+              compact: true,
+              label: 'YES',
+              onPressed: canAfford
+                  ? () => Navigator.of(dialogContext).pop(true)
+                  : null,
+            ),
           ),
         ],
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
       ),
     );
     if (confirmed != true || !context.mounted) return;
@@ -257,7 +273,9 @@ String _groupDigits(int value) => value
 String _scopeKey(String category, String? scopeValue, String tier) =>
     '$category:${scopeValue ?? 'ANY'}:$tier';
 
-/// The store grid: every pack cell, tier-coloured.
+/// The store: one section per scope — global first, then every position —
+/// each grouping its three tier offers under a shared header and a
+/// shared strip of obtainable players.
 class _StoreGrid extends StatelessWidget {
   const _StoreGrid({
     required this.packs,
@@ -267,6 +285,8 @@ class _StoreGrid extends StatelessWidget {
     required this.onOpen,
     required this.onBuy,
     required this.onInfo,
+    required this.onLoadPool,
+    required this.onViewAll,
   });
 
   final List<Pack> packs;
@@ -276,6 +296,14 @@ class _StoreGrid extends StatelessWidget {
   final void Function(int packId) onOpen;
   final void Function(StorePackOffer offer) onBuy;
   final void Function(StorePackOffer offer) onInfo;
+
+  /// Loads the shared eligible pool of a scope (tier-agnostic — all
+  /// tiers of one scope draw from the same players).
+  final Future<List<BasePlayer>> Function(
+      PackCategory category, String? scopeValue) onLoadPool;
+
+  /// Opens the full contents list of a scope.
+  final void Function(StorePackOffer offer) onViewAll;
 
   @override
   Widget build(BuildContext context) {
@@ -288,60 +316,238 @@ class _StoreGrid extends StatelessWidget {
               _scopeKey(p.category, p.scopeValue, p.tier), () => [])
           .add(p);
     }
-    // Wide screens (the app clamps at 820) get more columns so cells
-    // keep phone-like proportions.
-    final columns = MediaQuery.of(context).size.width >= 700 ? 5 : 3;
-    return ListView(
+
+    // Group the offers into scope sections, keeping store order (global
+    // first, then positions).
+    final sectionOrder = <String>[];
+    final sections = <String, List<StorePackOffer>>{};
+    for (final offer in offers) {
+      final key = '${offer.category.name}:${offer.scopeValue ?? 'ANY'}';
+      sections.putIfAbsent(key, () {
+        sectionOrder.add(key);
+        return <StorePackOffer>[];
+      }).add(offer);
+    }
+
+    // The whole store in one eagerly-built column: every section renders
+    // once (same cost as the old shrink-wrapped grid) and stays findable
+    // for tests; the RefreshIndicator still has its scrollable.
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 24),
+      child: Column(
+        children: [
+          for (final key in sectionOrder)
+            _ScopeSection(
+              key: ValueKey('store-section-$key'),
+              offers: sections[key]!,
+              owned: owned,
+              coins: coins,
+              opening: opening,
+              onOpen: onOpen,
+              onBuy: onBuy,
+              onInfo: onInfo,
+              onLoadPool: onLoadPool,
+              onViewAll: onViewAll,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One scope group: shared title — 'Global Pack' or 'ST Pack' — with the
+/// pool size, the row of the three tier cells side by side, and below
+/// them the shared strip of obtainable players (best first). The three
+/// rarities of one scope draw from the exact same pool, so the section
+/// states that once instead of repeating it per cell.
+class _ScopeSection extends StatelessWidget {
+  const _ScopeSection({
+    super.key,
+    required this.offers,
+    required this.owned,
+    required this.coins,
+    required this.opening,
+    required this.onOpen,
+    required this.onBuy,
+    required this.onInfo,
+    required this.onLoadPool,
+    required this.onViewAll,
+  });
+
+  final List<StorePackOffer> offers;
+  final Map<String, List<Pack>> owned;
+  final int? coins;
+  final bool opening;
+  final void Function(int packId) onOpen;
+  final void Function(StorePackOffer offer) onBuy;
+  final void Function(StorePackOffer offer) onInfo;
+  final Future<List<BasePlayer>> Function(
+      PackCategory category, String? scopeValue) onLoadPool;
+  final void Function(StorePackOffer offer) onViewAll;
+
+  @override
+  Widget build(BuildContext context) {
+    // Sort the section's tiers into store order: bronze, silver, gold.
+    final byTier = {
+      for (final o in offers) o.tier: o,
+    };
+    final ordered = [
+      for (final t in PackTier.values)
+        if (byTier.containsKey(t)) byTier[t]!,
+    ];
+    final head = ordered.first;
+    final scopeLabel =
+        head.scopeValue == null ? 'Global Pack' : '${head.scopeValue} Pack';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GridView.count(
-          crossAxisCount: columns,
-          mainAxisSpacing: 20,
-          crossAxisSpacing: 8,
-          childAspectRatio: 0.46,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            for (var i = 0; i < offers.length; i++)
-              () {
-                final offer = offers[i];
-                final ownedHere = owned[_scopeKey(
-                        offer.category.name, offer.scopeValue, offer.tier.name)] ??
-                    const <Pack>[];
-                return FcmEntrance(
-                  index: i,
-                  dx: 0,
-                  dy: 16,
-                  child: _StorePackCell(
-                    offer: offer,
-                    ownedCount: ownedHere.length,
-                    coins: coins,
-                    onTap: opening
-                        ? null
-                        : ownedHere.isNotEmpty
-                            ? () => onOpen(ownedHere.first.id)
-                            : () => onBuy(offer),
-                    onInfo: () => onInfo(offer),
-                  ),
-                );
-              }(),
-          ],
+        // Shared title: what the section is about plus the pool size,
+        // tapping it opens the full contents list of the scope.
+        FcmSectionTitle(
+          scopeLabel,
+          trailing: FcmPill(
+            '${head.eligibleCount} PLAYERS',
+            color: FcmColors.silver,
+          ),
         ),
+        SizedBox(
+          height: 250,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < ordered.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _StorePackCell(
+                    offer: ordered[i],
+                    ownedCount: owned[_scopeKey(ordered[i].category.name,
+                            ordered[i].scopeValue, ordered[i].tier.name)]
+                        ?.length ??
+                        0,
+                    coins: coins,
+                    onTap: () {
+                      final ownedHere = owned[_scopeKey(ordered[i].category.name,
+                              ordered[i].scopeValue, ordered[i].tier.name)] ??
+                          const <Pack>[];
+                      if (opening) return;
+                      if (ownedHere.isNotEmpty) {
+                        onOpen(ownedHere.first.id);
+                      } else {
+                        onBuy(ordered[i]);
+                      }
+                    },
+                    onInfo: () => onInfo(ordered[i]),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        // The shared player strip: the section's common pool, best first.
+        _PoolStrip(
+          offer: head,
+          onLoadPool: onLoadPool,
+          onViewAll: onViewAll,
+        ),
+        const SizedBox(height: 18),
       ],
     );
   }
 }
 
-/// One store cell: the sealed foil pack exactly as it looks before
-/// opening (same [FoilPackPainter] as the reveal cinematic), painted in
-/// the pack's solid tier metal — bronze, silver or gold — with a scope
-/// badge, the tier name, the title, and under it a price slot plus one
-/// action button. Owned and buyable cells share the exact same layout:
-/// the slot shows the FREE ×N pill when the club owns packs of this
-/// type, the coin price otherwise; the button reads CLAIM — which opens
-/// the next owned pack straight into the reveal, no confirmation — or
-/// BUY, which opens the YES/NO purchase dialog. The ⓘ badge opens the
-/// pack's contents list.
+/// The shared obtainable-player strip of one scope: up to 10 mini cards
+/// (overall + rarity + surname, no stat rows), best rated first, and a
+/// VIEW ALL tail card that opens the full contents list.
+class _PoolStrip extends StatelessWidget {
+  const _PoolStrip({
+    required this.offer,
+    required this.onLoadPool,
+    required this.onViewAll,
+  });
+
+  final StorePackOffer offer;
+  final Future<List<BasePlayer>> Function(
+      PackCategory category, String? scopeValue) onLoadPool;
+  final void Function(StorePackOffer offer) onViewAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<BasePlayer>>(
+      future: onLoadPool(offer.category, offer.scopeValue),
+      builder: (context, snapshot) {
+        final players = snapshot.data ?? const <BasePlayer>[];
+        // Card width shared with the bench strips of the squad screen.
+        const cardWidth = SquadCardRow.cardWidth;
+        final stripHeight = cardWidth / kPlayerCardAspect + 20;
+        return SizedBox(
+          height: stripHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: players.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            itemBuilder: (context, i) {
+              if (i == players.length) {
+                // VIEW ALL tail: opens the scope's full contents list.
+                return FcmPressable(
+                  onTap: () => onViewAll(offer),
+                  child: Container(
+                    width: cardWidth,
+                    decoration: BoxDecoration(
+                      color: FcmColors.silver.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: FcmColors.silver.withValues(alpha: 0.4)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.arrow_forward_rounded,
+                            color: FcmColors.goldSoft, size: 20),
+                        const SizedBox(height: 4),
+                        FitText(
+                          'VIEW ALL',
+                          style: TextStyle(
+                            color: FcmColors.goldSoft,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final p = players[i];
+              final rarity = CardRarity.fromOverall(p.baseStats.overall);
+              return FcmMiniCard(
+                overall: p.baseStats.overall,
+                position: p.position.code,
+                name: p.name.split(' ').last,
+                rarity: rarity,
+                width: cardWidth,
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// One tier cell of a scope section: the sealed foil pack exactly as it
+/// looks before opening (same [FoilPackPainter] as the reveal cinematic),
+/// painted in the tier's solid metal — bronze, silver or gold — with the
+/// tier name under it, a price slot and one action button. The scope
+/// title and player pool live on the section, not the cell. Owned and
+/// buyable cells share the exact same layout: the slot shows the
+/// FREE ×N pill when the club owns packs of this type, the coin price
+/// otherwise; the button reads CLAIM — which opens the next owned pack
+/// straight into the reveal, no confirmation — or BUY, which opens the
+/// YES/NO purchase dialog. The ⓘ badge opens the pack's contents list.
 class _StorePackCell extends StatelessWidget {
   const _StorePackCell({
     required this.offer,
@@ -361,10 +567,7 @@ class _StorePackCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFree = ownedCount > 0;
     final affordable = coins == null || coins! >= offer.price;
-    final scopeLabel = offer.scopeValue ?? 'ANY';
     final tierColor = offer.tier.accent;
-    final shortTitle =
-        offer.scopeValue == null ? 'Global Pack' : '${offer.scopeValue} Pack';
 
     return FcmPressable(
       onTap: onTap,
@@ -384,31 +587,6 @@ class _StorePackCell extends StatelessWidget {
                           charge: 0,
                           glowColor: tierColor,
                           tint: tierColor,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 12,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: FcmColors.night.withValues(alpha: 0.88),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: tierColor),
-                          ),
-                          child: Text(
-                            scopeLabel,
-                            style: TextStyle(
-                              color: tierColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1,
-                            ),
-                          ),
                         ),
                       ),
                     ),
@@ -434,15 +612,6 @@ class _StorePackCell extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          FitText(
-            shortTitle,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 2),
           FitText(
             offer.tier.label.toUpperCase(),
             style: TextStyle(

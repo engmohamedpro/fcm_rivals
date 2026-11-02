@@ -86,15 +86,14 @@ void main() {
     // The Season tab opens first: the first campaign entry point renders.
     expect(find.text('Start your first season'), findsOneWidget);
 
-    // Switch to the Packs tab (now last in the nav) and check the tiered
-    // store grid renders: three tiers per scope — Bronze / Silver / Gold —
-    // and the free starting packs stack as FREE ×N under their bronze
-    // cells (3 of each cheapest position, 1 of every other).
+    // Switch to the Packs tab (now last in the nav) and check the
+    // sectioned store: one section per scope — global first, then every
+    // position — each with a shared title, its three tier cells and the
+    // shared player strip; the free starting packs stack as FREE ×N
+    // under their bronze cells.
     await tester.tap(find.text('Packs'));
     await _settle(tester);
-    expect(find.text('ST Pack'), findsNWidgets(3));
-    expect(find.text('LW Pack'), findsNWidgets(3));
-    expect(find.text('Global Pack'), findsNWidgets(3));
+    expect(find.text('Global Pack'), findsOneWidget);
     expect(find.text('BRONZE'), findsNWidgets(13));
     expect(find.text('SILVER'), findsNWidgets(13));
     expect(find.text('GOLD'), findsNWidgets(13));
