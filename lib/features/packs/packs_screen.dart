@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
-import '../../core/domain/leagues.dart';
 import '../../core/domain/players.dart';
 import '../../features/ads/ad_engine.dart' show AdRewardKind;
 import '../../features/packs/pack_engine.dart' show PackCategory;
+import '../../core/ui/fcm_style.dart';
+import 'pack_opening_screen.dart';
 
 /// Packs tab: lists unopened packs (36 starting position packs on a new
 /// club, GDD 5.8) and handles opening with a reveal sequence.
@@ -39,19 +40,17 @@ class PacksScreen extends ConsumerWidget {
                 margin:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor:
-                        Theme.of(context).colorScheme.primaryContainer,
-                    child: Text(position?.code ?? 'G',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  leading: _MiniPack(label: position?.code ?? 'G'),
+                  title: Text(
+                    position != null
+                        ? '${position.code} Position Pack'
+                        : 'Global Pack',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  title: Text(position != null
-                      ? '${position.code} Position Pack'
-                      : 'Global Pack'),
                   subtitle: Text(
                       '1 player · drawn from a low, medium or high value tier',
                       style: Theme.of(context).textTheme.bodySmall),
-                  trailing: const Icon(Icons.card_giftcard_outlined),
+                  trailing: const Icon(Icons.auto_awesome, color: FcmColors.gold),
                   onTap: () => _open(context, ref, pack.id),
                 ),
               );
@@ -71,7 +70,10 @@ class PacksScreen extends ConsumerWidget {
     if (!context.mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
       fullscreenDialog: true,
-      builder: (_) => PackRevealScreen(players: result.players),
+      builder: (_) => PackOpeningScreen(
+        players: result.players,
+        tiers: result.tiers,
+      ),
     ));
   }
 }
@@ -157,143 +159,37 @@ class _FreePackAdCardState extends ConsumerState<_FreePackAdCard> {
   }
 }
 
-/// Reveal sequence (GDD 5.6): one card at a time, low → mid → high tier,
-/// with bigger effects for the top tier.
-class PackRevealScreen extends StatefulWidget {
-  const PackRevealScreen({super.key, required this.players});
+/// Tiny foil-pack icon for the pack list.
+class _MiniPack extends StatelessWidget {
+  const _MiniPack({required this.label});
 
-  final List<BasePlayer> players;
-
-  @override
-  State<PackRevealScreen> createState() => _PackRevealScreenState();
-}
-
-class _PackRevealScreenState extends State<PackRevealScreen> {
-  int _revealed = 0;
-
-  void _revealNext() {
-    if (_revealed < widget.players.length) {
-      setState(() => _revealed++);
-    }
-  }
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final players = widget.players;
-    final revealedAll = _revealed >= players.length;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pack opening')),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                for (var i = 0; i < players.length; i++)
-                  _RevealCard(
-                    player: players[i],
-                    tier: i,
-                    visible: i < _revealed,
-                  ),
-              ],
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: revealedAll
-                      ? () => Navigator.of(context).pop()
-                      : _revealNext,
-                  child: Text(revealedAll
-                      ? 'Add to collection'
-                      : 'Reveal player ${_revealed + 1}/${players.length}'),
-                ),
-              ),
-            ),
-          ),
+    return Container(
+      width: 40,
+      height: 52,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF3F7DFF), Color(0xFF0B1E78)],
+        ),
+        border: Border.all(color: FcmColors.gold, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: FcmColors.royal.withValues(alpha: 0.5), blurRadius: 8),
         ],
       ),
-    );
-  }
-}
-
-class _RevealCard extends StatelessWidget {
-  const _RevealCard({
-    required this.player,
-    required this.tier,
-    required this.visible,
-  });
-
-  final BasePlayer player;
-  final int tier;
-  final bool visible;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (!visible) {
-      return Card(
-        color: theme.colorScheme.surfaceContainerHighest,
-        child: const SizedBox(
-          height: 110,
-          child: Center(child: Icon(Icons.lock_outline, size: 32)),
-        ),
-      );
-    }
-    final tierLabel = ['Low', 'Medium', 'High'][tier.clamp(0, 2)];
-    final tierColor = switch (tier) {
-      0 => Colors.blueGrey,
-      1 => Colors.blue,
-      _ => Colors.amber.shade800,
-    };
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: tierColor, width: 6)),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: tierColor,
-                  child: Text('${player.baseStats.overall}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(player.name,
-                          style: theme.textTheme.titleMedium),
-                      Text(
-                        '${player.position.code} · ${player.age}y · ${player.nationality}',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                Chip(
-                  label: Text(tierLabel, style: const TextStyle(fontSize: 11)),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${player.club}${player.leagueCode.isEmpty ? '' : ' · ${leagueDisplayName(player.leagueCode)}'} · '
-              '€${(player.marketValueEur / 1000000).toStringAsFixed(1)}M',
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 13,
         ),
       ),
     );

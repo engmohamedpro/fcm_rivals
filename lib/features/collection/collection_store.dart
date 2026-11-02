@@ -36,10 +36,14 @@ class CollectionException implements Exception {
 
 /// The players drawn from one opened pack, in reveal order.
 class PackOpenResult {
-  const PackOpenResult({required this.players});
+  const PackOpenResult({required this.players, this.tiers = const []});
 
-  /// Drawn players, low → mid → high tier (GDD 5.3).
+  /// Drawn players (one per pack).
   final List<BasePlayer> players;
+
+  /// Market Value tier each player was drawn from (0 low, 1 mid, 2 high),
+  /// index-aligned with [players]. Drives reveal effects (GDD 5.6).
+  final List<int> tiers;
 }
 
 /// Players sold back to the system with the total credit.
@@ -386,7 +390,9 @@ class CollectionStore {
           .write(PacksCompanion(opened: const Value(true), openedAt: Value(now)));
     });
     return PackOpenResult(
-        players: [for (final d in draws) d.player]);
+      players: [for (final d in draws) d.player],
+      tiers: [for (final d in draws) d.tier],
+    );
   }
 
   /// All unopened packs of the club.

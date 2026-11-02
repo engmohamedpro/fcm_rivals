@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/providers.dart';
+import 'core/ui/fcm_style.dart';
+import 'core/ui/fcm_logo.dart';
 import 'features/collection/collection_collection_screen.dart';
 import 'features/packs/packs_screen.dart';
 import 'features/season/season_screen.dart';
@@ -20,10 +22,7 @@ class FcmRivalsApp extends StatelessWidget {
     return MaterialApp(
       title: 'FCM Rivals',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B7A3B)),
-        useMaterial3: true,
-      ),
+      theme: buildFcmTheme(),
       home: const _EntryGate(),
     );
   }
@@ -37,8 +36,7 @@ class _EntryGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final club = ref.watch(clubProvider);
     return club.when(
-      loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator())),
+      loading: () => const Scaffold(body: FcmLogoLoading()),
       error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
       data: (club) =>
           club == null ? const ClubCreationScreen() : const GameShell(),
@@ -57,8 +55,7 @@ class GameShell extends StatelessWidget {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('FCM Rivals'),
+          title: const FcmWordmark(),
           actions: const [_CoinBalance()],
           bottom: const TabBar(
             isScrollable: true,
