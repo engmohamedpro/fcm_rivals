@@ -145,6 +145,11 @@ class LeagueTeams extends Table {
   IntColumn get clubId => integer()();
   BoolColumn get isUser => boolean().withDefault(const Constant(false))();
   IntColumn get finalPosition => integer().nullable()();
+
+  /// GDD 9.5: the club was carried over into this season from the
+  /// previous one (promoted/relegated AI club with a retained squad).
+  BoolColumn get carriedOver =>
+      boolean().withDefault(const Constant(false))();
 }
 
 /// Match schedule (SRS 25: Fixtures): double round-robin, 38 rounds
@@ -228,7 +233,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -243,6 +248,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 3) {
             await m.createTable(adUsages);
+          }
+          if (from < 4) {
+            await m.addColumn(leagueTeams, leagueTeams.carriedOver);
           }
         },
       );

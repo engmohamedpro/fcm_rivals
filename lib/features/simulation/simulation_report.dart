@@ -90,6 +90,8 @@ where marked.
   // GDD 32 progression invariants from the simulated saves.
   final anyPromotion = economySims.any((s) => s.promotions > 0);
   final anyRelegation = economySims.any((s) => s.relegations > 0);
+  // Relegation risk exists structurally (bottom three relegate); whether
+  // a strong managed save ever lands there is a play-skill outcome.
   final boundedInflation =
       economySims.every((s) => s.avgNetCoinsPerSeason < 60_000);
   buffer.writeln('''

@@ -7,10 +7,12 @@ The full game design and requirements live in [`docs/fcm_rivals_GDD_SRS.md`](doc
 
 ## Current state (development build)
 
-Six iterations are complete — the foundation engines, the collection
+Seven iterations are complete — the foundation engines, the collection
 layer, the Match Engine with live tactics, the Division & Season system,
-Pep Talks with rewarded advertisements, and the simulation & balance
-harness (GDD §30–33) that calibrates them. The GDD's development rules (§36) are followed: data model first,
+Pep Talks with rewarded advertisements, the simulation & balance harness
+(GDD §30–33) that calibrates them, and the live league: rounds resolve in
+lockstep with the user's fixtures and promoted/relegated clubs carry over
+between divisions (GDD §9.2/9.5). The GDD's development rules (§36) are followed: data model first,
 engines as pure Dart with no UI dependencies, atomic coin transactions.
 
 | Module | Path | Covers |
@@ -65,7 +67,7 @@ stats byte-for-byte; upgrades live on owned instances and survive updates.
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs  # regenerate drift code
 flutter analyze
-flutter test     # 194 tests: engines, match engine, season system, pep talks, rewarded ads, simulation harness invariants, update rules, store integration, UI flow
+flutter test     # 194 tests: engines, match engine, season system with lockstep rounds and carry-over, pep talks, rewarded ads, simulation harness invariants, update rules, store integration, UI flow
 flutter run
 ```
 
@@ -73,9 +75,10 @@ Requires Flutter 3.47.9 stable / Dart 3.13.7 (`sdk: ^3.13.7`).
 
 ## Roadmap
 
-The simulation harness (§30–33) is in place and has already driven three
-balance fixes (economy anchor, stamina recovery curve, away-fixture
-result inversion). Next per the GDD's Definition of Done (§37): tune
-promotion rates from the harness data, additional ad reward surfaces
-(free pack, upgrade discount, multipliers — GDD 19.3), and carrying over
-promoted/relegated clubs between divisions (GDD 9.5).
+The simulation harness (§30–33) has driven five balance/gameplay fixes
+(economy anchor, stamina recovery curve, away-fixture result inversion,
+the in-season AI freshness asymmetry, and the carry-over double-count).
+Promotion is now verified achievable and division 2 measurably harder.
+Next per the GDD's Definition of Done (§37): additional ad reward surfaces
+(free pack, upgrade discount, multipliers — GDD 19.3), and polishing the
+match-day flow (live match screen, substitutions UI).

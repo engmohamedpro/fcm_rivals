@@ -124,9 +124,10 @@ void main() {
       // The result row matches the engine's outcome with correct
       // home/away orientation (FR-038).
       final results = await db.select(db.matchResults).get();
-      expect(results.length, 1);
-      final r = results.first;
-      expect(r.fixtureId, next.fixtureId);
+      final userResults =
+          results.where((r) => r.fixtureId == next.fixtureId).toList();
+      expect(userResults, hasLength(1));
+      final r = userResults.first;
       if (next.isHome) {
         expect(r.homeGoals, report.state.scoreHome);
         expect(r.awayGoals, report.state.scoreAway);
@@ -135,6 +136,13 @@ void main() {
         expect(r.awayGoals, report.state.scoreHome);
       }
       expect(r.engineVersion, greaterThan(0));
+
+      // Lockstep league (GDD 9.2): committing the user's round-1 result
+      // also resolves the round's other nine AI fixtures, so all 20
+      // clubs have played exactly one match.
+      expect(results.length, 10);
+      final roundIds = results.map((row) => row.round).toSet();
+      expect(roundIds, {1});
 
       final summary = await store.getSeasonSummary();
       expect(summary!.roundsPlayed, 1);
@@ -205,9 +213,39 @@ void main() {
       final results = await db.select(db.matchResults).get();
       expect(results.length, 380);
 
-      // AI squads were retired (GDD 9.5) but results remain.
+      // AI squads retired EXCEPT the carried-over clubs (GDD 9.5): the
+      // top three (promoted) and bottom three (relegated) AI clubs keep
+      // their squads — minus any spot the user itself occupies.
       final aiSquads = await db.select(db.aiPlayers).get();
-      expect(aiSquads, isEmpty);
+      final teamsWithSquads =
+          aiSquads.map((p) => p.clubId).toSet();
+      final leagueTeams = await (db.select(db.leagueTeams)
+            ..where((t) => t.seasonId.equals(completion.seasonId)))
+          .get();
+      final expectedCarry = leagueTeams
+          .where((t) => !t.isUser)
+          .map((t) => (t.clubId, t.finalPosition!))
+          .toList()
+        ..sort((a, b) => a.$2.compareTo(b.$2));
+      // Drop the user's own slot from the promoted/relegated ranges.
+      final user = leagueTeams.firstWhere((t) => t.isUser);
+      final expectedCarryIds = <int>{};
+      if (expectedCarry.length >= 6) {
+        for (final e in expectedCarry.take(3)) {
+          expectedCarryIds.add(e.$1);
+        }
+        for (final e in expectedCarry.skip(expectedCarry.length - 3)) {
+          expectedCarryIds.add(e.$1);
+        }
+        expectedCarryIds.remove(user.clubId);
+      }
+      expect(teamsWithSquads, expectedCarryIds);
+      // Carried clubs are flagged on their league row.
+      final flagged = leagueTeams
+          .where((t) => t.carriedOver)
+          .map((t) => t.clubId)
+          .toSet();
+      expect(flagged, expectedCarryIds);
 
       // Final positions recorded for every league team.
       final teams = await db.select(db.leagueTeams).get();

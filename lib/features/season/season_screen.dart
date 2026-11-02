@@ -60,11 +60,9 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
   }
 
   Future<void> _simulateRound() => _run((store) async {
-        // Simulate until the user's next round advances by one: cheap
-        // approach — simulate remaining fixtures of nothing; instead we
-        // simulate ALL remaining fixtures (fast enough at ~380 matches).
-        await store.simulateRemainingFixtures(
-            await ref.read(collectionStoreProvider.future));
+        // Simulate the current round's AI fixtures (GDD 9.2 lockstep);
+        // the user's own fixture stays theirs to play.
+        await store.simulateAIFixturesThroughCurrentRound();
       });
 
   Future<void> _showMatchReport(MatchReportResult report) {

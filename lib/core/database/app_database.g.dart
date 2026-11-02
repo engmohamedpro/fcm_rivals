@@ -4091,6 +4091,21 @@ class $LeagueTeamsTable extends LeagueTeams
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _carriedOverMeta = const VerificationMeta(
+    'carriedOver',
+  );
+  @override
+  late final GeneratedColumn<bool> carriedOver = GeneratedColumn<bool>(
+    'carried_over',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("carried_over" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4098,6 +4113,7 @@ class $LeagueTeamsTable extends LeagueTeams
     clubId,
     isUser,
     finalPosition,
+    carriedOver,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4145,6 +4161,15 @@ class $LeagueTeamsTable extends LeagueTeams
         ),
       );
     }
+    if (data.containsKey('carried_over')) {
+      context.handle(
+        _carriedOverMeta,
+        carriedOver.isAcceptableOrUnknown(
+          data['carried_over']!,
+          _carriedOverMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4174,6 +4199,10 @@ class $LeagueTeamsTable extends LeagueTeams
         DriftSqlType.int,
         data['${effectivePrefix}final_position'],
       ),
+      carriedOver: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}carried_over'],
+      )!,
     );
   }
 
@@ -4189,12 +4218,17 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
   final int clubId;
   final bool isUser;
   final int? finalPosition;
+
+  /// GDD 9.5: the club was carried over into this season from the
+  /// previous one (promoted/relegated AI club with a retained squad).
+  final bool carriedOver;
   const LeagueTeam({
     required this.id,
     required this.seasonId,
     required this.clubId,
     required this.isUser,
     this.finalPosition,
+    required this.carriedOver,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4206,6 +4240,7 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
     if (!nullToAbsent || finalPosition != null) {
       map['final_position'] = Variable<int>(finalPosition);
     }
+    map['carried_over'] = Variable<bool>(carriedOver);
     return map;
   }
 
@@ -4218,6 +4253,7 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
       finalPosition: finalPosition == null && nullToAbsent
           ? const Value.absent()
           : Value(finalPosition),
+      carriedOver: Value(carriedOver),
     );
   }
 
@@ -4232,6 +4268,7 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
       clubId: serializer.fromJson<int>(json['clubId']),
       isUser: serializer.fromJson<bool>(json['isUser']),
       finalPosition: serializer.fromJson<int?>(json['finalPosition']),
+      carriedOver: serializer.fromJson<bool>(json['carriedOver']),
     );
   }
   @override
@@ -4243,6 +4280,7 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
       'clubId': serializer.toJson<int>(clubId),
       'isUser': serializer.toJson<bool>(isUser),
       'finalPosition': serializer.toJson<int?>(finalPosition),
+      'carriedOver': serializer.toJson<bool>(carriedOver),
     };
   }
 
@@ -4252,6 +4290,7 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
     int? clubId,
     bool? isUser,
     Value<int?> finalPosition = const Value.absent(),
+    bool? carriedOver,
   }) => LeagueTeam(
     id: id ?? this.id,
     seasonId: seasonId ?? this.seasonId,
@@ -4260,6 +4299,7 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
     finalPosition: finalPosition.present
         ? finalPosition.value
         : this.finalPosition,
+    carriedOver: carriedOver ?? this.carriedOver,
   );
   LeagueTeam copyWithCompanion(LeagueTeamsCompanion data) {
     return LeagueTeam(
@@ -4270,6 +4310,9 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
       finalPosition: data.finalPosition.present
           ? data.finalPosition.value
           : this.finalPosition,
+      carriedOver: data.carriedOver.present
+          ? data.carriedOver.value
+          : this.carriedOver,
     );
   }
 
@@ -4280,13 +4323,15 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
           ..write('seasonId: $seasonId, ')
           ..write('clubId: $clubId, ')
           ..write('isUser: $isUser, ')
-          ..write('finalPosition: $finalPosition')
+          ..write('finalPosition: $finalPosition, ')
+          ..write('carriedOver: $carriedOver')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, seasonId, clubId, isUser, finalPosition);
+  int get hashCode =>
+      Object.hash(id, seasonId, clubId, isUser, finalPosition, carriedOver);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4295,7 +4340,8 @@ class LeagueTeam extends DataClass implements Insertable<LeagueTeam> {
           other.seasonId == this.seasonId &&
           other.clubId == this.clubId &&
           other.isUser == this.isUser &&
-          other.finalPosition == this.finalPosition);
+          other.finalPosition == this.finalPosition &&
+          other.carriedOver == this.carriedOver);
 }
 
 class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
@@ -4304,12 +4350,14 @@ class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
   final Value<int> clubId;
   final Value<bool> isUser;
   final Value<int?> finalPosition;
+  final Value<bool> carriedOver;
   const LeagueTeamsCompanion({
     this.id = const Value.absent(),
     this.seasonId = const Value.absent(),
     this.clubId = const Value.absent(),
     this.isUser = const Value.absent(),
     this.finalPosition = const Value.absent(),
+    this.carriedOver = const Value.absent(),
   });
   LeagueTeamsCompanion.insert({
     this.id = const Value.absent(),
@@ -4317,6 +4365,7 @@ class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
     required int clubId,
     this.isUser = const Value.absent(),
     this.finalPosition = const Value.absent(),
+    this.carriedOver = const Value.absent(),
   }) : seasonId = Value(seasonId),
        clubId = Value(clubId);
   static Insertable<LeagueTeam> custom({
@@ -4325,6 +4374,7 @@ class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
     Expression<int>? clubId,
     Expression<bool>? isUser,
     Expression<int>? finalPosition,
+    Expression<bool>? carriedOver,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4332,6 +4382,7 @@ class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
       if (clubId != null) 'club_id': clubId,
       if (isUser != null) 'is_user': isUser,
       if (finalPosition != null) 'final_position': finalPosition,
+      if (carriedOver != null) 'carried_over': carriedOver,
     });
   }
 
@@ -4341,6 +4392,7 @@ class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
     Value<int>? clubId,
     Value<bool>? isUser,
     Value<int?>? finalPosition,
+    Value<bool>? carriedOver,
   }) {
     return LeagueTeamsCompanion(
       id: id ?? this.id,
@@ -4348,6 +4400,7 @@ class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
       clubId: clubId ?? this.clubId,
       isUser: isUser ?? this.isUser,
       finalPosition: finalPosition ?? this.finalPosition,
+      carriedOver: carriedOver ?? this.carriedOver,
     );
   }
 
@@ -4369,6 +4422,9 @@ class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
     if (finalPosition.present) {
       map['final_position'] = Variable<int>(finalPosition.value);
     }
+    if (carriedOver.present) {
+      map['carried_over'] = Variable<bool>(carriedOver.value);
+    }
     return map;
   }
 
@@ -4379,7 +4435,8 @@ class LeagueTeamsCompanion extends UpdateCompanion<LeagueTeam> {
           ..write('seasonId: $seasonId, ')
           ..write('clubId: $clubId, ')
           ..write('isUser: $isUser, ')
-          ..write('finalPosition: $finalPosition')
+          ..write('finalPosition: $finalPosition, ')
+          ..write('carriedOver: $carriedOver')
           ..write(')'))
         .toString();
   }
@@ -6168,7 +6225,7 @@ class AdUsage extends DataClass implements Insertable<AdUsage> {
   /// the ad-granted reward identifier.
   final String rewardKind;
 
-  /// Unique key of the rewarded transaction (e.g. 'match:<fixtureId>');
+  /// Unique key of the rewarded transaction (e.g. 'match:fixtureId');
   /// one reward per key prevents duplicate callbacks.
   final String rewardKey;
   final DateTime completedAt;
@@ -8445,6 +8502,7 @@ typedef $$LeagueTeamsTableCreateCompanionBuilder =
       required int clubId,
       Value<bool> isUser,
       Value<int?> finalPosition,
+      Value<bool> carriedOver,
     });
 typedef $$LeagueTeamsTableUpdateCompanionBuilder =
     LeagueTeamsCompanion Function({
@@ -8453,6 +8511,7 @@ typedef $$LeagueTeamsTableUpdateCompanionBuilder =
       Value<int> clubId,
       Value<bool> isUser,
       Value<int?> finalPosition,
+      Value<bool> carriedOver,
     });
 
 class $$LeagueTeamsTableFilterComposer
@@ -8486,6 +8545,11 @@ class $$LeagueTeamsTableFilterComposer
 
   ColumnFilters<int> get finalPosition => $composableBuilder(
     column: $table.finalPosition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get carriedOver => $composableBuilder(
+    column: $table.carriedOver,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8523,6 +8587,11 @@ class $$LeagueTeamsTableOrderingComposer
     column: $table.finalPosition,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get carriedOver => $composableBuilder(
+    column: $table.carriedOver,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LeagueTeamsTableAnnotationComposer
@@ -8548,6 +8617,11 @@ class $$LeagueTeamsTableAnnotationComposer
 
   GeneratedColumn<int> get finalPosition => $composableBuilder(
     column: $table.finalPosition,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get carriedOver => $composableBuilder(
+    column: $table.carriedOver,
     builder: (column) => column,
   );
 }
@@ -8588,12 +8662,14 @@ class $$LeagueTeamsTableTableManager
                 Value<int> clubId = const Value.absent(),
                 Value<bool> isUser = const Value.absent(),
                 Value<int?> finalPosition = const Value.absent(),
+                Value<bool> carriedOver = const Value.absent(),
               }) => LeagueTeamsCompanion(
                 id: id,
                 seasonId: seasonId,
                 clubId: clubId,
                 isUser: isUser,
                 finalPosition: finalPosition,
+                carriedOver: carriedOver,
               ),
           createCompanionCallback:
               ({
@@ -8602,12 +8678,14 @@ class $$LeagueTeamsTableTableManager
                 required int clubId,
                 Value<bool> isUser = const Value.absent(),
                 Value<int?> finalPosition = const Value.absent(),
+                Value<bool> carriedOver = const Value.absent(),
               }) => LeagueTeamsCompanion.insert(
                 id: id,
                 seasonId: seasonId,
                 clubId: clubId,
                 isUser: isUser,
                 finalPosition: finalPosition,
+                carriedOver: carriedOver,
               ),
           withReferenceMapper: (p0) => p0
               .map(

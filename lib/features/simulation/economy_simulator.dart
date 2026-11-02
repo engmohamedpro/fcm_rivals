@@ -226,9 +226,13 @@ class EconomySimulator {
 
           // Squad upkeep between fixtures: merge duplicates when found
           // and reinvest surplus coins in new packs (the GDD 30 spend
-          // path: buying packs is the player's main coin sink).
+          // path: buying packs is the player's main coin sink). The XI
+          // is re-picked afterwards so new signings actually play — a
+          // manager who never refreshes the lineup once the collection
+          // improved was understating the player's real progression.
           mergesThisSeason += await _mergeOneDuplicateIfAny(collection);
           packOpenings += await _buyAndOpenPacks(collection);
+          await collection.autoPickSquad();
         }
 
         final completion = await seasonStore.completeSeason(collection);
