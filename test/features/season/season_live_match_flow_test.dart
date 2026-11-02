@@ -9,7 +9,6 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart' show ListView, Offset;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -121,32 +120,27 @@ void main() {
     expect(find.textContaining('simulated matches'), findsOneWidget);
 
     // Continue into the tactics phase (GDD 10.4): the SAME screen as the
-    // Tactics tab — dropdowns for formation, playing style and mentality,
-    // the pitch with stamina bars, bench and reserves — but match-only.
+    // Tactics tab — a compact control card (team rating + TACTICS button)
+    // over the pitch with per-player stats and stamina bars, then bench
+    // and reserves — but match-only.
     await tester.tap(find.text('CONTINUE'));
     await _flush(tester, wait: const Duration(milliseconds: 600));
-    expect(find.text('TACTICS'), findsWidgets);
     expect(find.text('Set up for this match'), findsOneWidget);
-    expect(find.text('PLAYING STYLE'), findsOneWidget);
     expect(find.text('TEAM RATING'), findsOneWidget);
-    // The dropdown fields sit below the fold — drag the tactics list up
-    // until the playing-style dropdown's closed field is fully on screen.
-    // (The phase switcher keeps the previous phase's ListView alive, so
-    // find the CURRENT phase's list by skipping the offstage ones.)
-    for (var i = 0; i < 10; i++) {
-      final labelRect = tester.getRect(find.text('PLAYING STYLE').first);
-      if (labelRect.bottom <= 450) break;
-      await tester.drag(find.byType(ListView).first,
-          Offset(0, -(labelRect.bottom - 380)));
-      await tester.pump(const Duration(milliseconds: 250));
-    }
-    await tester.pump(const Duration(milliseconds: 300));
-    // The closed field shows the saved default (balanced) — the style
-    // dropdown is the FIRST 'Balanced' field (the mentality dropdown's
-    // comes later in the column). Tap it to open the picker sheet, which
-    // lists every style with its visible effects; give the sheet's
-    // entrance a few bounded pumps, then fling its list if the wanted
-    // tile still sits below the fold.
+    expect(find.text('TACTICS'), findsOneWidget);
+
+    // The tactic options live in a bottom sheet behind the TACTICS
+    // button, so the screen stays dominated by the pitch.
+    await tester.tap(find.text('TACTICS'));
+    await _flush(tester, wait: const Duration(milliseconds: 600));
+    expect(find.text('TACTIC OPTIONS'), findsOneWidget);
+    expect(find.text('PLAYING STYLE'), findsOneWidget);
+
+    // The style dropdown's closed field shows the saved default
+    // (balanced) — the FIRST 'Balanced' field, the mentality dropdown's
+    // comes later. Tapping it stacks the option list sheet on top; give
+    // the sheets' entrance animations a few bounded pumps, then fling
+    // the option list if the wanted tile sits below the fold.
     await tester.tap(find.text('Balanced').first);
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 200));
@@ -161,14 +155,20 @@ void main() {
           const Offset(400, 300), const Offset(0, -350), 800);
       await tester.pump(const Duration(milliseconds: 300));
     }
-    // Pick a different style in the sheet.
+    // Pick a different style; the option list sheet closes on selection.
     await tester.tap(find.text('Counter Attack'));
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    // The sheet closed and the closed field carries the match-only
-    // selection.
+    // The style dropdown field in the options sheet now carries the
+    // match-only selection.
     expect(find.text('Counter Attack'), findsOneWidget);
+
+    // Close the options sheet; the control card's setup summary line on
+    // the tactics screen reflects the match-only selection.
+    await tester.tap(find.text('DONE'));
+    await _flush(tester, wait: const Duration(milliseconds: 600));
+    expect(find.textContaining('Counter Attack'), findsOneWidget);
 
     // On to the dressing room (GDD 15.1 pre-match pep talk).
     await tester.tap(find.text('TO DRESSING ROOM'));

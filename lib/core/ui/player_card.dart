@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import '../domain/players.dart';
 import 'country_flag.dart';
 import 'fcm_style.dart';
-import 'fcm_widgets.dart' show staminaColor;
+import 'fcm_widgets.dart' show ratingColor, staminaColor;
 
 /// Width : height ratio of the card.
 const double kPlayerCardAspect = 0.70;
@@ -505,10 +505,9 @@ class _CardBackPainter extends CustomPainter {
   bool shouldRepaint(_CardBackPainter old) => old.rarity != rarity;
 }
 
-/// Compact card for the pitch and bench: rating, position and surname.
-/// [width] is the shield width; the surname sits under it, and when
-/// [stamina] is given a colour-coded stamina bar (GDD 11 — green fresh,
-/// red exhausted) renders under the card.
+/// Compact card for the pitch and bench: rating, position, surname, an
+/// optional three-column stat row and a colour-coded stamina bar.
+/// [width] is the shield width; everything else stacks under it.
 class FcmMiniCard extends StatelessWidget {
   const FcmMiniCard({
     super.key,
@@ -519,6 +518,7 @@ class FcmMiniCard extends StatelessWidget {
     this.width = 56,
     this.warn = false,
     this.stamina,
+    this.stats,
   });
 
   final int overall;
@@ -532,6 +532,10 @@ class FcmMiniCard extends StatelessWidget {
 
   /// Stamina percent 0..100; null hides the bar.
   final int? stamina;
+
+  /// The player's attributes (label + value), rendered as a three-column
+  /// stat row under the name — outfield ATT/SUP/DEF, keepers GK/DEF/SUP.
+  final List<({String label, int value})>? stats;
 
   @override
   Widget build(BuildContext context) {
@@ -616,6 +620,10 @@ class FcmMiniCard extends StatelessWidget {
                 ),
               ),
             ),
+            if (stats != null && stats!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              _StatRow(stats: stats!, width: width),
+            ],
             if (stamina != null) ...[
               const SizedBox(height: 3),
               _StaminaBar(percent: stamina!, width: width),
@@ -627,42 +635,106 @@ class FcmMiniCard extends StatelessWidget {
   }
 }
 
+/// Three label-over-value stat columns under the card; values are coloured
+/// by rating so strengths read at a glance.
+class _StatRow extends StatelessWidget {
+  const _StatRow({required this.stats, required this.width});
+
+  final List<({String label, int value})> stats;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final s in stats)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: width * 0.06),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    s.label,
+                    style: TextStyle(
+                      color: FcmColors.goldSoft.withValues(alpha: 0.8),
+                      fontSize: math.max(6.5, width * 0.115),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      height: 1.1,
+                    ),
+                  ),
+                  Text(
+                    '${s.value}',
+                    style: TextStyle(
+                      color: ratingColor(s.value),
+                      fontSize: math.max(9, width * 0.17),
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                      shadows: const [
+                        Shadow(color: Colors.black, blurRadius: 3),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Colour-coded stamina strip under a mini card: the fill length is the
 /// percent and the colour grades green → gold → amber → red as it drops.
+/// The fill is pinned with [Positioned] inside a fixed-height track so it
+/// always renders with real height (a FractionallySizedBox with only a
+/// width factor collapses its child to zero height).
 class _StaminaBar extends StatelessWidget {
   const _StaminaBar({required this.percent, required this.width});
 
   final int percent;
   final double width;
 
+  static const double trackHeight = 5;
+
   @override
   Widget build(BuildContext context) {
     final color = staminaColor(percent);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(3),
-      child: SizedBox(
+    final fill = (percent / 100).clamp(0.0, 1.0);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: fill),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      builder: (context, f, _) => Container(
         width: width,
-        height: 4,
-        child: Stack(
-          children: [
-            Container(color: Colors.black.withValues(alpha: 0.5)),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: (percent / 100).clamp(0.0, 1.0)),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.easeOutCubic,
-              builder: (context, f, _) => FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: f,
+        height: trackHeight,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(trackHeight / 2),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.4)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(trackHeight / 2),
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: width * f,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [color.withValues(alpha: 0.7), color],
+                      colors: [color.withValues(alpha: 0.75), color],
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

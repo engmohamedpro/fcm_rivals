@@ -8,15 +8,17 @@
 ///    but the selection lives only for the match about to be played and
 ///    the saved setup is never touched.
 ///
-/// The caller decides the semantics by what it does in [onFormation],
-/// [onStyle] and [onMentality]; the view itself is stateless.
+/// The screen itself is dominated by the pitch: a single compact control
+/// card at the top carries the team rating and opens the tactic options
+/// (formation / playing style / mentality dropdowns) in a bottom sheet,
+/// so no option walls eat screen space.
 library;
 
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../core/domain/players.dart' show Position;
+import '../../core/domain/players.dart' show Position, PlayerAttribute;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
@@ -25,10 +27,9 @@ import '../match/tactics.dart';
 import 'formations.dart';
 import 'squad_engine.dart';
 
-/// The whole tactical setup column: team rating, the three tactic
-/// dropdowns (formation, playing style, mentality — GDD 10), the pitch
-/// with the starting XI and per-player stamina bars (GDD 11), then the
-/// bench and reserves strips.
+/// The whole tactical setup column: the control card (team rating +
+/// tactic options button), the pitch with the starting XI and per-player
+/// stats and stamina bars (GDD 11), then the bench and reserves strips.
 class TacticsSetupView extends StatelessWidget {
   const TacticsSetupView({
     super.key,
@@ -43,7 +44,6 @@ class TacticsSetupView extends StatelessWidget {
     required this.onMentality,
     this.onAutoPick,
     this.onPlayerTap,
-    this.modeNote,
   });
 
   /// Currently selected formation code (e.g. '4-3-3').
@@ -56,7 +56,7 @@ class TacticsSetupView extends StatelessWidget {
   /// Starting XI assignments: slot index → card.
   final Map<int, PlayerCard> xi;
 
-  /// Bench and reserves cards, slot order.
+  /// Bench and reserves cards, best-first.
   final List<PlayerCard> bench;
   final List<PlayerCard> reserves;
 
@@ -73,13 +73,8 @@ class TacticsSetupView extends StatelessWidget {
   /// Opens the player detail sheet; null makes the cards non-tappable.
   final void Function(PlayerCard card)? onPlayerTap;
 
-  /// One-line note under the tactics panel explaining the persistence
-  /// semantics of this surface (permanent default vs. this match only).
-  final String? modeNote;
-
   @override
   Widget build(BuildContext context) {
-    final formation = formationByCode(formationCode);
     final teamRating = xi.isEmpty
         ? 0
         : (xi.values.fold<int>(0, (a, c) => a + c.overall) / xi.length)
@@ -89,59 +84,28 @@ class TacticsSetupView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FcmEntrance(
-          child: FcmPanel(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('TEAM RATING',
-                    style: TextStyle(
-                        color: FcmColors.textDim,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2)),
-                FcmCountUp(
-                  value: teamRating,
-                  style: TextStyle(
-                    color: ratingColor(teamRating),
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                  ),
-                ),
-                if (onAutoPick != null) ...[
-                  const SizedBox(height: 12),
-                  FcmButton(
-                    compact: true,
-                    style: FcmButtonStyle.steel,
-                    icon: Icons.auto_awesome,
-                    label: 'Auto Pick',
-                    onPressed: onAutoPick,
-                  ),
-                ],
-              ],
+          child: _ControlCard(
+            teamRating: teamRating,
+            formationCode: formationCode,
+            style: style,
+            mentality: mentality,
+            onAutoPick: onAutoPick,
+            onTactics: () => showTacticsOptionsSheet(
+              context,
+              formationCode: formationCode,
+              style: style,
+              mentality: mentality,
+              onFormation: onFormation,
+              onStyle: onStyle,
+              onMentality: onMentality,
             ),
           ),
         ),
         const SizedBox(height: 14),
         FcmEntrance(
           index: 1,
-          child: _TacticsPanel(
-            formationCode: formationCode,
-            style: style,
-            mentality: mentality,
-            onFormation: onFormation,
-            onStyle: onStyle,
-            onMentality: onMentality,
-            modeNote: modeNote,
-          ),
-        ),
-        const SizedBox(height: 14),
-        FcmEntrance(
-          index: 2,
           child: SquadPitch(
-            formation: formation,
+            formation: formationByCode(formationCode),
             assignments: xi,
             onPlayerTap: onPlayerTap,
           ),
@@ -152,7 +116,7 @@ class TacticsSetupView extends StatelessWidget {
         ],
         if (reserves.isNotEmpty) ...[
           FcmSectionTitle(
-              'Reserves (${reserves.length}/${Formation.squadSize - Formation.startingXiSize - Formation.benchSize})'),
+              'Reserves (${reserves.length}/${Formation.reservesSize})'),
           SquadCardRow(cards: reserves, onPlayerTap: onPlayerTap),
         ],
       ],
@@ -160,91 +124,239 @@ class TacticsSetupView extends StatelessWidget {
   }
 }
 
-/// The three tactic selectors (GDD 10) as dropdowns — formation, playing
-/// style and mentality — each opening a bottom sheet that lists every
-/// option with its visible percentage effects (GDD 10.3).
-class _TacticsPanel extends StatelessWidget {
-  const _TacticsPanel({
+/// The single control card of the tactics screen: the team rating, the
+/// Auto Pick button (when the surface owns squad persistence) and the
+/// button that opens the tactic options sheet. A dim line under the row
+/// summarises the active setup, so the option walls never need to live
+/// on the screen itself.
+class _ControlCard extends StatelessWidget {
+  const _ControlCard({
+    required this.teamRating,
     required this.formationCode,
     required this.style,
     required this.mentality,
-    required this.onFormation,
-    required this.onStyle,
-    required this.onMentality,
-    this.modeNote,
+    required this.onTactics,
+    this.onAutoPick,
   });
 
+  final int teamRating;
   final String formationCode;
   final PlayingStyle style;
   final Mentality mentality;
-  final ValueChanged<String> onFormation;
-  final ValueChanged<PlayingStyle> onStyle;
-  final ValueChanged<Mentality> onMentality;
-  final String? modeNote;
+  final VoidCallback onTactics;
+  final VoidCallback? onAutoPick;
 
   @override
   Widget build(BuildContext context) {
+    final formation = formationByCode(formationCode);
     return FcmPanel(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('TACTICS',
-              style: TextStyle(
-                  color: FcmColors.gold,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2)),
-          const SizedBox(height: 12),
-          _dropdownRow(
-            label: 'FORMATION',
-            child: FcmDropdown<String>(
-              icon: Icons.grid_on_rounded,
-              items: [
-                for (final f in formations)
-                  FcmDropdownItem(value: f.code, label: f.name),
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('TEAM RATING',
+                      style: TextStyle(
+                          color: FcmColors.textDim,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 2)),
+                  FcmCountUp(
+                    value: teamRating,
+                    style: TextStyle(
+                      color: ratingColor(teamRating),
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              if (onAutoPick != null) ...[
+                FcmButton(
+                  compact: true,
+                  style: FcmButtonStyle.steel,
+                  icon: Icons.auto_awesome,
+                  label: 'Auto Pick',
+                  onPressed: onAutoPick,
+                ),
+                const SizedBox(width: 8),
               ],
-              selected: formationCode,
-              onChanged: onFormation,
-            ),
+              FcmButton(
+                compact: true,
+                icon: Icons.tune_rounded,
+                label: 'TACTICS',
+                onPressed: onTactics,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          _dropdownRow(
-            label: 'PLAYING STYLE',
-            child: FcmDropdown<PlayingStyle>(
-              icon: Icons.directions_run_rounded,
-              items: [
-                for (final s in PlayingStyle.values)
-                  FcmDropdownItem(
-                      value: s, label: s.displayName, subtitle: s.effectSummary),
-              ],
-              selected: style,
-              onChanged: onStyle,
-            ),
+          const SizedBox(height: 8),
+          Text(
+            '${formation.name}  ·  ${style.displayName}  ·  ${mentality.displayName}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: FcmColors.textDim,
+                fontSize: 11,
+                fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 12),
-          _dropdownRow(
-            label: 'MENTALITY',
-            child: FcmDropdown<Mentality>(
-              icon: Icons.psychology_rounded,
-              items: [
-                for (final m in Mentality.values)
-                  FcmDropdownItem(
-                      value: m, label: m.displayName, subtitle: m.effectSummary),
-              ],
-              selected: mentality,
-              onChanged: onMentality,
+        ],
+      ),
+    );
+  }
+}
+
+/// Opens the tactic options sheet (GDD 10): the three dropdowns —
+/// formation, playing style and mentality — each listing every option
+/// with its visible percentage effects. Selections apply immediately
+/// through the owner's callbacks; DONE closes the sheet.
+Future<void> showTacticsOptionsSheet(
+  BuildContext context, {
+  required String formationCode,
+  required PlayingStyle style,
+  required Mentality mentality,
+  required ValueChanged<String> onFormation,
+  required ValueChanged<PlayingStyle> onStyle,
+  required ValueChanged<Mentality> onMentality,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: FcmColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => _TacticsOptionsSheet(
+      initialFormationCode: formationCode,
+      initialStyle: style,
+      initialMentality: mentality,
+      onFormation: onFormation,
+      onStyle: onStyle,
+      onMentality: onMentality,
+    ),
+  );
+}
+
+class _TacticsOptionsSheet extends StatefulWidget {
+  const _TacticsOptionsSheet({
+    required this.initialFormationCode,
+    required this.initialStyle,
+    required this.initialMentality,
+    required this.onFormation,
+    required this.onStyle,
+    required this.onMentality,
+  });
+
+  final String initialFormationCode;
+  final PlayingStyle initialStyle;
+  final Mentality initialMentality;
+  final ValueChanged<String> onFormation;
+  final ValueChanged<PlayingStyle> onStyle;
+  final ValueChanged<Mentality> onMentality;
+
+  @override
+  State<_TacticsOptionsSheet> createState() => _TacticsOptionsSheetState();
+}
+
+class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
+  late String _formationCode = widget.initialFormationCode;
+  late PlayingStyle _style = widget.initialStyle;
+  late Mentality _mentality = widget.initialMentality;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: FcmColors.bronze.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
             ),
-          ),
-          if (modeNote != null) ...[
+            const SizedBox(height: 10),
+            const Text('TACTIC OPTIONS',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: FcmColors.gold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2)),
+            const SizedBox(height: 14),
+            _dropdownRow(
+              label: 'FORMATION',
+              child: FcmDropdown<String>(
+                icon: Icons.grid_on_rounded,
+                items: [
+                  for (final f in formations)
+                    FcmDropdownItem(value: f.code, label: f.name),
+                ],
+                selected: _formationCode,
+                onChanged: (v) => setState(() {
+                  _formationCode = v;
+                  widget.onFormation(v);
+                }),
+              ),
+            ),
             const SizedBox(height: 12),
-            Text(
-              modeNote!,
-              style:
-                  const TextStyle(color: FcmColors.textDim, fontSize: 11),
+            _dropdownRow(
+              label: 'PLAYING STYLE',
+              child: FcmDropdown<PlayingStyle>(
+                icon: Icons.directions_run_rounded,
+                items: [
+                  for (final s in PlayingStyle.values)
+                    FcmDropdownItem(
+                        value: s,
+                        label: s.displayName,
+                        subtitle: s.effectSummary),
+                ],
+                selected: _style,
+                onChanged: (v) => setState(() {
+                  _style = v;
+                  widget.onStyle(v);
+                }),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _dropdownRow(
+              label: 'MENTALITY',
+              child: FcmDropdown<Mentality>(
+                icon: Icons.psychology_rounded,
+                items: [
+                  for (final m in Mentality.values)
+                    FcmDropdownItem(
+                        value: m,
+                        label: m.displayName,
+                        subtitle: m.effectSummary),
+                ],
+                selected: _mentality,
+                onChanged: (v) => setState(() {
+                  _mentality = v;
+                  widget.onMentality(v);
+                }),
+              ),
+            ),
+            const SizedBox(height: 16),
+            FcmButton(
+              icon: Icons.check_rounded,
+              label: 'DONE',
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -266,9 +378,27 @@ class _TacticsPanel extends StatelessWidget {
   }
 }
 
-/// Renders the pitch with player cards at formation coordinates (GDD 6.2),
-/// each card carrying a colour-coded stamina bar. Cards glide to their
-/// new spots when the formation changes.
+/// The visible stat triple of a squad card: outfield players show
+/// ATT / SUP / DEF, keepers GK / DEF / SUP — upgraded values included.
+List<({String label, int value})> statsOf(PlayerCard c) =>
+    c.position.isGoalkeeper
+        ? [
+            (label: 'GK', value: c.attribute(PlayerAttribute.goalkeeping)),
+            (label: 'DEF', value: c.attribute(PlayerAttribute.defence)),
+            (label: 'SUP', value: c.attribute(PlayerAttribute.support)),
+          ]
+        : [
+            (label: 'ATT', value: c.attribute(PlayerAttribute.attack)),
+            (label: 'SUP', value: c.attribute(PlayerAttribute.support)),
+            (label: 'DEF', value: c.attribute(PlayerAttribute.defence)),
+          ];
+
+/// Renders the pitch with player cards at formation coordinates (GDD 6.2).
+/// Card size adapts to the formation: the widest line and the number of
+/// lines bound the shield size, so every card gets the most space the
+/// shape allows without neighbours overlapping. Cards glide to their new
+/// spots when the formation changes. Each card carries its stats and a
+/// colour-coded stamina bar.
 class SquadPitch extends StatelessWidget {
   const SquadPitch({
     super.key,
@@ -288,7 +418,7 @@ class SquadPitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: 0.68,
+      aspectRatio: 0.66,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
         child: DecoratedBox(
@@ -299,9 +429,41 @@ class SquadPitch extends StatelessWidget {
           child: LayoutBuilder(builder: (context, constraints) {
             final pw = constraints.maxWidth;
             final ph = constraints.maxHeight;
-            final cw = (pw * 0.145).clamp(42.0, 62.0);
-            final slotW = cw + 12;
-            final slotH = cw / kPlayerCardAspect + 20;
+
+            // Size the cards to the shape. Slots cluster into horizontal
+            // bands (slots within 10 pitch-percent of each other in y —
+            // e.g. a back four at y 18/24 is one band); the keeper is
+            // excluded because it never shares a band or a column.
+            final fieldSlots = formation.slots.skip(1).toList();
+            final ys = [...fieldSlots.map((s) => s.y)]..sort();
+            final bands = <double>[ys.first];
+            for (final y in ys.skip(1)) {
+              if (y - bands.last > 10) bands.add(y);
+            }
+            final gkY = formation.slots.first.y;
+            final maxAcross = fieldSlots.fold<int>(
+                0,
+                (a, s) => math.max(a,
+                    fieldSlots.where((o) => (o.y - s.y).abs() <= 10).length));
+
+            // The card must fit the widest band horizontally, the stacked
+            // bands vertically, and the tightest gap between adjacent
+            // bands (keeper band included) without its shield colliding.
+            final byWidth = (pw - 16) / maxAcross - 12;
+            final byHeight = ((ph - 24) / (bands.length + 1) - 46) *
+                kPlayerCardAspect;
+            final gaps = [
+              bands.first - gkY,
+              for (var i = 1; i < bands.length; i++)
+                bands[i] - bands[i - 1],
+            ];
+            final minGap = gaps.fold<double>(double.infinity, math.min);
+            final byGap = (minGap / 100) * (ph - 140) * kPlayerCardAspect * 1.3;
+            final cardW =
+                math.min(byWidth, math.min(byHeight, byGap)).clamp(38.0, 60.0);
+            final slotW = cardW + 12;
+            final slotH = cardW / kPlayerCardAspect + 46;
+
             return Stack(
               children: [
                 const Positioned.fill(
@@ -315,11 +477,11 @@ class SquadPitch extends StatelessWidget {
                       key: ValueKey('slot-$slot'),
                       duration: const Duration(milliseconds: 650),
                       curve: Curves.easeOutCubic,
-                      left: (fs.x / 100) * (pw - slotW),
-                      top: (1 - fs.y / 100) * (ph - slotH),
+                      left: 8 + (fs.x / 100) * (pw - slotW - 16),
+                      top: 8 + (1 - fs.y / 100) * (ph - slotH - 16),
                       width: slotW,
                       child: card == null
-                          ? _EmptySlot(position: fs.position, width: cw)
+                          ? _EmptySlot(position: fs.position, width: cardW)
                           : FcmPressable(
                               onTap: onPlayerTap == null
                                   ? null
@@ -329,9 +491,10 @@ class SquadPitch extends StatelessWidget {
                                 position: card.position.code,
                                 name: card.base.name.split(' ').last,
                                 rarity: rarityOf(card),
-                                width: cw,
+                                width: cardW,
                                 warn: fs.position != card.position,
                                 stamina: card.staminaPercent,
+                                stats: statsOf(card),
                               ),
                             ),
                     );
@@ -345,8 +508,8 @@ class SquadPitch extends StatelessWidget {
   }
 }
 
-/// Horizontal strip of mini cards (bench / reserves), each with its
-/// stamina bar.
+/// Horizontal strip of mini cards (bench / reserves): stats, stamina and
+/// the surname under each shield.
 class SquadCardRow extends StatelessWidget {
   const SquadCardRow({super.key, required this.cards, this.onPlayerTap});
 
@@ -355,14 +518,16 @@ class SquadCardRow extends StatelessWidget {
   /// Optional card tap (player detail sheet).
   final void Function(PlayerCard card)? onPlayerTap;
 
+  static const double cardWidth = 64;
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 132,
+      height: cardWidth / kPlayerCardAspect + 50,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: cards.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
         itemBuilder: (context, i) {
           final c = cards[i];
           return FcmEntrance(
@@ -370,15 +535,15 @@ class SquadCardRow extends StatelessWidget {
             dx: 20,
             dy: 0,
             child: FcmPressable(
-              onTap:
-                  onPlayerTap == null ? null : () => onPlayerTap!(c),
+              onTap: onPlayerTap == null ? null : () => onPlayerTap!(c),
               child: FcmMiniCard(
                 overall: c.overall,
                 position: c.position.code,
                 name: c.base.name.split(' ').last,
                 rarity: rarityOf(c),
-                width: 56,
+                width: cardWidth,
                 stamina: c.staminaPercent,
+                stats: statsOf(c),
               ),
             ),
           );

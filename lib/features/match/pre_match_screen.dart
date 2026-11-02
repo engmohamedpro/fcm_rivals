@@ -890,19 +890,7 @@ class _TacticsPhase extends StatelessWidget {
         FcmEntrance(
           child: Column(
             children: [
-              const SizedBox(height: 10),
-              const FcmIconBadge(icon: Icons.tune_rounded, size: 64),
-              const SizedBox(height: 14),
-              const Text(
-                'TACTICS',
-                style: TextStyle(
-                  color: FcmColors.gold,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                ),
-              ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               const Text(
                 'Set up for this match',
                 textAlign: TextAlign.center,
@@ -912,7 +900,7 @@ class _TacticsPhase extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               const Text(
                 'Same as your Tactics tab — but these changes last only '
                 'until the final whistle. Your saved default setup is '
@@ -927,7 +915,7 @@ class _TacticsPhase extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         TacticsSetupView(
           formationCode: formationCode,
           style: style,
@@ -938,7 +926,6 @@ class _TacticsPhase extends StatelessWidget {
           onFormation: onFormation,
           onStyle: onStyle,
           onMentality: onMentality,
-          modeNote: 'This match only — your default setup stays as saved.',
         ),
       ],
     );

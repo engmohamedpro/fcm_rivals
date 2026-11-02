@@ -76,9 +76,6 @@ class SquadScreen extends ConsumerWidget {
                 onAutoPick: () => _autoPick(context, ref),
                 onPlayerTap: (card) =>
                     showPlayerDetail(context, card: card, inSquad: true),
-                modeNote:
-                    'Saved as your permanent default setup — every match '
-                    'kicks off from it.',
               ),
           ],
         );
