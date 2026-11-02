@@ -255,58 +255,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             child: _buildCard(t, flipT, cardWidth, rarity),
           ),
 
-        // THE REVEAL: the player's name lands after the stats have
-        // counted up — the last piece of the puzzle, celebrated below
-        // the card with the rarity colour.
-        if (_T.nameIn.transform(t) > 0)
-          Align(
-            alignment: const Alignment(0, 0.42),
-            child: Opacity(
-              opacity: _T.nameIn.transform(t).clamp(0.0, 1.0),
-              child: Transform.scale(
-                scale: 0.7 + 0.3 * _T.nameIn.transform(t),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _player.name.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                          shadows: [
-                            Shadow(
-                                color: rarity.accent
-                                    .withValues(alpha: 0.85),
-                                blurRadius: 26),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _player.nationality,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.75),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
         // Pull banner for epic / legendary cards.
         if (rarity != CardRarity.rare && _T.stats.transform(t) > 0)
           Align(

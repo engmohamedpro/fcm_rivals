@@ -57,10 +57,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 840));
     expect(find.text('87'), findsOneWidget);
     expect(find.text('TEST STRIKER'), findsNothing);
-    // Name reveal (0.88–0.97 of 8s): the identity lands AFTER the stats —
-    // on the card plate AND the celebration banner below it.
+    // Name reveal (0.88–0.97 of 8s): the identity lands AFTER the stats,
+    // on the card's name plate — nothing duplicates it below the card.
     await tester.pump(const Duration(milliseconds: 900));
-    expect(find.text('TEST STRIKER'), findsWidgets);
+    expect(find.text('TEST STRIKER'), findsOneWidget);
     expect(find.text('91'), findsOneWidget);
     expect(find.text('GOLD'), findsOneWidget);
     // The fade-in itself takes 300ms after the done mark.

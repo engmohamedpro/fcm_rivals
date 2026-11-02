@@ -54,7 +54,7 @@ class FcmPlayerCard extends StatelessWidget {
   /// 0..1 — how far the rating and attribute numbers have counted up.
   final double statProgress;
 
-  /// 0..1 — the name's reveal (0 shows a placeholder dash). The pack
+  /// 0..1 — the name's reveal (0 renders no text at all). The pack
   /// opening keeps the identity hidden until the stats have landed.
   final double nameProgress;
 
@@ -158,6 +158,26 @@ class FcmPlayerCard extends StatelessWidget {
                   ),
                   Text(flagEmojiFor(player.nationality),
                       style: TextStyle(fontSize: w * 0.095)),
+                  SizedBox(height: w * 0.015),
+                  // Nationality name under the flag — always visible like
+                  // the flag itself (the walkout already told the country).
+                  SizedBox(
+                    width: w * 0.30,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        player.nationality.toUpperCase(),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                          color: ink.withValues(alpha: 0.92),
+                          fontSize: w * 0.045,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -200,41 +220,27 @@ class FcmPlayerCard extends StatelessWidget {
                   ),
                 ),
               ),
-            // Name plate — hidden until nameProgress lifts the mask
-            // (the pack reveal lands the identity after the stats).
+            // Name plate — nothing at all renders until nameProgress
+            // lifts it: the pack reveal lands the identity only after
+            // the stats have counted up (no placeholder text).
             Positioned(
               left: w * 0.07,
               right: w * 0.07,
               top: h * 0.565,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  nameProgress <= 0.01
-                      ? '— — —'
-                      : player.name.toUpperCase(),
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: ink,
-                    fontSize: w * 0.092,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
+              child: Opacity(
+                opacity: nameProgress.clamp(0.0, 1.0),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    nameProgress <= 0.01 ? '' : player.name.toUpperCase(),
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: ink,
+                      fontSize: w * 0.092,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
                   ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: w * 0.07,
-              right: w * 0.07,
-              top: h * 0.64,
-              child: Text(
-                nameProgress <= 0.01 ? '— · —' : player.nationality,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: ink.withValues(alpha: 0.78),
-                  fontSize: w * 0.046,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
