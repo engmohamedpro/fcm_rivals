@@ -475,6 +475,18 @@ class SeasonStore {
       opponentPosition: positionOf(false),
       userPosition: positionOf(true),
       opponentKeyMen: keyMen,
+      userFormationCode: club.formationCode,
+      userStyle: style,
+      userMentality: mentality,
+      userSquad: [
+        for (var slot = 0; slot < Formation.startingXiSize; slot++)
+          (
+            position: squad[slot]!.position.code,
+            name: squad[slot]!.base.name,
+            overall: squad[slot]!.overall,
+            stamina: squad[slot]!.staminaPercent,
+          ),
+      ],
     );
   }
 

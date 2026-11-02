@@ -8,12 +8,14 @@ import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
+import '../../features/match/tactics.dart';
 import '../../features/squad/formations.dart';
 import '../../features/squad/squad_engine.dart';
 import '../collection/player_detail_sheet.dart';
 
 /// Squad tab: pitch with the starting XI positioned by the current
-/// formation, bench and reserves rows, formation switch and Auto Pick
+/// formation, bench and reserves rows, the club's tactical setup —
+/// formation, playing style and mentality (GDD 10) — and Auto Pick
 /// (GDD 6.2/6.3/6.4).
 class SquadScreen extends ConsumerWidget {
   const SquadScreen({super.key});
@@ -47,6 +49,12 @@ class SquadScreen extends ConsumerWidget {
             ? 0
             : (xi.values.fold<int>(0, (a, c) => a + c.overall) / xi.length)
                 .round();
+        final style = PlayingStyle.values.firstWhere(
+            (s) => s.name == club?.playingStyle,
+            orElse: () => PlayingStyle.balanced);
+        final mentality = Mentality.values.firstWhere(
+            (m) => m.name == club?.mentality,
+            orElse: () => Mentality.balanced);
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 4, 14, 24),
@@ -103,6 +111,20 @@ class SquadScreen extends ConsumerWidget {
             const SizedBox(height: 14),
             FcmEntrance(
               index: 1,
+              child: _TacticsPanel(
+                formationName: formation.name,
+                style: style,
+                mentality: mentality,
+                onStyle: (s) => _changeTactics(context, ref,
+                    playingStyle: s.name),
+                onMentality: (m) => _changeTactics(context, ref,
+                    mentality: m.name),
+                onFormation: () => _pickFormation(context, ref),
+              ),
+            ),
+            const SizedBox(height: 14),
+            FcmEntrance(
+              index: 2,
               child: _Pitch(formation: formation, assignments: xi),
             ),
             if (bench.isNotEmpty) ...[
@@ -128,6 +150,17 @@ class SquadScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  /// Updates the club's tactical setup (GDD 10.2/10.3) — used by the
+  /// playing-style and mentality selectors on this tab.
+  Future<void> _changeTactics(BuildContext context, WidgetRef ref,
+      {String? playingStyle, String? mentality}) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.changeTactics(
+        playingStyle: playingStyle, mentality: mentality);
+    ref.invalidate(clubProvider);
+    ref.invalidate(squadProvider);
   }
 
   Future<void> _autoPick(BuildContext context, WidgetRef ref) async {
@@ -201,9 +234,104 @@ class SquadScreen extends ConsumerWidget {
   }
 }
 
+/// The club's tactical setup (GDD 10): playing style and mentality
+/// selectors with their visible percentage effects (GDD 10.3), plus a
+/// quick link to the formation picker.
+class _TacticsPanel extends StatelessWidget {
+  const _TacticsPanel({
+    required this.formationName,
+    required this.style,
+    required this.mentality,
+    required this.onStyle,
+    required this.onMentality,
+    required this.onFormation,
+  });
+
+  final String formationName;
+  final PlayingStyle style;
+  final Mentality mentality;
+  final ValueChanged<PlayingStyle> onStyle;
+  final ValueChanged<Mentality> onMentality;
+  final VoidCallback onFormation;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPanel(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('TACTICS',
+                  style: TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2)),
+              FcmPressable(
+                onTap: onFormation,
+                child: FcmPill(formationName, filled: false),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Saved as your default setup — used at kick-off and editable '
+            'before every match.',
+            style: TextStyle(color: FcmColors.textDim, fontSize: 11),
+          ),
+          const SizedBox(height: 12),
+          const Text('PLAYING STYLE',
+              style: TextStyle(
+                  color: FcmColors.textDim,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final s in PlayingStyle.values)
+                FcmOptionChip(
+                  label: s.displayName,
+                  subtitle: s.effectSummary,
+                  selected: s == style,
+                  onTap: () => onStyle(s),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text('MENTALITY',
+              style: TextStyle(
+                  color: FcmColors.textDim,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final m in Mentality.values)
+                FcmOptionChip(
+                  label: m.displayName,
+                  subtitle: m.effectSummary,
+                  selected: m == mentality,
+                  onTap: () => onMentality(m),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Horizontal strip of mini cards (bench / reserves).
-class _CardRow extends StatelessWidget {
-  const _CardRow({required this.cards});
+class _CardRow extends StatelessWidget {  const _CardRow({required this.cards});
 
   final List<PlayerCard> cards;
 

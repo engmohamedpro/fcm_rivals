@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../squad/formations.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
 import 'match_session.dart';
@@ -436,6 +437,60 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
             );
         return ListView(
           children: [
+            section(
+              'Formation',
+              [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final f in formations)
+                        FcmOptionChip(
+                          label: f.name,
+                          selected: f.code ==
+                              session.engine.formationOf(session.userSide),
+                          onTap: () {
+                            session.queueCommand(ChangeFormationCommand(
+                                atMinute: nextMinute,
+                                side: session.userSide,
+                                formationCode: f.code));
+                            Navigator.pop(sheetContext);
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            section(
+              'Playing style',
+              [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final s in PlayingStyle.values)
+                        FcmOptionChip(
+                          label: s.displayName,
+                          selected:
+                              s == session.engine.styleOf(session.userSide),
+                          onTap: () {
+                            session.queueCommand(ChangeStyleCommand(
+                                atMinute: nextMinute,
+                                side: session.userSide,
+                                style: s));
+                            Navigator.pop(sheetContext);
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             section(
               'Mentality',
               [

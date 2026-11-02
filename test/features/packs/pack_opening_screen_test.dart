@@ -1,5 +1,6 @@
-// Pack opening sequence (GDD 5.6): tap → charge → burst → nationality, name
-// and position walkout → card flip → stats count up → keep button.
+// Pack opening sequence (GDD 5.6): tap → charge → burst → nationality and
+// position walkout → card flip → stats count up → NAME reveal → keep
+// button. The player's name is hidden until the stats have appeared.
 //
 // The screen has repeating idle animations, so the test advances time with
 // explicit pumps instead of pumpAndSettle.
@@ -40,18 +41,30 @@ void main() {
     await tester.pump();
     expect(find.text('TAP TO OPEN'), findsNothing);
 
-    // Walkout (timeline ~0.40–0.48 of 8s): flag, nationality, position, name.
-    await tester.pump(const Duration(milliseconds: 3900));
+    // Walkout (timeline ~0.32–0.40 of 8s): flag, nationality, position —
+    // but NOT the name: the identity is held back until the stats land.
+    await tester.pump(const Duration(milliseconds: 3300));
     expect(find.text(flagEmojiFor('Brazil')), findsOneWidget);
     expect(find.text('BRAZIL'), findsOneWidget);
     expect(find.text('ST'), findsOneWidget);
-    expect(find.text('TEST STRIKER'), findsOneWidget);
+    expect(find.text('TEST STRIKER'), findsNothing);
 
-    // Done (past 0.88): card shows final rating and attributes, button live.
-    await tester.pump(const Duration(milliseconds: 3600));
-    expect(find.text('87'), findsOneWidget);
-    expect(find.text('91'), findsOneWidget);
+    // Card flip with stats counting up (~0.70 of 8s): rating and
+    // attributes appear, the name plate still masked.
+    await tester.pump(const Duration(milliseconds: 2900));
     expect(find.text('ATT'), findsOneWidget);
+    expect(find.text('TEST STRIKER'), findsNothing);
+
+    // Stats complete exactly at t = 0.88 (7040ms of 8s): final rating
+    // has landed, the name is still masked for one more beat.
+    await tester.pump(const Duration(milliseconds: 840));
+    expect(find.text('87'), findsOneWidget);
+    expect(find.text('TEST STRIKER'), findsNothing);
+    // Name reveal (0.88–0.97 of 8s): the identity lands AFTER the stats —
+    // on the card plate AND the celebration banner below it.
+    await tester.pump(const Duration(milliseconds: 900));
+    expect(find.text('TEST STRIKER'), findsWidgets);
+    expect(find.text('91'), findsOneWidget);
     expect(find.text('GOLD'), findsOneWidget);
     // The fade-in itself takes 300ms after the done mark.
     await tester.pump(const Duration(milliseconds: 400));

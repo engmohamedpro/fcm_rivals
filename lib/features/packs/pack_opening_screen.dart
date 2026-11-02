@@ -4,8 +4,10 @@
 ///   1. Sealed foil pack floats; tap to open.
 ///   2. Pack charges (shakes, cracks, glows in the card's rarity colour).
 ///   3. Flash + particle burst.
-///   4. Walkout: nationality flag → position → name.
+///   4. Walkout: nationality flag → position.
 ///   5. The card flips over, then rating and attributes count up.
+///   6. The player's NAME is revealed only when the stats have finished
+///      counting up — the suspense runs to the very end.
 /// Rarer pulls get more particles, stronger rays and a longer glow.
 ///
 /// One master [AnimationController] drives the whole timeline through
@@ -39,12 +41,14 @@ class _T {
   static const burstEnd = 0.46;
   static const flagIn = Interval(0.25, 0.33, curve: Curves.easeOutBack);
   static const posIn = Interval(0.32, 0.40, curve: Curves.easeOutBack);
-  static const nameIn = Interval(0.39, 0.48, curve: Curves.easeOutBack);
   static const infoOut = Interval(0.50, 0.55, curve: Curves.easeIn);
   static const flip = Interval(0.50, 0.64, curve: Curves.easeOutCubic);
   static const shine = Interval(0.60, 0.80, curve: Curves.easeInOut);
   static const stats = Interval(0.64, 0.88, curve: Curves.easeOut);
   static const done = 0.88;
+  /// Name reveal: starts exactly when the stats finish counting — the
+  /// last thing the user learns is WHO the player is.
+  static const nameIn = Interval(0.88, 0.97, curve: Curves.easeOutBack);
   /// Where the sequence restarts for the 2nd+ player (no pack scene).
   static const walkoutStart = 0.25;
 }
@@ -113,6 +117,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     if (crossed(0.70) || crossed(0.78) || crossed(0.86)) {
       _haptic(HapticFeedback.selectionClick);
     }
+    // The identity reveal — the emotional peak of the sequence.
+    if (crossed(0.88)) _haptic(HapticFeedback.heavyImpact);
     _lastT = t;
     // Rebuild buttons at the done mark (the AnimatedBuilder handles frames).
   }
@@ -247,6 +253,59 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
           Align(
             alignment: const Alignment(0, -0.12),
             child: _buildCard(t, flipT, cardWidth, rarity),
+          ),
+
+        // THE REVEAL: the player's name lands after the stats have
+        // counted up — the last piece of the puzzle, celebrated below
+        // the card with the rarity colour.
+        if (_T.nameIn.transform(t) > 0)
+          Align(
+            alignment: const Alignment(0, 0.42),
+            child: Opacity(
+              opacity: _T.nameIn.transform(t).clamp(0.0, 1.0),
+              child: Transform.scale(
+                scale: 0.7 + 0.3 * _T.nameIn.transform(t),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _player.name.toUpperCase(),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                          shadows: [
+                            Shadow(
+                                color: rarity.accent
+                                    .withValues(alpha: 0.85),
+                                blurRadius: 26),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_player.club} · ${_player.age}y · '
+                        '${_player.nationality}',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
 
         // Pull banner for epic / legendary cards.
@@ -408,7 +467,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final p = _player;
     final flag = _T.flagIn.transform(t);
     final pos = _T.posIn.transform(t);
-    final name = _T.nameIn.transform(t);
 
     Widget pop(double v, Widget child, {double dy = 30}) => Opacity(
           opacity: v.clamp(0.0, 1.0),
@@ -418,6 +476,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
           ),
         );
 
+    // No name here any more: the identity lands with the stats (GDD 5.6
+    // suspense) — flag and position only.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -453,22 +513,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
           ),
         ),
         const SizedBox(height: 10),
-        pop(
-          name,
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              p.name.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -478,6 +522,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final showBack = angle >= math.pi / 2;
     final scale = 0.55 + 0.45 * Curves.easeOutBack.transform(flipT.clamp(0.0, 1.0));
     final stats = _T.stats.transform(t);
+    // Identity lands only after the stats have counted up.
+    final name = _T.nameIn.transform(t);
 
     // Foil: one sweep during the reveal, then a gentle loop.
     final done = t >= _T.done;
@@ -503,6 +549,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                   rarity: rarity,
                   width: cardWidth,
                   statProgress: stats,
+                  nameProgress: name,
                   shine: shine,
                   glow: (0.55 + 0.45 * pulse(_idle.value)) *
                       flipT.clamp(0.0, 1.0) *

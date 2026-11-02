@@ -74,22 +74,36 @@ class _EntryGate extends ConsumerWidget {
 /// League matches are played live from the Season tab (GDD 13/16).
 ///
 /// Tabs are built lazily on first visit and then kept alive, so scroll
-/// positions and loaded data survive switching.
-class GameShell extends StatefulWidget {
+/// positions and loaded data survive switching. The Packs item carries a
+/// badge with the number of unopened free packs.
+class GameShell extends ConsumerWidget {
   const GameShell({super.key});
 
   @override
-  State<GameShell> createState() => _GameShellState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final packs = ref.watch(availablePacksProvider).valueOrNull?.length ?? 0;
+    final items = [
+      const FcmNavItem('Season', Icons.sports_soccer),
+      FcmNavItem('Packs', Icons.style, badge: packs),
+      const FcmNavItem('Squad', Icons.groups),
+      const FcmNavItem('Collection', Icons.collections_bookmark),
+    ];
+
+    return _GameShellBody(items: items);
+  }
 }
 
-class _GameShellState extends State<GameShell> {
-  static const _items = [
-    FcmNavItem('Season', Icons.sports_soccer),
-    FcmNavItem('Packs', Icons.style),
-    FcmNavItem('Squad', Icons.groups),
-    FcmNavItem('Collection', Icons.collections_bookmark),
-  ];
+/// Stateful body: owns the selected tab index and the lazily built pages.
+class _GameShellBody extends StatefulWidget {
+  const _GameShellBody({required this.items});
 
+  final List<FcmNavItem> items;
+
+  @override
+  State<_GameShellBody> createState() => _GameShellBodyState();
+}
+
+class _GameShellBodyState extends State<_GameShellBody> {
   int _index = 0;
   final Set<int> _visited = {0};
 
@@ -113,7 +127,7 @@ class _GameShellState extends State<GameShell> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            for (var i = 0; i < _items.length; i++)
+            for (var i = 0; i < widget.items.length; i++)
               _visited.contains(i)
                   ? _TabPage(active: i == _index, child: _page(i))
                   : const SizedBox.shrink(),
@@ -121,7 +135,7 @@ class _GameShellState extends State<GameShell> {
         ),
       ),
       bottomNavigationBar: FcmBottomNav(
-        items: _items,
+        items: widget.items,
         index: _index,
         onChanged: (i) => setState(() {
           _index = i;

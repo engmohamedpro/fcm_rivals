@@ -46,6 +46,32 @@ class PackOpenResult {
   final List<int> tiers;
 }
 
+/// One buyable pack in the store (GDD 5.5): category, scope and the
+/// Economy-Engine-derived coin price.
+class StorePackOffer {
+  const StorePackOffer({
+    required this.category,
+    required this.title,
+    required this.scopeValue,
+    required this.price,
+    required this.eligibleCount,
+  });
+
+  final PackCategory category;
+
+  /// Display title, e.g. 'ST Position Pack'.
+  final String title;
+
+  /// Scope filter value (position code), null for the global pack.
+  final String? scopeValue;
+
+  /// Coin price from `PackEngine.packPriceFor`.
+  final int price;
+
+  /// Number of eligible players in the pool.
+  final int eligibleCount;
+}
+
 /// Players sold back to the system with the total credit.
 class SaleResult {
   const SaleResult({required this.soldOwnedIds, required this.credit});
@@ -402,6 +428,53 @@ class CollectionStore {
     return (db.select(db.packs)
           ..where((p) => p.clubId.equals(club.id) & p.opened.equals(false)))
         .get();
+  }
+
+  /// Total free packs the club has ever received (any source except
+  /// purchases): the 'n of total' denominator on the Packs tab.
+  Future<int> getTotalFreePacks() async {
+    final club = await getClub();
+    if (club == null) return 0;
+    final count = db.packs.id.count();
+    final row = await (db.selectOnly(db.packs)
+          ..addColumns([count])
+          ..where(db.packs.clubId.equals(club.id) &
+              db.packs.source.equals('purchase').not()))
+        .getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  /// The store's buyable packs (GDD 5.5): the global pack plus one per
+  /// outfield position and goalkeeper, each priced by the Economy Engine's
+  /// expected-contents formula. Prices are stable per dataset.
+  Future<List<StorePackOffer>> getStoreOffers() async {
+    final registry = await _ensureRegistry();
+    final pool = registry.all.toList(growable: false);
+    final engine = PackEngine(random: math.Random(0), economy: economy);
+    final global = PackScope(category: PackCategory.global);
+    return [
+      StorePackOffer(
+        category: PackCategory.global,
+        title: 'Global Pack',
+        scopeValue: null,
+        price: engine.packPriceFor(global, pool),
+        eligibleCount: pool.length,
+      ),
+      for (final position in Position.values)
+        () {
+          final scope = PackScope(
+              category: PackCategory.position, position: position);
+          final eligible =
+              pool.where(scope.matches).toList(growable: false);
+          return StorePackOffer(
+            category: PackCategory.position,
+            title: '${position.code} Position Pack',
+            scopeValue: position.code,
+            price: engine.packPriceFor(scope, pool),
+            eligibleCount: eligible.length,
+          );
+        }(),
+    ];
   }
 
   /// Buys one pack with Coins (GDD 5.5: prices come from the Economy

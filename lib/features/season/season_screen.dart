@@ -8,7 +8,8 @@ import '../match/match_forecast.dart'
     show PreMatchData;
 import '../match/tactics.dart' show MatchPepTalk;
 import '../match/match_screen.dart';
-import '../match/pre_match_screen.dart';
+import '../match/pre_match_screen.dart'
+    show PreMatchScreen, PreMatchTacticSelection;
 import 'season_engine.dart' show StandingEntry;
 import 'season_store.dart';
 
@@ -59,8 +60,9 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       final store = await ref.read(seasonStoreProvider.future);
       final next = (await store.getNextFixture())!;
       if (!mounted) return;
-      // The matchday build-up: analysis + dressing room, then the chosen
-      // pep talk (null = no talk). Ad-free by design (FR-043).
+      // The matchday build-up: analysis + tactics + dressing room, then
+      // the chosen pep talk (null = no talk). Ad-free by design (FR-043).
+      // The route persists the tactic selections itself.
       MatchPepTalk? talk;
       final kickedOff = await Navigator.of(context).push<bool>(
         MaterialPageRoute<bool>(
@@ -593,19 +595,23 @@ class _StandingRow extends StatelessWidget {
 
 /// Route body for the matchday build-up: loads the pre-match analysis
 /// off the database, hands the chosen pep talk back through [onKickOff]
-/// and pops `true` so the caller knows kick-off was pressed (vs. backed
-/// out, which leaves the fixture unplayed).
-class _PreMatchRoute extends StatefulWidget {
-  const _PreMatchRoute({required this.loadData, required this.onKickOff});
+/// and persists the tactic selections made in the tactics phase, then
+/// pops `true` so the caller knows kick-off was pressed (vs. backed out,
+/// which leaves the fixture unplayed).
+class _PreMatchRoute extends ConsumerStatefulWidget {
+  const _PreMatchRoute({
+    required this.loadData,
+    required this.onKickOff,
+  });
 
   final Future<PreMatchData> Function() loadData;
   final ValueChanged<MatchPepTalk?> onKickOff;
 
   @override
-  State<_PreMatchRoute> createState() => _PreMatchRouteState();
+  ConsumerState<_PreMatchRoute> createState() => _PreMatchRouteState();
 }
 
-class _PreMatchRouteState extends State<_PreMatchRoute> {
+class _PreMatchRouteState extends ConsumerState<_PreMatchRoute> {
   Future<PreMatchData>? _future;
   String? _error;
 
@@ -613,6 +619,21 @@ class _PreMatchRouteState extends State<_PreMatchRoute> {
   void initState() {
     super.initState();
     _future = widget.loadData();
+  }
+
+  Future<void> _applyTactics(PreMatchTacticSelection tactics) async {
+    try {
+      final collection = await ref.read(collectionStoreProvider.future);
+      await collection.changeTactics(
+        formationCode: tactics.formationCode,
+        playingStyle: tactics.style.name,
+        mentality: tactics.mentality.name,
+      );
+      ref.invalidate(clubProvider);
+      ref.invalidate(squadProvider);
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    }
   }
 
   Future<void> _kickOff(MatchPepTalk? talk) async {
@@ -659,6 +680,7 @@ class _PreMatchRouteState extends State<_PreMatchRoute> {
           data: data,
           error: _error,
           onKickOff: _kickOff,
+          onTacticsSelected: _applyTactics,
         );
       },
     );

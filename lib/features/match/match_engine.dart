@@ -436,6 +436,16 @@ class MatchEngine {
   int substitutionsUsedOf(MatchSide side) =>
       _runtimeOf(side).substitutionsUsed;
 
+  /// Current formation code of [side] — the live tactics UI marks the
+  /// active choice.
+  String formationOf(MatchSide side) => _runtimeOf(side).formation.code;
+
+  /// Current playing style of [side] (GDD 10.2).
+  PlayingStyle styleOf(MatchSide side) => _runtimeOf(side).style;
+
+  /// Current mentality of [side] (GDD 10.3).
+  Mentality mentalityOf(MatchSide side) => _runtimeOf(side).mentality;
+
   /// Queues a command; it is applied at the next minute boundary with
   /// atMinute <= that minute (GDD 10.4: changes affect future events
   /// immediately, never past ones).

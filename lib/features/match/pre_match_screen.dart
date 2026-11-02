@@ -6,13 +6,18 @@
 ///   2. Analysis phase — win/draw/loss probabilities (Monte-Carlo of the
 ///      real engine), side-by-side strength bars, opponent form line and
 ///      key-men ratings, each staggering in.
-///   3. Pep talk phase — one motivational choice (GDD 15.1) with its
+///   3. Tactics phase  — set up how this match is played: formation,
+///      playing style and mentality (GDD 10) with their visible
+///      percentage effects, plus the starting XI's stamina.
+///   4. Pep talk phase — one motivational choice (GDD 15.1) with its
 ///      visible percentage effects; selecting one plays a short confirm
 ///      burst.
-///   4. Kick-off       — hands the prepared [MatchSession] to the caller.
+///   5. Kick-off       — hands the prepared [MatchSession] to the caller.
 ///
 /// The screen owns no session data: [onKickOff] receives the chosen talk
-/// so the caller builds the session exactly as before (FR-043: no ads).
+/// and the applied tactics so the caller builds the session exactly as
+/// before (FR-043: no ads). Tactic selections are reported through
+/// [onTacticsSelected] so the caller persists them before kick-off.
 library;
 
 import 'package:flutter/material.dart';
@@ -20,13 +25,14 @@ import 'package:flutter/services.dart';
 
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../squad/formations.dart';
 import 'match_forecast.dart';
 import 'tactics.dart';
 
 /// Everything the analysis phase shows, pre-computed by the caller
 /// (see [PreMatchData] in match_forecast.dart).
 
-/// Full-screen matchday build-up: analysis → pep talk → kick-off.
+/// Full-screen matchday build-up: analysis → tactics → pep talk → kick-off.
 class PreMatchScreen extends StatefulWidget {
   const PreMatchScreen({
     super.key,
@@ -34,6 +40,7 @@ class PreMatchScreen extends StatefulWidget {
     required this.onKickOff,
     this.loading = false,
     this.error,
+    this.onTacticsSelected,
   });
 
   final PreMatchData data;
@@ -47,17 +54,61 @@ class PreMatchScreen extends StatefulWidget {
   /// Error text from session preparation, shown inline.
   final String? error;
 
+  /// Receives the tactic selections made in the tactics phase so the
+  /// caller persists them before the session is built.
+  final ValueChanged<PreMatchTacticSelection>? onTacticsSelected;
+
   @override
   State<PreMatchScreen> createState() => _PreMatchScreenState();
 }
 
-class _PreMatchScreenState extends State<PreMatchScreen> {
-  bool _pepPhase = false;
-  MatchPepTalk? _selectedTalk;
+/// The tactic choices made in the pre-match tactics phase (GDD 10):
+/// persisted by the caller so they apply from kick-off and become the
+/// club's defaults.
+class PreMatchTacticSelection {
+  const PreMatchTacticSelection({
+    required this.formationCode,
+    required this.style,
+    required this.mentality,
+  });
 
-  void _toPepPhase() {
+  final String formationCode;
+  final PlayingStyle style;
+  final Mentality mentality;
+}
+
+class _PreMatchScreenState extends State<PreMatchScreen> {
+  int _phase = 0; // 0 analysis, 1 tactics, 2 pep talk
+  MatchPepTalk? _selectedTalk;
+  String? _formationCode;
+  PlayingStyle? _style;
+  Mentality? _mentality;
+  bool _tacticsApplied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _formationCode = widget.data.userFormationCode;
+    _style = widget.data.userStyle;
+    _mentality = widget.data.userMentality;
+  }
+
+  void _nextPhase() {
     HapticFeedback.selectionClick();
-    setState(() => _pepPhase = true);
+    if (_phase == 1) _applyTactics();
+    setState(() => _phase++);
+  }
+
+  /// Persists the tactic selection (formation, style, mentality) so the
+  /// session built at kick-off starts with exactly this setup (GDD 10.4).
+  void _applyTactics() {
+    if (_tacticsApplied) return;
+    _tacticsApplied = true;
+    widget.onTacticsSelected?.call(PreMatchTacticSelection(
+      formationCode: _formationCode!,
+      style: _style ?? PlayingStyle.balanced,
+      mentality: _mentality ?? Mentality.balanced,
+    ));
   }
 
   void _selectTalk(MatchPepTalk? talk) {
@@ -73,6 +124,7 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
   @override
   Widget build(BuildContext context) {
     final d = widget.data;
+    final phase = _phase;
     return Scaffold(
       backgroundColor: FcmColors.night,
       body: FcmBackdrop(
@@ -94,24 +146,42 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                       child: child,
                     ),
                   ),
-                  child: _pepPhase
-                      ? _PepTalkPhase(
-                          key: const ValueKey('pep'),
-                          selected: _selectedTalk,
-                          onSelect: _selectTalk,
-                        )
-                      : _AnalysisPhase(
-                          key: const ValueKey('analysis'),
-                          data: d,
-                        ),
+                  child: switch (phase) {
+                    0 => _AnalysisPhase(
+                        key: const ValueKey('analysis'),
+                        data: d,
+                      ),
+                    1 => _TacticsPhase(
+                        key: const ValueKey('tactics'),
+                        data: d,
+                        formationCode: _formationCode!,
+                        style: _style,
+                        mentality: _mentality,
+                        onFormation: (code) =>
+                            setState(() => _formationCode = code),
+                        onStyle: (s) => setState(() => _style = s),
+                        onMentality: (m) => setState(() => _mentality = m),
+                      ),
+                    _ => _PepTalkPhase(
+                        key: const ValueKey('pep'),
+                        selected: _selectedTalk,
+                        onSelect: _selectTalk,
+                      ),
+                  },
                 ),
               ),
               _BottomBar(
-                pepPhase: _pepPhase,
+                phase: phase,
                 selectedTalk: _selectedTalk,
                 loading: widget.loading,
                 error: widget.error,
-                onPrimary: _pepPhase ? _kickOff : _toPepPhase,
+                onPrimary: phase == 2 ? _kickOff : _nextPhase,
+                onBack: _phase > 0
+                    ? () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _phase--);
+                      }
+                    : null,
               ),
             ],
           ),
@@ -786,6 +856,338 @@ class _OpponentCard extends StatelessWidget {
 }
 
 // -----------------------------------------------------------------------------
+// Tactics phase
+// -----------------------------------------------------------------------------
+
+/// Set up how this match is played (GDD 10): formation, playing style and
+/// mentality with their visible percentage effects (GDD 10.3), plus the
+/// starting XI with stamina so tired squads can be managed (GDD 11).
+class _TacticsPhase extends StatelessWidget {
+  const _TacticsPhase({
+    super.key,
+    required this.data,
+    required this.formationCode,
+    required this.style,
+    required this.mentality,
+    required this.onFormation,
+    required this.onStyle,
+    required this.onMentality,
+  });
+
+  final PreMatchData data;
+  final String formationCode;
+  final PlayingStyle? style;
+  final Mentality? mentality;
+  final ValueChanged<String> onFormation;
+  final ValueChanged<PlayingStyle> onStyle;
+  final ValueChanged<Mentality> onMentality;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = data;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+      children: [
+        FcmEntrance(
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              const FcmIconBadge(icon: Icons.tune_rounded, size: 64),
+              const SizedBox(height: 14),
+              const Text(
+                'TACTICS',
+                style: TextStyle(
+                  color: FcmColors.gold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 4,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Set up for this match',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Formation, playing style and mentality with their visible '
+                'effects (GDD 10). Applies from kick-off and is saved as '
+                'your default setup.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: FcmColors.textDim,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        FcmEntrance(
+          index: 1,
+          child: _FormationSection(
+            selected: formationCode,
+            onSelect: onFormation,
+          ),
+        ),
+        const SizedBox(height: 14),
+        FcmEntrance(
+          index: 2,
+          child: _StyleSection(selected: style, onSelect: onStyle),
+        ),
+        const SizedBox(height: 14),
+        FcmEntrance(
+          index: 3,
+          child: _MentalitySection(
+              selected: mentality, onSelect: onMentality),
+        ),
+        const SizedBox(height: 14),
+        FcmEntrance(
+          index: 4,
+          child: _SquadStaminaCard(squad: d.userSquad),
+        ),
+      ],
+    );
+  }
+}
+
+/// Formation selector: one chip per supported formation (GDD 6.4).
+class _FormationSection extends StatelessWidget {
+  const _FormationSection({required this.selected, required this.onSelect});
+
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'FORMATION',
+            style: TextStyle(
+              color: FcmColors.gold,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Changing formation re-picks the best XI for the new shape.',
+            style: TextStyle(color: FcmColors.textDim, fontSize: 11),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final f in formations)
+                FcmOptionChip(
+                  label: f.name,
+                  selected: f.code == selected,
+                  onTap: () => onSelect(f.code),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Playing-style selector with effect summaries (GDD 10.2/10.3).
+class _StyleSection extends StatelessWidget {
+  const _StyleSection({required this.selected, required this.onSelect});
+
+  final PlayingStyle? selected;
+  final ValueChanged<PlayingStyle> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PLAYING STYLE',
+            style: TextStyle(
+              color: FcmColors.gold,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final s in PlayingStyle.values)
+                FcmOptionChip(
+                  label: s.displayName,
+                  subtitle: s.effectSummary,
+                  selected: s == selected,
+                  onTap: () => onSelect(s),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Mentality selector with effect summaries (GDD 10.3).
+class _MentalitySection extends StatelessWidget {
+  const _MentalitySection({required this.selected, required this.onSelect});
+
+  final Mentality? selected;
+  final ValueChanged<Mentality> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'MENTALITY',
+            style: TextStyle(
+              color: FcmColors.gold,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final m in Mentality.values)
+                FcmOptionChip(
+                  label: m.displayName,
+                  subtitle: m.effectSummary,
+                  selected: m == selected,
+                  onTap: () => onSelect(m),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The starting XI with stamina bars (GDD 11): who is fit to start.
+class _SquadStaminaCard extends StatelessWidget {
+  const _SquadStaminaCard({required this.squad});
+
+  final List<({String position, String name, int overall, int stamina})>
+      squad;
+
+  @override
+  Widget build(BuildContext context) {
+    final avg = squad.isEmpty
+        ? 0
+        : (squad.fold<int>(0, (a, p) => a + p.stamina) / squad.length)
+            .round();
+    return FcmPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'STARTING XI · STAMINA',
+                style: TextStyle(
+                  color: FcmColors.gold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                ),
+              ),
+              FcmPill(
+                'AVG $avg%',
+                color: avg >= 70
+                    ? FcmColors.success
+                    : avg >= 40
+                        ? FcmColors.gold
+                        : FcmColors.danger,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final p in squad)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 30,
+                    child: Text(
+                      p.position,
+                      style: const TextStyle(
+                        color: FcmColors.textDim,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      p.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 60,
+                    child: FcmStatBar(
+                        label: '', value: p.stamina, compact: true),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 34,
+                    child: Text(
+                      '${p.stamina}%',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: p.stamina >= 70
+                            ? FcmColors.success
+                            : p.stamina >= 40
+                                ? FcmColors.gold
+                                : FcmColors.danger,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Pep talk phase
 // -----------------------------------------------------------------------------
 
@@ -1006,21 +1408,37 @@ class _PepTalkTile extends StatelessWidget {
 
 class _BottomBar extends StatelessWidget {
   const _BottomBar({
-    required this.pepPhase,
+    required this.phase,
     required this.selectedTalk,
     required this.loading,
     required this.error,
     required this.onPrimary,
+    this.onBack,
   });
 
-  final bool pepPhase;
+  /// 0 analysis, 1 tactics, 2 pep talk.
+  final int phase;
   final MatchPepTalk? selectedTalk;
   final bool loading;
   final String? error;
   final VoidCallback onPrimary;
 
+  /// Step back one phase; null on the first phase (system back still
+  /// exits the fixture).
+  final VoidCallback? onBack;
+
   @override
   Widget build(BuildContext context) {
+    final primaryLabel = switch (phase) {
+      0 => 'CONTINUE',
+      1 => 'TO DRESSING ROOM',
+      _ => 'KICK OFF',
+    };
+    final primaryIcon = switch (phase) {
+      0 => Icons.groups_rounded,
+      1 => Icons.record_voice_over_rounded,
+      _ => Icons.play_circle_fill_rounded,
+    };
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
       child: Column(
@@ -1037,24 +1455,23 @@ class _BottomBar extends StatelessWidget {
             ),
           Row(
             children: [
-              if (pepPhase)
+              if (onBack != null) ...[
                 Expanded(
                   flex: 2,
                   child: FcmButton(
                     style: FcmButtonStyle.ghost,
                     label: 'BACK',
                     icon: Icons.arrow_back_rounded,
-                    onPressed: () => Navigator.of(context).maybePop(),
+                    onPressed: onBack,
                   ),
                 ),
-              if (pepPhase) const SizedBox(width: 10),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 flex: 3,
                 child: FcmButton(
-                  label: pepPhase ? 'KICK OFF' : 'CONTINUE',
-                  icon: pepPhase
-                      ? Icons.play_circle_fill_rounded
-                      : Icons.groups_rounded,
+                  label: primaryLabel,
+                  icon: primaryIcon,
                   loading: loading,
                   onPressed: onPrimary,
                 ),

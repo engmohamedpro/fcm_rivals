@@ -12,6 +12,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'tactics.dart';
 import 'match_engine.dart';
 
 /// Outcome probabilities and supporting numbers for one fixture forecast.
@@ -83,6 +84,10 @@ class PreMatchData {
     required this.opponentPosition,
     required this.userPosition,
     required this.opponentKeyMen,
+    this.userFormationCode = '4-3-3',
+    this.userStyle,
+    this.userMentality,
+    this.userSquad = const [],
   });
 
   /// e.g. 'League · Round 3'.
@@ -105,6 +110,17 @@ class PreMatchData {
 
   /// Opponent's highest-rated starters: name + overall.
   final List<({String name, int overall})> opponentKeyMen;
+
+  /// The club's persisted formation / playing style / mentality (GDD 10) —
+  /// the starting point of the pre-match tactics selection.
+  final String userFormationCode;
+  final PlayingStyle? userStyle;
+  final Mentality? userMentality;
+
+  /// The user's starting XI with stamina, for the tactics phase: position
+  /// code, surname, overall and stamina percent.
+  final List<({String position, String name, int overall, int stamina})>
+      userSquad;
 }
 
 /// Runs the Monte-Carlo forecast with the real engine.

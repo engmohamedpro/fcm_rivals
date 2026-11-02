@@ -119,11 +119,33 @@ void main() {
     expect(find.text('STRENGTH'), findsOneWidget);
     expect(find.textContaining('simulated matches'), findsOneWidget);
 
-    // Continue into the dressing room (GDD 15.1 pre-match pep talk).
+    // Continue into the tactics phase (GDD 10): the club's formation,
+    // playing style and mentality with visible effects, plus the XI's
+    // stamina. Pick a different style to prove the selection persists.
     await tester.tap(find.text('CONTINUE'));
+    await _flush(tester, wait: const Duration(milliseconds: 600));
+    expect(find.text('TACTICS'), findsOneWidget);
+    expect(find.text('Set up for this match'), findsOneWidget);
+    expect(find.text('PLAYING STYLE'), findsOneWidget);
+    // The style chips sit below the fold in the test viewport — scroll
+    // the tactics list until the Counter Attack chip is visible.
+    await tester.scrollUntilVisible(
+      find.text('Counter Attack'),
+      200,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Counter Attack'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // On to the dressing room (GDD 15.1 pre-match pep talk).
+    await tester.tap(find.text('TO DRESSING ROOM'));
     await _flush(tester, wait: const Duration(milliseconds: 600));
     expect(find.text('DRESSING ROOM'), findsOneWidget);
     expect(find.text('Deliver your team talk'), findsOneWidget);
+
+    // The tactic selection persisted (changeTactics ran at phase exit).
+    final clubAfterTactics = await tester.runAsync(store.getClub);
+    expect(clubAfterTactics!.playingStyle, 'counterAttack');
 
     // Kick off with the default 'no talk' tile selected.
     await tester.tap(find.text('KICK OFF'));

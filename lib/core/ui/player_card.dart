@@ -25,6 +25,7 @@ class FcmPlayerCard extends StatelessWidget {
     this.width = 260,
     this.shine,
     this.statProgress = 1.0,
+    this.nameProgress = 1.0,
     this.glow = 0.0,
     this.overall,
     this.stats,
@@ -51,6 +52,10 @@ class FcmPlayerCard extends StatelessWidget {
 
   /// 0..1 — how far the rating and attribute numbers have counted up.
   final double statProgress;
+
+  /// 0..1 — the name's reveal (0 shows a placeholder dash). The pack
+  /// opening keeps the identity hidden until the stats have landed.
+  final double nameProgress;
 
   /// 0..1 — outer glow strength behind the card.
   final double glow;
@@ -194,7 +199,8 @@ class FcmPlayerCard extends StatelessWidget {
                   ),
                 ),
               ),
-            // Name plate.
+            // Name plate — hidden until nameProgress lifts the mask
+            // (the pack reveal lands the identity after the stats).
             Positioned(
               left: w * 0.07,
               right: w * 0.07,
@@ -202,7 +208,9 @@ class FcmPlayerCard extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  player.name.toUpperCase(),
+                  nameProgress <= 0.01
+                      ? '— — —'
+                      : player.name.toUpperCase(),
                   maxLines: 1,
                   style: TextStyle(
                     color: ink,
@@ -218,7 +226,7 @@ class FcmPlayerCard extends StatelessWidget {
               right: w * 0.07,
               top: h * 0.64,
               child: Text(
-                '${player.club} · ${player.age}y',
+                nameProgress <= 0.01 ? '— · —' : '${player.club} · ${player.age}y',
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

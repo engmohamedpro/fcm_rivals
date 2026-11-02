@@ -665,6 +665,83 @@ class FcmPill extends StatelessWidget {
   }
 }
 
+/// Selectable option chip used by the tactic selectors (playing style,
+/// mentality, formation): gold when selected, steel otherwise. An optional
+/// [subtitle] line renders under the label for effect summaries.
+class FcmOptionChip extends StatelessWidget {
+  const FcmOptionChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.subtitle,
+    this.enabled = true,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+  final String? subtitle;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = selected && enabled;
+    return FcmPressable(
+      onTap: enabled ? onTap : null,
+      scale: 0.95,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.symmetric(
+            horizontal: subtitle != null ? 12 : 14, vertical: subtitle != null ? 8 : 9),
+        decoration: BoxDecoration(
+          gradient: active ? FcmColors.goldGradient : FcmColors.steelGradient,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: active
+                ? FcmColors.goldSoft.withValues(alpha: 0.6)
+                : FcmColors.bronze.withValues(alpha: enabled ? 0.45 : 0.2),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: active ? FcmColors.ink : (enabled ? Colors.white : Colors.white38),
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: active
+                      ? FcmColors.ink.withValues(alpha: 0.85)
+                      : FcmColors.textDim,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Horizontal attribute bar that fills on first build and when the value
 /// changes. [bonus] shows the part gained from upgrades in gold.
 class FcmStatBar extends StatelessWidget {
@@ -673,15 +750,50 @@ class FcmStatBar extends StatelessWidget {
     required this.label,
     required this.value,
     this.bonus = 0,
+    this.compact = false,
   });
 
   final String label;
   final int value;
   final int bonus;
 
+  /// Bar only: no label column, tighter padding — for inline rows such as
+  /// the pre-match stamina list.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final color = ratingColor(value);
+    if (compact) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(5),
+        child: SizedBox(
+          height: 8,
+          child: Stack(
+            children: [
+              Container(color: Colors.white.withValues(alpha: 0.08)),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: (value / 100).clamp(0.0, 1.0)),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutCubic,
+                builder: (context, f, _) => FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: f,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [
+                        color.withValues(alpha: 0.65),
+                        color,
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
@@ -809,9 +921,14 @@ class FcmCoinChip extends StatelessWidget {
 // -----------------------------------------------------------------------------
 
 class FcmNavItem {
-  const FcmNavItem(this.label, this.icon);
+  const FcmNavItem(this.label, this.icon, {this.badge});
+
   final String label;
   final IconData icon;
+
+  /// Optional notification badge (hidden when null or zero) — e.g. the
+  /// number of unopened packs waiting on the Packs tab.
+  final int? badge;
 }
 
 /// Bottom navigation: animated gold pill behind the selected item.
@@ -898,15 +1015,46 @@ class _NavButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedScale(
-              scale: selected ? 1.18 : 1.0,
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutBack,
-              child: Icon(
-                item.icon,
-                size: 24,
-                color: selected ? FcmColors.gold : Colors.white60,
-              ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedScale(
+                  scale: selected ? 1.18 : 1.0,
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutBack,
+                  child: Icon(
+                    item.icon,
+                    size: 24,
+                    color: selected ? FcmColors.gold : Colors.white60,
+                  ),
+                ),
+                if ((item.badge ?? 0) > 0)
+                  Positioned(
+                    top: -7,
+                    right: -13,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 17),
+                      height: 17,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient: FcmColors.goldGradient,
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(color: FcmColors.ink, width: 1.5),
+                      ),
+                      child: FitText(
+                        (item.badge! > 99) ? '99+' : '${item.badge}',
+                        align: Alignment.center,
+                        style: const TextStyle(
+                          color: FcmColors.ink,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 3),
             Padding(

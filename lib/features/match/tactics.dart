@@ -23,6 +23,9 @@ enum PlayingStyle {
 
   final String displayName;
   final StyleModifiers modifiers;
+
+  /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  String get effectSummary => modifiers.effectSummary;
 }
 
 /// Percentage multipliers applied by a playing style (GDD 10.2 effects).
@@ -53,6 +56,25 @@ class StyleModifiers {
 
   /// Multiplier on pass completion probability.
   final double passAccuracy;
+
+  /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  String get effectSummary {
+    final parts = <String>[];
+
+    void describe(String name, double multiplier) {
+      final percent = ((multiplier - 1) * 100).round();
+      if (percent == 0) return;
+      parts.add('$name ${percent > 0 ? '+' : ''}$percent%');
+    }
+
+    describe('Attack', attack);
+    describe('Defence', defence);
+    describe('Possession', possession);
+    describe('Chances', chance);
+    describe('Stamina use', stamina);
+    describe('Passing', passAccuracy);
+    return parts.isEmpty ? 'No modifiers' : parts.join(' · ');
+  }
 }
 
 /// Seven mentalities (GDD 10.3): percentage changes to the team's Attack
@@ -85,6 +107,22 @@ enum Mentality {
 
   /// Shifts one step towards defensive; clamps at the range ends.
   Mentality moreDefensive() => index == 0 ? this : values[index - 1];
+
+  /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  String get effectSummary {
+    final parts = <String>[];
+
+    void describe(String name, double multiplier) {
+      final percent = ((multiplier - 1) * 100).round();
+      if (percent == 0) return;
+      parts.add('$name ${percent > 0 ? '+' : ''}$percent%');
+    }
+
+    describe('Attack', attackMod);
+    describe('Defence', defenceMod);
+    describe('Stamina use', staminaMod);
+    return parts.isEmpty ? 'No modifiers' : parts.join(' · ');
+  }
 }
 
 /// Live Match Actions (GDD 16): temporary in-match boosts with explicit
