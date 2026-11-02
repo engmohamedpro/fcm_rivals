@@ -19,10 +19,21 @@ import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/season/season_store.dart';
 import 'package:fcm_rivals/main.dart';
 
+import '../../helpers/audioplayers_mocks.dart';
+
 const List<List<String>> _seedPositions = [
-  ['GK', 'Keeper'], ['CB', 'Back'], ['CM', 'Midfield'], ['RW', 'Wing'],
-  ['ST', 'Striker'], ['CDM', 'Anchor'], ['LW', 'Winger'], ['CAM', 'Playmaker'],
-  ['LB', 'Leftback'], ['RB', 'Rightback'], ['LM', 'Leftmid'], ['RM', 'Rightmid'],
+  ['GK', 'Keeper'],
+  ['CB', 'Back'],
+  ['CM', 'Midfield'],
+  ['RW', 'Wing'],
+  ['ST', 'Striker'],
+  ['CDM', 'Anchor'],
+  ['LW', 'Winger'],
+  ['CAM', 'Playmaker'],
+  ['LB', 'Leftback'],
+  ['RB', 'Rightback'],
+  ['LM', 'Leftmid'],
+  ['RM', 'Rightmid'],
 ];
 
 final List<List<dynamic>> seedRows = [
@@ -41,16 +52,19 @@ final List<List<dynamic>> seedRows = [
 ];
 
 String datasetJson(List<List<dynamic>> rows) => json.encode({
-      'format': 'fcm-rivals-players',
-      'version': 1,
-      'asOf': '2026-11-01',
-      'leagues': const {'EG1': 'Egyptian Premier League'},
-      'digest': 'test',
-      'players': rows,
-    });
+  'format': 'fcm-rivals-players',
+  'version': 1,
+  'asOf': '2026-11-01',
+  'leagues': const {'EG1': 'Egyptian Premier League'},
+  'digest': 'test',
+  'players': rows,
+});
 
 /// Flushes pending real async I/O (drift transactions) and settles frames.
-Future<void> _flush(WidgetTester tester, {Duration wait = const Duration(milliseconds: 300)}) async {
+Future<void> _flush(
+  WidgetTester tester, {
+  Duration wait = const Duration(milliseconds: 300),
+}) async {
   await tester.runAsync(() => Future<void>.delayed(wait));
   // Ambient animations (backdrop, live dot) never settle: pump bounded frames.
   for (var i = 0; i < 10; i++) {
@@ -79,164 +93,187 @@ Future<void> _playToFullTime(WidgetTester tester) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets(
-      'league fixture plays as a live match from the Season tab and commits',
-      (WidgetTester tester) async {
-    final db = AppDatabase(NativeDatabase.memory());
-    final store = CollectionStore(db: db);
-    await store.applyDatasetUpdate(
-        PlayerDataset.fromJson(datasetJson(seedRows)));
-    await store.createClub(
-        clubName: 'FC Rivals', managerName: 'Mohamed', crestIndex: 0);
-    for (final pack in await store.getAvailablePacks()) {
-      await store.openPack(packId: pack.id, random: math.Random(17));
-    }
-    await store.autoPickSquad();
-    final seasonStore = SeasonStore(db: db, random: math.Random(4));
-    await seasonStore.startSeason(division: 1);
-    final opponent = (await seasonStore.getNextFixture())!;
-
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        collectionStoreProvider.overrideWith((ref) => store),
-        seasonStoreProvider.overrideWith((ref) async => seasonStore),
-      ],
-      child: const FcmRivalsApp(),
-    ));
-    await _flush(tester, wait: const Duration(milliseconds: 200));
-
-    // The Season tab lists the round-1 home fixture against an AI club.
-    expect(find.text('Start your first season'), findsNothing);
-    expect(find.textContaining('vs ${opponent.opponentName}'),
-        findsOneWidget);
-    expect(find.text('Play match'), findsOneWidget);
-
-    // Kick-off: the matchday build-up screen comes first (GDD 13): the
-    // VS header with the forecast, then the dressing-room pep talk.
-    await tester.tap(find.text('Play match'));
-    await _flush(tester, wait: const Duration(milliseconds: 900));
-    expect(find.text('MATCH FORECAST'), findsOneWidget);
-    expect(find.text('STRENGTH'), findsOneWidget);
-    expect(find.textContaining('simulated matches'), findsOneWidget);
-
-    // Continue into the tactics phase (GDD 10.4): the SAME screen as the
-    // Tactics tab — a compact control card (team rating + TACTICS button)
-    // over the pitch with per-player stats and stamina bars, then bench
-    // and reserves — but match-only.
-    await tester.tap(find.text('CONTINUE'));
-    await _flush(tester, wait: const Duration(milliseconds: 600));
-    expect(find.text('Set up for this match'), findsOneWidget);
-    expect(find.text('TEAM RATING'), findsOneWidget);
-    expect(find.text('TACTICS'), findsOneWidget);
-
-    // The tactic options live in a bottom sheet behind the TACTICS
-    // button, so the screen stays dominated by the pitch.
-    await tester.tap(find.text('TACTICS'));
-    await _flush(tester, wait: const Duration(milliseconds: 600));
-    expect(find.text('TACTIC OPTIONS'), findsOneWidget);
-    expect(find.text('PLAYING STYLE'), findsOneWidget);
-
-    // The style dropdown's closed field shows the saved default
-    // (balanced) — the FIRST 'Balanced' field, the mentality dropdown's
-    // comes later. Tapping it stacks the option list sheet on top; give
-    // the sheets' entrance animations a few bounded pumps, then fling
-    // the option list if the wanted tile sits below the fold.
-    await tester.tap(find.text('Balanced').first);
-    for (var i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 200));
-    }
-    for (var i = 0; i < 6; i++) {
-      final tile = find.text('Counter Attack');
-      if (tile.evaluate().isNotEmpty &&
-          tester.getRect(tile.first).bottom < 560) {
-        break;
-      }
-      await tester.flingFrom(
-          const Offset(400, 300), const Offset(0, -350), 800);
-      await tester.pump(const Duration(milliseconds: 300));
-    }
-    // Pick a different style; the option list sheet closes on selection.
-    await tester.tap(find.text('Counter Attack'));
-    for (var i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 200));
-    }
-    // The style dropdown field in the options sheet now carries the
-    // match-only selection.
-    expect(find.text('Counter Attack'), findsOneWidget);
-
-    // Close the options sheet; the control card's setup summary line on
-    // the tactics screen reflects the match-only selection.
-    await tester.tap(find.text('DONE'));
-    await _flush(tester, wait: const Duration(milliseconds: 600));
-    expect(find.textContaining('Counter Attack'), findsOneWidget);
-
-    // On to the dressing room (GDD 15.1 pre-match pep talk).
-    await tester.tap(find.text('TO DRESSING ROOM'));
-    await _flush(tester, wait: const Duration(milliseconds: 600));
-    expect(find.text('DRESSING ROOM'), findsOneWidget);
-    expect(find.text('Deliver your team talk'), findsOneWidget);
-
-    // The tactic selection did NOT touch the club's saved default setup:
-    // match-only semantics (GDD 10.4) — persistence happens nowhere before
-    // kick-off, and never for style/mentality/formation chosen here.
-    final clubAfterTactics = await tester.runAsync(store.getClub);
-    expect(clubAfterTactics!.playingStyle, 'balanced');
-
-    // Kick off with the default 'no talk' tile selected.
-    await tester.tap(find.text('KICK OFF'));
-    await _flush(tester, wait: const Duration(milliseconds: 900));
-
-    // The live match screen is pushed over the shell: real club names on
-    // the scoreboard, the auto-play controls (pause + 1x–4x speed; no
-    // skip-to-end exists anywhere) and the tactics entry point.
-    expect(find.text('League · Round 1'), findsOneWidget);
-    expect(find.text('FC Rivals'), findsWidgets);
-    expect(find.text(opponent.opponentName), findsWidgets);
-    expect(find.text('1x'), findsOneWidget);
-    expect(find.text('4x'), findsOneWidget);
-    expect(find.text('Next minute'), findsNothing);
-    expect(find.text('Sim to end'), findsNothing);
-
-    // The match plays itself: pump real time and the ticker advances
-    // match minutes. Flip to 4x first (200ms per match minute), handle
-    // the half-time talk when the clock holds, then play to full time.
-    await tester.tap(find.text('4x'));
-    await tester.pump(const Duration(milliseconds: 50));
-    await _playToFullTime(tester);
-
-    // Post-match recovery sheet (GDD 15.3/19.3) — dismiss for the default
-    // recovery (same as the 'No pep talk' tile below the fold).
-    await _flush(tester);
-    expect(find.text('Post-match recovery'), findsOneWidget);
-    await tester.tapAt(const Offset(400, 20));
-    await _flush(tester);
-
-    // The report screen shows the result and reward, named for the real
-    // fixture (GDD 14 post-match screen).
-    expect(find.textContaining('Full time: FC Rivals'), findsOneWidget);
-    expect(find.textContaining('Reward:'), findsOneWidget);
-    expect(find.text('Team statistics'), findsOneWidget);
-
-    // Back to the Season tab; providers refresh after the route pops.
-    await tester.pageBack();
-    await _flush(tester);
-
-    // The fixture committed (FR-038): exactly one result row for the
-    // fixture, the user club has played once in the standings and the
-    // next fixture is round 2 (AI lockstep kept the round in sync).
-    final results = await tester.runAsync(() async =>
-        (db.select(db.matchResults)
-              ..where((r) => r.fixtureId.equals(opponent.fixtureId)))
-            .get());
-    expect(results, hasLength(1));
-
-    final standings = await tester.runAsync(seasonStore.getStandings);
-    final user = standings!.firstWhere((e) => e.name == 'FC Rivals');
-    expect(user.played, 1);
-
-    final next = await tester.runAsync(seasonStore.getNextFixture);
-    expect(next!.round, 2);
-
-    await db.close();
+  setUp(() {
+    // The live match screen now plays stadium ambience: give the
+    // audioplayers channels silent handlers so the plugin constructor
+    // and asset loading succeed quietly instead of reporting
+    // MissingPluginException into FlutterError.
+    installAudioplayersMocks();
   });
+
+  tearDown(clearAudioplayersMocks);
+
+  testWidgets(
+    'league fixture plays as a live match from the Season tab and commits',
+    (WidgetTester tester) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      final store = CollectionStore(db: db);
+      await store.applyDatasetUpdate(
+        PlayerDataset.fromJson(datasetJson(seedRows)),
+      );
+      await store.createClub(
+        clubName: 'FC Rivals',
+        managerName: 'Mohamed',
+        crestIndex: 0,
+      );
+      for (final pack in await store.getAvailablePacks()) {
+        await store.openPack(packId: pack.id, random: math.Random(17));
+      }
+      await store.autoPickSquad();
+      final seasonStore = SeasonStore(db: db, random: math.Random(4));
+      await seasonStore.startSeason(division: 1);
+      final opponent = (await seasonStore.getNextFixture())!;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            collectionStoreProvider.overrideWith((ref) => store),
+            seasonStoreProvider.overrideWith((ref) async => seasonStore),
+          ],
+          child: const FcmRivalsApp(),
+        ),
+      );
+      await _flush(tester, wait: const Duration(milliseconds: 200));
+
+      // The Season tab lists the round-1 home fixture against an AI club.
+      expect(find.text('Start your first season'), findsNothing);
+      expect(
+        find.textContaining('vs ${opponent.opponentName}'),
+        findsOneWidget,
+      );
+      expect(find.text('Play match'), findsOneWidget);
+
+      // Kick-off: the matchday build-up screen comes first (GDD 13): the
+      // VS header with the forecast, then the dressing-room pep talk.
+      await tester.tap(find.text('Play match'));
+      await _flush(tester, wait: const Duration(milliseconds: 900));
+      expect(find.text('MATCH FORECAST'), findsOneWidget);
+      expect(find.text('STRENGTH'), findsOneWidget);
+      expect(find.textContaining('simulated matches'), findsOneWidget);
+
+      // Continue into the tactics phase (GDD 10.4): the SAME screen as the
+      // Tactics tab — a compact control card (team rating + TACTICS button)
+      // over the pitch with per-player stats and stamina bars, then bench
+      // and reserves — but match-only.
+      await tester.tap(find.text('CONTINUE'));
+      await _flush(tester, wait: const Duration(milliseconds: 600));
+      expect(find.text('Set up for this match'), findsOneWidget);
+      expect(find.text('TEAM RATING'), findsOneWidget);
+      expect(find.text('TACTICS'), findsOneWidget);
+
+      // The tactic options live in a bottom sheet behind the TACTICS
+      // button, so the screen stays dominated by the pitch.
+      await tester.tap(find.text('TACTICS'));
+      await _flush(tester, wait: const Duration(milliseconds: 600));
+      expect(find.text('TACTIC OPTIONS'), findsOneWidget);
+      expect(find.text('PLAYING STYLE'), findsOneWidget);
+
+      // The style dropdown's closed field shows the saved default
+      // (balanced) — the FIRST 'Balanced' field, the mentality dropdown's
+      // comes later. Tapping it stacks the option list sheet on top; give
+      // the sheets' entrance animations a few bounded pumps, then fling
+      // the option list if the wanted tile sits below the fold.
+      await tester.tap(find.text('Balanced').first);
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      for (var i = 0; i < 6; i++) {
+        final tile = find.text('Counter Attack');
+        if (tile.evaluate().isNotEmpty &&
+            tester.getRect(tile.first).bottom < 560) {
+          break;
+        }
+        await tester.flingFrom(
+          const Offset(400, 300),
+          const Offset(0, -350),
+          800,
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+      // Pick a different style; the option list sheet closes on selection.
+      await tester.tap(find.text('Counter Attack'));
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      // The style dropdown field in the options sheet now carries the
+      // match-only selection.
+      expect(find.text('Counter Attack'), findsOneWidget);
+
+      // Close the options sheet; the control card's setup summary line on
+      // the tactics screen reflects the match-only selection.
+      await tester.tap(find.text('DONE'));
+      await _flush(tester, wait: const Duration(milliseconds: 600));
+      expect(find.textContaining('Counter Attack'), findsOneWidget);
+
+      // On to the dressing room (GDD 15.1 pre-match pep talk).
+      await tester.tap(find.text('TO DRESSING ROOM'));
+      await _flush(tester, wait: const Duration(milliseconds: 600));
+      expect(find.text('DRESSING ROOM'), findsOneWidget);
+      expect(find.text('Deliver your team talk'), findsOneWidget);
+
+      // The tactic selection did NOT touch the club's saved default setup:
+      // match-only semantics (GDD 10.4) — persistence happens nowhere before
+      // kick-off, and never for style/mentality/formation chosen here.
+      final clubAfterTactics = await tester.runAsync(store.getClub);
+      expect(clubAfterTactics!.playingStyle, 'balanced');
+
+      // Kick off with the default 'no talk' tile selected.
+      await tester.tap(find.text('KICK OFF'));
+      await _flush(tester, wait: const Duration(milliseconds: 900));
+
+      // The live match screen is pushed over the shell: real club names on
+      // the scoreboard, the auto-play controls (pause + 1x–4x speed; no
+      // skip-to-end exists anywhere) and the tactics entry point.
+      expect(find.text('League · Round 1'), findsOneWidget);
+      expect(find.text('FC Rivals'), findsWidgets);
+      expect(find.text(opponent.opponentName), findsWidgets);
+      expect(find.text('1x'), findsOneWidget);
+      expect(find.text('4x'), findsOneWidget);
+      expect(find.text('Next minute'), findsNothing);
+      expect(find.text('Sim to end'), findsNothing);
+
+      // The match plays itself: pump real time and the ticker advances
+      // match minutes. Flip to 4x first (200ms per match minute), handle
+      // the half-time talk when the clock holds, then play to full time.
+      await tester.tap(find.text('4x'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await _playToFullTime(tester);
+
+      // Post-match recovery sheet (GDD 15.3/19.3) — dismiss for the default
+      // recovery (same as the 'No pep talk' tile below the fold).
+      await _flush(tester);
+      expect(find.text('Post-match recovery'), findsOneWidget);
+      await tester.tapAt(const Offset(400, 20));
+      await _flush(tester);
+
+      // The report screen shows the result and reward, named for the real
+      // fixture (GDD 14 post-match screen).
+      expect(find.textContaining('Full time: FC Rivals'), findsOneWidget);
+      expect(find.textContaining('Reward:'), findsOneWidget);
+      expect(find.text('Team statistics'), findsOneWidget);
+
+      // Back to the Season tab; providers refresh after the route pops.
+      await tester.pageBack();
+      await _flush(tester);
+
+      // The fixture committed (FR-038): exactly one result row for the
+      // fixture, the user club has played once in the standings and the
+      // next fixture is round 2 (AI lockstep kept the round in sync).
+      final results = await tester.runAsync(
+        () async => (db.select(
+          db.matchResults,
+        )..where((r) => r.fixtureId.equals(opponent.fixtureId))).get(),
+      );
+      expect(results, hasLength(1));
+
+      final standings = await tester.runAsync(seasonStore.getStandings);
+      final user = standings!.firstWhere((e) => e.name == 'FC Rivals');
+      expect(user.played, 1);
+
+      final next = await tester.runAsync(seasonStore.getNextFixture);
+      expect(next!.round, 2);
+
+      await db.close();
+    },
+  );
 }

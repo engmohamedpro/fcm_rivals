@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
 import '../squad/formations.dart';
+import 'match_audio.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
 import 'match_session.dart';
@@ -62,6 +65,11 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   bool _halfTimeOffered = false;
   bool _finishing = false;
 
+  /// Match-day sound (GDD 13): the stadium ambience loops from kick-off
+  /// to full time and a cheer plays over it on every goal. Decorative —
+  /// every call inside is best-effort and never breaks the match.
+  final MatchAudio _audio = MatchAudio();
+
   /// Auto-play clock. One match minute costs [_minuteDuration] of real
   /// time at 1x; the speed multiplier divides it (800ms → 200ms at 4x).
   late final Ticker _ticker;
@@ -85,11 +93,15 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick)..start();
+    // Kick-off: the ambience starts with the first half and runs until
+    // full time (stopped there — the post-match report is silent).
+    unawaited(_audio.start());
   }
 
   @override
   void dispose() {
     _ticker.dispose();
+    unawaited(_audio.dispose());
     super.dispose();
   }
 
@@ -134,9 +146,17 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         awayTeamName: session.awayTeamName,
       );
       setState(() => _lines.addAll(lines));
+      // Any goal in the minute just simulated — either side — triggers
+      // the crowd cheer over the looped ambience.
+      if (events.any((e) => e.type == MatchEventType.goal)) {
+        unawaited(_audio.goalCheer());
+      }
     }
     _maybeOfferHalfTimeTalk();
     if (session.isFinished) {
+      // Full time: the whistle ends the ambience too ("first-half
+      // kick-off to second-half end"), before the report flow starts.
+      unawaited(_audio.stop());
       _finishMatch();
     }
   }

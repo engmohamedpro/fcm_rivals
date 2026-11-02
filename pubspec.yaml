@@ -42,6 +42,11 @@ dependencies:
   path_provider: ^2.1.0
   flutter_riverpod: ^2.5.0
 
+  # Match-day sound: looped stadium ambience for the live match plus
+  # goal cheers layered on top (audioplayers handles looping and two
+  # simultaneous players).
+  audioplayers: ^6.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -70,6 +75,7 @@ flutter:
   assets:
     - assets/data/
     - assets/images/
+    - assets/audio/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
