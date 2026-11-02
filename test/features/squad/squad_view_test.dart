@@ -24,10 +24,7 @@ PlayerCard _card(int id, Position position, {int stamina = 100}) =>
         playerId: 1000 + id,
         name: 'Player $id',
         position: position,
-        age: 25,
         nationality: 'Egypt',
-        club: 'Al Ahly',
-        leagueCode: 'EG1',
         marketValueEur: 5_000_000,
         baseStats: const BaseStats(
             overall: 80, attack: 82, support: 75, defence: 40, goalkeeping: 0),

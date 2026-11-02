@@ -14,10 +14,7 @@ BasePlayer player({
       playerId: id,
       name: 'Test $id',
       position: position,
-      age: 25,
       nationality: 'Egypt',
-      club: 'Al Ahly',
-      leagueCode: 'EG1',
       marketValueEur: marketValueEur,
       baseStats: const BaseStats(
           overall: 50, attack: 55, support: 50, defence: 45, goalkeeping: 0),

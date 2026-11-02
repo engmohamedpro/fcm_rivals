@@ -289,8 +289,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${_player.club} · ${_player.age}y · '
-                        '${_player.nationality}',
+                        _player.nationality,
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

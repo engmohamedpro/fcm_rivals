@@ -15,10 +15,7 @@ BasePlayer _player({int overall = 87}) => BasePlayer(
       playerId: 1,
       name: 'Test Striker',
       position: Position.st,
-      age: 24,
       nationality: 'Brazil',
-      club: 'Test FC',
-      leagueCode: 'GB1',
       marketValueEur: 90000000,
       baseStats: BaseStats(
           overall: overall, attack: 91, support: 72, defence: 40, goalkeeping: 0),

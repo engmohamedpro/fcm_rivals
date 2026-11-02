@@ -89,18 +89,17 @@ class BaseStats {
 }
 
 /// A global player record from the imported database (GDD 4.2).
-/// Identity is the permanent [playerId]; mutable facts (club, age, value,
-/// position) may change between dataset versions without changing identity.
+/// Identity is the permanent [playerId]; mutable facts (value, position)
+/// may change between dataset versions without changing identity.
+/// The core data is deliberately minimal — name, nationality, position
+/// and market value — no club, age or league affiliation.
 @immutable
 class BasePlayer {
   const BasePlayer({
     required this.playerId,
     required this.name,
     required this.position,
-    required this.age,
     required this.nationality,
-    required this.club,
-    required this.leagueCode,
     required this.marketValueEur,
     required this.baseStats,
   });
@@ -110,12 +109,7 @@ class BasePlayer {
 
   final String name;
   final Position position;
-  final int age;
   final String nationality;
-  final String club;
-
-  /// Domestic league competition code of the club ('' for free agents).
-  final String leagueCode;
 
   /// Current Market Value in euros, as imported.
   final int marketValueEur;
@@ -125,10 +119,7 @@ class BasePlayer {
   BasePlayer copyWith({
     String? name,
     Position? position,
-    int? age,
     String? nationality,
-    String? club,
-    String? leagueCode,
     int? marketValueEur,
     BaseStats? baseStats,
   }) =>
@@ -136,10 +127,7 @@ class BasePlayer {
         playerId: playerId,
         name: name ?? this.name,
         position: position ?? this.position,
-        age: age ?? this.age,
         nationality: nationality ?? this.nationality,
-        club: club ?? this.club,
-        leagueCode: leagueCode ?? this.leagueCode,
         marketValueEur: marketValueEur ?? this.marketValueEur,
         baseStats: baseStats ?? this.baseStats,
       );

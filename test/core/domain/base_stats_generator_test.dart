@@ -90,17 +90,14 @@ void main() {
         playerId: 1,
         name: 'A',
         position: Position.st,
-        age: 20,
         nationality: 'Egypt',
-        club: 'Al Ahly',
-        leagueCode: 'EG1',
         marketValueEur: 1_000_000,
         baseStats: BaseStats(
             overall: 50, attack: 60, support: 45, defence: 40, goalkeeping: 0),
       );
-      final b = a.copyWith(club: 'Zamalek', marketValueEur: 5_000_000);
+      final b = a.copyWith(name: 'B', marketValueEur: 5_000_000);
       expect(b, a); // same id => equal
-      expect(b.club, 'Zamalek');
+      expect(b.name, 'B');
       expect(b.playerId, a.playerId);
     });
   });

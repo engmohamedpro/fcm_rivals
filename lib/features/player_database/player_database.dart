@@ -13,17 +13,15 @@ import 'package:flutter/foundation.dart';
 import '../../core/domain/base_stats_generator.dart';
 import '../../core/domain/players.dart';
 
-/// Raw player row as found in the importable dataset.
+/// Raw player row as found in the importable dataset:
+/// [playerId, name, position, nationality, marketValueEur].
 @immutable
 class PlayerDatasetRow {
   const PlayerDatasetRow({
     required this.playerId,
     required this.name,
     required this.position,
-    required this.age,
     required this.nationality,
-    required this.club,
-    required this.leagueCode,
     required this.marketValueEur,
   });
 
@@ -31,20 +29,14 @@ class PlayerDatasetRow {
         playerId: row[0] as int,
         name: row[1] as String,
         position: Position.fromCode(row[2] as String),
-        age: row[3] as int,
-        nationality: row[4] as String,
-        club: row[5] as String,
-        leagueCode: row[6] as String,
-        marketValueEur: row[7] as int,
+        nationality: row[3] as String,
+        marketValueEur: row[4] as int,
       );
 
   final int playerId;
   final String name;
   final Position position;
-  final int age;
   final String nationality;
-  final String club;
-  final String leagueCode;
   final int marketValueEur;
 }
 
@@ -55,14 +47,12 @@ class PlayerDataset {
     required this.version,
     required this.asOf,
     this.digest = '',
-    this.leagues = const {},
     List<PlayerDatasetRow> rows = const [],
   }) : _rows = List.unmodifiable(rows);
 
   final int version;
   final String asOf;
   final String digest;
-  final Map<String, String> leagues;
   final List<PlayerDatasetRow> _rows;
 
   int get count => _rows.length;
@@ -80,8 +70,6 @@ class PlayerDataset {
       version: map['version'] as int,
       asOf: map['asOf'] as String,
       digest: (map['digest'] ?? '') as String,
-      leagues: (map['leagues'] as Map<String, dynamic>? ?? {})
-          .map((k, v) => MapEntry(k, v as String)),
       rows: rows,
     );
   }
@@ -101,7 +89,7 @@ class ImportResult {
   /// New players introduced by this dataset.
   final List<BasePlayer> added;
 
-  /// Existing players whose mutable facts changed (name/club/age/...).
+  /// Existing players whose mutable facts changed (name/nationality/...).
   final List<BasePlayer> updated;
 
   /// Players whose Base Stats were regenerated (value or position changed).
@@ -141,8 +129,8 @@ class PlayerDatabase {
 
   /// Validates [dataset] without touching the registry (FR-002).
   ///
-  /// Checks required fields, positive ids, plausible age and market value,
-  /// known position codes and duplicate ids. Throws
+  /// Checks required fields, positive ids, plausible market value, known
+  /// position codes and duplicate ids. Throws
   /// [DatasetValidationException] listing every problem found.
   void validate(PlayerDataset dataset) {
     final problems = <String>[];
@@ -157,11 +145,9 @@ class PlayerDatabase {
       }
       seenIds.add(row.playerId);
       if (row.name.trim().isEmpty) problems.add('$tag: missing name');
-      if (row.age < 14 || row.age > 60) problems.add('$tag: implausible age');
       if (row.nationality.trim().isEmpty) {
         problems.add('$tag: missing nationality');
       }
-      if (row.club.trim().isEmpty) problems.add('$tag: missing club');
       if (row.marketValueEur <= 0) problems.add('$tag: missing market value');
       if (row.marketValueEur > 1_000_000_000) {
         problems.add('$tag: implausible market value');
@@ -173,7 +159,7 @@ class PlayerDatabase {
   /// Applies a validated dataset (FR-004..FR-008).
   ///
   /// Update rules (GDD 4.6):
-  /// - name/club/age/nationality changes are plain field updates;
+  /// - name/nationality changes are plain field updates;
   /// - Market Value or Position change regenerates Base Stats;
   /// - unchanged value+position keeps Base Stats byte-for-byte;
   /// - dropped players are reported for owner compensation (GDD 4.8);
@@ -209,9 +195,7 @@ class PlayerDatabase {
       } else if (_mutableFactsChanged(existing, row)) {
         final player = existing.copyWith(
           name: row.name,
-          age: row.age,
           nationality: row.nationality,
-          club: row.club,
         );
         _players[row.playerId] = player;
         updated.add(player);
@@ -243,18 +227,13 @@ class PlayerDatabase {
 
   bool _mutableFactsChanged(BasePlayer existing, PlayerDatasetRow row) =>
       existing.name != row.name ||
-      existing.age != row.age ||
-      existing.nationality != row.nationality ||
-      existing.club != row.club;
+      existing.nationality != row.nationality;
 
   BasePlayer _toPlayer(PlayerDatasetRow row, BaseStats stats) => BasePlayer(
         playerId: row.playerId,
         name: row.name,
         position: row.position,
-        age: row.age,
         nationality: row.nationality,
-        club: row.club,
-        leagueCode: row.leagueCode,
         marketValueEur: row.marketValueEur,
         baseStats: stats,
       );

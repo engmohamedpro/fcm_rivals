@@ -10,17 +10,12 @@ BasePlayer mkPlayer(
   int marketValueEur, {
   Position position = Position.st,
   String nationality = 'Egypt',
-  String club = 'Al Ahly',
-  String leagueCode = 'EG1',
 }) =>
     BasePlayer(
       playerId: id,
       name: 'Player $id',
       position: position,
-      age: 25,
       nationality: nationality,
-      club: club,
-      leagueCode: leagueCode,
       marketValueEur: marketValueEur,
       baseStats: const BaseStats(
           overall: 50, attack: 55, support: 50, defence: 45, goalkeeping: 0),
@@ -96,13 +91,13 @@ void main() {
       expect(a, b);
     });
 
-    test('scope filters: nationality, league, club, position', () {
+    test('scope filters: nationality, position', () {
       final engine = PackEngine(random: math.Random(3));
       final pool = [
         ...buildPool(4),
-        mkPlayer(5001, 5_000_000, nationality: 'Brazil', club: 'Flamengo', leagueCode: 'BR1', position: Position.gk),
-        mkPlayer(5002, 8_000_000, nationality: 'Brazil', club: 'Santos', leagueCode: 'BR1', position: Position.cb),
-        mkPlayer(5003, 15_000_000, nationality: 'Egypt', club: 'Al Ahly', leagueCode: 'EG1', position: Position.lw),
+        mkPlayer(5001, 5_000_000, nationality: 'Brazil', position: Position.gk),
+        mkPlayer(5002, 8_000_000, nationality: 'Brazil', position: Position.cb),
+        mkPlayer(5003, 15_000_000, nationality: 'Egypt', position: Position.lw),
       ];
 
       final nationality = engine
@@ -110,17 +105,6 @@ void main() {
           .map((d) => d.player.nationality)
           .toSet();
       expect(nationality, {'Brazil'});
-
-      final league = engine
-          .open(const PackScope(category: PackCategory.league, leagueCode: 'BR1'), pool)
-          .map((d) => d.player.leagueCode)
-          .toSet();
-      expect(league, {'BR1'});
-
-      final club = engine
-          .open(const PackScope(category: PackCategory.club, club: 'Flamengo'), pool);
-      expect(club.length, 1); // pool of 1 -> degenerate but graceful
-      expect(club.single.player.club, 'Flamengo');
 
       final position = engine
           .open(const PackScope(category: PackCategory.position, position: Position.gk), pool);
@@ -209,9 +193,9 @@ void main() {
     test('tiny pools degrade gracefully', () {
       final engine = PackEngine(random: math.Random(2));
       final draws = engine.open(
-          const PackScope(category: PackCategory.club, club: 'Small FC'), [
-        mkPlayer(1, 300_000, club: 'Small FC'),
-        mkPlayer(2, 900_000, club: 'Small FC'),
+          const PackScope(category: PackCategory.nationality, nationality: 'Egypt'), [
+        mkPlayer(1, 300_000),
+        mkPlayer(2, 900_000),
       ]);
       expect(draws.length, 1);
     });
@@ -219,9 +203,9 @@ void main() {
 
   group('PackScope', () {
     test('scope matching semantics per category', () {
-      const scope = PackScope(category: PackCategory.league, leagueCode: 'GB1');
-      expect(scope.matches(mkPlayer(1, 1, leagueCode: 'GB1')), isTrue);
-      expect(scope.matches(mkPlayer(2, 1, leagueCode: 'ES1')), isFalse);
+      const scope = PackScope(category: PackCategory.nationality, nationality: 'Egypt');
+      expect(scope.matches(mkPlayer(1, 1)), isTrue);
+      expect(scope.matches(mkPlayer(2, 1, nationality: 'Brazil')), isFalse);
       expect(const PackScope(category: PackCategory.global)
           .matches(mkPlayer(3, 1)), isTrue);
     });

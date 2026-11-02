@@ -227,7 +227,7 @@ class FcmPlayerCard extends StatelessWidget {
               right: w * 0.07,
               top: h * 0.64,
               child: Text(
-                nameProgress <= 0.01 ? '— · —' : '${player.club} · ${player.age}y',
+                nameProgress <= 0.01 ? '— · —' : player.nationality,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

@@ -49,15 +49,11 @@ class SimDataset {
           final value =
               math.exp(logMin + random.nextDouble() * (logMax - logMin)).round();
           final position = _positions[i % _positions.length];
-          final league = i % 2 == 0 ? 'EG1' : 'SA1';
           return <dynamic>[
             900_000 + i,
-            'Sim $league ${i + 1}',
+            'Sim ${i + 1}',
             position,
-            18 + random.nextInt(18),
             random.nextBool() ? 'Egypt' : 'Saudi Arabia',
-            i % 2 == 0 ? 'Cairo Union' : 'Riyadh Stars',
-            league,
             value,
           ];
         }(),
@@ -76,7 +72,6 @@ class SimDataset {
         'format': 'fcm-rivals-players',
         'version': 1,
         'asOf': '2026-11-01',
-        'leagues': const {'EG1': 'Egyptian Premier League', 'SA1': 'Saudi Pro League'},
         'digest': 'sim-$_band',
         'players': _rows,
       });

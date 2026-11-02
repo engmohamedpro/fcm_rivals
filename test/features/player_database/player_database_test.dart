@@ -9,16 +9,15 @@ String datasetJson(List<List<dynamic>> rows, {int version = 1}) => json.encode({
       'format': 'fcm-rivals-players',
       'version': version,
       'asOf': '2026-11-01',
-      'leagues': {'GB1': 'Premier League'},
       'digest': 'test',
       'players': rows,
     });
 
-// [id, name, pos, age, nat, club, league, mv]
+// [id, name, pos, nat, mv]
 const List<List<dynamic>> baseRows = [
-  [1, 'Player One', 'ST', 24, 'Egypt', 'Al Ahly', 'EG1', 5_000_000],
-  [2, 'Player Two', 'CB', 31, 'Brazil', 'Flamengo', 'BR1', 1_000_000],
-  [3, 'Player Three', 'GK', 28, 'Germany', 'Bayern', 'L1', 30_000_000],
+  [1, 'Player One', 'ST', 'Egypt', 5_000_000],
+  [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+  [3, 'Player Three', 'GK', 'Germany', 30_000_000],
 ];
 
 PlayerDataset ds(List<List<dynamic>> rows, {int version = 1}) =>
@@ -40,7 +39,7 @@ void main() {
       final gk = db[3]!;
       expect(gk.position, Position.gk);
       expect(gk.baseStats.goalkeeping, greaterThan(gk.baseStats.attack));
-      expect(gk.leagueCode, 'L1');
+      expect(gk.nationality, 'Germany');
     });
 
     test('FR-002: invalid rows are rejected before applying', () {
@@ -49,8 +48,8 @@ void main() {
       final before = db.count;
 
       final bad = ds([
-        [9, 'Bad Age', 'ST', 99, 'Egypt', 'X', 'EG1', 5_000_000],
-        [0, 'Bad Id', 'ST', 25, 'Egypt', 'X', 'EG1', 5_000_000],
+        [9, 'Bad Value', 'ST', 'Egypt', 0],
+        [0, 'Bad Id', 'ST', 'Egypt', 5_000_000],
       ]);
       expect(() => db.importDataset(bad), throwsA(isA<DatasetValidationException>()));
       expect(db.count, before); // untouched
@@ -58,22 +57,22 @@ void main() {
 
     test('duplicate ids in one dataset are rejected', () {
       final dup = ds([
-        [5, 'A', 'ST', 22, 'Egypt', 'X', 'EG1', 1_000_000],
-        [5, 'B', 'CB', 23, 'Egypt', 'X', 'EG1', 1_000_000],
+        [5, 'A', 'ST', 'Egypt', 1_000_000],
+        [5, 'B', 'CB', 'Egypt', 1_000_000],
       ]);
       expect(() => PlayerDatabase().importDataset(dup),
           throwsA(isA<DatasetValidationException>()));
     });
 
-    test('GDD 4.6: name/club/age changes update fields, stats preserved', () {
+    test('GDD 4.6: name/nationality changes update fields, stats preserved', () {
       final db = PlayerDatabase();
       db.importDataset(ds(baseRows));
       final statsBefore = db[1]!.baseStats;
 
       final result = db.importDataset(ds([
-        [1, 'Player One Renamed', 'ST', 25, 'Egypt', 'Zamalek', 'EG1', 5_000_000],
-        [2, 'Player Two', 'CB', 31, 'Brazil', 'Flamengo', 'BR1', 1_000_000],
-        [3, 'Player Three', 'GK', 28, 'Germany', 'Bayern', 'L1', 30_000_000],
+        [1, 'Player One Renamed', 'ST', 'Mexico', 5_000_000],
+        [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
       ], version: 2));
 
       expect(result.updated.length, 1);
@@ -81,8 +80,7 @@ void main() {
       expect(result.unchanged, 2);
       final p = db[1]!;
       expect(p.name, 'Player One Renamed');
-      expect(p.age, 25);
-      expect(p.club, 'Zamalek');
+      expect(p.nationality, 'Mexico');
       expect(p.baseStats, statsBefore); // FR-006
     });
 
@@ -91,9 +89,9 @@ void main() {
       db.importDataset(ds(baseRows));
 
       final result = db.importDataset(ds([
-        [1, 'Player One', 'ST', 24, 'Egypt', 'Al Ahly', 'EG1', 40_000_000],
-        [2, 'Player Two', 'CB', 31, 'Brazil', 'Flamengo', 'BR1', 1_000_000],
-        [3, 'Player Three', 'GK', 28, 'Germany', 'Bayern', 'L1', 30_000_000],
+        [1, 'Player One', 'ST', 'Egypt', 40_000_000],
+        [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
       ], version: 2));
 
       expect(result.regenerated.length, 1);
@@ -107,9 +105,9 @@ void main() {
       db.importDataset(ds(baseRows));
 
       db.importDataset(ds([
-        [1, 'Player One', 'CB', 24, 'Egypt', 'Al Ahly', 'EG1', 5_000_000],
-        [2, 'Player Two', 'CB', 31, 'Brazil', 'Flamengo', 'BR1', 1_000_000],
-        [3, 'Player Three', 'GK', 28, 'Germany', 'Bayern', 'L1', 30_000_000],
+        [1, 'Player One', 'CB', 'Egypt', 5_000_000],
+        [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
       ], version: 2));
 
       final p = db[1]!;
@@ -132,8 +130,8 @@ void main() {
       db.importDataset(ds(baseRows));
 
       final result = db.importDataset(ds([
-        [1, 'Player One', 'ST', 24, 'Egypt', 'Al Ahly', 'EG1', 5_000_000],
-        [3, 'Player Three', 'GK', 28, 'Germany', 'Bayern', 'L1', 30_000_000],
+        [1, 'Player One', 'ST', 'Egypt', 5_000_000],
+        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
       ], version: 2));
 
       expect(result.removed.length, 1);
@@ -142,13 +140,13 @@ void main() {
       expect(db[2], isNull);
     });
 
-    test('stable ids: same player keeps id across renames and transfers', () {
+    test('stable ids: same player keeps id across renames and value changes', () {
       final db = PlayerDatabase();
       db.importDataset(ds(baseRows));
       db.importDataset(ds([
-        [1, 'Completely New Name', 'ST', 26, 'Egypt', 'New Club', 'GB1', 60_000_000],
-        [2, 'Player Two', 'CB', 31, 'Brazil', 'Flamengo', 'BR1', 1_000_000],
-        [3, 'Player Three', 'GK', 28, 'Germany', 'Bayern', 'L1', 30_000_000],
+        [1, 'Completely New Name', 'ST', 'Egypt', 60_000_000],
+        [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
       ], version: 2));
       expect(db[1]!.playerId, 1);
       expect(db[1]!.name, 'Completely New Name');

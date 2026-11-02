@@ -254,10 +254,7 @@ class CollectionStore {
               playerId: r.playerId,
               name: r.name,
               position: Position.fromCode(r.position),
-              age: r.age,
               nationality: r.nationality,
-              club: r.club,
-              leagueCode: r.leagueCode,
               marketValueEur: r.marketValueEur,
             ),
         ],
@@ -302,10 +299,7 @@ class CollectionStore {
                 playerId: Value(player.playerId),
                 name: player.name,
                 position: player.position.code,
-                age: player.age,
                 nationality: player.nationality,
-                club: player.club,
-                leagueCode: Value(player.leagueCode),
                 marketValueEur: player.marketValueEur,
                 overall: player.baseStats.overall,
                 attack: player.baseStats.attack,
@@ -469,9 +463,7 @@ class CollectionStore {
   /// other and is opened via [openPack].
   Future<Pack> buyPack({
     required PackCategory category,
-    String? leagueCode,
     String? nationality,
-    String? club,
     Position? position,
   }) async {
     final userClub = await getClub();
@@ -481,9 +473,7 @@ class CollectionStore {
     final registry = await _ensureRegistry();
     final scope = PackScope(
       category: category,
-      leagueCode: leagueCode,
       nationality: nationality,
-      club: club,
       position: position,
     );
     final pool = registry.all
@@ -511,7 +501,7 @@ class CollectionStore {
       final id = await db.into(db.packs).insert(PacksCompanion.insert(
             clubId: userClub.id,
             category: category.name,
-            scopeValue: Value(position?.code ?? leagueCode ?? nationality ?? club),
+            scopeValue: Value(position?.code ?? nationality),
             price: Value(price),
             source: const Value('purchase'),
             createdAt: now,
@@ -544,10 +534,7 @@ class CollectionStore {
           playerId: base.playerId,
           name: base.name,
           position: Position.fromCode(base.position),
-          age: base.age,
           nationality: base.nationality,
-          club: base.club,
-          leagueCode: base.leagueCode,
           marketValueEur: base.marketValueEur,
           baseStats: BaseStats(
             overall: base.overall,
@@ -986,10 +973,7 @@ class CollectionStore {
         playerId: row.playerId,
         name: row.name,
         position: Position.fromCode(row.position),
-        age: row.age,
         nationality: row.nationality,
-        club: row.club,
-        leagueCode: row.leagueCode,
         marketValueEur: row.marketValueEur,
         baseStats: BaseStats(
           overall: row.overall,

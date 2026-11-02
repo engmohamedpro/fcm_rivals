@@ -9,7 +9,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../core/domain/leagues.dart';
 import '../../core/domain/players.dart';
 import '../../core/ui/country_flag.dart';
 import '../../core/ui/fcm_style.dart';
@@ -122,7 +121,6 @@ class _PlayerDetailSheet extends StatelessWidget {
     final rarity = rarityOf(card);
     final width = MediaQuery.sizeOf(context).width;
     final cardWidth = math.min(width * 0.62, 250.0);
-    final league = p.leagueCode.isEmpty ? null : leagueDisplayName(p.leagueCode);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -188,13 +186,7 @@ class _PlayerDetailSheet extends StatelessWidget {
                         letterSpacing: 1.2)),
                 const SizedBox(height: 4),
                 Text(
-                  '${flagEmojiFor(p.nationality)} ${p.nationality}  ·  ${p.position.code}  ·  ${p.age}y',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: FcmColors.textDim),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  league == null ? p.club : '${p.club}  ·  $league',
+                  '${flagEmojiFor(p.nationality)} ${p.nationality}  ·  ${p.position.code}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: FcmColors.textDim),
                 ),

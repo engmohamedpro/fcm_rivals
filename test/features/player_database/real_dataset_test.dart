@@ -33,7 +33,6 @@ void main() {
     expect(map['format'], 'fcm-rivals-players');
     expect(map['version'], isPositive);
     expect(map['count'], db.count);
-    expect((map['leagues'] as Map).length, greaterThan(25));
   });
 
   test('known real players resolve by stable Transfermarkt id', () {
@@ -91,12 +90,6 @@ void main() {
     final global = engine.open(const PackScope(category: PackCategory.global), pool);
     expect(global.length, 1);
 
-    // League pack (Premier League).
-    final pl = engine.open(
-        const PackScope(category: PackCategory.league, leagueCode: 'GB1'), pool);
-    expect(pl.length, 1);
-    expect(pl.every((d) => d.player.leagueCode == 'GB1'), isTrue);
-
     // Nationality pack (Egypt).
     final egypt = engine.open(
         const PackScope(category: PackCategory.nationality, nationality: 'Egypt'), pool);
@@ -147,8 +140,8 @@ void main() {
     final map = json.decode(jsonText) as Map<String, dynamic>;
     final rows = (map['players'] as List).map((r) => List<dynamic>.from(r as List)).toList();
     final haalandRow = rows.firstWhere((r) => r[0] == 418560);
-    final oldMv = haalandRow[7] as int;
-    haalandRow[7] = oldMv + 20_000_000; // value change => regenerate stats
+    final oldMv = haalandRow[4] as int;
+    haalandRow[4] = oldMv + 20_000_000; // value change => regenerate stats
     map['players'] = rows;
 
     final result = db.importDataset(PlayerDataset.fromJson(json.encode(map)));

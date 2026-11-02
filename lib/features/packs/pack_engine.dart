@@ -2,8 +2,8 @@
 ///
 /// Every pack contains exactly one player, drawn from a randomly rolled low,
 /// medium or high Market Value tier. Higher-value players have
-/// proportionally lower odds (never impossible). Categories filter the eligible pool: Global,
-/// League, Nationality, Club and Position packs.
+/// proportionally lower odds (never impossible). Categories filter the
+/// eligible pool: Global, Nationality and Position packs.
 library;
 
 import 'dart:math' as math;
@@ -11,12 +11,11 @@ import 'dart:math' as math;
 import '../../core/domain/players.dart';
 import '../economy/economy_engine.dart';
 
-/// The five pack categories (GDD 5.2).
+/// The pack categories (GDD 5.2). League and Club packs are gone — the
+/// player core data no longer carries club or league affiliation.
 enum PackCategory {
   global('Global Pack'),
-  league('League Pack'),
   nationality('Nationality Pack'),
-  club('Club Pack'),
   position('Position Pack');
 
   const PackCategory(this.label);
@@ -27,28 +26,20 @@ enum PackCategory {
 class PackScope {
   const PackScope({
     required this.category,
-    this.leagueCode,
     this.nationality,
-    this.club,
     this.position,
   });
 
   final PackCategory category;
-  final String? leagueCode;
   final String? nationality;
-  final String? club;
   final Position? position;
 
   bool matches(BasePlayer p) {
     switch (category) {
       case PackCategory.global:
         return true;
-      case PackCategory.league:
-        return leagueCode != null && p.leagueCode == leagueCode;
       case PackCategory.nationality:
         return nationality != null && p.nationality == nationality;
-      case PackCategory.club:
-        return club != null && p.club == club;
       case PackCategory.position:
         return position != null && p.position == position;
     }

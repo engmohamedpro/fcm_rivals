@@ -735,10 +735,7 @@ class _TopPlayersCard extends StatelessWidget {
       playerId: -1 - m.overall,
       name: m.name,
       position: Position.fromCode(m.position),
-      age: 0,
       nationality: '',
-      club: '',
-      leagueCode: '',
       marketValueEur: 0,
       baseStats: stats,
     );

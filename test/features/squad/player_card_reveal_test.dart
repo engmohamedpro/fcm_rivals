@@ -19,10 +19,7 @@ PlayerCard _card() => PlayerCard(
         playerId: 1007,
         name: 'Karim Fouad',
         position: Position.st,
-        age: 27,
         nationality: 'Egypt',
-        club: 'Al Ahly',
-        leagueCode: 'EG1',
         marketValueEur: 5_000_000,
         baseStats: const BaseStats(
             overall: 80, attack: 82, support: 75, defence: 40, goalkeeping: 0),

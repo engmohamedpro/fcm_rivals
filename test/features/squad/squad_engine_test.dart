@@ -20,10 +20,7 @@ PlayerCard card(
         playerId: 1000 + id,
         name: 'Player $id',
         position: position,
-        age: 25,
         nationality: 'Egypt',
-        club: 'Al Ahly',
-        leagueCode: 'EG1',
         marketValueEur: 5_000_000,
         // The generator anchors stats to a market value, so its curve
         // cannot hit an arbitrary overall; tests need the requested
@@ -170,10 +167,7 @@ void main() {
             playerId: 1000 + id,
             name: 'Player $id',
             position: position,
-            age: 25,
             nationality: 'Egypt',
-            club: 'Al Ahly',
-            leagueCode: 'EG1',
             marketValueEur: 5_000_000,
             baseStats: stats,
           ),
@@ -356,10 +350,7 @@ void main() {
         playerId: 1,
         name: 'X',
         position: Position.st,
-        age: 25,
         nationality: 'Egypt',
-        club: 'Al Ahly',
-        leagueCode: 'EG1',
         marketValueEur: 50_000_000,
         baseStats: const BaseStats(
             overall: 84, attack: 90, support: 80, defence: 70, goalkeeping: 0),

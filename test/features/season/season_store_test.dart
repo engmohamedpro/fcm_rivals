@@ -18,7 +18,6 @@ String datasetJson(List<List<dynamic>> rows, {int version = 1}) => json.encode({
       'format': 'fcm-rivals-players',
       'version': version,
       'asOf': '2026-11-01',
-      'leagues': const {'EG1': 'Egyptian Premier League'},
       'digest': 'test',
       'players': rows,
     });
@@ -36,10 +35,7 @@ final List<List<dynamic>> seedRows = [
         p * 10 + i + 1,
         '${_seedPositions[p][1]} ${p * 10 + i + 1}',
         _seedPositions[p][0],
-        20 + i,
         'Egypt',
-        i % 2 == 0 ? 'Al Ahly' : 'Zamalek',
-        'EG1',
         500_000 + (i * 3_000_000) + p * 100_000,
       ],
 ];

@@ -39,15 +39,6 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _ageMeta = const VerificationMeta('age');
-  @override
-  late final GeneratedColumn<int> age = GeneratedColumn<int>(
-    'age',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _nationalityMeta = const VerificationMeta(
     'nationality',
   );
@@ -58,27 +49,6 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-  );
-  static const VerificationMeta _clubMeta = const VerificationMeta('club');
-  @override
-  late final GeneratedColumn<String> club = GeneratedColumn<String>(
-    'club',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _leagueCodeMeta = const VerificationMeta(
-    'leagueCode',
-  );
-  @override
-  late final GeneratedColumn<String> leagueCode = GeneratedColumn<String>(
-    'league_code',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(''),
   );
   static const VerificationMeta _marketValueEurMeta = const VerificationMeta(
     'marketValueEur',
@@ -149,10 +119,7 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     playerId,
     name,
     position,
-    age,
     nationality,
-    club,
-    leagueCode,
     marketValueEur,
     overall,
     attack,
@@ -194,14 +161,6 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     } else if (isInserting) {
       context.missing(_positionMeta);
     }
-    if (data.containsKey('age')) {
-      context.handle(
-        _ageMeta,
-        age.isAcceptableOrUnknown(data['age']!, _ageMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_ageMeta);
-    }
     if (data.containsKey('nationality')) {
       context.handle(
         _nationalityMeta,
@@ -212,20 +171,6 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
       );
     } else if (isInserting) {
       context.missing(_nationalityMeta);
-    }
-    if (data.containsKey('club')) {
-      context.handle(
-        _clubMeta,
-        club.isAcceptableOrUnknown(data['club']!, _clubMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_clubMeta);
-    }
-    if (data.containsKey('league_code')) {
-      context.handle(
-        _leagueCodeMeta,
-        leagueCode.isAcceptableOrUnknown(data['league_code']!, _leagueCodeMeta),
-      );
     }
     if (data.containsKey('market_value_eur')) {
       context.handle(
@@ -302,21 +247,9 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
         DriftSqlType.string,
         data['${effectivePrefix}position'],
       )!,
-      age: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}age'],
-      )!,
       nationality: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}nationality'],
-      )!,
-      club: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}club'],
-      )!,
-      leagueCode: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}league_code'],
       )!,
       marketValueEur: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -355,10 +288,7 @@ class Player extends DataClass implements Insertable<Player> {
   final int playerId;
   final String name;
   final String position;
-  final int age;
   final String nationality;
-  final String club;
-  final String leagueCode;
   final int marketValueEur;
   final int overall;
   final int attack;
@@ -369,10 +299,7 @@ class Player extends DataClass implements Insertable<Player> {
     required this.playerId,
     required this.name,
     required this.position,
-    required this.age,
     required this.nationality,
-    required this.club,
-    required this.leagueCode,
     required this.marketValueEur,
     required this.overall,
     required this.attack,
@@ -386,10 +313,7 @@ class Player extends DataClass implements Insertable<Player> {
     map['player_id'] = Variable<int>(playerId);
     map['name'] = Variable<String>(name);
     map['position'] = Variable<String>(position);
-    map['age'] = Variable<int>(age);
     map['nationality'] = Variable<String>(nationality);
-    map['club'] = Variable<String>(club);
-    map['league_code'] = Variable<String>(leagueCode);
     map['market_value_eur'] = Variable<int>(marketValueEur);
     map['overall'] = Variable<int>(overall);
     map['attack'] = Variable<int>(attack);
@@ -404,10 +328,7 @@ class Player extends DataClass implements Insertable<Player> {
       playerId: Value(playerId),
       name: Value(name),
       position: Value(position),
-      age: Value(age),
       nationality: Value(nationality),
-      club: Value(club),
-      leagueCode: Value(leagueCode),
       marketValueEur: Value(marketValueEur),
       overall: Value(overall),
       attack: Value(attack),
@@ -426,10 +347,7 @@ class Player extends DataClass implements Insertable<Player> {
       playerId: serializer.fromJson<int>(json['playerId']),
       name: serializer.fromJson<String>(json['name']),
       position: serializer.fromJson<String>(json['position']),
-      age: serializer.fromJson<int>(json['age']),
       nationality: serializer.fromJson<String>(json['nationality']),
-      club: serializer.fromJson<String>(json['club']),
-      leagueCode: serializer.fromJson<String>(json['leagueCode']),
       marketValueEur: serializer.fromJson<int>(json['marketValueEur']),
       overall: serializer.fromJson<int>(json['overall']),
       attack: serializer.fromJson<int>(json['attack']),
@@ -445,10 +363,7 @@ class Player extends DataClass implements Insertable<Player> {
       'playerId': serializer.toJson<int>(playerId),
       'name': serializer.toJson<String>(name),
       'position': serializer.toJson<String>(position),
-      'age': serializer.toJson<int>(age),
       'nationality': serializer.toJson<String>(nationality),
-      'club': serializer.toJson<String>(club),
-      'leagueCode': serializer.toJson<String>(leagueCode),
       'marketValueEur': serializer.toJson<int>(marketValueEur),
       'overall': serializer.toJson<int>(overall),
       'attack': serializer.toJson<int>(attack),
@@ -462,10 +377,7 @@ class Player extends DataClass implements Insertable<Player> {
     int? playerId,
     String? name,
     String? position,
-    int? age,
     String? nationality,
-    String? club,
-    String? leagueCode,
     int? marketValueEur,
     int? overall,
     int? attack,
@@ -476,10 +388,7 @@ class Player extends DataClass implements Insertable<Player> {
     playerId: playerId ?? this.playerId,
     name: name ?? this.name,
     position: position ?? this.position,
-    age: age ?? this.age,
     nationality: nationality ?? this.nationality,
-    club: club ?? this.club,
-    leagueCode: leagueCode ?? this.leagueCode,
     marketValueEur: marketValueEur ?? this.marketValueEur,
     overall: overall ?? this.overall,
     attack: attack ?? this.attack,
@@ -492,14 +401,9 @@ class Player extends DataClass implements Insertable<Player> {
       playerId: data.playerId.present ? data.playerId.value : this.playerId,
       name: data.name.present ? data.name.value : this.name,
       position: data.position.present ? data.position.value : this.position,
-      age: data.age.present ? data.age.value : this.age,
       nationality: data.nationality.present
           ? data.nationality.value
           : this.nationality,
-      club: data.club.present ? data.club.value : this.club,
-      leagueCode: data.leagueCode.present
-          ? data.leagueCode.value
-          : this.leagueCode,
       marketValueEur: data.marketValueEur.present
           ? data.marketValueEur.value
           : this.marketValueEur,
@@ -519,10 +423,7 @@ class Player extends DataClass implements Insertable<Player> {
           ..write('playerId: $playerId, ')
           ..write('name: $name, ')
           ..write('position: $position, ')
-          ..write('age: $age, ')
           ..write('nationality: $nationality, ')
-          ..write('club: $club, ')
-          ..write('leagueCode: $leagueCode, ')
           ..write('marketValueEur: $marketValueEur, ')
           ..write('overall: $overall, ')
           ..write('attack: $attack, ')
@@ -538,10 +439,7 @@ class Player extends DataClass implements Insertable<Player> {
     playerId,
     name,
     position,
-    age,
     nationality,
-    club,
-    leagueCode,
     marketValueEur,
     overall,
     attack,
@@ -556,10 +454,7 @@ class Player extends DataClass implements Insertable<Player> {
           other.playerId == this.playerId &&
           other.name == this.name &&
           other.position == this.position &&
-          other.age == this.age &&
           other.nationality == this.nationality &&
-          other.club == this.club &&
-          other.leagueCode == this.leagueCode &&
           other.marketValueEur == this.marketValueEur &&
           other.overall == this.overall &&
           other.attack == this.attack &&
@@ -572,10 +467,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
   final Value<int> playerId;
   final Value<String> name;
   final Value<String> position;
-  final Value<int> age;
   final Value<String> nationality;
-  final Value<String> club;
-  final Value<String> leagueCode;
   final Value<int> marketValueEur;
   final Value<int> overall;
   final Value<int> attack;
@@ -586,10 +478,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     this.playerId = const Value.absent(),
     this.name = const Value.absent(),
     this.position = const Value.absent(),
-    this.age = const Value.absent(),
     this.nationality = const Value.absent(),
-    this.club = const Value.absent(),
-    this.leagueCode = const Value.absent(),
     this.marketValueEur = const Value.absent(),
     this.overall = const Value.absent(),
     this.attack = const Value.absent(),
@@ -601,10 +490,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     this.playerId = const Value.absent(),
     required String name,
     required String position,
-    required int age,
     required String nationality,
-    required String club,
-    this.leagueCode = const Value.absent(),
     required int marketValueEur,
     required int overall,
     required int attack,
@@ -613,9 +499,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     required int goalkeeping,
   }) : name = Value(name),
        position = Value(position),
-       age = Value(age),
        nationality = Value(nationality),
-       club = Value(club),
        marketValueEur = Value(marketValueEur),
        overall = Value(overall),
        attack = Value(attack),
@@ -626,10 +510,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     Expression<int>? playerId,
     Expression<String>? name,
     Expression<String>? position,
-    Expression<int>? age,
     Expression<String>? nationality,
-    Expression<String>? club,
-    Expression<String>? leagueCode,
     Expression<int>? marketValueEur,
     Expression<int>? overall,
     Expression<int>? attack,
@@ -641,10 +522,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
       if (playerId != null) 'player_id': playerId,
       if (name != null) 'name': name,
       if (position != null) 'position': position,
-      if (age != null) 'age': age,
       if (nationality != null) 'nationality': nationality,
-      if (club != null) 'club': club,
-      if (leagueCode != null) 'league_code': leagueCode,
       if (marketValueEur != null) 'market_value_eur': marketValueEur,
       if (overall != null) 'overall': overall,
       if (attack != null) 'attack': attack,
@@ -658,10 +536,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     Value<int>? playerId,
     Value<String>? name,
     Value<String>? position,
-    Value<int>? age,
     Value<String>? nationality,
-    Value<String>? club,
-    Value<String>? leagueCode,
     Value<int>? marketValueEur,
     Value<int>? overall,
     Value<int>? attack,
@@ -673,10 +548,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
       playerId: playerId ?? this.playerId,
       name: name ?? this.name,
       position: position ?? this.position,
-      age: age ?? this.age,
       nationality: nationality ?? this.nationality,
-      club: club ?? this.club,
-      leagueCode: leagueCode ?? this.leagueCode,
       marketValueEur: marketValueEur ?? this.marketValueEur,
       overall: overall ?? this.overall,
       attack: attack ?? this.attack,
@@ -698,17 +570,8 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     if (position.present) {
       map['position'] = Variable<String>(position.value);
     }
-    if (age.present) {
-      map['age'] = Variable<int>(age.value);
-    }
     if (nationality.present) {
       map['nationality'] = Variable<String>(nationality.value);
-    }
-    if (club.present) {
-      map['club'] = Variable<String>(club.value);
-    }
-    if (leagueCode.present) {
-      map['league_code'] = Variable<String>(leagueCode.value);
     }
     if (marketValueEur.present) {
       map['market_value_eur'] = Variable<int>(marketValueEur.value);
@@ -737,10 +600,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
           ..write('playerId: $playerId, ')
           ..write('name: $name, ')
           ..write('position: $position, ')
-          ..write('age: $age, ')
           ..write('nationality: $nationality, ')
-          ..write('club: $club, ')
-          ..write('leagueCode: $leagueCode, ')
           ..write('marketValueEur: $marketValueEur, ')
           ..write('overall: $overall, ')
           ..write('attack: $attack, ')
@@ -6467,10 +6327,7 @@ typedef $$PlayersTableCreateCompanionBuilder = PlayersCompanion Function({
   Value<int> playerId,
   required String name,
   required String position,
-  required int age,
   required String nationality,
-  required String club,
-  Value<String> leagueCode,
   required int marketValueEur,
   required int overall,
   required int attack,
@@ -6482,10 +6339,7 @@ typedef $$PlayersTableUpdateCompanionBuilder = PlayersCompanion Function({
   Value<int> playerId,
   Value<String> name,
   Value<String> position,
-  Value<int> age,
   Value<String> nationality,
-  Value<String> club,
-  Value<String> leagueCode,
   Value<int> marketValueEur,
   Value<int> overall,
   Value<int> attack,
@@ -6518,23 +6372,8 @@ class $$PlayersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get age => $composableBuilder(
-    column: $table.age,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get nationality => $composableBuilder(
     column: $table.nationality,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get club => $composableBuilder(
-    column: $table.club,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get leagueCode => $composableBuilder(
-    column: $table.leagueCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6593,23 +6432,8 @@ class $$PlayersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get age => $composableBuilder(
-    column: $table.age,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get nationality => $composableBuilder(
     column: $table.nationality,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get club => $composableBuilder(
-    column: $table.club,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get leagueCode => $composableBuilder(
-    column: $table.leagueCode,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6662,19 +6486,8 @@ class $$PlayersTableAnnotationComposer
   GeneratedColumn<String> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
 
-  GeneratedColumn<int> get age =>
-      $composableBuilder(column: $table.age, builder: (column) => column);
-
   GeneratedColumn<String> get nationality => $composableBuilder(
     column: $table.nationality,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get club =>
-      $composableBuilder(column: $table.club, builder: (column) => column);
-
-  GeneratedColumn<String> get leagueCode => $composableBuilder(
-    column: $table.leagueCode,
     builder: (column) => column,
   );
 
@@ -6732,10 +6545,7 @@ class $$PlayersTableTableManager
                 Value<int> playerId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> position = const Value.absent(),
-                Value<int> age = const Value.absent(),
                 Value<String> nationality = const Value.absent(),
-                Value<String> club = const Value.absent(),
-                Value<String> leagueCode = const Value.absent(),
                 Value<int> marketValueEur = const Value.absent(),
                 Value<int> overall = const Value.absent(),
                 Value<int> attack = const Value.absent(),
@@ -6746,10 +6556,7 @@ class $$PlayersTableTableManager
                 playerId: playerId,
                 name: name,
                 position: position,
-                age: age,
                 nationality: nationality,
-                club: club,
-                leagueCode: leagueCode,
                 marketValueEur: marketValueEur,
                 overall: overall,
                 attack: attack,
@@ -6762,10 +6569,7 @@ class $$PlayersTableTableManager
                 Value<int> playerId = const Value.absent(),
                 required String name,
                 required String position,
-                required int age,
                 required String nationality,
-                required String club,
-                Value<String> leagueCode = const Value.absent(),
                 required int marketValueEur,
                 required int overall,
                 required int attack,
@@ -6776,10 +6580,7 @@ class $$PlayersTableTableManager
                 playerId: playerId,
                 name: name,
                 position: position,
-                age: age,
                 nationality: nationality,
-                club: club,
-                leagueCode: leagueCode,
                 marketValueEur: marketValueEur,
                 overall: overall,
                 attack: attack,

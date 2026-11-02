@@ -16,15 +16,13 @@ part 'app_database.g.dart';
 ///
 /// Identity is the permanent [playerId] (Transfermarkt id, GDD 4.4). Base
 /// stats columns are written at import time by the Player Database Engine
-/// and follow its update rules (GDD 4.6).
+/// and follow its update rules (GDD 4.6). Core data is minimal: name,
+/// nationality, position and market value — no club, age or league.
 class Players extends Table {
   IntColumn get playerId => integer()();
   TextColumn get name => text()();
   TextColumn get position => text()();
-  IntColumn get age => integer()();
   TextColumn get nationality => text()();
-  TextColumn get club => text()();
-  TextColumn get leagueCode => text().withDefault(const Constant(''))();
   IntColumn get marketValueEur => integer()();
   IntColumn get overall => integer()();
   IntColumn get attack => integer()();
@@ -233,7 +231,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -251,6 +249,12 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await m.addColumn(leagueTeams, leagueTeams.carriedOver);
+          }
+          if (from < 5) {
+            // Core player data slimmed to name/nationality/position/value:
+            // age, club and leagueCode dropped. TableMigration rebuilds the
+            // table, preserving every remaining row and column.
+            await m.alterTable(TableMigration(players));
           }
         },
       );
