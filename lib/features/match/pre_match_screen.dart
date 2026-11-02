@@ -933,26 +933,29 @@ class _TacticsPhase extends StatelessWidget {
 }
 
 /// XI / bench / reserves for the selected formation: the persisted squad
-/// re-projected onto the new shape with the Squad Engine's Auto Pick rules
-/// (GDD 6.3), purely in memory — nothing is written back.
+/// re-projected onto the new shape with the Squad Engine's Auto Pick
+/// rules (GDD 6.3), purely in memory — nothing is written back. Natural
+/// positions land in their slots, the rest rank the bench and reserves
+/// best-first, so what the user sees is the team that will kick off.
 (Map<int, PlayerCard>, List<PlayerCard>, List<PlayerCard>) _squadFor(
     String formationCode, Map<int, PlayerCard> squad) {
+  final cards = squad.values.toList();
+  final assignment =
+      const SquadEngine().autoPick(cards, formationByCode(formationCode));
+  final byId = {for (final c in cards) c.ownedId: c};
+
   final xi = <int, PlayerCard>{};
-  for (var slot = 0; slot < Formation.startingXiSize; slot++) {
-    final card = squad[slot];
-    if (card != null) xi[slot] = card;
-  }
   final bench = <PlayerCard>[];
   final reserves = <PlayerCard>[];
-  for (var slot = Formation.startingXiSize;
-      slot < Formation.squadSize;
-      slot++) {
-    final card = squad[slot];
-    if (card == null) continue;
-    (slot < Formation.startingXiSize + Formation.benchSize
-            ? bench
-            : reserves)
-        .add(card);
+  for (final e in assignment.entries) {
+    final card = byId[e.value]!;
+    if (e.key < Formation.startingXiSize) {
+      xi[e.key] = card;
+    } else if (e.key < Formation.startingXiSize + Formation.benchSize) {
+      bench.add(card);
+    } else {
+      reserves.add(card);
+    }
   }
   return (xi, bench, reserves);
 }

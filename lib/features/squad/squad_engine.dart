@@ -183,17 +183,21 @@ class SquadEngine {
     return total * factor;
   }
 
-  /// Rating used to rank bench/reserves candidates: the player's own
-  /// position rating, scaled by remaining stamina (GDD 6.3 sorting).
-  double benchRatingOf(PlayerCard player) =>
-      player.positionRating() * (player.staminaPercent / 100);
-
-  /// Auto Pick (GDD 6.3): fills starting XI, then bench, then reserves.
+  /// Auto Pick (GDD 6.3): fills the starting XI, then bench, then
+  /// reserves.
   ///
-  /// Rules: position compatibility, highest suitable rating first, no
-  /// duplicate assignments, and no incompatible positions while a suitable
-  /// alternative exists (slots are processed rarest-first so specialist
-  /// positions are secured before generic ones).
+  /// XI rule: every slot first takes the best available player whose
+  /// natural position matches the slot's position exactly — a superior
+  /// generic never displaces a natural specialist (players only compete
+  /// for their own position, so slot order cannot matter here). Slots
+  /// with no natural candidate fall back to the best compatible
+  /// remaining player, rarest position first, and only a degenerate pool
+  /// (e.g. no outfielder left at all) puts a badly-placed body in a slot
+  /// rather than leave it empty.
+  ///
+  /// The leftovers then fill bench and reserves best-first by overall:
+  /// both lists read highest → lowest, so the bench always holds the
+  /// stronger players (bench > reserves).
   ///
   /// Returns slotIndex → ownedId for every assignable slot (XI 0..10,
   /// bench 11..17, reserves 18..22). Fewer than 23 players simply leaves
@@ -203,10 +207,32 @@ class SquadEngine {
     final available = {for (final p in players) p.ownedId};
     final byId = {for (final p in players) p.ownedId: p};
 
-    // Pass 1 — XI, rarest slot first (fewest compatible candidates in the
-    // pool; GK is always rarest). Only compatible candidates (rating > 0)
-    // are considered, so specialists stay available for their own slots.
+    // Pass 1 — natural positions only: the best player of the slot's own
+    // position takes the slot.
+    for (var slotIndex = 0; slotIndex < formation.slots.length; slotIndex++) {
+      final slot = formation.slots[slotIndex];
+      int? bestId;
+      var bestRating = 0.0;
+      for (final id in available) {
+        final p = byId[id]!;
+        if (p.position != slot.position) continue;
+        final rating = slotRatingOf(p, slot);
+        if (rating > bestRating) {
+          bestRating = rating;
+          bestId = id;
+        }
+      }
+      if (bestId != null) {
+        assignment[slotIndex] = bestId;
+        available.remove(bestId);
+      }
+    }
+
+    // Pass 2 — slots with no natural candidate: the best compatible
+    // remaining player, rarest slot first so any remaining specialists
+    // stay available for slots that can still use them.
     for (final slotIndex in _rarestFirstSlots(players, formation)) {
+      if (assignment.containsKey(slotIndex)) continue;
       final slot = formation.slots[slotIndex];
       int? bestId;
       var bestRating = 0.0;
@@ -223,8 +249,8 @@ class SquadEngine {
       }
     }
 
-    // Pass 2 — degenerate pools: XI slots with no compatible candidate get
-    // the least-damaging remaining player (better than an empty slot).
+    // Pass 3 — degenerate pools: XI slots still empty take the
+    // least-damaging remaining player (better than an empty slot).
     for (var slotIndex = 0; slotIndex < formation.slots.length; slotIndex++) {
       if (assignment.containsKey(slotIndex) || available.isEmpty) continue;
       final slot = formation.slots[slotIndex];
@@ -243,12 +269,16 @@ class SquadEngine {
       }
     }
 
-    // Bench then reserves: best remaining by own-position rating (GDD 6.3:
-    // reserves sorted by rating).
-    final remaining = available
-        .map((id) => byId[id]!)
-        .toList()
-      ..sort((a, b) => benchRatingOf(b).compareTo(benchRatingOf(a)));
+    // Bench then reserves: the rest best-first by overall, ties broken by
+    // position rating then a stable id order.
+    final remaining = available.map((id) => byId[id]!).toList()
+      ..sort((a, b) {
+        final byOverall = b.overall.compareTo(a.overall);
+        if (byOverall != 0) return byOverall;
+        final byPosition = b.positionRating().compareTo(a.positionRating());
+        if (byPosition != 0) return byPosition;
+        return a.ownedId.compareTo(b.ownedId);
+      });
     var next = 0;
     for (var slot = Formation.startingXiSize;
         slot < Formation.squadSize && next < remaining.length;

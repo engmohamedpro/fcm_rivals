@@ -74,6 +74,9 @@ class SquadScreen extends ConsumerWidget {
                 onMentality: (m) =>
                     _changeTactics(context, ref, mentality: m.name),
                 onAutoPick: () => _autoPick(context, ref),
+                // The saved setup is about identity — match-day fitness
+                // (stamina) belongs to the pre-match phase only.
+                showStamina: false,
                 onPlayerTap: (card) =>
                     showPlayerDetail(context, card: card, inSquad: true),
               ),

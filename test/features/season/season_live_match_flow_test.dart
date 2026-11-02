@@ -14,7 +14,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmDropdown;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
+import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/season/season_store.dart';
 import 'package:fcm_rivals/main.dart';
@@ -169,11 +171,17 @@ void main() {
       expect(find.text('PLAYING STYLE'), findsOneWidget);
 
       // The style dropdown's closed field shows the saved default
-      // (balanced) — the FIRST 'Balanced' field, the mentality dropdown's
-      // comes later. Tapping it stacks the option list sheet on top; give
-      // the sheets' entrance animations a few bounded pumps, then fling
-      // the option list if the wanted tile sits below the fold.
-      await tester.tap(find.text('Balanced').first);
+      // (balanced). The control card's setup row also reads 'Balanced'
+      // behind the sheet, so the tap targets the FIELD inside the style
+      // dropdown, not the first matching text. Tapping it stacks the
+      // option list sheet on top; give the sheets' entrance animations a
+      // few bounded pumps, then fling the option list if the wanted tile
+      // sits below the fold.
+      final styleField = find.descendant(
+        of: find.byType(FcmDropdown<PlayingStyle>),
+        matching: find.text('Balanced'),
+      );
+      await tester.tap(styleField);
       for (var i = 0; i < 5; i++) {
         await tester.pump(const Duration(milliseconds: 200));
       }
@@ -196,8 +204,15 @@ void main() {
         await tester.pump(const Duration(milliseconds: 200));
       }
       // The style dropdown field in the options sheet now carries the
-      // match-only selection.
-      expect(find.text('Counter Attack'), findsOneWidget);
+      // match-only selection (the control card behind the sheet shows it
+      // too — the setup row mirrors the live selection).
+      expect(
+        find.descendant(
+          of: find.byType(FcmDropdown<PlayingStyle>),
+          matching: find.text('Counter Attack'),
+        ),
+        findsOneWidget,
+      );
 
       // Close the options sheet; the control card's setup summary line on
       // the tactics screen reflects the match-only selection.

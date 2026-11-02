@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fcm_rivals/core/domain/base_stats_generator.dart';
+import 'package:fcm_rivals/core/domain/base_stats_generator.dart'
+    show positionWeights;
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/squad/formations.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart';
@@ -24,9 +25,30 @@ PlayerCard card(
         club: 'Al Ahly',
         leagueCode: 'EG1',
         marketValueEur: 5_000_000,
-        baseStats: BaseStatsGenerator().generate(position, 5_000_000),
+        // The generator anchors stats to a market value, so its curve
+        // cannot hit an arbitrary overall; tests need the requested
+        // overall to be real. Same deviation formula as the generator
+        // (10 × (w − 0.375)) but around the requested rating.
+        baseStats: _statsFor(position, overall),
       ),
     );
+
+BaseStats _statsFor(Position position, int overall) {
+  final weights = positionWeights[position]!;
+  int attr(PlayerAttribute a) {
+    final w = weights[a] ?? 0;
+    if (w == 0) return 1;
+    return (overall + 10.0 * (w - 0.375)).round().clamp(1, 99);
+  }
+
+  return BaseStats(
+    overall: overall,
+    attack: attr(PlayerAttribute.attack),
+    support: attr(PlayerAttribute.support),
+    defence: attr(PlayerAttribute.defence),
+    goalkeeping: attr(PlayerAttribute.goalkeeping),
+  );
+}
 
 void main() {
   group('formations (GDD 6.4)', () {
@@ -188,29 +210,66 @@ void main() {
       expect(rmPlayer.position, Position.rw);
     });
 
-    test('a clearly superior generic player can take a compatible slot', () {
-      // The CM is far better than the available wingers; the engine may
-      // field him wide rather than waste his rating on the bench.
+    test('a clearly superior generic never displaces a natural fit', () {
+      // 4-3-3 with its exact natural XI, plus a spare 93-rated CM. The
+      // CM is far better than the 55-rated wingers, but the XI rule is
+      // strict: slots belong to players of that exact position while
+      // one exists, so the wingers start and the CM waits on the bench.
+      final f433 = formationByCode('4-3-3');
       final players = <PlayerCard>[
         card(1, Position.gk),
-        card(2, Position.cb),
+        card(2, Position.lb),
         card(3, Position.cb),
         card(4, Position.cb),
-        card(5, Position.cb),
-        card(6, Position.cb),
+        card(5, Position.rb),
+        card(6, Position.cdm),
         card(7, Position.cm, overall: 95),
         card(8, Position.cm, overall: 94),
-        card(9, Position.cm, overall: 93),
-        card(10, Position.lw, overall: 55),
+        card(9, Position.lw, overall: 55),
+        card(10, Position.st, overall: 55),
         card(11, Position.rw, overall: 55),
+        card(12, Position.cm, overall: 93),
       ];
-      final assignment = engine.autoPick(players, formation);
-      // wingers still start (they are natural fits), CMs fill the middle
+      final assignment = engine.autoPick(players, f433);
       final lwSlot =
-          formation.slots.indexWhere((s) => s.position == Position.lm);
+          f433.slots.indexWhere((s) => s.position == Position.lw);
       final lwPlayer =
           players.firstWhere((p) => p.ownedId == assignment[lwSlot]);
       expect(lwPlayer.position, Position.lw);
+      expect(lwPlayer.overall, 55);
+
+      // the strongest CM takes a central slot, the spare CM benches
+      final cmSlot =
+          f433.slots.indexWhere((s) => s.position == Position.cm);
+      final cmPlayer =
+          players.firstWhere((p) => p.ownedId == assignment[cmSlot]);
+      expect(cmPlayer.overall, 95);
+      expect(assignment[Formation.startingXiSize], players[11].ownedId);
+      expect(assignment.values.contains(players[11].ownedId), isTrue);
+      final inXi = [
+        for (var slot = 0; slot < Formation.startingXiSize; slot++)
+          if (assignment[slot] == players[11].ownedId) slot,
+      ];
+      expect(inXi, isEmpty, reason: 'the spare CM must sit on the bench');
+    });
+
+    test('slots with no natural candidate fall back to compatible players',
+        () {
+      // No LM/RM in the pool at all: the wing slots take the best
+      // compatible outsiders instead of staying empty.
+      final players = <PlayerCard>[
+        card(1, Position.gk),
+        for (var i = 0; i < 4; i++) card(10 + i, Position.cb),
+        for (var i = 0; i < 6; i++) card(30 + i, Position.cm, overall: 70 + i),
+        for (var i = 0; i < 4; i++) card(50 + i, Position.st),
+      ];
+      final assignment = engine.autoPick(players, formation);
+      final lmSlot =
+          formation.slots.indexWhere((s) => s.position == Position.lm);
+      expect(assignment.containsKey(lmSlot), isTrue);
+      expect(
+          players.firstWhere((p) => p.ownedId == assignment[lmSlot]).position,
+          anyOf(Position.cm, Position.st, Position.lw, Position.rw));
     });
 
     test('small pools leave later slots unassigned gracefully', () {
@@ -219,10 +278,41 @@ void main() {
       expect(assignment.length, 2);
     });
 
-    test('stamina affects bench ordering (GDD 6.3 sorting)', () {
-      final engine = const SquadEngine();
-      expect(engine.benchRatingOf(card(1, Position.st, stamina: 50)),
-          lessThan(engine.benchRatingOf(card(2, Position.st, stamina: 100))));
+    test('bench and reserves rank the leftovers best-first by overall', () {
+      // The XI is exactly the eleven natural 4-4-2 fits; the leftovers
+      // are positions 4-4-2 has no slot for, mixed stamina and ratings.
+      final players = <PlayerCard>[
+        card(1, Position.gk),
+        card(2, Position.lb),
+        card(3, Position.cb),
+        card(4, Position.cb),
+        card(5, Position.rb),
+        card(6, Position.lm),
+        card(7, Position.cm),
+        card(8, Position.cm),
+        card(9, Position.rm),
+        card(10, Position.st),
+        card(11, Position.st),
+        // leftovers: 85 (tired) → 78 → 72 → 60 (fresh)
+        card(60, Position.cam, overall: 85, stamina: 40),
+        card(61, Position.cdm, overall: 78, stamina: 90),
+        card(62, Position.lw, overall: 72, stamina: 100),
+        card(63, Position.rw, overall: 60, stamina: 100),
+      ];
+      final assignment = engine.autoPick(players, formation);
+
+      // bench (11..17) then reserves (18..22) in slot order; every slot
+      // present reads the leftovers 85 → 78 → 72 → 60.
+      final ranked = [
+        for (var slot = Formation.startingXiSize;
+            slot < Formation.squadSize;
+            slot++)
+          if (assignment.containsKey(slot))
+            players.firstWhere((p) => p.ownedId == assignment[slot]),
+      ];
+      expect(ranked.map((p) => p.overall), [85, 78, 72, 60]);
+      // the bench holds the strongest leftover, not the fittest
+      expect(ranked.first.overall, 85);
     });
   });
 

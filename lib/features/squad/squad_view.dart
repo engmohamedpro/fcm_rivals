@@ -27,9 +27,11 @@ import '../match/tactics.dart';
 import 'formations.dart';
 import 'squad_engine.dart';
 
-/// The whole tactical setup column: the control card (team rating +
-/// tactic options button), the pitch with the starting XI and per-player
-/// stats and stamina bars (GDD 11), then the bench and reserves strips.
+/// The whole tactical setup column: the control card (the setup row —
+/// formation, playing style, mentality — closed by the team rating, with
+/// the Auto Pick and TACTICS actions under it), the pitch with the
+/// starting XI and per-player stats (stamina bars when [showStamina]),
+/// then the bench and reserves strips.
 class TacticsSetupView extends StatelessWidget {
   const TacticsSetupView({
     super.key,
@@ -43,6 +45,7 @@ class TacticsSetupView extends StatelessWidget {
     required this.onStyle,
     required this.onMentality,
     this.onAutoPick,
+    this.showStamina = true,
     this.onPlayerTap,
   });
 
@@ -69,6 +72,11 @@ class TacticsSetupView extends StatelessWidget {
   /// Shows the Auto Pick button (GDD 6.3) when non-null — the Tactics tab
   /// persists a re-picked squad; pre-match hides it.
   final VoidCallback? onAutoPick;
+
+  /// Whether cards carry their stamina bar. The pre-match phase shows
+  /// match-day fitness; the Tactics tab hides it — the saved setup is
+  /// about identity, not current match state.
+  final bool showStamina;
 
   /// Opens the player detail sheet; null makes the cards non-tappable.
   final void Function(PlayerCard card)? onPlayerTap;
@@ -107,28 +115,33 @@ class TacticsSetupView extends StatelessWidget {
           child: SquadPitch(
             formation: formationByCode(formationCode),
             assignments: xi,
+            showStamina: showStamina,
             onPlayerTap: onPlayerTap,
           ),
         ),
         if (bench.isNotEmpty) ...[
           FcmSectionTitle('Bench (${bench.length}/${Formation.benchSize})'),
-          SquadCardRow(cards: bench, onPlayerTap: onPlayerTap),
+          SquadCardRow(
+              cards: bench, showStamina: showStamina, onPlayerTap: onPlayerTap),
         ],
         if (reserves.isNotEmpty) ...[
           FcmSectionTitle(
               'Reserves (${reserves.length}/${Formation.reservesSize})'),
-          SquadCardRow(cards: reserves, onPlayerTap: onPlayerTap),
+          SquadCardRow(
+              cards: reserves,
+              showStamina: showStamina,
+              onPlayerTap: onPlayerTap),
         ],
       ],
     );
   }
 }
 
-/// The single control card of the tactics screen: the team rating, the
-/// Auto Pick button (when the surface owns squad persistence) and the
-/// button that opens the tactic options sheet. A dim line under the row
-/// summarises the active setup, so the option walls never need to live
-/// on the screen itself.
+/// The single control card of the tactics screen. Its top row carries the
+/// whole setup as labelled values — formation, playing style, mentality —
+/// and closes with the team rating on the right; every block shrinks to
+/// fit, so the row never overflows. The Auto Pick (when the surface owns
+/// squad persistence) and TACTICS buttons sit on a full-width row below.
 class _ControlCard extends StatelessWidget {
   const _ControlCard({
     required this.teamRating,
@@ -154,101 +167,90 @@ class _ControlCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LayoutBuilder(builder: (context, constraints) {
-            // One line needs the rating column (~105px) beside the action
-            // buttons (~280px with Auto Pick, ~130px without) plus spacing;
-            // anything narrower stacks the actions on their own row instead
-            // of overflowing the card.
-            final oneLine = constraints.maxWidth >=
-                (onAutoPick != null ? 400.0 : 260.0);
-            return oneLine
-                ? Row(
-                    children: [
-                      _rating(),
-                      const Spacer(),
-                      if (onAutoPick != null) ...[
-                        FcmButton(
-                          compact: true,
-                          style: FcmButtonStyle.steel,
-                          icon: Icons.auto_awesome,
-                          label: 'Auto Pick',
-                          onPressed: onAutoPick,
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      FcmButton(
-                        compact: true,
-                        icon: Icons.tune_rounded,
-                        label: 'TACTICS',
-                        onPressed: onTactics,
-                      ),
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _rating(),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          if (onAutoPick != null) ...[
-                            Expanded(
-                              child: FcmButton(
-                                compact: true,
-                                style: FcmButtonStyle.steel,
-                                icon: Icons.auto_awesome,
-                                label: 'Auto Pick',
-                                onPressed: onAutoPick,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Expanded(
-                            child: FcmButton(
-                              compact: true,
-                              icon: Icons.tune_rounded,
-                              label: 'TACTICS',
-                              onPressed: onTactics,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-          }),
-          const SizedBox(height: 8),
-          Text(
-            '${formation.name}  ·  ${style.displayName}  ·  ${mentality.displayName}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-                color: FcmColors.textDim,
-                fontSize: 11,
-                fontWeight: FontWeight.w700),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(child: _info('FORMATION', formation.name)),
+              const SizedBox(width: 14),
+              Flexible(child: _info('STYLE', style.displayName)),
+              const SizedBox(width: 14),
+              Flexible(child: _info('MENTALITY', mentality.displayName)),
+              const Spacer(),
+              _rating(),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (onAutoPick != null) ...[
+                Expanded(
+                  child: FcmButton(
+                    compact: true,
+                    style: FcmButtonStyle.steel,
+                    icon: Icons.auto_awesome,
+                    label: 'Auto Pick',
+                    onPressed: onAutoPick,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: FcmButton(
+                  compact: true,
+                  icon: Icons.tune_rounded,
+                  label: 'TACTICS',
+                  onPressed: onTactics,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  /// The rating block of the control card: dim label over the big
-  /// colour-coded number.
-  Widget _rating() => Column(
+  /// One labelled setup value of the control card's top row: a dim
+  /// mini-label over the value, shrinking to fit its share of the row.
+  Widget _info(String label, String value) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FitText(label,
+              style: const TextStyle(
+                  color: FcmColors.textDim,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5)),
+          const SizedBox(height: 3),
+          FitText(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800)),
+        ],
+      );
+
+  /// The team rating closing the setup row: dim label over the big
+  /// colour-coded number, right-aligned.
+  Widget _rating() => Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Text('TEAM RATING',
+              textAlign: TextAlign.right,
               style: TextStyle(
                   color: FcmColors.textDim,
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: 2)),
+                  letterSpacing: 1.5)),
+          const SizedBox(height: 3),
           FcmCountUp(
             value: teamRating,
             style: TextStyle(
               color: ratingColor(teamRating),
-              fontSize: 34,
+              fontSize: 28,
               fontWeight: FontWeight.w900,
-              height: 1.15,
+              height: 1.1,
             ),
           ),
         ],
@@ -441,13 +443,14 @@ List<({String label, int value})> statsOf(PlayerCard c) =>
 /// Card size adapts to the formation: the widest line and the number of
 /// lines bound the shield size, so every card gets the most space the
 /// shape allows without neighbours overlapping. Cards glide to their new
-/// spots when the formation changes. Each card carries its stats and a
-/// colour-coded stamina bar.
+/// spots when the formation changes. Each card carries its stats and,
+/// when [showStamina] is set, a colour-coded stamina bar.
 class SquadPitch extends StatelessWidget {
   const SquadPitch({
     super.key,
     required this.formation,
     required this.assignments,
+    this.showStamina = true,
     this.onPlayerTap,
   });
 
@@ -455,6 +458,9 @@ class SquadPitch extends StatelessWidget {
 
   /// Slot index → card for the starting XI.
   final Map<int, PlayerCard> assignments;
+
+  /// Whether cards carry their stamina bar (hidden in the Tactics tab).
+  final bool showStamina;
 
   /// Optional card tap (player detail sheet).
   final void Function(PlayerCard card)? onPlayerTap;
@@ -537,7 +543,8 @@ class SquadPitch extends StatelessWidget {
                                 rarity: rarityOf(card),
                                 width: cardW,
                                 warn: fs.position != card.position,
-                                stamina: card.staminaPercent,
+                                stamina:
+                                    showStamina ? card.staminaPercent : null,
                                 stats: statsOf(card),
                               ),
                             ),
@@ -552,12 +559,20 @@ class SquadPitch extends StatelessWidget {
   }
 }
 
-/// Horizontal strip of mini cards (bench / reserves): stats, stamina and
-/// the surname under each shield.
+/// Horizontal strip of mini cards (bench / reserves): stats, the surname
+/// under each shield and — when [showStamina] is set — the stamina bar.
 class SquadCardRow extends StatelessWidget {
-  const SquadCardRow({super.key, required this.cards, this.onPlayerTap});
+  const SquadCardRow({
+    super.key,
+    required this.cards,
+    this.showStamina = true,
+    this.onPlayerTap,
+  });
 
   final List<PlayerCard> cards;
+
+  /// Whether cards carry their stamina bar (hidden in the Tactics tab).
+  final bool showStamina;
 
   /// Optional card tap (player detail sheet).
   final void Function(PlayerCard card)? onPlayerTap;
@@ -586,7 +601,7 @@ class SquadCardRow extends StatelessWidget {
                 name: c.base.name.split(' ').last,
                 rarity: rarityOf(c),
                 width: cardWidth,
-                stamina: c.staminaPercent,
+                stamina: showStamina ? c.staminaPercent : null,
                 stats: statsOf(c),
               ),
             ),
