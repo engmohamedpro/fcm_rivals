@@ -5,8 +5,8 @@ import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../features/match/tactics.dart';
-import '../collection/player_detail_sheet.dart';
 import 'formations.dart';
+import 'player_card_reveal.dart';
 import 'squad_engine.dart' show PlayerCard;
 import 'squad_view.dart';
 
@@ -86,8 +86,12 @@ class SquadScreen extends ConsumerWidget {
                 // pre-match phase only.
                 showStamina: false,
                 showStats: false,
+                // Tapping a player shows the full card big with the
+                // reveal animation (flip, count-up, name last) — the
+                // detail sheet with its stat bars stays on the
+                // Collection tab where the actions live.
                 onPlayerTap: (card) =>
-                    showPlayerDetail(context, card: card, inSquad: true),
+                    showPlayerCardReveal(context, card: card),
               ),
           ],
         );
