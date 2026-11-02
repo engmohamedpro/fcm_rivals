@@ -3,28 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/database/app_database.dart' show Pack;
-import '../../core/domain/players.dart' show BasePlayer, Position;
+import '../../core/domain/players.dart' show Position;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
-import '../../core/ui/player_card.dart' show FcmMiniCard, kPlayerCardAspect;
 import '../../features/collection/collection_store.dart' show StorePackOffer;
 import '../../features/packs/pack_engine.dart'
     show PackCategory, PackTier, PackTierColor;
-import '../../features/squad/squad_view.dart' show SquadCardRow;
 import 'pack_contents_screen.dart';
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_opening_screen.dart';
 
 /// Store tab (nav label 'Store', GDD 5.5): one SECTION per scope — the global
-/// pack or one position — grouping its three tier varieties — Bronze /
-/// Silver / Gold, each with its own odds of better players and its own
-/// price — under a shared title and a shared strip of obtainable
-/// players: the three rarities of one scope draw from the exact same
-/// pool, so the section shows it once. Owned (free) packs of a type
-/// show a FREE ×N pill in place of the price; otherwise the cell shows
-/// the coin price with a BUY button. The section header's player count
-/// and each cell's INFO badge open the full contents list, highest
-/// rated first; BUY opens the YES/NO purchase confirmation.
+/// pack or one position — grouping its three tier varieties — Rare /
+/// Epic / Legendary, each with its own odds of better players and its own
+/// price — under a shared title. Owned (free) packs of a type show a
+/// FREE ×N pill in place of the price; otherwise the cell shows the coin
+/// price with a BUY button. Each cell's ghost VIEW PLAYERS button opens
+/// the scope's full contents list (searchable, filterable by
+/// nationality); BUY opens the YES/NO purchase confirmation.
 class PacksScreen extends ConsumerStatefulWidget {
   const PacksScreen({super.key});
 
@@ -86,20 +82,9 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             opening: _opening,
             onOpen: (packId) => _open(context, packId),
             onBuy: (offer) => _buy(context, offer),
+            // Opens the scope's contents list — same entry as the cells'
+            // VIEW PLAYERS buttons.
             onInfo: (offer) => _showContents(context, offer),
-            // The section strips share one pool loader: all tiers of a
-            // scope match the same players, so the tier is irrelevant.
-            onLoadPool: (category, scopeValue) async {
-              final store = await ref.read(collectionStoreProvider.future);
-              return store.getPackPlayers(
-                  category: category,
-                  scopeValue: scopeValue,
-                  tier: PackTier.rare);
-            },
-            onViewAll: (offer) => _showContents(context, offer,
-                title: offer.scopeValue == null
-                    ? 'Global Pack — All Players'
-                    : '${offer.scopeValue} Pack — All Players'),
           ),
         ),
       ),
@@ -300,8 +285,7 @@ String _scopeKey(String category, String? scopeValue, String tier) =>
     '$category:${scopeValue ?? 'ANY'}:$tier';
 
 /// The store: one section per scope — global first, then every position —
-/// each grouping its three tier offers under a shared header and a
-/// shared strip of obtainable players.
+/// each grouping its three tier offers under a shared header.
 class _StoreGrid extends StatelessWidget {
   const _StoreGrid({
     required this.packs,
@@ -311,8 +295,6 @@ class _StoreGrid extends StatelessWidget {
     required this.onOpen,
     required this.onBuy,
     required this.onInfo,
-    required this.onLoadPool,
-    required this.onViewAll,
   });
 
   final List<Pack> packs;
@@ -322,14 +304,6 @@ class _StoreGrid extends StatelessWidget {
   final void Function(int packId) onOpen;
   final void Function(StorePackOffer offer) onBuy;
   final void Function(StorePackOffer offer) onInfo;
-
-  /// Loads the shared eligible pool of a scope (tier-agnostic — all
-  /// tiers of one scope draw from the same players).
-  final Future<List<BasePlayer>> Function(
-      PackCategory category, String? scopeValue) onLoadPool;
-
-  /// Opens the full contents list of a scope.
-  final void Function(StorePackOffer offer) onViewAll;
 
   @override
   Widget build(BuildContext context) {
@@ -373,8 +347,6 @@ class _StoreGrid extends StatelessWidget {
               onOpen: onOpen,
               onBuy: onBuy,
               onInfo: onInfo,
-              onLoadPool: onLoadPool,
-              onViewAll: onViewAll,
             ),
         ],
       ),
@@ -382,11 +354,11 @@ class _StoreGrid extends StatelessWidget {
   }
 }
 
-/// One scope group: shared title — 'Global Pack' or 'ST Pack' — with the
-/// pool size, the row of the three tier cells side by side, and below
-/// them the shared strip of obtainable players (best first). The three
-/// rarities of one scope draw from the exact same pool, so the section
-/// states that once instead of repeating it per cell.
+/// One scope group: shared title — 'Global Pack' or 'ST Pack' — and the
+/// row of the three tier cells side by side. The three rarities of one
+/// scope draw from the exact same pool; the contents list (reachable
+/// from each cell's VIEW PLAYERS button) is the single place that pool
+/// is shown.
 class _ScopeSection extends StatelessWidget {
   const _ScopeSection({
     super.key,
@@ -397,8 +369,6 @@ class _ScopeSection extends StatelessWidget {
     required this.onOpen,
     required this.onBuy,
     required this.onInfo,
-    required this.onLoadPool,
-    required this.onViewAll,
   });
 
   final List<StorePackOffer> offers;
@@ -408,13 +378,10 @@ class _ScopeSection extends StatelessWidget {
   final void Function(int packId) onOpen;
   final void Function(StorePackOffer offer) onBuy;
   final void Function(StorePackOffer offer) onInfo;
-  final Future<List<BasePlayer>> Function(
-      PackCategory category, String? scopeValue) onLoadPool;
-  final void Function(StorePackOffer offer) onViewAll;
 
   @override
   Widget build(BuildContext context) {
-    // Sort the section's tiers into store order: bronze, silver, gold.
+    // Sort the section's tiers into store order: rare, epic, legendary.
     final byTier = {
       for (final o in offers) o.tier: o,
     };
@@ -429,17 +396,10 @@ class _ScopeSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Shared title: what the section is about plus the pool size,
-        // tapping it opens the full contents list of the scope.
-        FcmSectionTitle(
-          scopeLabel,
-          trailing: FcmPill(
-            '${head.eligibleCount} PLAYERS',
-            color: FcmColors.silver,
-          ),
-        ),
+        // Shared title: what the section is about.
+        FcmSectionTitle(scopeLabel),
         SizedBox(
-          height: 250,
+          height: 296,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -471,95 +431,8 @@ class _ScopeSection extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 10),
-        // The shared player strip: the section's common pool, best first.
-        _PoolStrip(
-          offer: head,
-          onLoadPool: onLoadPool,
-          onViewAll: onViewAll,
-        ),
         const SizedBox(height: 18),
       ],
-    );
-  }
-}
-
-/// The shared obtainable-player strip of one scope: up to 10 mini cards
-/// (overall + rarity + surname, no stat rows), best rated first, and a
-/// VIEW ALL tail card that opens the full contents list.
-class _PoolStrip extends StatelessWidget {
-  const _PoolStrip({
-    required this.offer,
-    required this.onLoadPool,
-    required this.onViewAll,
-  });
-
-  final StorePackOffer offer;
-  final Future<List<BasePlayer>> Function(
-      PackCategory category, String? scopeValue) onLoadPool;
-  final void Function(StorePackOffer offer) onViewAll;
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<BasePlayer>>(
-      future: onLoadPool(offer.category, offer.scopeValue),
-      builder: (context, snapshot) {
-        final players = snapshot.data ?? const <BasePlayer>[];
-        // Card width shared with the bench strips of the squad screen.
-        const cardWidth = SquadCardRow.cardWidth;
-        final stripHeight = cardWidth / kPlayerCardAspect + 20;
-        return SizedBox(
-          height: stripHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: players.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
-            itemBuilder: (context, i) {
-              if (i == players.length) {
-                // VIEW ALL tail: opens the scope's full contents list.
-                return FcmPressable(
-                  onTap: () => onViewAll(offer),
-                  child: Container(
-                    width: cardWidth,
-                    decoration: BoxDecoration(
-                      color: FcmColors.silver.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: FcmColors.silver.withValues(alpha: 0.4)),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.arrow_forward_rounded,
-                            color: FcmColors.goldSoft, size: 20),
-                        const SizedBox(height: 4),
-                        FitText(
-                          'VIEW ALL',
-                          style: TextStyle(
-                            color: FcmColors.goldSoft,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              final p = players[i];
-              final rarity = CardRarity.fromOverall(p.baseStats.overall);
-              return FcmMiniCard(
-                overall: p.baseStats.overall,
-                position: p.position.code,
-                name: p.name.split(' ').last,
-                rarity: rarity,
-                width: cardWidth,
-              );
-            },
-          ),
-        );
-      },
     );
   }
 }
@@ -567,13 +440,14 @@ class _PoolStrip extends StatelessWidget {
 /// One tier cell of a scope section: the sealed foil pack exactly as it
 /// looks before opening (same [FoilPackPainter] as the reveal cinematic),
 /// painted in the tier's solid metal — bronze, silver or gold — with the
-/// tier name under it, a price slot and one action button. The scope
-/// title and player pool live on the section, not the cell. Owned and
-/// buyable cells share the exact same layout: the slot shows the
-/// FREE ×N pill when the club owns packs of this type, the coin price
-/// otherwise; the button reads CLAIM — which opens the next owned pack
-/// straight into the reveal, no confirmation — or BUY, which opens the
-/// YES/NO purchase dialog. The ⓘ badge opens the pack's contents list.
+/// tier name under it, a price slot and two action buttons. The scope
+/// title lives on the section, not the cell. Owned and buyable cells
+/// share the exact same layout: the slot shows the FREE ×N pill when the
+/// club owns packs of this type, the coin price otherwise; the primary
+/// button reads CLAIM — which opens the next owned pack straight into the
+/// reveal, no confirmation — or BUY, which opens the YES/NO purchase
+/// dialog. The ghost VIEW PLAYERS button under it opens the pack's
+/// contents list.
 class _StorePackCell extends StatelessWidget {
   const _StorePackCell({
     required this.offer,
@@ -604,35 +478,13 @@ class _StorePackCell extends StatelessWidget {
             child: Center(
               child: AspectRatio(
                 aspectRatio: kPackAspect,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: FoilPackPainter(
-                          shimmer: 0.42,
-                          charge: 0,
-                          glowColor: tierColor,
-                          tint: tierColor,
-                        ),
-                      ),
-                    ),
-                    // Contents list entry point.
-                    Positioned(
-                      right: 2,
-                      top: 2,
-                      child: SizedBox(
-                        width: 26,
-                        height: 26,
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          iconSize: 15,
-                          icon: Icon(Icons.info_outline_rounded,
-                              color: Colors.white.withValues(alpha: 0.75)),
-                          onPressed: onInfo,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: CustomPaint(
+                  painter: FoilPackPainter(
+                    shimmer: 0.42,
+                    charge: 0,
+                    glowColor: tierColor,
+                    tint: tierColor,
+                  ),
                 ),
               ),
             ),
@@ -692,6 +544,19 @@ class _StorePackCell extends StatelessWidget {
               icon: isFree ? Icons.card_giftcard_rounded : null,
               label: isFree ? 'CLAIM' : 'BUY',
               onPressed: onTap,
+            ),
+          ),
+          const SizedBox(height: 5),
+          // VIEW PLAYERS replaces the ⓘ badge and the section's player
+          // strip: the one entry point into the scope's contents list.
+          SizedBox(
+            width: double.infinity,
+            child: FcmButton(
+              compact: true,
+              style: FcmButtonStyle.ghost,
+              icon: Icons.people_outline_rounded,
+              label: 'VIEW PLAYERS',
+              onPressed: onInfo,
             ),
           ),
         ],

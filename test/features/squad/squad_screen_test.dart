@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
+import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/squad/squad_screen.dart';
 import 'package:fcm_rivals/features/squad/squad_view.dart';
 
@@ -72,10 +73,11 @@ void main() {
     expect(find.text('TACTICS'), findsOneWidget);
 
     // Bench and reserves stay visible even with nothing assigned: full
-    // quota of placeholder cards — 7 bench slots, 5 reserve slots.
+    // quota of ghost placeholder cards — 7 bench slots, 5 reserve slots.
     expect(find.text('Bench (0/7)'), findsOneWidget);
     expect(find.text('Reserves (0/5)'), findsOneWidget);
-    expect(find.text('EMPTY'), findsNWidgets(12));
+    expect(find.byType(FcmMiniCard), findsNWidgets(11 + 12),
+        reason: '11 formation ghost slots plus 12 bench/reserve ghosts');
 
     // Auto Pick works with an empty collection: it simply assigns
     // nothing and confirms.

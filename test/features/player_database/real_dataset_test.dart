@@ -32,7 +32,13 @@ void main() {
     final map = json.decode(jsonText) as Map<String, dynamic>;
     expect(map['format'], 'fcm-rivals-players');
     expect(map['version'], isPositive);
-    expect(map['count'], db.count);
+    expect(map['asOf'], isNotEmpty);
+    expect(map['digest'], isNotEmpty);
+    // The trimmed file carries no derived 'count'/'source' keys: the
+    // loader never reads them and the row count is the players' length.
+    expect(map.containsKey('count'), isFalse);
+    expect(map.containsKey('source'), isFalse);
+    expect((map['players'] as List).length, db.count);
   });
 
   test('known real players resolve by stable Transfermarkt id', () {

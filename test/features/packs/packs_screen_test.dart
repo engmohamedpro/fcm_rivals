@@ -1,7 +1,7 @@
-// Packs tab store behaviour (GDD 5.5): one section per scope — global
-// first, then every position — grouping its three tier varieties under
-// a shared title and a shared strip of obtainable players, plus the BUY
-// confirmation flow and the contents list behind tapping a cell.
+// Store tab behaviour (GDD 5.5): one section per scope — global first,
+// then every position — grouping its three rarity varieties under a
+// shared title, plus the BUY confirmation flow and the contents list
+// behind each cell's VIEW PLAYERS button.
 //
 // The store runs real drift I/O over an in-memory database, so async
 // flushes use tester.runAsync (FakeAsync doesn't perform real I/O).
@@ -81,11 +81,14 @@ void main() {
     expect(find.text('ST Pack'), findsOneWidget);
     expect(find.text('LW Pack'), findsOneWidget);
     expect(find.text('FREE ×3'), findsNWidgets(4));
-    // Every section header carries the shared pool size as a pill.
+    // No pool sizes or player strips on the store anymore: the contents
+    // list behind VIEW PLAYERS is the one place the pool is shown.
     final offers = await tester.runAsync(() => store.getStoreOffers());
-    final global = offers!.firstWhere((o) => o.scopeValue == null);
-    expect(find.text('${global.eligibleCount} PLAYERS'), findsOneWidget);
-    // Three tier cells per section: 13 sections × 3.
+    expect(offers!.firstWhere((o) => o.scopeValue == null).eligibleCount,
+        greaterThan(0));
+    expect(find.textContaining('PLAYERS'), findsNWidgets(39),
+        reason: 'only the 39 VIEW PLAYERS buttons');
+    // Three rarity cells per section: 13 sections × 3.
     expect(find.text('RARE'), findsNWidgets(13));
     expect(find.text('EPIC'), findsNWidgets(13));
     expect(find.text('LEGENDARY'), findsNWidgets(13));
@@ -104,27 +107,10 @@ void main() {
     // ×1 stack under their bronze cells).
     expect(find.text('CLAIM'), findsNWidgets(12));
     expect(find.text('BUY'), findsNWidgets(27));
-    // Every section closes with a VIEW ALL card into the shared pool.
-    expect(find.text('VIEW ALL'), findsNWidgets(13));
-  });
-
-  testWidgets('the shared player strip shows the scope pool, best first',
-      (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(2400, 3600);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-    await bootScreen(tester);
-
-    // Scroll to the ST section so its strip is on screen.
-    await tester.scrollUntilVisible(
-        find.text('ST Pack'), 300, scrollable: find.byType(Scrollable).first);
-    await tester.pump(const Duration(milliseconds: 100));
-
-    // The pool strip loads the shared scope pool as mini cards.
-    final pool = await tester.runAsync(
-        () => store.getPackPlayers(category: PackCategory.position, scopeValue: 'ST', tier: PackTier.rare));
-    expect(pool, isNotEmpty);
-    expect(find.byType(FcmMiniCard), findsWidgets);
+    // Every cell carries a VIEW PLAYERS button into the shared pool.
+    expect(find.text('VIEW PLAYERS'), findsNWidgets(39));
+    // No player preview strip on the store itself.
+    expect(find.byType(FcmMiniCard), findsNothing);
   });
 
   testWidgets('CLAIM opens the owned pack straight into the reveal — no dialog',
@@ -264,28 +250,28 @@ void main() {
     expect(find.textContaining('after'), findsNothing);
   });
 
-  testWidgets('tapping a cell opens the pack contents, best rated first',
+  testWidgets('VIEW PLAYERS opens the pack contents as cards, best rated first',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // The ⓘ badge on the first cell opens the contents screen.
-    await tester.tap(find.byIcon(Icons.info_outline_rounded).first);
+    // The VIEW PLAYERS button on the first cell opens the contents screen.
+    await tester.tap(find.text('VIEW PLAYERS').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(PackContentsScreen), findsOneWidget);
     expect(find.text('Rare Global Pack'), findsOneWidget);
 
-    // The list shows every eligible player, ranked #1 (best) at the top,
-    // with ratings but no stat rows.
+    // The list shows the eligible players as mini cards with no rank
+    // numbers, no stat rows.
     await tester
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('#1'), findsOneWidget);
-    expect(find.text('#2'), findsOneWidget);
+    expect(find.byType(FcmMiniCard), findsWidgets);
+    expect(find.textContaining('#'), findsNothing);
     expect(find.text('ATT'), findsNothing);
     expect(find.text('SUP'), findsNothing);
 
@@ -296,6 +282,64 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(PackContentsScreen), findsNothing);
     expect(find.text('BUY'), findsWidgets);
+  });
+
+  testWidgets('contents list searches by name', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester);
+
+    await tester.tap(find.text('VIEW PLAYERS').first);
+    await tester.pump();
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // The search field narrows the list to matching names: two Haalands
+    // ship in the bundled dataset (Erling and Markus), one Erling.
+    await tester.enterText(find.byType(TextField), 'haaland');
+    await tester.pump();
+    expect(find.byType(FcmMiniCard), findsNWidgets(2));
+    await tester.enterText(find.byType(TextField), 'erling haaland');
+    await tester.pump();
+    expect(find.byType(FcmMiniCard), findsOneWidget);
+    expect(find.text('Erling Haaland'), findsOneWidget);
+
+    // Clearing the search restores the full, best-first pool.
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pump();
+    expect(find.byType(FcmMiniCard), findsWidgets);
+    // No leftover empty-state message.
+    expect(find.text('No players match your search'), findsNothing);
+  });
+
+  testWidgets('contents list offers a nationality filter over the pool',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester);
+
+    await tester.tap(find.text('VIEW PLAYERS').first);
+    await tester.pump();
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // The filter bar renders the search field plus the nationality
+    // dropdown showing its ALL reset state.
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('All nationalities'), findsOneWidget);
+    expect(find.byIcon(Icons.search_rounded), findsOneWidget);
+    // The dropdown offers every nationality present in the pool.
+    final pool = await tester.runAsync(
+        () => store.getPackPlayers(category: PackCategory.global, tier: PackTier.rare));
+    final expected = pool!.map((p) => p.nationality).toSet().length;
+    expect(find.byType(DropdownButton<String?>), findsOneWidget);
+    expect(expected, greaterThan(50));
+    // Rows show each player's nationality next to his name.
+    expect(find.textContaining('Norway'), findsWidgets);
   });
 }
 

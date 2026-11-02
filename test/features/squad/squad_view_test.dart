@@ -114,12 +114,16 @@ void main() {
 
     expect(find.text('Bench (1/7)'), findsOneWidget);
     expect(find.text('Reserves (0/5)'), findsOneWidget);
-    expect(find.byType(FcmMiniCard), findsOneWidget);
-    expect(find.text('EMPTY'), findsNWidgets(6 + 5));
+    // The one real card plus the ghost placeholders — same widget, the
+    // ghost ones render dimmed and wordless: 11 empty formation slots,
+    // 6 bench and 5 reserve placeholders.
+    expect(find.byType(FcmMiniCard), findsNWidgets(1 + 11 + 6 + 5));
 
-    // The placeholders sit after the real card in the bench strip.
-    final cardLeft = tester.getTopLeft(find.byType(FcmMiniCard).first);
-    final firstEmpty = tester.getTopLeft(find.text('EMPTY').first);
+    // The bench placeholders sit after the real bench card in the bench
+    // strip: its surname reads '1' (from 'Player 1').
+    final cardLeft = tester.getTopLeft(find.text('1'));
+    final firstEmpty =
+        tester.getTopLeft(find.byType(FcmMiniCard).at(1 + 11));
     expect(firstEmpty.dx, greaterThan(cardLeft.dx));
 
     // Even a completely empty squad keeps both sections visible.
@@ -127,7 +131,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Bench (0/7)'), findsOneWidget);
     expect(find.text('Reserves (0/5)'), findsOneWidget);
-    expect(find.text('EMPTY'), findsNWidgets(7 + 5));
+    expect(find.byType(FcmMiniCard), findsNWidgets(11 + 7 + 5));
   });
 
   testWidgets('stamina bars render only when shown',
@@ -136,7 +140,8 @@ void main() {
 
     await tester.pumpWidget(_host(bench: bench));
     await tester.pumpAndSettle();
-    expect(find.byType(FcmMiniCard), findsOneWidget);
+    // Ghost placeholders render no stamina bar, so tracks come only
+    // from the one real card.
     expect(_staminaTracks(), greaterThan(0),
         reason: 'stamina bar shown when enabled');
 

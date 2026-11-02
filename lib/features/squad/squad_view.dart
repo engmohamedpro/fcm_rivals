@@ -651,6 +651,11 @@ class SquadCardRow extends StatelessWidget {
   }
 }
 
+/// An unassigned formation slot: a ghost mini card — the exact shape,
+/// size and layout of a filled one (same painter silhouette, same text
+/// slots) rendered see-through with no overall, position or name, so the
+/// pitch reads as a full formation with the empty places still holding
+/// their card footprints.
 class _EmptySlot extends StatelessWidget {
   const _EmptySlot({required this.position, required this.width});
 
@@ -659,32 +664,23 @@ class _EmptySlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final h = width / kPlayerCardAspect;
-    return SizedBox(
-      height: h,
-      child: Center(
-        child: Container(
-          width: width * 0.9,
-          height: width * 0.9,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.black.withValues(alpha: 0.28),
-            border: Border.all(color: Colors.white38, width: 1.5),
-          ),
-          alignment: Alignment.center,
-          child: FitText(position.code,
-              align: Alignment.center,
-              style: const TextStyle(
-                  color: Colors.white70, fontWeight: FontWeight.w800)),
-        ),
+    return Opacity(
+      opacity: 0.45,
+      child: FcmMiniCard(
+        overall: 0,
+        position: '',
+        name: '',
+        rarity: CardRarity.rare,
+        width: width,
+        ghost: true,
       ),
     );
   }
 }
 
-/// Placeholder for an unassigned bench / reserves slot: a dashed steel
-/// outline the shape and size of a real mini card with a plus mark —
-/// same footprint, clearly empty.
+/// Placeholder for an unassigned bench / reserves slot: a ghost mini
+/// card — same footprint and style as the real ones beside it, dimmed
+/// and wordless (no overall, position or name).
 class _EmptyBenchCard extends StatelessWidget {
   const _EmptyBenchCard();
 
@@ -692,63 +688,18 @@ class _EmptyBenchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width + 12,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CustomPaint(
-            size: Size(width, width / kPlayerCardAspect),
-            painter: _EmptyCardPainter(),
-            child: Center(
-              child: Icon(Icons.add_rounded,
-                  color: Colors.white.withValues(alpha: 0.35), size: 22),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'EMPTY',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.30),
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ],
+    return Opacity(
+      opacity: 0.45,
+      child: FcmMiniCard(
+        overall: 0,
+        position: '',
+        name: '',
+        rarity: CardRarity.rare,
+        width: width,
+        ghost: true,
       ),
     );
   }
-}
-
-/// Dashed rounded rectangle matching a mini card's silhouette.
-class _EmptyCardPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rrect = RRect.fromRectAndRadius(
-        Offset.zero & size, const Radius.circular(8));
-    final path = Path()..addRRect(rrect);
-    final metric = path.computeMetrics().first;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..color = Colors.white.withValues(alpha: 0.22);
-    // Dash pattern: 5 on, 4 off, walked along the card outline.
-    const on = 5.0, off = 4.0;
-    var dist = 0.0;
-    while (dist < metric.length) {
-      canvas.drawPath(metric.extractPath(dist, (dist + on).clamp(0, metric.length)), paint);
-      dist += on + off;
-    }
-    // Faint fill so the slot reads as a card-shaped hole, not a gap.
-    canvas.drawRRect(
-        rrect,
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.045));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Mown-grass stripes, white markings and a soft floodlight vignette.

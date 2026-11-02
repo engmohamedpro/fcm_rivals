@@ -525,6 +525,7 @@ class FcmMiniCard extends StatelessWidget {
     this.warn = false,
     this.stamina,
     this.stats,
+    this.ghost = false,
   });
 
   final int overall;
@@ -543,6 +544,13 @@ class FcmMiniCard extends StatelessWidget {
   /// stat row under the name — outfield ATT/SUP/DEF, keepers GK/DEF/SUP.
   final List<({String label, int value})>? stats;
 
+  /// Renders the card as an empty slot placeholder: same silhouette,
+  /// proportions and text slots as a filled card, but dimmed (charcoal
+  /// face, no glow) with no overall, position or name — the formation
+  /// and bench read as a grid of same-shaped cards where the unassigned
+  /// ones are simply see-through.
+  final bool ghost;
+
   @override
   Widget build(BuildContext context) {
     final h = width / kPlayerCardAspect;
@@ -559,11 +567,12 @@ class FcmMiniCard extends StatelessWidget {
               height: h,
               decoration: BoxDecoration(
                 boxShadow: [
-                  BoxShadow(
-                    color: (warn ? FcmColors.danger : rarity.accent)
-                        .withValues(alpha: 0.5),
-                    blurRadius: 14,
-                  ),
+                  if (!ghost)
+                    BoxShadow(
+                      color: (warn ? FcmColors.danger : rarity.accent)
+                          .withValues(alpha: 0.5),
+                      blurRadius: 14,
+                    ),
                 ],
               ),
               child: Stack(
@@ -571,61 +580,71 @@ class FcmMiniCard extends StatelessWidget {
                   Positioned.fill(
                     child: CustomPaint(
                       painter: _CardFacePainter(rarity: rarity, shine: null),
+                      foregroundPainter:
+                          ghost ? _GhostPainter() : null,
                     ),
                   ),
                   if (warn)
                     Positioned.fill(
                       child: CustomPaint(painter: _WarnPainter()),
                     ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: h * 0.17,
-                    child: Column(
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text('$overall',
-                              maxLines: 1,
-                              softWrap: false,
-                              style: TextStyle(
-                                  color: ink,
-                                  fontSize: width * 0.36,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1)),
-                        ),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(position,
-                              maxLines: 1,
-                              softWrap: false,
-                              style: TextStyle(
-                                  color: ink.withValues(alpha: 0.9),
-                                  fontSize: width * 0.2,
-                                  fontWeight: FontWeight.w800)),
-                        ),
-                      ],
+                  // The ghost draws no overall and no position — the card
+                  // keeps the text slots' footprint but stays wordless.
+                  if (!ghost)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: h * 0.17,
+                      child: Column(
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('$overall',
+                                maxLines: 1,
+                                softWrap: false,
+                                style: TextStyle(
+                                    color: ink,
+                                    fontSize: width * 0.36,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1)),
+                          ),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(position,
+                                maxLines: 1,
+                                softWrap: false,
+                                style: TextStyle(
+                                    color: ink.withValues(alpha: 0.9),
+                                    fontSize: width * 0.2,
+                                    fontWeight: FontWeight.w800)),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
             const SizedBox(height: 3),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                name.toUpperCase(),
-                maxLines: 1,
-                softWrap: false,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: math.max(9, width * 0.19),
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.4,
-                  shadows: const [Shadow(color: Colors.black, blurRadius: 4)],
+            // Ghost keeps the surname slot's footprint without text: a
+            // fixed-height box the size of one name line.
+            if (ghost)
+              SizedBox(height: math.max(9, width * 0.19) * 1.0)
+            else
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  name.toUpperCase(),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: math.max(9, width * 0.19),
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.4,
+                    shadows: const [Shadow(color: Colors.black, blurRadius: 4)],
+                  ),
                 ),
               ),
-            ),
             if (stats != null && stats!.isNotEmpty) ...[
               const SizedBox(height: 2),
               _StatRow(stats: stats!, width: width),
@@ -639,6 +658,44 @@ class FcmMiniCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Overlay for ghost mini cards: washes the card face to a translucent
+/// charcoal and adds the same borders as a live card, so an empty slot
+/// keeps the silhouette of a filled one at reduced opacity.
+class _GhostPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = cardPath(size);
+    canvas.save();
+    canvas.clipPath(path);
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFF121014).withValues(alpha: 0.82),
+    );
+    canvas.restore();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.012
+        ..color = Colors.white.withValues(alpha: 0.35),
+    );
+    canvas.save();
+    canvas.translate(size.width * 0.03, size.height * 0.02);
+    canvas.scale(0.94, 0.96);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.006
+        ..color = Colors.white.withValues(alpha: 0.16),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Three label-over-value stat columns under the card; values are coloured
