@@ -28,6 +28,14 @@ void main() {
 
   testWidgets('club creation leads to the game shell with 36 packs',
       (WidgetTester tester) async {
+    // Phone-like portrait surface (800x1200 logical): the default 800x600
+    // test surface leaves only ~466px of list viewport after the AppBar and
+    // bottom nav, so beyond the first ~4 pack rows the rest sit in the
+    // scroll cache area where default finders skip them.
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
     final db = AppDatabase(NativeDatabase.memory());
     final store = CollectionStore(db: db);
     final jsonText = await tester

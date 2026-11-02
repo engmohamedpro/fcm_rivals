@@ -26,12 +26,15 @@ BasePlayer mkPlayer(
           overall: 50, attack: 55, support: 50, defence: 45, goalkeeping: 0),
     );
 
-/// Pool spanning three decades of market value with known structure.
+/// Pool spanning three decades of market value with known structure. Each
+/// decade must stay inside the engine's log-scale tier band (boundaries
+/// 0.15/0.55 of the pool's log-value span) for every pool size used below,
+/// so a player's id always encodes the tier he is drawn from.
 List<BasePlayer> buildPool(int perDecade) => [
       for (var i = 0; i < perDecade; i++)
         mkPlayer(1000 + i, 50_000 + i * 5_000), // low tier
       for (var i = 0; i < perDecade; i++)
-        mkPlayer(2000 + i, 2_000_000 + i * 100_000), // mid tier
+        mkPlayer(2000 + i, 500_000 + i * 50_000), // mid tier
       for (var i = 0; i < perDecade; i++)
         mkPlayer(3000 + i, 40_000_000 + i * 2_000_000), // high tier
     ];
