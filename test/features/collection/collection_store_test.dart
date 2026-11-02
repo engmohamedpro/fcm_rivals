@@ -8,6 +8,7 @@ import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import 'package:fcm_rivals/features/squad/formations.dart';
 
 AppDatabase memoryDb() => AppDatabase(NativeDatabase.memory());
 
@@ -334,6 +335,44 @@ void main() {
       expect(
           () => store.saveSquad({0: collection[0].ownedId, 1: collection[0].ownedId}),
           throwsA(isA<CollectionException>()));
+    });
+
+    test('getSquad iterates slots in order; bench and reserves rank '
+        'best-first (GDD 6.3)', () async {
+      // Regression: getSquad() used to return rows in database insertion
+      // order, so the Tactics tab — which walks squad.entries — displayed
+      // bench and reserves unranked even though Auto Pick persisted the
+      // ranked assignment. The map must iterate slot 0, 1, 2, …
+      await openAll();
+      await store.autoPickSquad();
+      final squad = await store.getSquad();
+
+      final iterated = squad.keys.toList();
+      final sorted = [...iterated]..sort();
+      expect(iterated, sorted,
+          reason: 'getSquad() must iterate in slot order');
+
+      // Bench (11..17) then reserves (18..22) hold the leftovers
+      // best-first by overall: each strip reads highest → lowest.
+      final ranked = [
+        for (var slot = Formation.startingXiSize;
+            slot < Formation.squadSize && squad.containsKey(slot);
+            slot++)
+          squad[slot]!,
+      ];
+      expect(ranked.length, Formation.benchSize + Formation.reservesSize);
+      for (var i = 1; i < ranked.length; i++) {
+        expect(ranked[i - 1].overall, greaterThanOrEqualTo(ranked[i].overall),
+            reason: 'slot ${Formation.startingXiSize + i - 1} vs '
+                '${Formation.startingXiSize + i}');
+      }
+      // the bench holds the strongest leftovers, not the fittest
+      final bench = ranked.take(Formation.benchSize);
+      final reserves = ranked.skip(Formation.benchSize);
+      if (reserves.isNotEmpty) {
+        expect(bench.map((c) => c.overall).reduce(math.max),
+            greaterThanOrEqualTo(reserves.map((c) => c.overall).reduce(math.min)));
+      }
     });
   });
 

@@ -795,14 +795,18 @@ class CollectionStore {
   // Squad
   // ---------------------------------------------------------------------------
 
-  /// Squad assignments currently persisted: slot → card.
+  /// Squad assignments currently persisted: slot → card. Iterates in
+  /// slot order — the order Auto Pick writes (bench then reserves
+  /// best-first) — so consumers that walk the entries see the ranked
+  /// squad instead of an arbitrary database row order.
   Future<Map<int, PlayerCard>> getSquad() async {
     final club = await getClub();
     if (club == null) return const {};
     final cards = await getCollection();
     final byId = {for (final c in cards) c.ownedId: c};
     final rows = await (db.select(db.ownedPlayers)
-          ..where((o) => o.clubId.equals(club.id)))
+          ..where((o) => o.clubId.equals(club.id))
+          ..orderBy([(o) => OrderingTerm.asc(o.squadSlot)]))
         .get();
     final squad = <int, PlayerCard>{};
     for (final row in rows) {

@@ -7,6 +7,7 @@ import '../../core/ui/fcm_widgets.dart';
 import '../../features/match/tactics.dart';
 import '../collection/player_detail_sheet.dart';
 import 'formations.dart';
+import 'squad_engine.dart' show PlayerCard;
 import 'squad_view.dart';
 
 /// Tactics tab: the club's permanent tactical setup (GDD 10) — formation,
@@ -31,17 +32,21 @@ class SquadScreen extends ConsumerWidget {
           for (final e in squad.entries)
             if (e.key < Formation.startingXiSize) e.key: e.value,
         };
-        final bench = [
-          for (final e in squad.entries)
-            if (e.key >= Formation.startingXiSize &&
-                e.key < Formation.startingXiSize + Formation.benchSize)
-              e.value,
-        ];
-        final reserves = [
-          for (final e in squad.entries)
-            if (e.key >= Formation.startingXiSize + Formation.benchSize)
-              e.value,
-        ];
+        // Bench then reserves in slot order, each strip re-sorted
+        // best-first by overall: the strips always read highest → lowest
+        // whatever order the map or the database hands back.
+        List<PlayerCard> strip(int from, int to) => [
+              for (var slot = from; slot < to; slot++)
+                if (squad.containsKey(slot)) squad[slot]!,
+            ]..sort((a, b) {
+                final byOverall = b.overall.compareTo(a.overall);
+                if (byOverall != 0) return byOverall;
+                return a.ownedId.compareTo(b.ownedId);
+              });
+        final bench = strip(
+            Formation.startingXiSize, Formation.startingXiSize + Formation.benchSize);
+        final reserves =
+            strip(Formation.startingXiSize + Formation.benchSize, Formation.squadSize);
         final style = PlayingStyle.values.firstWhere(
             (s) => s.name == club?.playingStyle,
             orElse: () => PlayingStyle.balanced);
