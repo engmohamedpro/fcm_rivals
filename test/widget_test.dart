@@ -59,12 +59,13 @@ void main() {
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
     await tester.pump(const Duration(milliseconds: 100));
 
-    // Game shell with the five tabs.
+    // Game shell with the four tabs (league matches are played live
+    // from the Season tab).
     expect(find.text('Season'), findsWidgets);
-    expect(find.text('Match'), findsWidgets);
     expect(find.text('Packs'), findsWidgets);
     expect(find.text('Squad'), findsWidgets);
     expect(find.text('Collection'), findsWidgets);
+    expect(find.text('Match'), findsNothing);
 
     // The Season tab opens first: the first campaign entry point renders.
     expect(find.text('Start your first season'), findsOneWidget);

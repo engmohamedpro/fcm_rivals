@@ -46,7 +46,7 @@ class MatchReportResult {
 /// Live session over one match (GDD 26.1 MatchState + command queue).
 class MatchSession {
   MatchSession._(this.engine, this._store, this._club, this._opponentName,
-      this._opponentTeamId);
+      this._opponentTeamId, this._homeName, this._awayName);
 
   final MatchEngine engine;
   final CollectionStore _store;
@@ -56,6 +56,11 @@ class MatchSession {
   /// Engine team id of the away side (-1 for synthetic friendly opponents,
   /// the persisted club id for season fixtures).
   final int _opponentTeamId;
+
+  /// Display names in engine home/away order, for the scoreboard and the
+  /// live commentary (the user is NOT always the home side).
+  final String _homeName;
+  final String _awayName;
 
   /// Creates a session from the user's current squad (FR-025: player
   /// attributes and stamina feed the engine, GDD 12.2) against a synthetic
@@ -96,7 +101,8 @@ class MatchSession {
       engine.queueCommand(PepTalkCommand(
           atMinute: 0, side: MatchSide.home, talk: preMatchTalk));
     }
-    return MatchSession._(engine, store, inputs.$2, opponentName, -1);
+    return MatchSession._(
+        engine, store, inputs.$2, opponentName, -1, inputs.$2.name, opponentName);
   }
 
   /// Creates a session against a persisted AI club (season fixtures): the
@@ -143,7 +149,13 @@ class MatchSession {
           talk: preMatchTalk));
     }
     return MatchSession._(
-        engine, store, inputs.$2, opponentClub.name, opponentClub.id);
+        engine,
+        store,
+        inputs.$2,
+        opponentClub.name,
+        opponentClub.id,
+        userAtHome ? inputs.$2.name : opponentClub.name,
+        userAtHome ? opponentClub.name : inputs.$2.name);
   }
 
   /// The user's engine input + club row, shared by both factories.
@@ -223,9 +235,26 @@ class MatchSession {
     ];
   }
 
-  /// User squad names for commentary.
+  /// Display name of the engine's home side (scoreboard, commentary).
+  String get homeTeamName => _homeName;
+
+  /// Display name of the engine's away side (scoreboard, commentary).
+  String get awayTeamName => _awayName;
+
+  /// Squad names of the user's club for commentary.
   Map<int, String> get userPlayerNames => {
-        for (final p in engine.playersOf(MatchSide.home)) p.playerId: p.name,
+        for (final p in engine.playersOf(userSide)) p.playerId: p.name,
+      };
+
+  /// Names of every player on BOTH sides, for live commentary on matches
+  /// against named AI squads (league fixtures) where opponent events must
+  /// name real players, not 'an opponent'.
+  Map<int, String> get allPlayerNames => {
+        for (final p in [
+          ...engine.playersOf(MatchSide.home),
+          ...engine.playersOf(MatchSide.away),
+        ])
+          p.playerId: p.name,
       };
 
   /// Queues a live tactical change (GDD 10.4/16).

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
-import '../match/match_session.dart';
+import '../match/match_screen.dart';
+import '../match/tactics.dart';
 import 'season_store.dart';
 
 /// Season screen (GDD 9): standings, the next fixture and season
@@ -39,23 +40,53 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 
   Future<void> _startSeason() => _run((store) => store.startSeason(division: 1));
 
+  /// Plays the next league fixture as a full live match (GDD 13/16):
+  /// pre-match pep talk, minute-by-minute engine with live tactics and
+  /// substitutions, post-match recovery choice and the report — then the
+  /// result is committed to the season (FR-038) and the round's AI
+  /// fixtures resolve in lockstep (GDD 9.2).
   Future<void> _playNextFixture() async {
-    final store = await ref.read(seasonStoreProvider.future);
-    final next = (await store.getNextFixture())!;
-    final collection = await ref.read(collectionStoreProvider.future);
-    final session = await store.startNextFixture(collection);
-    if (!mounted) return;
-    // Quick-sim this fixture: the full live-match flow is the Match tab.
-    session.simulateToEnd();
-    final report = await session.finish();
-    await store.commitFixtureResult(session, next);
-    ref.invalidate(seasonSummaryProvider);
-    ref.invalidate(standingsProvider);
-    ref.invalidate(nextFixtureProvider);
-    ref.invalidate(clubProvider);
-    if (mounted) {
-      await _showMatchReport(report);
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final store = await ref.read(seasonStoreProvider.future);
+      final next = (await store.getNextFixture())!;
+      if (!mounted) return;
+      // Pre-match pep talk (GDD 15.1): one optional choice, ad-free.
+      final talk = await showPepTalkChooser(
+        context: context,
+        title: 'Pre-match pep talk',
+        subtitle:
+            'One motivational choice before kick-off — effects last the '
+            'whole match.',
+        talks: preMatchPepTalks,
+      );
+      if (!mounted) return;
+      final collection = await ref.read(collectionStoreProvider.future);
+      final session =
+          await store.startNextFixture(collection, preMatchTalk: talk);
+      if (!mounted) return;
+      setState(() => _error = null);
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => MatchScreen(
+          session: session,
+          title: 'League · Round ${next.round}',
+          onFullTime: (report) =>
+              store.commitFixtureResult(session, next),
+        ),
+      ));
+      ref.invalidate(seasonSummaryProvider);
+      ref.invalidate(standingsProvider);
+      ref.invalidate(nextFixtureProvider);
+      ref.invalidate(clubProvider);
+      ref.invalidate(collectionProvider);
+      ref.invalidate(squadProvider);
+      ref.invalidate(availablePacksProvider);
       await _maybeCompleteSeason();
+    } catch (e) {
+      setState(() => _error = '$e'.replaceFirst('SeasonException: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -64,45 +95,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
         // the user's own fixture stays theirs to play.
         await store.simulateAIFixturesThroughCurrentRound();
       });
-
-  Future<void> _showMatchReport(MatchReportResult report) {
-    final theme = Theme.of(context);
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-            'Full time: ${report.state.scoreHome} - ${report.state.scoreAway}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Reward: ${report.rewardCoins} coins',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.primary)),
-            if (report.manOfTheMatch != null)
-              Text('Man of the Match: ${report.manOfTheMatch!.name}'),
-            if (report.commentary.any((l) => l.importance == 2))
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  report.commentary
-                      .where((l) => l.importance == 2)
-                      .map((l) => "${l.minute}' ${l.text}")
-                      .join('\n'),
-                  style: theme.textTheme.bodySmall,
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _showCompletion(SeasonCompletion completion) {
     final theme = Theme.of(context);

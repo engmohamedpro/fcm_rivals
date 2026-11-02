@@ -15,7 +15,10 @@ lockstep with the user's fixtures; promoted/relegated clubs carry over
 between divisions, GDD §9.2/9.5), and the full GDD §19.3 rewarded-ad
 catalog: free user-selected pack, upgrade cost discount, player selling
 bonus, daily and season reward multipliers — plus the GDD §8.4
-upgrade-with-coins path and live substitutions in the match UI. The GDD's development rules (§36) are followed: data model first,
+upgrade-with-coins path and live substitutions in the match UI. League
+fixtures now play as full live matches (pep talks, minute-by-minute
+tactics, substitutions, post-match report) launched from the Season tab —
+the separate friendly Match tab was removed. The GDD's development rules (§36) are followed: data model first,
 engines as pure Dart with no UI dependencies, atomic coin transactions.
 
 | Module | Path | Covers |
@@ -38,7 +41,7 @@ engines as pure Dart with no UI dependencies, atomic coin transactions.
 | Season Store | `lib/features/season/` | season lifecycle over Drift: 20-club divisions, fixture play through the MatchEngine, quick simulation, history preservation, rewards with ledger |
 | Collection Store | `lib/features/collection/` | atomic pack open/sell/merge, club creation with 36 starting packs, dataset-update compensation, coin ledger, match result persistence (FR-012..FR-016) |
 | Persistence | `lib/core/database/` | Drift/SQLite schema v3: players, dataset versions, clubs (user + AI), owned players, packs, coin transactions, seasons, league teams, fixtures, match results, AI players, ad usages (SRS 25) |
-| App UI | `lib/app/`, `lib/features/*/` screens | Riverpod providers, club creation, pack opening with reveal, pitch squad view, collection management, live match screen with tactics and post-match report |
+| App UI | `lib/app/`, `lib/features/*/` screens | Riverpod providers, club creation, pack opening with reveal, pitch squad view, collection management; league fixtures launch the full-screen live match (pep talks, tactics, substitutions, post-match report) from the Season tab |
 
 All engines are pure Dart with no Flutter UI dependencies, ready for the
 future authoritative server port (GDD §29). All balancing constants live in
@@ -70,7 +73,7 @@ stats byte-for-byte; upgrades live on owned instances and survive updates.
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs  # regenerate drift code
 flutter analyze
-flutter test     # 202 tests: engines, match engine with live substitutions, season system with lockstep rounds and carry-over, pep talks, the full rewarded-ad catalog, upgrade/sell economy paths, simulation harness invariants, update rules, store integration, UI flow
+flutter test     # 203 tests: engines, match engine with live substitutions, league fixtures as live matches from the Season tab, season system with lockstep rounds and carry-over, pep talks, the full rewarded-ad catalog, upgrade/sell economy paths, simulation harness invariants, update rules, store integration, UI flow
 flutter run
 ```
 

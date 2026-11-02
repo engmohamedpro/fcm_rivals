@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/providers.dart';
 import 'features/collection/collection_collection_screen.dart';
-import 'features/match/match_screen.dart';
 import 'features/packs/packs_screen.dart';
 import 'features/season/season_screen.dart';
 import 'features/squad/squad_screen.dart';
@@ -47,14 +46,15 @@ class _EntryGate extends ConsumerWidget {
   }
 }
 
-/// Bottom-navigation shell over season, match, packs, squad and collection.
+/// Bottom-navigation shell over season, packs, squad and collection.
+/// League matches are played live from the Season tab (GDD 13/16).
 class GameShell extends StatelessWidget {
   const GameShell({super.key});
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -65,7 +65,6 @@ class GameShell extends StatelessWidget {
             tabAlignment: TabAlignment.start,
             tabs: [
               Tab(text: 'Season'),
-              Tab(text: 'Match'),
               Tab(text: 'Packs'),
               Tab(text: 'Squad'),
               Tab(text: 'Collection'),
@@ -75,7 +74,6 @@ class GameShell extends StatelessWidget {
         body: const TabBarView(
           children: [
             SeasonScreen(),
-            MatchScreen(),
             PacksScreen(),
             SquadScreen(),
             CollectionScreen(),

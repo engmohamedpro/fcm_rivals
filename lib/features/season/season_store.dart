@@ -19,7 +19,7 @@ import '../collection/collection_store.dart';
 import '../match/match_engine.dart';
 import '../match/match_session.dart';
 import '../match/stamina.dart' show StaminaConfig, recoverStamina;
-import '../match/tactics.dart' show PlayingStyle, Mentality;
+import '../match/tactics.dart' show PlayingStyle, Mentality, MatchPepTalk;
 import 'season_engine.dart';
 
 /// Season-specific errors.
@@ -359,7 +359,9 @@ class SeasonStore {
 
   /// Creates a live match session for the user's next fixture. The UI
   /// drives it; call [commitFixtureResult] with the finished session.
-  Future<MatchSession> startNextFixture(CollectionStore store) async {
+  /// [preMatchTalk] applies its multipliers from kick-off (GDD 15.1).
+  Future<MatchSession> startNextFixture(CollectionStore store,
+      {MatchPepTalk? preMatchTalk}) async {
     final next = await getNextFixture();
     if (next == null) {
       throw const SeasonException('No fixture to play');
@@ -372,6 +374,7 @@ class SeasonStore {
       opponentStarters: opponent.starters,
       opponentBench: opponent.bench,
       userAtHome: next.isHome,
+      preMatchTalk: preMatchTalk,
     );
   }
 

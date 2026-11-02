@@ -8,18 +8,39 @@ import 'match_session.dart';
 import 'stamina.dart';
 import 'tactics.dart';
 
+/// Invoked once when the match finishes and [MatchSession.finish] has
+/// persisted stamina and rewards — the league flow commits the fixture
+/// result here (standings, AI lockstep) while the report screen is up.
+typedef MatchFullTimeCallback = Future<void> Function(MatchReportResult report);
+
 /// Live match screen (GDD 13, GDD 16): minute-by-minute simulation with
 /// commentary feed, live tactical changes and the post-match report with
 /// the pep talk choice (GDD 11.6).
+///
+/// Pushed as a full-screen route over the caller (league fixtures are
+/// launched from the Season tab). The [session] arrives ready to play —
+/// including any pre-match pep talk already queued at kick-off (GDD 15.1).
 class MatchScreen extends ConsumerStatefulWidget {
-  const MatchScreen({super.key});
+  const MatchScreen({
+    super.key,
+    required this.session,
+    this.title,
+    this.onFullTime,
+  });
+
+  final MatchSession session;
+
+  /// AppBar label for the fixture, e.g. 'League · Round 3'.
+  final String? title;
+
+  /// Optional commit hook for persistent competitions (GDD 9.2).
+  final MatchFullTimeCallback? onFullTime;
 
   @override
   ConsumerState<MatchScreen> createState() => _MatchScreenState();
 }
 
 class _MatchScreenState extends ConsumerState<MatchScreen> {
-  MatchSession? _session;
   final List<CommentaryLine> _lines = [];
   bool _finished = false;
   MatchReportResult? _report;
@@ -27,53 +48,18 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   bool _usedAdBoost = false;
   String? _error;
   bool _halfTimeOffered = false;
-
-  Future<void> _kickOff() async {
-    try {
-      final store = await ref.read(collectionStoreProvider.future);
-      final random = ref.read(randomProvider);
-      setState(() {
-        _halfTimeOffered = false;
-      });
-      // Pre-match pep talk (GDD 15.1): one optional choice, ad-free.
-      final talk = await _chooseTalk(
-        title: 'Pre-match pep talk',
-        subtitle:
-            'One motivational choice before kick-off — effects last the '
-            'whole match.',
-        talks: preMatchPepTalks,
-      );
-      final session = await MatchSession.create(
-        store: store,
-        seed: random.nextInt(1 << 31),
-        opponentName: 'Cairo XI',
-        opponentAverageOverall: 68,
-        preMatchTalk: talk,
-      );
-      setState(() {
-        _session = session;
-        _lines.clear();
-        _finished = false;
-        _report = null;
-        _pepTalk = null;
-        _usedAdBoost = false;
-      });
-      _advance();
-    } catch (e) {
-      setState(() => _error = '$e');
-    }
-  }
+  bool _finishing = false;
 
   void _advance() {
-    final session = _session;
-    if (session == null || session.isFinished) return;
+    final session = widget.session;
+    if (session.isFinished) return;
     final events = session.advanceMinute();
     if (events.isNotEmpty) {
       final lines = generateCommentary(
         events,
-        playerNames: session.userPlayerNames,
-        homeTeamName: 'FC Rivals',
-        awayTeamName: 'Cairo XI',
+        playerNames: session.allPlayerNames,
+        homeTeamName: session.homeTeamName,
+        awayTeamName: session.awayTeamName,
       );
       setState(() => _lines.addAll(lines));
     }
@@ -84,8 +70,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   }
 
   void _maybeOfferHalfTimeTalk() {
-    final session = _session;
-    if (session == null || _halfTimeOffered) return;
+    final session = widget.session;
+    if (_halfTimeOffered) return;
     final state = session.engine.state;
     // Offer once when the clock first reaches/reaches past half time.
     if (state.minute >= 45 && !state.isFinished) {
@@ -95,67 +81,30 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   }
 
   Future<void> _chooseHalfTimeTalk() async {
-    final session = _session;
-    if (session == null) return;
+    final session = widget.session;
     // Half-time pep talk (GDD 15.2): effects apply to the second half,
     // ad-free like every pep talk (FR-043).
-    final talk = await _chooseTalk(
+    final talk = await showPepTalkChooser(
+      context: context,
       title: 'Half-time pep talk',
       subtitle: 'One choice for the second half — applies from kick-off '
           'of the second half.',
       talks: halfTimePepTalks,
     );
-    if (talk != null && session == _session && !session.isFinished) {
+    if (talk != null && mounted && !session.isFinished) {
       session.queueHalfTimeTalk(talk);
     }
   }
 
-  /// Shows the pep-talk chooser; returns null when skipped. Never gated
-  /// by an ad (FR-043).
-  Future<MatchPepTalk?> _chooseTalk({
-    required String title,
-    required String subtitle,
-    required List<MatchPepTalk> talks,
-  }) {
-    final theme = Theme.of(context);
-    return showModalBottomSheet<MatchPepTalk>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(title, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(subtitle, style: theme.textTheme.bodySmall),
-            const SizedBox(height: 12),
-            for (final talk in talks)
-              ListTile(
-                title: Text(talk.label),
-                subtitle: Text('${talk.effectSummary}\n${talk.description}'),
-                isThreeLine: true,
-                onTap: () => Navigator.pop(sheetContext, talk),
-              ),
-            ListTile(
-              title: Text('Skip',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              onTap: () => Navigator.pop(sheetContext),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _simToEnd() {
-    final session = _session;
-    if (session == null || session.isFinished) return;
+    final session = widget.session;
+    if (session.isFinished) return;
     session.simulateToEnd();
     final lines = generateCommentary(
       session.engine.events,
-      playerNames: session.userPlayerNames,
-      homeTeamName: 'FC Rivals',
-      awayTeamName: 'Cairo XI',
+      playerNames: session.allPlayerNames,
+      homeTeamName: session.homeTeamName,
+      awayTeamName: session.awayTeamName,
     );
     setState(() => _lines
       ..clear()
@@ -164,46 +113,54 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   }
 
   Future<void> _finishMatch() async {
-    final session = _session;
-    if (session == null) return;
+    final session = widget.session;
+    if (_finishing) return;
+    _finishing = true;
+    try {
+      // Post-match pep talk (GDD 15.3/11.6) or the ad-supported boosted
+      // recovery (GDD 19.3) — mutually exclusive (GDD 19.4), chosen BEFORE
+      // persistence runs so the choice is real this time.
+      var usedAdBoost = false;
+      PepTalk? talk;
+      final choice = await _choosePostMatchRecovery();
+      if (choice == null) {
+        // nothing chosen: default recovery
+      } else if (choice.boosted) {
+        usedAdBoost = true;
+      } else {
+        talk = choice.pepTalk;
+      }
 
-    // Post-match pep talk (GDD 15.3/11.6) or the ad-supported boosted
-    // recovery (GDD 19.3) — mutually exclusive (GDD 19.4), chosen BEFORE
-    // persistence runs so the choice is real this time.
-    var usedAdBoost = false;
-    PepTalk? talk;
-    final choice = await _choosePostMatchRecovery();
-    if (choice == null) {
-      // nothing chosen: default recovery
-    } else if (choice.boosted) {
-      usedAdBoost = true;
-    } else {
-      talk = choice.pepTalk;
+      final report = await session.finish(
+          pepTalk: talk, adBoostedRecovery: usedAdBoost);
+      // Persistent-competition hook (GDD 9.2): the league fixture is
+      // committed with the result, AI stamina and lockstep simulation.
+      await widget.onFullTime?.call(report);
+      setState(() {
+        _finished = true;
+        _report = report;
+        _pepTalk = talk;
+        _usedAdBoost = usedAdBoost;
+      });
+      ref.invalidate(clubProvider);
+      ref.invalidate(collectionProvider);
+      ref.invalidate(squadProvider);
+    } catch (e) {
+      setState(() => _error = '$e');
+    } finally {
+      _finishing = false;
     }
-
-    final report = await session.finish(
-        pepTalk: talk, adBoostedRecovery: usedAdBoost);
-    setState(() {
-      _finished = true;
-      _report = report;
-      _pepTalk = talk;
-      _usedAdBoost = usedAdBoost;
-    });
-    ref.invalidate(clubProvider);
-    ref.invalidate(collectionProvider);
-    ref.invalidate(squadProvider);
   }
 
   /// Chooses the post-match recovery path: a normal pep talk (free,
   /// FR-043) or the ad-boosted +15% recovery (GDD 19.3) when ads remain.
   Future<_RecoveryChoice?> _choosePostMatchRecovery() async {
     final theme = Theme.of(context);
-    final session = _session;
-    if (session == null) return null;
-    final report = _report;
+    final session = widget.session;
     final userAtHome = session.userSide == MatchSide.home;
-    final userGoals =
-        userAtHome ? session.engine.state.scoreHome : session.engine.state.scoreAway;
+    final userGoals = userAtHome
+        ? session.engine.state.scoreHome
+        : session.engine.state.scoreAway;
     final opponentGoals = userAtHome
         ? session.engine.state.scoreAway
         : session.engine.state.scoreHome;
@@ -243,7 +200,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
               title: Text('No pep talk',
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              subtitle: report == null ? null : const Text('Default recovery'),
+              subtitle: const Text('Default recovery'),
               onTap: () => Navigator.pop(sheetContext),
             ),
           ],
@@ -261,154 +218,159 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: () {
-                  setState(() => _error = null);
-                  _kickOff();
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final session = _session;
-    if (session == null) {
-      return Center(
-        child: FilledButton.icon(
-          onPressed: _kickOff,
-          icon: const Icon(Icons.play_arrow),
-          label: const Text('Play friendly match'),
-        ),
-      );
-    }
-
+    final session = widget.session;
     final state = session.engine.state;
-    return Column(
-      children: [
-        // Scoreboard
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          color: theme.colorScheme.inversePrimary,
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                      child: Text('FC Rivals',
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.titleMedium)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      '${state.scoreHome} - ${state.scoreAway}',
-                      style: theme.textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: theme.colorScheme.inversePrimary,
+        title: Text(widget.title ?? 'Live match'),
+      ),
+      body: _error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: _finishMatch,
+                      child: const Text('Retry'),
                     ),
-                  ),
-                  Expanded(
-                      child: Text('Cairo XI',
-                          textAlign: TextAlign.left,
-                          style: theme.textTheme.titleMedium)),
-                ],
+                  ],
+                ),
               ),
-              Text(_finished ? 'Full time' : "${state.minute}'",
-                  style: theme.textTheme.labelLarge),
-            ],
-          ),
-        ),
-        // Controls (GDD 10.4/16)
-        if (!_finished)
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
+            )
+          : Column(
               children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _advance,
-                    icon: const Icon(Icons.fast_forward),
-                    label: const Text('Next minute'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _simToEnd,
-                    icon: const Icon(Icons.skip_next),
-                    label: const Text('Sim to end'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.outlined(
-                  onPressed: () => _showTacticsSheet(context),
-                  icon: const Icon(Icons.tune),
-                  tooltip: 'Tactics',
-                ),
-              ],
-            ),
-          ),
-        // Commentary feed
-        Expanded(
-          child: _finished && _report != null
-              ? MatchReportView(
-                  report: _report!,
-                  pepTalk: _pepTalk,
-                  adBoostedRecovery: _usedAdBoost,
-                  onPepTalk: _applyPepTalk,
-                )
-              : ListView.builder(
-                  reverse: true,
-                  padding: const EdgeInsets.all(12),
-                  itemCount: _lines.length,
-                  itemBuilder: (context, index) {
-                    final line = _lines[_lines.length - 1 - index];
-                    final bold = line.importance == 2;
-                    final color = switch (line.importance) {
-                      2 => theme.colorScheme.primary,
-                      1 => theme.colorScheme.onSurface,
-                      _ => theme.colorScheme.onSurfaceVariant,
-                    };
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                // Scoreboard
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  color: theme.colorScheme.inversePrimary,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(
-                            width: 38,
-                            child: Text("${line.minute}'",
-                                style: theme.textTheme.labelSmall
-                                    ?.copyWith(color: color)),
+                          Expanded(
+                            child: Text(session.homeTeamName,
+                                textAlign: TextAlign.right,
+                                style: theme.textTheme.titleMedium),
+                          ),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              '${state.scoreHome} - ${state.scoreAway}',
+                              style: theme.textTheme.headlineMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
                           ),
                           Expanded(
-                            child: Text(
-                              line.text,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: color,
-                                fontWeight:
-                                    bold ? FontWeight.bold : FontWeight.normal,
-                              ),
-                            ),
+                            child: Text(session.awayTeamName,
+                                textAlign: TextAlign.left,
+                                style: theme.textTheme.titleMedium),
                           ),
                         ],
                       ),
-                    );
-                  },
+                      Text(
+                          _finished
+                              ? 'Full time'
+                              : (state.isFinished
+                                  ? 'Full time'
+                                  : "${state.minute}'"),
+                          style: theme.textTheme.labelLarge),
+                    ],
+                  ),
                 ),
-        ),
-      ],
+                // Controls (GDD 10.4/16)
+                if (!_finished)
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _advance,
+                            icon: const Icon(Icons.fast_forward),
+                            label: const Text('Next minute'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _simToEnd,
+                            icon: const Icon(Icons.skip_next),
+                            label: const Text('Sim to end'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.outlined(
+                          onPressed: () => _showTacticsSheet(context),
+                          icon: const Icon(Icons.tune),
+                          tooltip: 'Tactics',
+                        ),
+                      ],
+                    ),
+                  ),
+                // Commentary feed
+                Expanded(
+                  child: _finished && _report != null
+                      ? MatchReportView(
+                          report: _report!,
+                          homeTeamName: session.homeTeamName,
+                          awayTeamName: session.awayTeamName,
+                          pepTalk: _pepTalk,
+                          adBoostedRecovery: _usedAdBoost,
+                          onPepTalk: _applyPepTalk,
+                        )
+                      : ListView.builder(
+                          reverse: true,
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _lines.length,
+                          itemBuilder: (context, index) {
+                            final line = _lines[_lines.length - 1 - index];
+                            final bold = line.importance == 2;
+                            final color = switch (line.importance) {
+                              2 => theme.colorScheme.primary,
+                              1 => theme.colorScheme.onSurface,
+                              _ => theme.colorScheme.onSurfaceVariant,
+                            };
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 3),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: 38,
+                                    child: Text("${line.minute}'",
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(color: color)),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      line.text,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                        color: color,
+                                        fontWeight: bold
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -416,7 +378,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   /// live actions with their explicit percentage effects (GDD 16), plus
   /// substitutions (FR-023: five available).
   void _showTacticsSheet(BuildContext context) {
-    final session = _session!;
+    final session = widget.session;
     final nextMinute = session.engine.state.minute + 1;
     showModalBottomSheet<void>(
       context: context,
@@ -447,7 +409,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                         onPressed: () {
                           session.queueCommand(ChangeMentalityCommand(
                               atMinute: nextMinute,
-                              side: MatchSide.home,
+                              side: session.userSide,
                               mentality: m));
                           Navigator.pop(sheetContext);
                         },
@@ -469,7 +431,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                         onPressed: () {
                           session.queueCommand(LiveActionCommand(
                               atMinute: nextMinute,
-                              side: MatchSide.home,
+                              side: session.userSide,
                               action: a));
                           Navigator.pop(sheetContext);
                         },
@@ -503,6 +465,44 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
       },
     );
   }
+}
+
+/// Pep-talk chooser sheet (GDD 15): one optional choice, ad-free (FR-043).
+/// Returns null when skipped or dismissed.
+Future<MatchPepTalk?> showPepTalkChooser({
+  required BuildContext context,
+  required String title,
+  required String subtitle,
+  required List<MatchPepTalk> talks,
+}) {
+  final theme = Theme.of(context);
+  return showModalBottomSheet<MatchPepTalk>(
+    context: context,
+    builder: (sheetContext) => SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(title, style: theme.textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text(subtitle, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 12),
+          for (final talk in talks)
+            ListTile(
+              title: Text(talk.label),
+              subtitle: Text('${talk.effectSummary}\n${talk.description}'),
+              isThreeLine: true,
+              onTap: () => Navigator.pop(sheetContext, talk),
+            ),
+          ListTile(
+            title: Text('Skip',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            onTap: () => Navigator.pop(sheetContext),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Substitution picker (FR-023: five subs, engine-enforced): tap the
@@ -557,8 +557,8 @@ class _SubstitutionSectionState extends State<_SubstitutionSection> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-                'Coming off: ${_selectedOut!.name} — pick the substitute:',
-                style: theme.textTheme.bodySmall),
+              'Coming off: ${_selectedOut!.name} — pick the substitute:',
+              style: theme.textTheme.bodySmall),
           ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -570,7 +570,8 @@ class _SubstitutionSectionState extends State<_SubstitutionSection> {
                 for (final p in onPitch)
                   ActionChip(
                     avatar: CircleAvatar(
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       child: Text('${p.stamina.round()}%',
                           style: theme.textTheme.labelSmall),
                     ),
@@ -623,12 +624,16 @@ class MatchReportView extends StatelessWidget {
   const MatchReportView({
     super.key,
     required this.report,
+    required this.homeTeamName,
+    required this.awayTeamName,
     required this.pepTalk,
     required this.onPepTalk,
     this.adBoostedRecovery = false,
   });
 
   final MatchReportResult report;
+  final String homeTeamName;
+  final String awayTeamName;
   final PepTalk? pepTalk;
   final ValueChanged<PepTalk> onPepTalk;
 
@@ -642,8 +647,8 @@ class MatchReportView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Full time: FC Rivals ${report.state.scoreHome} - '
-            '${report.state.scoreAway} Cairo XI',
+        Text('Full time: $homeTeamName ${report.state.scoreHome} - '
+            '${report.state.scoreAway} $awayTeamName',
             style: theme.textTheme.titleLarge
                 ?.copyWith(fontWeight: FontWeight.bold)),
         Text('Reward: ${report.rewardCoins} coins',
@@ -703,10 +708,10 @@ class MatchReportView extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                      'Ad-boosted recovery applied: +15% natural recovery '
-                      '(GDD 19.3)',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.primary)),
+                    'Ad-boosted recovery applied: +15% natural recovery '
+                    '(GDD 19.3)',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.primary)),
                 ),
               ],
             ),
