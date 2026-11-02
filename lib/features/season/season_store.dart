@@ -19,6 +19,7 @@ import '../collection/collection_store.dart';
 import '../match/match_engine.dart';
 import '../match/match_forecast.dart';
 import '../match/match_session.dart';
+import '../match/pre_match_screen.dart' show PreMatchTacticSelection;
 import '../match/stamina.dart' show StaminaConfig, recoverStamina;
 import '../match/tactics.dart' show PlayingStyle, Mentality, MatchPepTalk;
 import '../squad/formations.dart';
@@ -478,15 +479,7 @@ class SeasonStore {
       userFormationCode: club.formationCode,
       userStyle: style,
       userMentality: mentality,
-      userSquad: [
-        for (var slot = 0; slot < Formation.startingXiSize; slot++)
-          (
-            position: squad[slot]!.position.code,
-            name: squad[slot]!.base.name,
-            overall: squad[slot]!.overall,
-            stamina: squad[slot]!.staminaPercent,
-          ),
-      ],
+      userSquad: squad,
     );
   }
 
@@ -506,8 +499,11 @@ class SeasonStore {
   /// Creates a live match session for the user's next fixture. The UI
   /// drives it; call [commitFixtureResult] with the finished session.
   /// [preMatchTalk] applies its multipliers from kick-off (GDD 15.1).
+  /// [tactics] carries the MATCH-ONLY setup chosen on the pre-match
+  /// screen (formation, style, mentality — GDD 10.4): the session is
+  /// built from it and the club's saved default setup stays untouched.
   Future<MatchSession> startNextFixture(CollectionStore store,
-      {MatchPepTalk? preMatchTalk}) async {
+      {MatchPepTalk? preMatchTalk, PreMatchTacticSelection? tactics}) async {
     final next = await getNextFixture();
     if (next == null) {
       throw const SeasonException('No fixture to play');
@@ -521,6 +517,7 @@ class SeasonStore {
       opponentBench: opponent.bench,
       userAtHome: next.isHome,
       preMatchTalk: preMatchTalk,
+      tactics: tactics,
     );
   }
 

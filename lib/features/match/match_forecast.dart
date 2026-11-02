@@ -12,6 +12,7 @@ library;
 
 import 'dart:math' as math;
 
+import '../squad/squad_engine.dart';
 import 'tactics.dart';
 import 'match_engine.dart';
 
@@ -85,9 +86,9 @@ class PreMatchData {
     required this.userPosition,
     required this.opponentKeyMen,
     this.userFormationCode = '4-3-3',
-    this.userStyle,
-    this.userMentality,
-    this.userSquad = const [],
+    this.userStyle = PlayingStyle.balanced,
+    this.userMentality = Mentality.balanced,
+    this.userSquad = const {},
   });
 
   /// e.g. 'League · Round 3'.
@@ -114,13 +115,13 @@ class PreMatchData {
   /// The club's persisted formation / playing style / mentality (GDD 10) —
   /// the starting point of the pre-match tactics selection.
   final String userFormationCode;
-  final PlayingStyle? userStyle;
-  final Mentality? userMentality;
+  final PlayingStyle userStyle;
+  final Mentality userMentality;
 
-  /// The user's starting XI with stamina, for the tactics phase: position
-  /// code, surname, overall and stamina percent.
-  final List<({String position, String name, int overall, int stamina})>
-      userSquad;
+  /// The user's persisted squad (slot index → card) for the tactics phase:
+  /// the starting XI, bench and reserves re-rendered exactly like the
+  /// Tactics tab, stamina bars included (GDD 11).
+  final Map<int, PlayerCard> userSquad;
 }
 
 /// Runs the Monte-Carlo forecast with the real engine.

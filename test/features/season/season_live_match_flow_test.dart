@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart' show ListView, Offset;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -119,23 +120,55 @@ void main() {
     expect(find.text('STRENGTH'), findsOneWidget);
     expect(find.textContaining('simulated matches'), findsOneWidget);
 
-    // Continue into the tactics phase (GDD 10): the club's formation,
-    // playing style and mentality with visible effects, plus the XI's
-    // stamina. Pick a different style to prove the selection persists.
+    // Continue into the tactics phase (GDD 10.4): the SAME screen as the
+    // Tactics tab — dropdowns for formation, playing style and mentality,
+    // the pitch with stamina bars, bench and reserves — but match-only.
     await tester.tap(find.text('CONTINUE'));
     await _flush(tester, wait: const Duration(milliseconds: 600));
-    expect(find.text('TACTICS'), findsOneWidget);
+    expect(find.text('TACTICS'), findsWidgets);
     expect(find.text('Set up for this match'), findsOneWidget);
     expect(find.text('PLAYING STYLE'), findsOneWidget);
-    // The style chips sit below the fold in the test viewport — scroll
-    // the tactics list until the Counter Attack chip is visible.
-    await tester.scrollUntilVisible(
-      find.text('Counter Attack'),
-      200,
-    );
+    expect(find.text('TEAM RATING'), findsOneWidget);
+    // The dropdown fields sit below the fold — drag the tactics list up
+    // until the playing-style dropdown's closed field is fully on screen.
+    // (The phase switcher keeps the previous phase's ListView alive, so
+    // find the CURRENT phase's list by skipping the offstage ones.)
+    for (var i = 0; i < 10; i++) {
+      final labelRect = tester.getRect(find.text('PLAYING STYLE').first);
+      if (labelRect.bottom <= 450) break;
+      await tester.drag(find.byType(ListView).first,
+          Offset(0, -(labelRect.bottom - 380)));
+      await tester.pump(const Duration(milliseconds: 250));
+    }
     await tester.pump(const Duration(milliseconds: 300));
+    // The closed field shows the saved default (balanced) — the style
+    // dropdown is the FIRST 'Balanced' field (the mentality dropdown's
+    // comes later in the column). Tap it to open the picker sheet, which
+    // lists every style with its visible effects; give the sheet's
+    // entrance a few bounded pumps, then fling its list if the wanted
+    // tile still sits below the fold.
+    await tester.tap(find.text('Balanced').first);
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    for (var i = 0; i < 6; i++) {
+      final tile = find.text('Counter Attack');
+      if (tile.evaluate().isNotEmpty &&
+          tester.getRect(tile.first).bottom < 560) {
+        break;
+      }
+      await tester.flingFrom(
+          const Offset(400, 300), const Offset(0, -350), 800);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    // Pick a different style in the sheet.
     await tester.tap(find.text('Counter Attack'));
-    await tester.pump(const Duration(milliseconds: 300));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    // The sheet closed and the closed field carries the match-only
+    // selection.
+    expect(find.text('Counter Attack'), findsOneWidget);
 
     // On to the dressing room (GDD 15.1 pre-match pep talk).
     await tester.tap(find.text('TO DRESSING ROOM'));
@@ -143,9 +176,11 @@ void main() {
     expect(find.text('DRESSING ROOM'), findsOneWidget);
     expect(find.text('Deliver your team talk'), findsOneWidget);
 
-    // The tactic selection persisted (changeTactics ran at phase exit).
+    // The tactic selection did NOT touch the club's saved default setup:
+    // match-only semantics (GDD 10.4) — persistence happens nowhere before
+    // kick-off, and never for style/mentality/formation chosen here.
     final clubAfterTactics = await tester.runAsync(store.getClub);
-    expect(clubAfterTactics!.playingStyle, 'counterAttack');
+    expect(clubAfterTactics!.playingStyle, 'balanced');
 
     // Kick off with the default 'no talk' tile selected.
     await tester.tap(find.text('KICK OFF'));

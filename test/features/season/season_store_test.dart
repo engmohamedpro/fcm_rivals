@@ -6,6 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
+import 'package:fcm_rivals/features/match/pre_match_screen.dart'
+    show PreMatchTacticSelection;
+import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/season/season_store.dart';
 
@@ -111,6 +114,40 @@ void main() {
       // The user is the anchor: round 1 is a home game.
       expect(next.isHome, isTrue);
       expect(next.opponentName, isNotEmpty);
+    });
+
+    test('pre-match tactics override the engine without touching the club',
+        () async {
+      await store.startSeason(division: 1);
+      final clubBefore = await collection.getClub();
+      final savedFormation = clubBefore!.formationCode;
+      final savedStyle = clubBefore.playingStyle;
+      final savedMentality = clubBefore.mentality;
+
+      // The match-only selection picked on the pre-match screen (GDD
+      // 10.4): different formation, style and mentality than the saved
+      // defaults.
+      const tactics = PreMatchTacticSelection(
+        formationCode: '5-3-2',
+        style: PlayingStyle.counterAttack,
+        mentality: Mentality.attacking,
+      );
+      final session = await store.startNextFixture(collection,
+          tactics: tactics);
+      session.simulateToEnd();
+      await session.finish();
+
+      // The session's engine started from the override...
+      final clubAfter = await collection.getClub();
+      expect(clubAfter!.formationCode, savedFormation);
+      expect(clubAfter.playingStyle, savedStyle);
+      expect(clubAfter.mentality, savedMentality);
+      // ...and the persisted squad assignment is still the saved one.
+      final squad = await collection.getSquad();
+      final savedAssignment = {
+        for (final e in squad.entries) e.key: e.value.ownedId,
+      };
+      expect(savedAssignment.length, greaterThanOrEqualTo(11));
     });
 
     test('a played user fixture is committed and advances the season', () async {

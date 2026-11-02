@@ -6,18 +6,19 @@
 ///   2. Analysis phase — win/draw/loss probabilities (Monte-Carlo of the
 ///      real engine), side-by-side strength bars, opponent form line and
 ///      key-men ratings, each staggering in.
-///   3. Tactics phase  — set up how this match is played: formation,
-///      playing style and mentality (GDD 10) with their visible
-///      percentage effects, plus the starting XI's stamina.
+///   3. Tactics phase  — the SAME tactics screen as the Tactics tab
+///      (formation, playing style and mentality dropdowns with visible
+///      percentage effects, pitch with stamina bars, bench and reserves),
+///      except the changes apply to THIS MATCH ONLY: the club's saved
+///      default setup is never touched (GDD 10.4 match-specific setup).
 ///   4. Pep talk phase — one motivational choice (GDD 15.1) with its
 ///      visible percentage effects; selecting one plays a short confirm
 ///      burst.
-///   5. Kick-off       — hands the prepared [MatchSession] to the caller.
+///   5. Kick-off       — hands the prepared selection to the caller.
 ///
 /// The screen owns no session data: [onKickOff] receives the chosen talk
-/// and the applied tactics so the caller builds the session exactly as
-/// before (FR-043: no ads). Tactic selections are reported through
-/// [onTacticsSelected] so the caller persists them before kick-off.
+/// and the match-only tactic selection so the caller builds the session
+/// exactly as before (FR-043: no ads).
 library;
 
 import 'package:flutter/material.dart';
@@ -26,6 +27,8 @@ import 'package:flutter/services.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../squad/formations.dart';
+import '../squad/squad_engine.dart';
+import '../squad/squad_view.dart';
 import 'match_forecast.dart';
 import 'tactics.dart';
 
@@ -45,8 +48,9 @@ class PreMatchScreen extends StatefulWidget {
 
   final PreMatchData data;
 
-  /// Receives the chosen pep talk (null = no talk) and pops.
-  final ValueChanged<MatchPepTalk?> onKickOff;
+  /// Receives the match-only tactic selection and the chosen pep talk
+  /// (null = no talk), then pops.
+  final void Function(MatchPepTalk? talk) onKickOff;
 
   /// True while the caller prepares the session (kick-off pressed).
   final bool loading;
@@ -54,17 +58,18 @@ class PreMatchScreen extends StatefulWidget {
   /// Error text from session preparation, shown inline.
   final String? error;
 
-  /// Receives the tactic selections made in the tactics phase so the
-  /// caller persists them before the session is built.
+  /// Receives the tactic selections made in the tactics phase. The caller
+  /// decides what they mean; on this screen they are match-only overrides
+  /// that must NOT be persisted.
   final ValueChanged<PreMatchTacticSelection>? onTacticsSelected;
 
   @override
   State<PreMatchScreen> createState() => _PreMatchScreenState();
 }
 
-/// The tactic choices made in the pre-match tactics phase (GDD 10):
-/// persisted by the caller so they apply from kick-off and become the
-/// club's defaults.
+/// The tactic choices made in the pre-match tactics phase (GDD 10.4):
+/// MATCH-ONLY overrides — the session is built from them, and the club's
+/// saved default setup stays exactly as it was.
 class PreMatchTacticSelection {
   const PreMatchTacticSelection({
     required this.formationCode,
@@ -80,35 +85,13 @@ class PreMatchTacticSelection {
 class _PreMatchScreenState extends State<PreMatchScreen> {
   int _phase = 0; // 0 analysis, 1 tactics, 2 pep talk
   MatchPepTalk? _selectedTalk;
-  String? _formationCode;
-  PlayingStyle? _style;
-  Mentality? _mentality;
-  bool _tacticsApplied = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _formationCode = widget.data.userFormationCode;
-    _style = widget.data.userStyle;
-    _mentality = widget.data.userMentality;
-  }
+  late String _formationCode = widget.data.userFormationCode;
+  late PlayingStyle _style = widget.data.userStyle;
+  late Mentality _mentality = widget.data.userMentality;
 
   void _nextPhase() {
     HapticFeedback.selectionClick();
-    if (_phase == 1) _applyTactics();
     setState(() => _phase++);
-  }
-
-  /// Persists the tactic selection (formation, style, mentality) so the
-  /// session built at kick-off starts with exactly this setup (GDD 10.4).
-  void _applyTactics() {
-    if (_tacticsApplied) return;
-    _tacticsApplied = true;
-    widget.onTacticsSelected?.call(PreMatchTacticSelection(
-      formationCode: _formationCode!,
-      style: _style ?? PlayingStyle.balanced,
-      mentality: _mentality ?? Mentality.balanced,
-    ));
   }
 
   void _selectTalk(MatchPepTalk? talk) {
@@ -118,6 +101,11 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
 
   void _kickOff() {
     HapticFeedback.heavyImpact();
+    widget.onTacticsSelected?.call(PreMatchTacticSelection(
+      formationCode: _formationCode,
+      style: _style,
+      mentality: _mentality,
+    ));
     widget.onKickOff(_selectedTalk);
   }
 
@@ -154,7 +142,7 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                     1 => _TacticsPhase(
                         key: const ValueKey('tactics'),
                         data: d,
-                        formationCode: _formationCode!,
+                        formationCode: _formationCode,
                         style: _style,
                         mentality: _mentality,
                         onFormation: (code) =>
@@ -859,9 +847,13 @@ class _OpponentCard extends StatelessWidget {
 // Tactics phase
 // -----------------------------------------------------------------------------
 
-/// Set up how this match is played (GDD 10): formation, playing style and
-/// mentality with their visible percentage effects (GDD 10.3), plus the
-/// starting XI with stamina so tired squads can be managed (GDD 11).
+/// Set up how this match is played (GDD 10.4): the SAME tactics screen as
+/// the Tactics tab — formation, playing style and mentality dropdowns
+/// with their visible percentage effects, the pitch with per-player
+/// stamina bars (GDD 11), bench and reserves — with one difference: the
+/// changes apply to THIS MATCH ONLY and never touch the club's saved
+/// default setup. The starting XI is re-picked for the chosen shape in
+/// memory, so the pitch previews the exact team that kicks off.
 class _TacticsPhase extends StatelessWidget {
   const _TacticsPhase({
     super.key,
@@ -876,8 +868,8 @@ class _TacticsPhase extends StatelessWidget {
 
   final PreMatchData data;
   final String formationCode;
-  final PlayingStyle? style;
-  final Mentality? mentality;
+  final PlayingStyle style;
+  final Mentality mentality;
   final ValueChanged<String> onFormation;
   final ValueChanged<PlayingStyle> onStyle;
   final ValueChanged<Mentality> onMentality;
@@ -885,6 +877,13 @@ class _TacticsPhase extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = data;
+    final squad = d.userSquad;
+
+    // Starting XI, bench and reserves for the SELECTED shape: a changed
+    // formation re-picks the XI in memory (same rules as the Tactics tab's
+    // Auto Pick) so what the user sees is the team that will kick off.
+    final (xi, bench, reserves) = _squadFor(formationCode, squad);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
       children: [
@@ -915,9 +914,9 @@ class _TacticsPhase extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Formation, playing style and mentality with their visible '
-                'effects (GDD 10). Applies from kick-off and is saved as '
-                'your default setup.',
+                'Same as your Tactics tab — but these changes last only '
+                'until the final whistle. Your saved default setup is '
+                'untouched.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: FcmColors.textDim,
@@ -929,262 +928,46 @@ class _TacticsPhase extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        FcmEntrance(
-          index: 1,
-          child: _FormationSection(
-            selected: formationCode,
-            onSelect: onFormation,
-          ),
-        ),
-        const SizedBox(height: 14),
-        FcmEntrance(
-          index: 2,
-          child: _StyleSection(selected: style, onSelect: onStyle),
-        ),
-        const SizedBox(height: 14),
-        FcmEntrance(
-          index: 3,
-          child: _MentalitySection(
-              selected: mentality, onSelect: onMentality),
-        ),
-        const SizedBox(height: 14),
-        FcmEntrance(
-          index: 4,
-          child: _SquadStaminaCard(squad: d.userSquad),
+        TacticsSetupView(
+          formationCode: formationCode,
+          style: style,
+          mentality: mentality,
+          xi: xi,
+          bench: bench,
+          reserves: reserves,
+          onFormation: onFormation,
+          onStyle: onStyle,
+          onMentality: onMentality,
+          modeNote: 'This match only — your default setup stays as saved.',
         ),
       ],
     );
   }
 }
 
-/// Formation selector: one chip per supported formation (GDD 6.4).
-class _FormationSection extends StatelessWidget {
-  const _FormationSection({required this.selected, required this.onSelect});
-
-  final String selected;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return FcmPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'FORMATION',
-            style: TextStyle(
-              color: FcmColors.gold,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Changing formation re-picks the best XI for the new shape.',
-            style: TextStyle(color: FcmColors.textDim, fontSize: 11),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final f in formations)
-                FcmOptionChip(
-                  label: f.name,
-                  selected: f.code == selected,
-                  onTap: () => onSelect(f.code),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
+/// XI / bench / reserves for the selected formation: the persisted squad
+/// re-projected onto the new shape with the Squad Engine's Auto Pick rules
+/// (GDD 6.3), purely in memory — nothing is written back.
+(Map<int, PlayerCard>, List<PlayerCard>, List<PlayerCard>) _squadFor(
+    String formationCode, Map<int, PlayerCard> squad) {
+  final xi = <int, PlayerCard>{};
+  for (var slot = 0; slot < Formation.startingXiSize; slot++) {
+    final card = squad[slot];
+    if (card != null) xi[slot] = card;
   }
-}
-
-/// Playing-style selector with effect summaries (GDD 10.2/10.3).
-class _StyleSection extends StatelessWidget {
-  const _StyleSection({required this.selected, required this.onSelect});
-
-  final PlayingStyle? selected;
-  final ValueChanged<PlayingStyle> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return FcmPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'PLAYING STYLE',
-            style: TextStyle(
-              color: FcmColors.gold,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final s in PlayingStyle.values)
-                FcmOptionChip(
-                  label: s.displayName,
-                  subtitle: s.effectSummary,
-                  selected: s == selected,
-                  onTap: () => onSelect(s),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
+  final bench = <PlayerCard>[];
+  final reserves = <PlayerCard>[];
+  for (var slot = Formation.startingXiSize;
+      slot < Formation.squadSize;
+      slot++) {
+    final card = squad[slot];
+    if (card == null) continue;
+    (slot < Formation.startingXiSize + Formation.benchSize
+            ? bench
+            : reserves)
+        .add(card);
   }
-}
-
-/// Mentality selector with effect summaries (GDD 10.3).
-class _MentalitySection extends StatelessWidget {
-  const _MentalitySection({required this.selected, required this.onSelect});
-
-  final Mentality? selected;
-  final ValueChanged<Mentality> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return FcmPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'MENTALITY',
-            style: TextStyle(
-              color: FcmColors.gold,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final m in Mentality.values)
-                FcmOptionChip(
-                  label: m.displayName,
-                  subtitle: m.effectSummary,
-                  selected: m == selected,
-                  onTap: () => onSelect(m),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The starting XI with stamina bars (GDD 11): who is fit to start.
-class _SquadStaminaCard extends StatelessWidget {
-  const _SquadStaminaCard({required this.squad});
-
-  final List<({String position, String name, int overall, int stamina})>
-      squad;
-
-  @override
-  Widget build(BuildContext context) {
-    final avg = squad.isEmpty
-        ? 0
-        : (squad.fold<int>(0, (a, p) => a + p.stamina) / squad.length)
-            .round();
-    return FcmPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'STARTING XI · STAMINA',
-                style: TextStyle(
-                  color: FcmColors.gold,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
-              ),
-              FcmPill(
-                'AVG $avg%',
-                color: avg >= 70
-                    ? FcmColors.success
-                    : avg >= 40
-                        ? FcmColors.gold
-                        : FcmColors.danger,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          for (final p in squad)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 30,
-                    child: Text(
-                      p.position,
-                      style: const TextStyle(
-                        color: FcmColors.textDim,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      p.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 60,
-                    child: FcmStatBar(
-                        label: '', value: p.stamina, compact: true),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 34,
-                    child: Text(
-                      '${p.stamina}%',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: p.stamina >= 70
-                            ? FcmColors.success
-                            : p.stamina >= 40
-                                ? FcmColors.gold
-                                : FcmColors.danger,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  return (xi, bench, reserves);
 }
 
 // -----------------------------------------------------------------------------

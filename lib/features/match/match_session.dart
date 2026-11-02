@@ -15,6 +15,7 @@ import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
+import 'pre_match_screen.dart' show PreMatchTacticSelection;
 import 'stamina.dart';
 import 'tactics.dart';
 
@@ -65,16 +66,18 @@ class MatchSession {
   /// Creates a session from the user's current squad (FR-025: player
   /// attributes and stamina feed the engine, GDD 12.2) against a synthetic
   /// friendly opponent. [preMatchTalk] applies its multipliers from
-  /// kick-off (GDD 15.1) — it never requires an ad (FR-043).
+  /// kick-off (GDD 15.1) — it never requires an ad (FR-043). [tactics]
+  /// optionally overrides the club's saved setup for this match only.
   static Future<MatchSession> create({
     required CollectionStore store,
     required int seed,
     required String opponentName,
     required int opponentAverageOverall,
     MatchPepTalk? preMatchTalk,
+    PreMatchTacticSelection? tactics,
     MatchEngineConfig config = defaultMatchEngineConfig,
   }) async {
-    final inputs = await _userTeamInputs(store);
+    final inputs = await _userTeamInputs(store, tactics: tactics);
     // Friendly opponent (GDD 12.6): mirrored squad at the requested strength.
     final opponent = _generateOpponent(
       teamId: -1,
@@ -108,7 +111,11 @@ class MatchSession {
   /// Creates a session against a persisted AI club (season fixtures): the
   /// opponent's squad, formation and tactics come from the database, and
   /// statistics/ratings carry the real club ids. [preMatchTalk] applies
-  /// from kick-off (GDD 15.1).
+  /// from kick-off (GDD 15.1). [tactics] carries the MATCH-ONLY setup
+  /// chosen on the pre-match screen (GDD 10.4): the engine's formation,
+  /// style and mentality come from it instead of the club's saved
+  /// defaults, and when the formation differs the starting XI is re-picked
+  /// in memory — nothing is persisted.
   static Future<MatchSession> createAgainstClub({
     required CollectionStore store,
     required int seed,
@@ -117,9 +124,10 @@ class MatchSession {
     required List<MatchPlayer> opponentBench,
     bool userAtHome = true,
     MatchPepTalk? preMatchTalk,
+    PreMatchTacticSelection? tactics,
     MatchEngineConfig config = defaultMatchEngineConfig,
   }) async {
-    final inputs = await _userTeamInputs(store);
+    final inputs = await _userTeamInputs(store, tactics: tactics);
     final style = PlayingStyle.values.firstWhere(
         (s) => s.name == opponentClub.playingStyle,
         orElse: () => PlayingStyle.balanced);
@@ -159,38 +167,60 @@ class MatchSession {
   }
 
   /// The user's engine input + club row, shared by both factories.
+  /// [tactics] overrides the club's saved setup for this match only: its
+  /// style and mentality replace the club's, and a different formation
+  /// re-picks the whole squad in memory (same Auto Pick rules as the
+  /// Tactics tab) so the exact shape the user previewed kicks off.
   static Future<(MatchTeamInput, db.Club)> _userTeamInputs(
-      CollectionStore store) async {
+      CollectionStore store,
+      {PreMatchTacticSelection? tactics}) async {
     final club = await store.getClub();
     if (club == null) {
       throw const CollectionException('No club');
     }
+    final formationCode =
+        tactics?.formationCode ?? club.formationCode;
+    final style = tactics?.style ??
+        PlayingStyle.values.firstWhere(
+          (s) => s.name == club.playingStyle,
+          orElse: () => PlayingStyle.balanced,
+        );
+    final mentality = tactics?.mentality ??
+        Mentality.values.firstWhere(
+          (m) => m.name == club.mentality,
+          orElse: () => Mentality.balanced,
+        );
+    final formation = formationByCode(formationCode);
     final squad = await store.getSquad();
-    if (squad.length < Formation.startingXiSize) {
+    Map<int, PlayerCard> assignment = squad;
+    if (formation.code != club.formationCode || tactics != null) {
+      // Match-only shape: re-pick the squad for the chosen formation so
+      // the engine's XI matches the pitch the user just set up.
+      final collection = await store.getCollection();
+      assignment = const SquadEngine()
+          .autoPick(collection, formation)
+          .map((slot, ownedId) => MapEntry(
+              slot, collection.firstWhere((c) => c.ownedId == ownedId)));
+    }
+    if (assignment.length < Formation.startingXiSize) {
       throw const CollectionException(
           'A full starting XI is required to play a match');
     }
-    final style = PlayingStyle.values.firstWhere(
-        (s) => s.name == club.playingStyle,
-        orElse: () => PlayingStyle.balanced);
-    final mentality = Mentality.values.firstWhere(
-        (m) => m.name == club.mentality,
-        orElse: () => Mentality.balanced);
     final starters = <MatchPlayer>[
       for (var slot = 0; slot < Formation.startingXiSize; slot++)
-        _toMatchPlayer(squad[slot]!),
+        _toMatchPlayer(assignment[slot]!),
     ];
     final bench = <MatchPlayer>[
       for (var slot = Formation.startingXiSize;
-          slot < Formation.squadSize && squad.containsKey(slot);
+          slot < Formation.squadSize && assignment.containsKey(slot);
           slot++)
-        _toMatchPlayer(squad[slot]!),
+        _toMatchPlayer(assignment[slot]!),
     ];
     return (
       MatchTeamInput(
         teamId: club.id,
         teamName: club.name,
-        formationCode: club.formationCode,
+        formationCode: formationCode,
         style: style,
         mentality: mentality,
         starters: starters,

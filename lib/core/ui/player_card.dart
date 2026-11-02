@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import '../domain/players.dart';
 import 'country_flag.dart';
 import 'fcm_style.dart';
+import 'fcm_widgets.dart' show staminaColor;
 
 /// Width : height ratio of the card.
 const double kPlayerCardAspect = 0.70;
@@ -505,7 +506,9 @@ class _CardBackPainter extends CustomPainter {
 }
 
 /// Compact card for the pitch and bench: rating, position and surname.
-/// [width] is the shield width; the surname sits under it.
+/// [width] is the shield width; the surname sits under it, and when
+/// [stamina] is given a colour-coded stamina bar (GDD 11 — green fresh,
+/// red exhausted) renders under the card.
 class FcmMiniCard extends StatelessWidget {
   const FcmMiniCard({
     super.key,
@@ -515,6 +518,7 @@ class FcmMiniCard extends StatelessWidget {
     required this.rarity,
     this.width = 56,
     this.warn = false,
+    this.stamina,
   });
 
   final int overall;
@@ -525,6 +529,9 @@ class FcmMiniCard extends StatelessWidget {
 
   /// Red outline when the player is out of position.
   final bool warn;
+
+  /// Stamina percent 0..100; null hides the bar.
+  final int? stamina;
 
   @override
   Widget build(BuildContext context) {
@@ -606,6 +613,52 @@ class FcmMiniCard extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.4,
                   shadows: const [Shadow(color: Colors.black, blurRadius: 4)],
+                ),
+              ),
+            ),
+            if (stamina != null) ...[
+              const SizedBox(height: 3),
+              _StaminaBar(percent: stamina!, width: width),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Colour-coded stamina strip under a mini card: the fill length is the
+/// percent and the colour grades green → gold → amber → red as it drops.
+class _StaminaBar extends StatelessWidget {
+  const _StaminaBar({required this.percent, required this.width});
+
+  final int percent;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = staminaColor(percent);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: SizedBox(
+        width: width,
+        height: 4,
+        child: Stack(
+          children: [
+            Container(color: Colors.black.withValues(alpha: 0.5)),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: (percent / 100).clamp(0.0, 1.0)),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              builder: (context, f, _) => FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: f,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [color.withValues(alpha: 0.7), color],
+                    ),
+                  ),
                 ),
               ),
             ),
