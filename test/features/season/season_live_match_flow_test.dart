@@ -52,7 +52,10 @@ String datasetJson(List<List<dynamic>> rows) => json.encode({
 /// Flushes pending real async I/O (drift transactions) and settles frames.
 Future<void> _flush(WidgetTester tester, {Duration wait = const Duration(milliseconds: 300)}) async {
   await tester.runAsync(() => Future<void>.delayed(wait));
-  await tester.pumpAndSettle(const Duration(milliseconds: 100));
+  // Ambient animations (backdrop, live dot) never settle: pump bounded frames.
+  for (var i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
 
 void main() {

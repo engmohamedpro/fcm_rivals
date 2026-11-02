@@ -2,69 +2,215 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/domain/players.dart';
+import '../../core/ui/fcm_style.dart';
+import '../../core/ui/fcm_widgets.dart';
+import '../../core/ui/player_card.dart' show kPlayerCardAspect;
 import '../../features/ads/ad_engine.dart' show AdEngine, AdRewardKind;
 import '../../features/economy/economy_engine.dart';
 import '../../features/squad/squad_engine.dart';
 import '../../features/upgrades/upgrade_engine.dart' show UpgradeEngine;
+import 'player_detail_sheet.dart';
 
-/// Collection tab: owned players with sell and duplicate-merge actions
+enum _Filter { all, gk, def, mid, att }
+
+enum _Sort { overall, newest, value }
+
+/// Collection tab: every owned player as a rarity-coloured card, with
+/// filters, sorting, a detail sheet and sell / upgrade / merge actions
 /// (GDD 5.7/8.1). Squad members cannot be sold (enforced by the store).
-class CollectionScreen extends ConsumerWidget {
+class CollectionScreen extends ConsumerStatefulWidget {
   const CollectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CollectionScreen> createState() => _CollectionScreenState();
+}
+
+class _CollectionScreenState extends ConsumerState<CollectionScreen> {
+  _Filter _filter = _Filter.all;
+  _Sort _sort = _Sort.overall;
+
+  static const _def = {Position.cb, Position.lb, Position.rb};
+  static const _mid = {
+    Position.cdm,
+    Position.cm,
+    Position.cam,
+    Position.lm,
+    Position.rm
+  };
+  static const _att = {Position.st, Position.lw, Position.rw};
+
+  bool _matches(PlayerCard c) => switch (_filter) {
+        _Filter.all => true,
+        _Filter.gk => c.position == Position.gk,
+        _Filter.def => _def.contains(c.position),
+        _Filter.mid => _mid.contains(c.position),
+        _Filter.att => _att.contains(c.position),
+      };
+
+  @override
+  Widget build(BuildContext context) {
     final collection = ref.watch(collectionProvider);
     const economy = EconomyEngine();
+    final squad = ref.watch(squadProvider).valueOrNull ?? const {};
+    final squadIds = {for (final c in squad.values) c.ownedId};
 
     return collection.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('$e')),
       data: (cards) {
         if (cards.isEmpty) {
-          return const Center(
-              child: Text('Open your starting packs to build a squad.'));
+          return const FcmEmptyState(
+            icon: Icons.collections_bookmark,
+            title: 'Your collection is empty',
+            message: 'Open your starting packs to build a squad.',
+          );
         }
         // group duplicates by base player id (GDD 5.7 merge)
         final byPlayer = <int, List<PlayerCard>>{};
         for (final c in cards) {
           byPlayer.putIfAbsent(c.base.playerId, () => []).add(c);
         }
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 16),
-          itemCount: cards.length,
-          itemBuilder: (context, index) {
-            final card = cards[index];
-            final duplicates =
-                byPlayer[card.base.playerId] ?? const <PlayerCard>[];
-            final sellPrice = economy.sellPriceOfUpgraded(
-                card.base, card.upgradeLevel);
-            final upgradeCost = card.upgradeLevel < UpgradeEngine.maxUpgradeLevel
-                ? economy.upgradeCostOf(card.base, card.upgradeLevel)
-                : null;
-            return _CollectionTile(
-              card: card,
-              duplicateCount: duplicates.length,
-              sellPrice: sellPrice,
-              upgradeCost: upgradeCost,
-              onSell: () => _sell(context, ref, card),
-              onUpgrade: upgradeCost != null
-                  ? () => _upgrade(context, ref, card)
-                  : null,
-              onMerge: duplicates.length >= 2
-                  ? () => _merge(context, ref, duplicates[0], duplicates[1])
-                  : null,
-              inSquad: squadContains(ref, card),
-            );
-          },
+        final shown = cards.where(_matches).toList()
+          ..sort((a, b) => switch (_sort) {
+                _Sort.overall => b.overall.compareTo(a.overall),
+                _Sort.newest => b.ownedId.compareTo(a.ownedId),
+                _Sort.value =>
+                  b.base.marketValueEur.compareTo(a.base.marketValueEur),
+              });
+
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FitText(
+                            '${cards.length} players',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                        _SortMenu(
+                          value: _sort,
+                          onChanged: (v) => setState(() => _sort = v),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 38,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          for (final f in _Filter.values)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Text(switch (f) {
+                                  _Filter.all => 'All',
+                                  _Filter.gk => 'GK',
+                                  _Filter.def => 'DEF',
+                                  _Filter.mid => 'MID',
+                                  _Filter.att => 'ATT',
+                                }),
+                                selected: _filter == f,
+                                showCheckmark: false,
+                                onSelected: (_) {
+                                  fcmTick();
+                                  setState(() => _filter = f);
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
+            if (shown.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: FcmEmptyState(
+                  icon: Icons.filter_alt_off,
+                  title: 'No players here yet',
+                  message: 'Try another filter.',
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+                sliver: SliverGrid.builder(
+                  gridDelegate:
+                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 190,
+                    childAspectRatio: kPlayerCardAspect * 0.88,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 14,
+                  ),
+                  itemCount: shown.length,
+                  itemBuilder: (context, i) {
+                    final card = shown[i];
+                    final copies =
+                        byPlayer[card.base.playerId]?.length ?? 1;
+                    final dupes =
+                        byPlayer[card.base.playerId] ?? const <PlayerCard>[];
+                    final inSquad = squadIds.contains(card.ownedId);
+                    return FcmEntrance(
+                      index: i % 6,
+                      child: _GridCard(
+                        card: card,
+                        copies: copies,
+                        inSquad: inSquad,
+                        onTap: () => _openDetail(
+                            context, economy, card, dupes, inSquad),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
         );
       },
     );
   }
 
-  bool squadContains(WidgetRef ref, PlayerCard card) {
-    final squad = ref.watch(squadProvider).valueOrNull ?? const {};
-    return squad.values.any((c) => c.ownedId == card.ownedId);
+  void _openDetail(BuildContext context, EconomyEngine economy,
+      PlayerCard card, List<PlayerCard> dupes, bool inSquad) {
+    final sellPrice =
+        economy.sellPriceOfUpgraded(card.base, card.upgradeLevel);
+    final upgradeCost = card.upgradeLevel < UpgradeEngine.maxUpgradeLevel
+        ? economy.upgradeCostOf(card.base, card.upgradeLevel)
+        : null;
+    final other = dupes.where((d) => d.ownedId != card.ownedId);
+    showPlayerDetail(
+      context,
+      card: card,
+      inSquad: inSquad,
+      copies: dupes.length,
+      actions: PlayerDetailActions(
+        upgradeLabel: upgradeCost == null
+            ? null
+            : 'Upgrade · ${formatCoins(upgradeCost)} coins',
+        onUpgrade: upgradeCost != null
+            ? () => _upgrade(context, ref, card)
+            : null,
+        onMerge: other.isNotEmpty
+            ? () => _merge(context, ref, card, other.first)
+            : null,
+        sellLabel: 'Sell · ${formatCoins(sellPrice)} coins',
+        onSell: () => _sell(context, ref, card),
+      ),
+    );
   }
 
   Future<void> _sell(BuildContext context, WidgetRef ref, PlayerCard card) async {
@@ -242,100 +388,96 @@ class CollectionScreen extends ConsumerWidget {
   }
 }
 
-class _CollectionTile extends StatelessWidget {
-  const _CollectionTile({
+/// One card in the grid with its copy count and squad marker.
+class _GridCard extends StatelessWidget {
+  const _GridCard({
     required this.card,
-    required this.duplicateCount,
-    required this.sellPrice,
-    required this.upgradeCost,
-    required this.onSell,
-    required this.onUpgrade,
-    required this.onMerge,
+    required this.copies,
     required this.inSquad,
+    required this.onTap,
   });
 
   final PlayerCard card;
-  final int duplicateCount;
-  final int sellPrice;
-  final int? upgradeCost;
-  final VoidCallback onSell;
-  final VoidCallback? onUpgrade;
-  final VoidCallback? onMerge;
+  final int copies;
   final bool inSquad;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final stats = card.base.baseStats;
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: card.upgradeLevel > 0
-              ? Colors.amber.shade800
-              : theme.colorScheme.primaryContainer,
-          child: Text('${card.overall}',
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.white)),
-        ),
-        title: Row(
+    final rarity = rarityOf(card);
+    return FcmPressable(
+      onTap: onTap,
+      child: LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth;
+        return Stack(
+          clipBehavior: Clip.none,
           children: [
-            Flexible(
-                child: Text(card.base.name,
-                    overflow: TextOverflow.ellipsis)),
-            if (card.upgradeLevel > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade800,
-                  borderRadius: BorderRadius.circular(4),
+            RepaintBoundary(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ownedCardView(
+                  card,
+                  width: w,
+                  glow: rarity == CardRarity.legendary ? 0.35 : 0,
                 ),
-                child: Text('+${card.upgradeLevel}',
-                    style: const TextStyle(
-                        fontSize: 11, color: Colors.white)),
               ),
-            ],
-            if (duplicateCount >= 2) ...[
-              const SizedBox(width: 6),
-              Text('×$duplicateCount',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.primary)),
-            ],
+            ),
+            if (copies >= 2)
+              Positioned(
+                left: -4,
+                bottom: 22,
+                child: FcmPill('×$copies', color: FcmColors.royal),
+              ),
+            if (inSquad)
+              const Positioned(
+                right: -4,
+                bottom: 22,
+                child: FcmPill('XI', color: FcmColors.success),
+              ),
           ],
+        );
+      }),
+    );
+  }
+}
+
+class _SortMenu extends StatelessWidget {
+  const _SortMenu({required this.value, required this.onChanged});
+
+  final _Sort value;
+  final ValueChanged<_Sort> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_Sort>(
+      tooltip: 'Sort',
+      initialValue: value,
+      onSelected: onChanged,
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: _Sort.overall, child: Text('Highest rating')),
+        PopupMenuItem(value: _Sort.newest, child: Text('Newest first')),
+        PopupMenuItem(value: _Sort.value, child: Text('Market value')),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         ),
-        subtitle: Text(
-          '${card.position.code} · ${card.base.age}y · ${card.base.nationality} · '
-          '${card.base.club}\n'
-          'ATT ${stats.attack + card.upgradedAttack} · '
-          'SUP ${stats.support + card.upgradedSupport} · '
-          'DEF ${stats.defence + card.upgradedDefence} · '
-          'GK ${stats.goalkeeping + card.upgradedGoalkeeping}'
-          '${inSquad ? ' · in squad' : ''}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall,
-        ),
-        isThreeLine: true,
-        trailing: PopupMenuButton<String>(
-          onSelected: (v) {
-            if (v == 'sell') onSell();
-            if (v == 'merge') onMerge?.call();
-            if (v == 'upgrade') onUpgrade?.call();
-          },
-          itemBuilder: (context) => [
-            if (onUpgrade != null)
-              PopupMenuItem(
-                  value: 'upgrade',
-                  child: Text(
-                      'Upgrade · ${formatCoins(upgradeCost!)} coins')),
-            PopupMenuItem(
-                value: 'sell',
-                child: Text('Sell · ${formatCoins(sellPrice)} coins')),
-            if (onMerge != null)
-              const PopupMenuItem(
-                  value: 'merge', child: Text('Merge duplicate (+1)')),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.sort, size: 18, color: FcmColors.gold),
+            const SizedBox(width: 6),
+            Text(
+              switch (value) {
+                _Sort.overall => 'Rating',
+                _Sort.newest => 'Newest',
+                _Sort.value => 'Value',
+              },
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, color: Colors.white),
+            ),
           ],
         ),
       ),

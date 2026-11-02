@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/ui/fcm_style.dart';
+import '../../core/ui/fcm_widgets.dart';
 import '../match/match_screen.dart';
 import '../match/tactics.dart';
+import 'season_engine.dart' show StandingEntry;
 import 'season_store.dart';
 
 /// Season screen (GDD 9): standings, the next fixture and season
@@ -97,35 +100,87 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       });
 
   Future<void> _showCompletion(SeasonCompletion completion) {
-    final theme = Theme.of(context);
-    final outcomeLabel = switch (completion.outcome) {
-      'promoted' => 'Promoted!',
-      'relegated' => 'Relegated',
-      _ => 'Stayed up',
+    final (outcomeLabel, outcomeColor, outcomeIcon) =
+        switch (completion.outcome) {
+      'promoted' => ('Promoted!', FcmColors.success, Icons.trending_up),
+      'relegated' => ('Relegated', FcmColors.danger, Icons.trending_down),
+      _ => ('Stayed up', FcmColors.gold, Icons.shield),
     };
     return showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Season complete'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('$outcomeLabel You finished ${completion.finalPosition} of 20.',
-                style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text('Season reward: ${completion.rewardCoins} coins'),
-            if (completion.rewardPackCategory != null)
-              Text('Reward pack: ${completion.rewardPackCategory}'),
-            Text('Next division: ${completion.nextDivision}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Continue'),
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.elasticOut,
+                builder: (context, v, child) =>
+                    Transform.scale(scale: v.clamp(0.0, 1.2), child: child),
+                child: FcmIconBadge(
+                    icon: Icons.emoji_events_rounded,
+                    color: outcomeColor,
+                    size: 92),
+              ),
+              const SizedBox(height: 16),
+              const Text('Season complete',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900)),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(outcomeIcon, color: outcomeColor),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: FitText(
+                      '$outcomeLabel You finished ${completion.finalPosition} of 20.',
+                      style: TextStyle(
+                          color: outcomeColor,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              FcmPanel(
+                padding: const EdgeInsets.all(14),
+                radius: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Season reward: ${completion.rewardCoins} coins',
+                        style: const TextStyle(
+                            color: FcmColors.gold,
+                            fontWeight: FontWeight.w800)),
+                    if (completion.rewardPackCategory != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                            'Reward pack: ${completion.rewardPackCategory}'),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('Next division: ${completion.nextDivision}'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              FcmButton(
+                label: 'Continue',
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -149,6 +204,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     final summary = ref.watch(seasonSummaryProvider).valueOrNull;
     final standings = ref.watch(standingsProvider).valueOrNull;
     final next = ref.watch(nextFixtureProvider).valueOrNull;
+    final clubName = ref.watch(clubProvider).valueOrNull?.name;
 
     if (ref.watch(seasonSummaryProvider).isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -158,7 +214,10 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(_error!, textAlign: TextAlign.center),
+          child: FcmPanel(
+            accent: FcmColors.danger,
+            child: Text(_error!, textAlign: TextAlign.center),
+          ),
         ),
       );
     }
@@ -166,84 +225,194 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     if (summary == null) {
       // No season yet: start the first campaign (GDD 9.1: division 1).
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Start your first season', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text('Division 1 · 20 clubs · 38 matches',
-                style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _busy ? null : _startSeason,
-              icon: const Icon(Icons.flag),
-              label: const Text('Start season'),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(28),
+          child: FcmEntrance(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const FcmIconBadge(
+                    icon: Icons.stadium_rounded, size: 96),
+                const SizedBox(height: 22),
+                Text('Start your first season',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall
+                        ?.copyWith(color: Colors.white)),
+                const SizedBox(height: 8),
+                Text('Division 1 · 20 clubs · 38 matches',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: FcmColors.textDim)),
+                const SizedBox(height: 26),
+                SizedBox(
+                  width: 240,
+                  child: FcmButton(
+                    onPressed: _busy ? null : _startSeason,
+                    loading: _busy,
+                    icon: Icons.flag_rounded,
+                    label: 'Start season',
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     }
 
+    final progress = summary.roundsTotal == 0
+        ? 0.0
+        : (summary.roundsPlayed / summary.roundsTotal).clamp(0.0, 1.0);
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 24),
       children: [
         // Header: division, progress and outcome.
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                summary.isCompleted
-                    ? 'Season ${summary.ordinal} · Division ${summary.division} · finished'
-                    : 'Season ${summary.ordinal} · Division ${summary.division}',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
+        FcmEntrance(
+          child: FcmPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: FcmColors.goldGradient,
+                        boxShadow: [
+                          BoxShadow(
+                              color: FcmColors.gold.withValues(alpha: 0.4),
+                              blurRadius: 16),
+                        ],
+                      ),
+                      child: FitText('D${summary.division}',
+                          align: Alignment.center,
+                          style: const TextStyle(
+                              color: Color(0xFF2B1B00),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 20)),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FitText(
+                            summary.isCompleted
+                                ? 'Season ${summary.ordinal} · Division ${summary.division} · finished'
+                                : 'Season ${summary.ordinal} · Division ${summary.division}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            summary.isCompleted
+                                ? 'Final position: ${summary.finalPosition} (${summary.outcome})'
+                                : 'Round ${summary.roundsPlayed + (next != null ? 0 : 1)} of ${summary.roundsTotal}',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: FcmColors.textDim),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    height: 8,
+                    child: Stack(
+                      children: [
+                        Container(color: Colors.white.withValues(alpha: 0.10)),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: progress),
+                          duration: const Duration(milliseconds: 900),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, f, _) => FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: f,
+                            child: const DecoratedBox(
+                              decoration: BoxDecoration(
+                                  gradient: FcmColors.goldGradient),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          summary.isCompleted
-              ? 'Final position: ${summary.finalPosition} (${summary.outcome})'
-              : 'Round ${summary.roundsPlayed + (next != null ? 0 : 1)} of ${summary.roundsTotal}',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
         // Next fixture card (GDD 9.2) or season controls.
         if (!summary.isCompleted && next != null)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+          FcmEntrance(
+            index: 1,
+            child: FcmPanel(
+              accent: FcmColors.gold,
+              glow: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Next fixture · round ${next.round}',
-                      style: theme.textTheme.labelMedium),
-                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Next fixture · round ${next.round}',
+                          style: const TextStyle(
+                              color: FcmColors.gold,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              fontSize: 12),
+                        ),
+                      ),
+                      FcmPill(next.isHome ? 'HOME' : 'AWAY',
+                          color: next.isHome
+                              ? FcmColors.success
+                              : FcmColors.royal,
+                          filled: false),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Text(
                     next.isHome
                         ? 'vs ${next.opponentName} (home)'
                         : 'at ${next.opponentName} (away)',
-                    style: theme.textTheme.titleMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        height: 1.15),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
-                        child: FilledButton.icon(
+                        flex: 3,
+                        child: FcmButton(
                           onPressed: _busy ? null : _playNextFixture,
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Play match'),
+                          icon: Icons.play_arrow_rounded,
+                          label: 'Play match',
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: OutlinedButton.icon(
+                        flex: 2,
+                        child: FcmButton(
+                          style: FcmButtonStyle.ghost,
                           onPressed: _busy ? null : _simulateRound,
-                          icon: const Icon(Icons.skip_next),
-                          label: const Text('Sim rest'),
+                          icon: Icons.fast_forward_rounded,
+                          label: 'Sim rest',
                         ),
                       ),
                     ],
@@ -253,102 +422,184 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
             ),
           ),
         if (!summary.isCompleted && next == null)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: FilledButton.icon(
+          FcmEntrance(
+            index: 1,
+            child: FcmPanel(
+              accent: FcmColors.gold,
+              child: FcmButton(
                 onPressed: _busy ? null : _maybeCompleteSeason,
-                icon: const Icon(Icons.emoji_events),
-                label: const Text('Complete season'),
+                icon: Icons.emoji_events,
+                label: 'Complete season',
               ),
             ),
           ),
         if (summary.isCompleted)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: FilledButton.icon(
+          FcmEntrance(
+            index: 1,
+            child: FcmPanel(
+              accent: FcmColors.gold,
+              glow: true,
+              child: FcmButton(
                 onPressed: _busy
                     ? null
                     : () => _run((store) => store.startNextSeason(
                         ref.read(collectionStoreProvider).value!)),
-                icon: const Icon(Icons.flag),
-                label: Text(
-                    'Start season in division ${summary.outcome == 'promoted' ? summary.division + 1 : summary.outcome == 'relegated' ? (summary.division > 1 ? summary.division - 1 : 1) : summary.division}'),
+                loading: _busy,
+                icon: Icons.flag_rounded,
+                label:
+                    'Start season in division ${summary.outcome == 'promoted' ? summary.division + 1 : summary.outcome == 'relegated' ? (summary.division > 1 ? summary.division - 1 : 1) : summary.division}',
               ),
             ),
           ),
-        const SizedBox(height: 16),
 
         // Standings (GDD 9.3).
-        Text('Standings', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
+        const FcmSectionTitle('Standings'),
         if (standings == null || standings.isEmpty)
-          const Text('No matches played yet.')
+          const FcmPanel(
+            child: Text('No matches played yet.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: FcmColors.textDim)),
+          )
         else
-          Card(
+          FcmPanel(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               children: [
-                // header row
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(14, 4, 14, 8),
                   child: Row(
-                    children: const [
-                      SizedBox(width: 28, child: Text('#')),
-                      Expanded(child: Text('Club')),
-                      SizedBox(
-                          width: 34, child: Text('P', textAlign: TextAlign.end)),
-                      SizedBox(
-                          width: 34,
-                          child: Text('GD', textAlign: TextAlign.end)),
-                      SizedBox(
-                          width: 34,
-                          child: Text('Pts', textAlign: TextAlign.end)),
+                    children: [
+                      SizedBox(width: 34, child: _Hdr('#')),
+                      Expanded(child: _Hdr('Club')),
+                      SizedBox(width: 34, child: _Hdr('P', end: true)),
+                      SizedBox(width: 38, child: _Hdr('GD', end: true)),
+                      SizedBox(width: 40, child: _Hdr('Pts', end: true)),
                     ],
                   ),
                 ),
                 for (final e in standings)
-                  Container(
-                    color: e.position <= 3
-                        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.35)
-                        : e.position > 17
-                            ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
-                            : null,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                            width: 28,
-                            child: Text('${e.position}',
-                                style: theme.textTheme.bodySmall)),
-                        Expanded(child: Text(e.name, maxLines: 1)),
-                        SizedBox(
-                            width: 34,
-                            child: Text('${e.played}',
-                                textAlign: TextAlign.end)),
-                        SizedBox(
-                            width: 34,
-                            child: Text(
-                                e.goalDifference >= 0
-                                    ? '+${e.goalDifference}'
-                                    : '${e.goalDifference}',
-                                textAlign: TextAlign.end)),
-                        SizedBox(
-                            width: 34,
-                            child: Text('${e.points}',
-                                textAlign: TextAlign.end,
-                                style: theme.textTheme.titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.bold))),
-                      ],
+                  FcmEntrance(
+                    index: e.position,
+                    dx: 16,
+                    dy: 0,
+                    stagger: const Duration(milliseconds: 35),
+                    maxStaggered: 12,
+                    child: _StandingRow(
+                      entry: e,
+                      isUser: clubName != null && e.name == clubName,
                     ),
                   ),
               ],
             ),
           ),
-        const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+class _Hdr extends StatelessWidget {
+  const _Hdr(this.text, {this.end = false});
+
+  final String text;
+  final bool end;
+
+  @override
+  Widget build(BuildContext context) => FitText(
+        text.toUpperCase(),
+        align: end ? Alignment.centerRight : Alignment.centerLeft,
+        style: const TextStyle(
+            color: FcmColors.textDim,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2),
+      );
+}
+
+/// One table row: zone-coloured position badge, club, played, GD, points.
+class _StandingRow extends StatelessWidget {
+  const _StandingRow({required this.entry, required this.isUser});
+
+  final StandingEntry entry;
+  final bool isUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = entry;
+    final pos = e.position;
+    final zone = pos <= 3
+        ? FcmColors.success
+        : (pos > 17 ? FcmColors.danger : Colors.transparent);
+    final gd = e.goalDifference;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: isUser ? FcmColors.gold.withValues(alpha: 0.14) : null,
+        border: isUser
+            ? Border.all(color: FcmColors.gold.withValues(alpha: 0.6))
+            : null,
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 34,
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: zone,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: FitText('$pos',
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: FitText(
+              e.name,
+              style: TextStyle(
+                  color: isUser ? FcmColors.gold : Colors.white,
+                  fontWeight: isUser ? FontWeight.w900 : FontWeight.w600,
+                  fontSize: 14),
+            ),
+          ),
+          SizedBox(
+            width: 34,
+            child: FitText('${e.played}',
+                align: Alignment.centerRight,
+                style: const TextStyle(color: Colors.white70)),
+          ),
+          SizedBox(
+            width: 38,
+            child: FitText(gd >= 0 ? '+$gd' : '$gd',
+                align: Alignment.centerRight,
+                style: TextStyle(
+                    color: gd > 0
+                        ? FcmColors.success
+                        : (gd < 0 ? FcmColors.danger : Colors.white70),
+                    fontWeight: FontWeight.w700)),
+          ),
+          SizedBox(
+            width: 40,
+            child: FitText('${e.points}',
+                align: Alignment.centerRight,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16)),
+          ),
+        ],
+      ),
     );
   }
 }

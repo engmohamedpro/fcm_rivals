@@ -15,6 +15,14 @@ import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/main.dart';
 
+/// The shell has always-on ambient animations (animated backdrop), so
+/// pumpAndSettle would never return; pump a bounded run of frames instead.
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -72,7 +80,7 @@ void main() {
 
     // Switch to the Packs tab and check the starting packs render.
     await tester.tap(find.text('Packs'));
-    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    await _settle(tester);
     expect(find.text('ST Position Pack'), findsNWidgets(3));
     expect(find.text('LW Position Pack'), findsNWidgets(3));
 

@@ -10,7 +10,7 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/core/ui/country_flag.dart';
 import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 
-BasePlayer _player() => const BasePlayer(
+BasePlayer _player({int overall = 87}) => BasePlayer(
       playerId: 1,
       name: 'Test Striker',
       position: Position.st,
@@ -20,14 +20,14 @@ BasePlayer _player() => const BasePlayer(
       leagueCode: 'GB1',
       marketValueEur: 90000000,
       baseStats: BaseStats(
-          overall: 87, attack: 91, support: 72, defence: 40, goalkeeping: 0),
+          overall: overall, attack: 91, support: 72, defence: 40, goalkeeping: 0),
     );
 
 void main() {
   testWidgets('sequence runs from sealed pack to the revealed stat card',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_player()], tiers: const [2]),
+      home: PackOpeningScreen(players: [_player()]),
     ));
 
     // Sealed pack waits for a tap; the keep button is not offered yet.
@@ -63,7 +63,7 @@ void main() {
   testWidgets('skip jumps ahead without waiting for the full timeline',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_player()], tiers: const [0]),
+      home: PackOpeningScreen(players: [_player(overall: 55)]),
     ));
     await tester.tap(find.text('TAP TO OPEN'));
     await tester.pump();

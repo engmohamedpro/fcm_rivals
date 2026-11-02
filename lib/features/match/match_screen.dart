@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/ui/fcm_style.dart';
+import '../../core/ui/fcm_widgets.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
 import 'match_session.dart';
@@ -170,37 +172,42 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
       context: context,
       builder: (sheetContext) => SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
-            Text('Post-match recovery', style: theme.textTheme.titleLarge),
+            Text('Post-match recovery',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(color: Colors.white)),
             const SizedBox(height: 4),
             Text(
                 'Choose one recovery focus for the squad (bonus to natural '
                 'recovery, GDD 11.6):',
-                style: theme.textTheme.bodySmall),
-            const SizedBox(height: 8),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: FcmColors.textDim)),
+            const SizedBox(height: 12),
             for (final choice in PepTalk.values)
-              ListTile(
-                title: Text(choice.displayName),
-                subtitle: Text(
-                    '+${(choice.recoveryBonus * 100).round()}% natural recovery'),
+              _SheetOption(
+                title: choice.displayName,
+                subtitle:
+                    '+${(choice.recoveryBonus * 100).round()}% natural recovery',
+                icon: Icons.healing_rounded,
                 onTap: () => Navigator.pop(
                     sheetContext, _RecoveryChoice(pepTalk: choice)),
               ),
             if (!won)
-              ListTile(
-                leading: const Icon(Icons.movie),
-                title: const Text('Watch ad: boosted recovery'),
-                subtitle: const Text(
-                    '+15% natural recovery for the whole squad (GDD 19.3)'),
+              _SheetOption(
+                title: 'Watch ad: boosted recovery',
+                subtitle:
+                    '+15% natural recovery for the whole squad (GDD 19.3)',
+                icon: Icons.movie_rounded,
+                accent: FcmColors.gold,
                 onTap: () =>
                     Navigator.pop(sheetContext, const _RecoveryChoice.boosted()),
               ),
-            ListTile(
-              title: Text('No pep talk',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              subtitle: const Text('Default recovery'),
+            _SheetOption(
+              title: 'No pep talk',
+              subtitle: 'Default recovery',
+              icon: Icons.block_rounded,
+              muted: true,
               onTap: () => Navigator.pop(sheetContext),
             ),
           ],
@@ -217,160 +224,127 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final session = widget.session;
     final state = session.engine.state;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: theme.colorScheme.inversePrimary,
-        title: Text(widget.title ?? 'Live match'),
-      ),
-      body: _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(_error!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: _finishMatch,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : Column(
-              children: [
-                // Scoreboard
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  color: theme.colorScheme.inversePrimary,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Text(session.homeTeamName,
-                                textAlign: TextAlign.right,
-                                style: theme.textTheme.titleMedium),
-                          ),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              '${state.scoreHome} - ${state.scoreAway}',
-                              style: theme.textTheme.headlineMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(session.awayTeamName,
-                                textAlign: TextAlign.left,
-                                style: theme.textTheme.titleMedium),
-                          ),
-                        ],
-                      ),
-                      Text(
-                          _finished
-                              ? 'Full time'
-                              : (state.isFinished
-                                  ? 'Full time'
-                                  : "${state.minute}'"),
-                          style: theme.textTheme.labelLarge),
-                    ],
-                  ),
-                ),
-                // Controls (GDD 10.4/16)
-                if (!_finished)
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Row(
+      appBar: AppBar(title: Text(widget.title ?? 'Live match')),
+      body: FcmBackdrop(
+        child: _error != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: FcmPanel(
+                    accent: FcmColors.danger,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: _advance,
-                            icon: const Icon(Icons.fast_forward),
-                            label: const Text('Next minute'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _simToEnd,
-                            icon: const Icon(Icons.skip_next),
-                            label: const Text('Sim to end'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton.outlined(
-                          onPressed: () => _showTacticsSheet(context),
-                          icon: const Icon(Icons.tune),
-                          tooltip: 'Tactics',
+                        Text(_error!, textAlign: TextAlign.center),
+                        const SizedBox(height: 14),
+                        FcmButton(
+                          onPressed: _finishMatch,
+                          label: 'Retry',
+                          icon: Icons.refresh_rounded,
                         ),
                       ],
                     ),
                   ),
-                // Commentary feed
-                Expanded(
-                  child: _finished && _report != null
-                      ? MatchReportView(
-                          report: _report!,
-                          homeTeamName: session.homeTeamName,
-                          awayTeamName: session.awayTeamName,
-                          pepTalk: _pepTalk,
-                          adBoostedRecovery: _usedAdBoost,
-                          onPepTalk: _applyPepTalk,
-                        )
-                      : ListView.builder(
-                          reverse: true,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _lines.length,
-                          itemBuilder: (context, index) {
-                            final line = _lines[_lines.length - 1 - index];
-                            final bold = line.importance == 2;
-                            final color = switch (line.importance) {
-                              2 => theme.colorScheme.primary,
-                              1 => theme.colorScheme.onSurface,
-                              _ => theme.colorScheme.onSurfaceVariant,
-                            };
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 3),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  SizedBox(
-                                    width: 38,
-                                    child: Text("${line.minute}'",
-                                        style: theme.textTheme.labelSmall
-                                            ?.copyWith(color: color)),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      line.text,
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                        color: color,
-                                        fontWeight: bold
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
                 ),
-              ],
-            ),
+              )
+            : Column(
+                children: [
+                  _Scoreboard(
+                    home: session.homeTeamName,
+                    away: session.awayTeamName,
+                    scoreHome: state.scoreHome,
+                    scoreAway: state.scoreAway,
+                    minute: state.minute,
+                    fullTime: _finished || state.isFinished,
+                    userIsHome: session.userSide == MatchSide.home,
+                  ),
+                  // Controls (GDD 10.4/16)
+                  if (!_finished)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: FcmButton(
+                              onPressed: _advance,
+                              icon: Icons.fast_forward_rounded,
+                              label: 'Next minute',
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 3,
+                            child: FcmButton(
+                              style: FcmButtonStyle.ghost,
+                              onPressed: _simToEnd,
+                              icon: Icons.skip_next_rounded,
+                              label: 'Sim to end',
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Tooltip(
+                            message: 'Tactics',
+                            child: FcmPressable(
+                              onTap: () => _showTacticsSheet(context),
+                              child: Container(
+                                width: 54,
+                                height: 54,
+                                decoration: BoxDecoration(
+                                  gradient: FcmColors.royalGradient,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(Icons.tune_rounded,
+                                    color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // Commentary feed / report
+                  Expanded(
+                    child: _finished && _report != null
+                        ? MatchReportView(
+                            report: _report!,
+                            homeTeamName: session.homeTeamName,
+                            awayTeamName: session.awayTeamName,
+                            pepTalk: _pepTalk,
+                            adBoostedRecovery: _usedAdBoost,
+                            onPepTalk: _applyPepTalk,
+                            userSide: session.userSide,
+                          )
+                        : _lines.isEmpty
+                            ? const Center(
+                                child: Text('Kick-off! Tap “Next minute”.',
+                                    style:
+                                        TextStyle(color: FcmColors.textDim)),
+                              )
+                            : ListView.builder(
+                                reverse: true,
+                                padding:
+                                    const EdgeInsets.fromLTRB(14, 6, 14, 16),
+                                itemCount: _lines.length,
+                                itemBuilder: (context, index) {
+                                  final lineNo = _lines.length - 1 - index;
+                                  return FcmEntrance(
+                                    key: ValueKey('line-$lineNo'),
+                                    dx: -18,
+                                    dy: 0,
+                                    duration:
+                                        const Duration(milliseconds: 320),
+                                    child: _CommentaryRow(line: _lines[lineNo]),
+                                  );
+                                },
+                              ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -388,8 +362,12 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                  child: Text(title,
-                      style: Theme.of(sheetContext).textTheme.titleSmall),
+                  child: Text(title.toUpperCase(),
+                      style: const TextStyle(
+                          color: FcmColors.gold,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2)),
                 ),
                 ...children,
               ],
@@ -467,6 +445,267 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   }
 }
 
+/// Live scoreboard: both clubs, an animated score, the match clock and a
+/// progress bar across the 90 minutes.
+class _Scoreboard extends StatelessWidget {
+  const _Scoreboard({
+    required this.home,
+    required this.away,
+    required this.scoreHome,
+    required this.scoreAway,
+    required this.minute,
+    required this.fullTime,
+    required this.userIsHome,
+  });
+
+  final String home;
+  final String away;
+  final int scoreHome;
+  final int scoreAway;
+  final int minute;
+  final bool fullTime;
+  final bool userIsHome;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (minute / 90).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+      child: FcmPanel(
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+        accent: FcmColors.royal,
+        glow: true,
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: _Team(name: home, isUser: userIsHome)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 450),
+                    transitionBuilder: (child, anim) => ScaleTransition(
+                      scale: CurvedAnimation(
+                          parent: anim, curve: Curves.easeOutBack),
+                      child: FadeTransition(opacity: anim, child: child),
+                    ),
+                    child: Text(
+                      '$scoreHome - $scoreAway',
+                      key: ValueKey('$scoreHome-$scoreAway'),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 38,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(child: _Team(name: away, isUser: !userIsHome)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: 5,
+                child: Stack(
+                  children: [
+                    Container(color: Colors.white.withValues(alpha: 0.10)),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: fullTime ? 1.0 : progress),
+                      duration: const Duration(milliseconds: 400),
+                      builder: (context, f, _) => FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: f,
+                        child: const DecoratedBox(
+                          decoration:
+                              BoxDecoration(gradient: FcmColors.goldGradient),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (!fullTime) ...[
+                  const _LiveDot(),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  fullTime ? 'Full time' : "$minute'",
+                  style: TextStyle(
+                    color: fullTime ? FcmColors.gold : Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Team extends StatelessWidget {
+  const _Team({required this.name, required this.isUser});
+
+  final String name;
+  final bool isUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = name
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: isUser
+                ? FcmColors.goldGradient
+                : FcmColors.royalGradient,
+            border: Border.all(color: Colors.white24),
+          ),
+          child: FitText(initials,
+              align: Alignment.center,
+              style: TextStyle(
+                  color: isUser ? const Color(0xFF2B1B00) : Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16)),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          name,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: isUser ? FcmColors.gold : Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+            height: 1.15,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Pulsing red "live" indicator.
+class _LiveDot extends StatefulWidget {
+  const _LiveDot();
+
+  @override
+  State<_LiveDot> createState() => _LiveDotState();
+}
+
+class _LiveDotState extends State<_LiveDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1100))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) => Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: FcmColors.danger,
+          boxShadow: [
+            BoxShadow(
+              color: FcmColors.danger.withValues(alpha: 0.3 + 0.5 * _c.value),
+              blurRadius: 4 + 8 * _c.value,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One commentary line; key moments (importance 2) glow gold.
+class _CommentaryRow extends StatelessWidget {
+  const _CommentaryRow({required this.line});
+
+  final CommentaryLine line;
+
+  @override
+  Widget build(BuildContext context) {
+    final big = line.importance == 2;
+    final color = switch (line.importance) {
+      2 => FcmColors.gold,
+      1 => Colors.white,
+      _ => FcmColors.textDim,
+    };
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: big ? FcmColors.gold.withValues(alpha: 0.12) : null,
+        border: big
+            ? Border(
+                left: BorderSide(color: FcmColors.gold, width: 3),
+              )
+            : null,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 40,
+            child: FitText("${line.minute}'",
+                style: TextStyle(
+                    color: big ? FcmColors.gold : FcmColors.textDim,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(
+              line.text,
+              style: TextStyle(
+                color: color,
+                fontSize: big ? 15 : 14,
+                height: 1.3,
+                fontWeight: big ? FontWeight.w800 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Pep-talk chooser sheet (GDD 15): one optional choice, ad-free (FR-043).
 /// Returns null when skipped or dismissed.
 Future<MatchPepTalk?> showPepTalkChooser({
@@ -480,29 +719,89 @@ Future<MatchPepTalk?> showPepTalkChooser({
     context: context,
     builder: (sheetContext) => SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
-          Text(title, style: theme.textTheme.titleLarge),
+          Text(title,
+              style:
+                  theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
           const SizedBox(height: 4),
-          Text(subtitle, style: theme.textTheme.bodySmall),
+          Text(subtitle,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: FcmColors.textDim)),
           const SizedBox(height: 12),
           for (final talk in talks)
-            ListTile(
-              title: Text(talk.label),
-              subtitle: Text('${talk.effectSummary}\n${talk.description}'),
-              isThreeLine: true,
+            _SheetOption(
+              title: talk.label,
+              subtitle: '${talk.effectSummary}\n${talk.description}',
+              icon: Icons.record_voice_over_rounded,
               onTap: () => Navigator.pop(sheetContext, talk),
             ),
-          ListTile(
-            title: Text('Skip',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          _SheetOption(
+            title: 'Skip',
+            subtitle: 'No pep talk',
+            icon: Icons.block_rounded,
+            muted: true,
             onTap: () => Navigator.pop(sheetContext),
           ),
         ],
       ),
     ),
   );
+}
+
+/// Option row used by the pep-talk and recovery sheets.
+class _SheetOption extends StatelessWidget {
+  const _SheetOption({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+    this.accent,
+    this.muted = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? accent;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = muted ? Colors.white38 : (accent ?? FcmColors.gold);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: FcmPanel(
+        radius: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        accent: accent,
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                          color: muted ? Colors.white60 : Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: FcmColors.textDim, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Substitution picker (FR-023: five subs, engine-enforced): tap the
@@ -618,7 +917,7 @@ class _SubstitutionSectionState extends State<_SubstitutionSection> {
   }
 }
 
-/// Post-match report (GDD 14 post-match screen): score, scorers, ratings,
+/// Post-match report (GDD 14 post-match screen): result, scorers, ratings,
 /// Man of the Match, team statistics and the pep talk choice.
 class MatchReportView extends StatelessWidget {
   const MatchReportView({
@@ -629,6 +928,7 @@ class MatchReportView extends StatelessWidget {
     required this.pepTalk,
     required this.onPepTalk,
     this.adBoostedRecovery = false,
+    this.userSide,
   });
 
   final MatchReportResult report;
@@ -640,87 +940,203 @@ class MatchReportView extends StatelessWidget {
   /// Whether the ad-supported boosted recovery was applied (GDD 19.3).
   final bool adBoostedRecovery;
 
+  /// Which side the player managed; drives the VICTORY / DEFEAT banner.
+  final MatchSide? userSide;
+
+  static Color _ratingColor(double r) {
+    if (r >= 7.5) return FcmColors.success;
+    if (r >= 6.5) return FcmColors.gold;
+    if (r >= 5.5) return const Color(0xFFFF9F43);
+    return FcmColors.danger;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final stats = report.stats;
+    final home = report.state.scoreHome;
+    final away = report.state.scoreAway;
+    String? verdict;
+    var verdictColor = FcmColors.gold;
+    if (userSide != null) {
+      final mine = userSide == MatchSide.home ? home : away;
+      final theirs = userSide == MatchSide.home ? away : home;
+      if (mine > theirs) {
+        verdict = 'VICTORY';
+        verdictColor = FcmColors.success;
+      } else if (mine < theirs) {
+        verdict = 'DEFEAT';
+        verdictColor = FcmColors.danger;
+      } else {
+        verdict = 'DRAW';
+      }
+    }
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 28),
       children: [
-        Text('Full time: $homeTeamName ${report.state.scoreHome} - '
-            '${report.state.scoreAway} $awayTeamName',
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold)),
-        Text('Reward: ${report.rewardCoins} coins',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(color: theme.colorScheme.primary)),
-        const SizedBox(height: 8),
-        if (report.manOfTheMatch != null)
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.emoji_events),
-              title: Text(report.manOfTheMatch!.name),
-              subtitle: Text(
-                  'Man of the Match · rating ${report.manOfTheMatch!.rating.toStringAsFixed(1)}'),
-            ),
-          ),
-        const SizedBox(height: 12),
-        Text('Team statistics', style: theme.textTheme.titleSmall),
-        _StatsTable(stats: stats),
-        const SizedBox(height: 12),
-        Text('Player ratings', style: theme.textTheme.titleSmall),
-        for (final r in report.homeRatings.where((r) => r.played).take(11))
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Row(
+        FcmEntrance(
+          child: FcmPanel(
+            accent: verdictColor,
+            glow: true,
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+            child: Column(
               children: [
-                SizedBox(
-                    width: 34,
-                    child: Text(r.position.code,
-                        style: theme.textTheme.labelSmall)),
-                Expanded(child: Text(r.name)),
-                if (r.goals > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Text('⚽ ×${r.goals}',
-                        style: theme.textTheme.bodySmall),
+                if (verdict != null) ...[
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.6, end: 1),
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.elasticOut,
+                    builder: (context, v, child) =>
+                        Transform.scale(scale: v, child: child),
+                    child: FitText(verdict,
+                        align: Alignment.center,
+                        style: TextStyle(
+                          color: verdictColor,
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 5,
+                          shadows: [
+                            Shadow(
+                                color: verdictColor.withValues(alpha: 0.6),
+                                blurRadius: 22),
+                          ],
+                        )),
                   ),
-                if (r.assists > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Text('🅰 ×${r.assists}',
-                        style: theme.textTheme.bodySmall),
-                  ),
-                Text(r.rating.toStringAsFixed(1),
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                ],
+                Text(
+                  'Full time: $homeTeamName $home - $away $awayTeamName',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.monetization_on_rounded,
+                        color: FcmColors.gold, size: 20),
+                    const SizedBox(width: 6),
+                    Text('Reward: ${report.rewardCoins} coins',
+                        style: const TextStyle(
+                            color: FcmColors.gold,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900)),
+                  ],
+                ),
               ],
             ),
           ),
-        const SizedBox(height: 12),
-        Text('Pep talk', style: theme.textTheme.titleSmall),
+        ),
+        if (report.manOfTheMatch != null) ...[
+          const SizedBox(height: 12),
+          FcmEntrance(
+            index: 1,
+            child: FcmPanel(
+              accent: FcmColors.gold,
+              child: Row(
+                children: [
+                  const FcmIconBadge(
+                      icon: Icons.emoji_events_rounded, size: 50),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FitText(report.manOfTheMatch!.name,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900)),
+                        Text(
+                          'Man of the Match · rating ${report.manOfTheMatch!.rating.toStringAsFixed(1)}',
+                          style: const TextStyle(
+                              color: FcmColors.textDim, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const FcmSectionTitle('Team statistics'),
+        FcmEntrance(index: 2, child: _StatsTable(stats: stats)),
+        const FcmSectionTitle('Player ratings'),
+        FcmEntrance(
+          index: 3,
+          child: FcmPanel(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              children: [
+                for (final r
+                    in report.homeRatings.where((r) => r.played).take(11))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 42,
+                          child: FitText(r.position.code,
+                              style: const TextStyle(
+                                  color: FcmColors.textDim,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800)),
+                        ),
+                        Expanded(
+                          child: FitText(r.name,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        if (r.goals > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Text('⚽ ×${r.goals}',
+                                style: const TextStyle(fontSize: 12)),
+                          ),
+                        if (r.assists > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Text('🅰 ×${r.assists}',
+                                style: const TextStyle(fontSize: 12)),
+                          ),
+                        const SizedBox(width: 10),
+                        FcmPill(r.rating.toStringAsFixed(1),
+                            color: _ratingColor(r.rating)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const FcmSectionTitle('Pep talk'),
         if (adBoostedRecovery)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Row(
               children: [
-                Icon(Icons.movie, size: 18, color: theme.colorScheme.primary),
+                const Icon(Icons.movie, size: 18, color: FcmColors.gold),
                 const SizedBox(width: 6),
-                Expanded(
+                const Expanded(
                   child: Text(
                     'Ad-boosted recovery applied: +15% natural recovery '
                     '(GDD 19.3)',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.primary)),
+                    style: TextStyle(color: FcmColors.gold, fontSize: 12),
+                  ),
                 ),
               ],
             ),
           )
         else
-          Text(
-              'Choose one recovery focus for the squad (bonus to natural recovery, GDD 11.6):',
-              style: theme.textTheme.bodySmall),
-        const SizedBox(height: 8),
+          const Text(
+            'Choose one recovery focus for the squad (bonus to natural recovery, GDD 11.6):',
+            style: TextStyle(color: FcmColors.textDim, fontSize: 12),
+          ),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -729,16 +1145,17 @@ class MatchReportView extends StatelessWidget {
               ChoiceChip(
                 label: Text(choice.displayName),
                 selected: pepTalk == choice,
+                showCheckmark: false,
                 onSelected: (_) => onPepTalk(choice),
               ),
           ],
         ),
-        const SizedBox(height: 24),
       ],
     );
   }
 }
 
+/// Comparative team statistics with a home/away share bar per row.
 class _StatsTable extends StatelessWidget {
   const _StatsTable({required this.stats});
 
@@ -757,75 +1174,120 @@ class _StatsTable extends StatelessWidget {
     ('Saves', 'saves'),
   ];
 
-  (String, String) _values(TeamMatchStats s, String key) {
+  /// Numeric value (for the bar) and display text for one side.
+  (double, String) _side(TeamMatchStats s, String key) {
     switch (key) {
       case 'possess':
-        return ('${stats.possessionPercent(s).round()}%', '');
+        final v = stats.possessionPercent(s).toDouble();
+        return (v, '${v.round()}%');
       case 'shots':
-        return ('${s.shots}', '');
+        return (s.shots.toDouble(), '${s.shots}');
       case 'onTarget':
-        return ('${s.shotsOnTarget}', '');
+        return (s.shotsOnTarget.toDouble(), '${s.shotsOnTarget}');
       case 'xg':
-        return (s.xg.toStringAsFixed(1), '');
+        return (s.xg.toDouble(), s.xg.toStringAsFixed(1));
       case 'bigChances':
-        return ('${s.bigChances}', '');
+        return (s.bigChances.toDouble(), '${s.bigChances}');
       case 'passAccuracy':
-        return (s.passesAttempted == 0
-            ? '—'
-            : '${(100 * s.passAccuracy).round()}%', '');
+        return s.passesAttempted == 0
+            ? (0.0, '—')
+            : (100 * s.passAccuracy.toDouble(),
+                '${(100 * s.passAccuracy).round()}%');
       case 'corners':
-        return ('${s.corners}', '');
+        return (s.corners.toDouble(), '${s.corners}');
       case 'fouls':
-        return ('${s.fouls}', '');
+        return (s.fouls.toDouble(), '${s.fouls}');
       case 'yellow':
-        return ('${s.yellowCards}', '');
+        return (s.yellowCards.toDouble(), '${s.yellowCards}');
       case 'saves':
-        return ('${s.saves}', '');
+        return (s.saves.toDouble(), '${s.saves}');
     }
-    return ('—', '');
+    return (0.0, '—');
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          children: [
-            for (final (label, key) in _rows)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
+    return FcmPanel(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        children: [
+          for (final (label, key) in _rows)
+            Builder(builder: (context) {
+              final (hv, hs) = _side(stats.home, key);
+              final (av, aw) = _side(stats.away, key);
+              final total = hv + av;
+              final share = total <= 0 ? 0.5 : (hv / total).clamp(0.0, 1.0);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Text(
-                        _values(stats.home, key).$1,
-                        textAlign: TextAlign.right,
-                        style: theme.textTheme.bodyMedium,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FitText(hs,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15)),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: FitText(label,
+                              align: Alignment.center,
+                              style: const TextStyle(
+                                  color: FcmColors.textDim,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                        Expanded(
+                          child: FitText(aw,
+                              align: Alignment.centerRight,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15)),
+                        ),
+                      ],
                     ),
-                    Expanded(
-                      child: Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        _values(stats.away, key).$1,
-                        textAlign: TextAlign.left,
-                        style: theme.textTheme.bodyMedium,
-                      ),
+                    const SizedBox(height: 5),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.5, end: share),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, f, _) {
+                        final left = (f * 1000).round().clamp(1, 999);
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: SizedBox(
+                            height: 6,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: left,
+                                  child: const DecoratedBox(
+                                    decoration: BoxDecoration(
+                                        gradient: FcmColors.goldGradient),
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                Expanded(
+                                  flex: 1000 - left,
+                                  child: const DecoratedBox(
+                                    decoration: BoxDecoration(
+                                        gradient: FcmColors.royalGradient),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
-              ),
-          ],
-        ),
+              );
+            }),
+        ],
       ),
     );
   }

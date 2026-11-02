@@ -17,8 +17,8 @@ import 'fcm_style.dart';
 /// Width : height ratio of the card.
 const double kPlayerCardAspect = 0.70;
 
-class PlayerCard extends StatelessWidget {
-  const PlayerCard({
+class FcmPlayerCard extends StatelessWidget {
+  const FcmPlayerCard({
     super.key,
     required this.player,
     required this.rarity,
@@ -26,9 +26,21 @@ class PlayerCard extends StatelessWidget {
     this.shine,
     this.statProgress = 1.0,
     this.glow = 0.0,
+    this.overall,
+    this.stats,
+    this.upgradeLevel = 0,
   });
 
   final BasePlayer player;
+
+  /// Rating to show instead of the base overall (owned, upgraded copies).
+  final int? overall;
+
+  /// Attribute values to show instead of the base ones.
+  final List<({String label, int value})>? stats;
+
+  /// Merge/upgrade level; shows a +N badge when above zero.
+  final int upgradeLevel;
   final CardRarity rarity;
 
   /// Card width; height follows [kPlayerCardAspect].
@@ -67,10 +79,12 @@ class PlayerCard extends StatelessWidget {
     final h = width / kPlayerCardAspect;
     final ink = rarity.ink;
     final p = statProgress.clamp(0.0, 1.0);
-    final ovr = (player.baseStats.overall * p).round();
-    final stats = statsFor(player);
+    final ovr = ((overall ?? player.baseStats.overall) * p).round();
+    final shownStats = stats ?? statsFor(player);
 
-    return SizedBox(
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: SizedBox(
       width: w,
       height: h,
       child: DecoratedBox(
@@ -94,27 +108,40 @@ class PlayerCard extends StatelessWidget {
             ),
             // Rating, position, flag.
             Positioned(
-              left: w * 0.11,
-              top: h * 0.105,
-              width: w * 0.24,
+              left: w * 0.075,
+              top: h * 0.10,
+              width: w * 0.30,
               child: Column(
                 children: [
-                  Text(
-                    '$ovr',
-                    style: TextStyle(
-                      color: ink,
-                      fontSize: w * 0.20,
-                      fontWeight: FontWeight.w900,
-                      height: 0.95,
+                  SizedBox(
+                    width: w * 0.30,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '$ovr',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                          color: ink,
+                          fontSize: w * 0.20,
+                          fontWeight: FontWeight.w900,
+                          height: 0.95,
+                        ),
+                      ),
                     ),
                   ),
-                  Text(
-                    player.position.code,
-                    style: TextStyle(
-                      color: ink.withValues(alpha: 0.92),
-                      fontSize: w * 0.085,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      player.position.code,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: ink.withValues(alpha: 0.92),
+                        fontSize: w * 0.085,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
                     ),
                   ),
                   Container(
@@ -134,6 +161,8 @@ class PlayerCard extends StatelessWidget {
               top: h * 0.085,
               child: Text(
                 rarity.label,
+                maxLines: 1,
+                softWrap: false,
                 style: TextStyle(
                   color: ink.withValues(alpha: 0.75),
                   fontSize: w * 0.04,
@@ -142,6 +171,29 @@ class PlayerCard extends StatelessWidget {
                 ),
               ),
             ),
+            if (upgradeLevel > 0)
+              Positioned(
+                right: w * 0.09,
+                top: h * 0.125,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: w * 0.03, vertical: w * 0.008),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(w * 0.03),
+                  ),
+                  child: Text(
+                    '+$upgradeLevel',
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: w * 0.05,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
             // Name plate.
             Positioned(
               left: w * 0.07,
@@ -177,37 +229,45 @@ class PlayerCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Attribute row.
+            // Attribute row — equal cells, each shrinks to fit.
             Positioned(
-              left: w * 0.12,
-              right: w * 0.12,
+              left: w * 0.08,
+              right: w * 0.08,
               top: h * 0.705,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  for (final s in stats)
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${(s.value * p).round()}',
-                          style: TextStyle(
-                            color: ink,
-                            fontSize: w * 0.105,
-                            fontWeight: FontWeight.w900,
-                            height: 1,
-                          ),
+                  for (final s in shownStats)
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${(s.value * p).round()}',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                color: ink,
+                                fontSize: w * 0.105,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
+                            ),
+                            Text(
+                              s.label,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                color: ink.withValues(alpha: 0.75),
+                                fontSize: w * 0.048,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          s.label,
-                          style: TextStyle(
-                            color: ink.withValues(alpha: 0.75),
-                            fontSize: w * 0.048,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                 ],
               ),
@@ -215,13 +275,14 @@ class PlayerCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
 
 /// The card back shown before the flip.
-class PlayerCardBack extends StatelessWidget {
-  const PlayerCardBack({super.key, required this.rarity, this.width = 260});
+class FcmPlayerCardBack extends StatelessWidget {
+  const FcmPlayerCardBack({super.key, required this.rarity, this.width = 260});
 
   final CardRarity rarity;
   final double width;
@@ -433,6 +494,134 @@ class _CardBackPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CardBackPainter old) => old.rarity != rarity;
+}
+
+/// Compact card for the pitch and bench: rating, position and surname.
+/// [width] is the shield width; the surname sits under it.
+class FcmMiniCard extends StatelessWidget {
+  const FcmMiniCard({
+    super.key,
+    required this.overall,
+    required this.position,
+    required this.name,
+    required this.rarity,
+    this.width = 56,
+    this.warn = false,
+  });
+
+  final int overall;
+  final String position;
+  final String name;
+  final CardRarity rarity;
+  final double width;
+
+  /// Red outline when the player is out of position.
+  final bool warn;
+
+  @override
+  Widget build(BuildContext context) {
+    final h = width / kPlayerCardAspect;
+    final ink = rarity.ink;
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: SizedBox(
+        width: width + 12,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: width,
+              height: h,
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: (warn ? FcmColors.danger : rarity.accent)
+                        .withValues(alpha: 0.5),
+                    blurRadius: 14,
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _CardFacePainter(rarity: rarity, shine: null),
+                    ),
+                  ),
+                  if (warn)
+                    Positioned.fill(
+                      child: CustomPaint(painter: _WarnPainter()),
+                    ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: h * 0.17,
+                    child: Column(
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('$overall',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                  color: ink,
+                                  fontSize: width * 0.36,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1)),
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(position,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                  color: ink.withValues(alpha: 0.9),
+                                  fontSize: width * 0.2,
+                                  fontWeight: FontWeight.w800)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 3),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                name.toUpperCase(),
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: math.max(9, width * 0.19),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.4,
+                  shadows: const [Shadow(color: Colors.black, blurRadius: 4)],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WarnPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(
+      cardPath(size),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.06
+        ..color = FcmColors.danger,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_WarnPainter old) => false;
 }
 
 /// Convenience: sin-based 0..1 pulse for idle glows.

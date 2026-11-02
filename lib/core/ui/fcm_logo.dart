@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'fcm_style.dart';
 
 /// Asset path of the brand art.
-const String kFcmLogoAsset = 'assets/images/fcm_rivals_logo.png';
+const String kFcmLogoAsset = 'assets/images/fcm_rivals_logo.jpg';
 
 /// The full brand art, fading and scaling in once. Used as the loading
 /// screen. [cacheWidth] keeps the 2.8 MB source PNG cheap to decode.

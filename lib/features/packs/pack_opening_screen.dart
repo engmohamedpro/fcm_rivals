@@ -20,6 +20,7 @@ import 'package:flutter/services.dart';
 import '../../core/domain/players.dart';
 import '../../core/ui/country_flag.dart';
 import '../../core/ui/fcm_style.dart';
+import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
 import 'pack_effects.dart';
 
@@ -49,13 +50,9 @@ class _T {
 }
 
 class PackOpeningScreen extends StatefulWidget {
-  const PackOpeningScreen({super.key, required this.players, this.tiers});
+  const PackOpeningScreen({super.key, required this.players});
 
   final List<BasePlayer> players;
-
-  /// Pack tier (0 low .. 2 high) per player; defaults to a rating-based
-  /// guess when not supplied.
-  final List<int>? tiers;
 
   @override
   State<PackOpeningScreen> createState() => _PackOpeningScreenState();
@@ -74,14 +71,10 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   BasePlayer get _player => widget.players[_index];
 
-  int _tierOf(int i) {
-    final given = widget.tiers;
-    if (given != null && i < given.length) return given[i];
-    final ovr = widget.players[i].baseStats.overall;
-    return ovr >= 80 ? 2 : (ovr >= 65 ? 1 : 0);
-  }
-
-  CardRarity get _rarity => CardRarity.fromTier(_tierOf(_index));
+  /// Same rating → rarity rule as the collection and squad, so a card looks
+  /// identical everywhere in the game.
+  CardRarity get _rarity =>
+      CardRarity.fromOverall(_player.baseStats.overall);
 
   @override
   void initState() {
@@ -256,6 +249,34 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             child: _buildCard(t, flipT, cardWidth, rarity),
           ),
 
+        // Pull banner for epic / legendary cards.
+        if (rarity != CardRarity.rare && _T.stats.transform(t) > 0)
+          Align(
+            alignment: const Alignment(0, -0.86),
+            child: Opacity(
+              opacity: _T.stats.transform(t).clamp(0.0, 1.0),
+              child: Transform.scale(
+                scale: 0.8 + 0.2 * _T.stats.transform(t),
+                child: Text(
+                  rarity == CardRarity.legendary
+                      ? 'LEGENDARY PULL!'
+                      : 'EPIC PULL!',
+                  style: TextStyle(
+                    color: rarity.accent,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    shadows: [
+                      Shadow(
+                          color: rarity.accent.withValues(alpha: 0.9),
+                          blurRadius: 22),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
         // Flash.
         if (flash > 0)
           IgnorePointer(
@@ -322,11 +343,14 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                   ignoring: !done,
                   child: SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
+                    child: FcmButton(
                       onPressed: _next,
-                      child: Text(_index < widget.players.length - 1
+                      icon: _index < widget.players.length - 1
+                          ? Icons.arrow_forward_rounded
+                          : Icons.check_rounded,
+                      label: _index < widget.players.length - 1
                           ? 'NEXT PLAYER  ${_index + 1}/${widget.players.length}'
-                          : 'KEEP PLAYER'),
+                          : 'KEEP PLAYER',
                     ),
                   ),
                 ),
@@ -473,8 +497,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
           alignment: Alignment.center,
           transform: rot,
           child: showBack
-              ? PlayerCardBack(rarity: rarity, width: cardWidth)
-              : PlayerCard(
+              ? FcmPlayerCardBack(rarity: rarity, width: cardWidth)
+              : FcmPlayerCard(
                   player: _player,
                   rarity: rarity,
                   width: cardWidth,
