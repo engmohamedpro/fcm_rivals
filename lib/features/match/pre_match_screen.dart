@@ -44,6 +44,7 @@ class PreMatchScreen extends StatefulWidget {
     this.loading = false,
     this.error,
     this.onTacticsSelected,
+    this.onExit,
   });
 
   final PreMatchData data;
@@ -62,6 +63,11 @@ class PreMatchScreen extends StatefulWidget {
   /// decides what they mean; on this screen they are match-only overrides
   /// that must NOT be persisted.
   final ValueChanged<PreMatchTacticSelection>? onTacticsSelected;
+
+  /// Leaves the matchday build-up from the analysis phase before anything
+  /// is committed — the fixture stays unplayed. Defaults to popping the
+  /// route; hosts that wrap the screen pass their own pop.
+  final VoidCallback? onExit;
 
   @override
   State<PreMatchScreen> createState() => _PreMatchScreenState();
@@ -164,12 +170,17 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                 loading: widget.loading,
                 error: widget.error,
                 onPrimary: phase == 2 ? _kickOff : _nextPhase,
+                // Later phases step back through the build-up; the
+                // analysis phase's BACK leaves the matchday (and the
+                // fixture unplayed) via onExit — defaulting to a plain
+                // pop when no host callback is given.
                 onBack: _phase > 0
                     ? () {
                         HapticFeedback.selectionClick();
                         setState(() => _phase--);
                       }
-                    : null,
+                    : (widget.onExit ??
+                        () => Navigator.of(context).maybePop()),
               ),
             ],
           ),
@@ -192,20 +203,20 @@ class _AnalysisPhase extends StatelessWidget {
   Widget build(BuildContext context) {
     final f = data.forecast;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 16),
       children: [
         _VsHeader(data: data),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         FcmEntrance(
           index: 1,
           child: _ForecastCard(forecast: f),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         FcmEntrance(
           index: 2,
           child: _StrengthCard(forecast: f),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         FcmEntrance(
           index: 3,
           child: _OpponentCard(data: data),
@@ -294,8 +305,8 @@ class _Crest extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 56,
+          height: 56,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -317,11 +328,11 @@ class _Crest extends StatelessWidget {
           child: FitText(initials,
               align: Alignment.center,
               style: TextStyle(
-                color: gold ? FcmColors.ink : FcmColors.goldSoft,
-                fontWeight: FontWeight.w900,
-                fontSize: 20)),
+                  color: gold ? FcmColors.ink : FcmColors.goldSoft,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18)),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           name,
           textAlign: TextAlign.center,
@@ -330,7 +341,7 @@ class _Crest extends StatelessWidget {
           style: TextStyle(
             color: gold ? FcmColors.gold : Colors.white,
             fontWeight: FontWeight.w900,
-            fontSize: 14,
+            fontSize: 13,
             height: 1.15,
           ),
         ),
@@ -360,6 +371,7 @@ class _ForecastCard extends StatelessWidget {
     return FcmPanel(
       accent: FcmColors.gold,
       glow: true,
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -378,25 +390,25 @@ class _ForecastCard extends StatelessWidget {
             style: const TextStyle(
                 color: FcmColors.textDim, fontSize: 11),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           _OutcomeBar(
             label: 'WIN',
             percent: f.winPercent,
             color: FcmColors.success,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _OutcomeBar(
             label: 'DRAW',
             percent: f.drawPercent,
             color: FcmColors.silver,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _OutcomeBar(
             label: 'LOSS',
             percent: f.lossPercent,
             color: FcmColors.danger,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -452,7 +464,7 @@ class _OutcomeBar extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: SizedBox(
-              height: 14,
+              height: 12,
               child: Stack(
                 children: [
                   Container(color: Colors.white.withValues(alpha: 0.07)),
@@ -505,7 +517,7 @@ class _GoalChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.white.withValues(alpha: 0.05),
@@ -550,7 +562,7 @@ class _StrengthCard extends StatelessWidget {
     Widget row(String label, double user, double opponent) {
       final uMax = user >= opponent;
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 5),
         child: Column(
           children: [
             Row(
@@ -609,6 +621,7 @@ class _StrengthCard extends StatelessWidget {
     }
 
     return FcmPanel(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -722,6 +735,7 @@ class _OpponentCard extends StatelessWidget {
       'L': FcmColors.danger,
     };
     return FcmPanel(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -774,12 +788,12 @@ class _OpponentCard extends StatelessWidget {
           ),
           if (d.opponentKeyMen.isEmpty)
             const Padding(
-              padding: EdgeInsets.only(top: 10),
+              padding: EdgeInsets.only(top: 8),
               child: Text('No matches played yet — first round of the season.',
                   style: TextStyle(color: FcmColors.textDim, fontSize: 12)),
             )
           else ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             const Text(
               'KEY MEN',
               style: TextStyle(
@@ -789,7 +803,7 @@ class _OpponentCard extends StatelessWidget {
                 letterSpacing: 2,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             for (var i = 0; i < d.opponentKeyMen.length; i++)
               FcmEntrance(
                 index: i,
@@ -797,7 +811,7 @@ class _OpponentCard extends StatelessWidget {
                 dy: 0,
                 duration: const Duration(milliseconds: 360),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
                       Container(
@@ -1196,8 +1210,8 @@ class _BottomBar extends StatelessWidget {
   final String? error;
   final VoidCallback onPrimary;
 
-  /// Step back one phase; null on the first phase (system back still
-  /// exits the fixture).
+  /// Steps back one phase; on the analysis phase it leaves the matchday
+  /// build-up (the fixture stays unplayed).
   final VoidCallback? onBack;
 
   @override
@@ -1213,7 +1227,7 @@ class _BottomBar extends StatelessWidget {
       _ => Icons.play_circle_fill_rounded,
     };
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
