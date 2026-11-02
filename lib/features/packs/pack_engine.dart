@@ -1,8 +1,8 @@
 /// FCM Rivals — Pack Engine (GDD 5, FR-009..FR-011).
 ///
-/// Every pack contains three players — one low, one medium and one high
-/// Market Value tier draw. Higher-value players have proportionally lower
-/// odds (never impossible). Categories filter the eligible pool: Global,
+/// Every pack contains exactly one player, drawn from a randomly rolled low,
+/// medium or high Market Value tier. Higher-value players have
+/// proportionally lower odds (never impossible). Categories filter the eligible pool: Global,
 /// League, Nationality, Club and Position packs.
 library;
 
@@ -69,15 +69,25 @@ class PackDraw {
 class PackEngine {
   PackEngine({
     this.tierBoundaries = const [0.15, 0.55],
+    this.tierWeights = const [1.0, 1.0, 1.0],
     required this.random,
     this.economy = const EconomyEngine(),
-  }) : assert(
+  })  : assert(
           tierBoundaries.length == 2 &&
               0 < tierBoundaries[0] &&
               tierBoundaries[0] < tierBoundaries[1] &&
               tierBoundaries[1] < 1,
           'tier boundaries must be increasing fractions in (0, 1)',
+        ),
+        assert(
+          tierWeights.length == 3 && tierWeights.every((w) => w >= 0) &&
+              tierWeights.any((w) => w > 0),
+          'tier weights need three non-negative values, at least one > 0',
         );
+
+  /// Relative chance that the pack's single player comes from the low, mid
+  /// or high tier. Equal by default.
+  final List<double> tierWeights;
 
   /// Fractions of the pool's Market Value range separating low/mid/high
   /// tiers, measured on the log-value scale (GDD 5.3 configurable tiers).
@@ -146,23 +156,30 @@ class PackEngine {
     return const [];
   }
 
-  /// Opens a pack: three players, one per tier, low→mid→high reveal order
-  /// (GDD 5.3). Empty pool returns an empty draw list.
+  /// Opens a pack: exactly one player. A tier (low/mid/high) is rolled using
+  /// [tierWeights], then one player is drawn from it with value-weighted
+  /// odds. Empty pool returns an empty draw list.
   List<PackDraw> open(PackScope scope, List<BasePlayer> pool, {double? oddsSmoothing}) {
     final eligible = pool.where(scope.matches).toList()..sort(_byValue);
-    if (eligible.length < 3) {
-      return List.from(eligible.map((p) => PackDraw(player: p, tier: 0)));
-    }
+    if (eligible.isEmpty) return const [];
     final tiers = tiersOf(eligible);
     final smoothing =
         oddsSmoothing ?? economy.config.packOddsSmoothing;
-    final draws = <PackDraw>[];
-    for (var tierIndex = 0; tierIndex < 3; tierIndex++) {
-      final tier = _fallbackTier(tiers, tierIndex);
-      final player = _drawFromTier(tier, smoothing);
-      if (player != null) draws.add(PackDraw(player: player, tier: tierIndex));
+    final tierIndex = _rollTier();
+    final player = _drawFromTier(_fallbackTier(tiers, tierIndex), smoothing);
+    if (player == null) return const [];
+    return [PackDraw(player: player, tier: tierIndex)];
+  }
+
+  /// Rolls which tier the pack's single player comes from.
+  int _rollTier() {
+    final total = tierWeights.fold<double>(0, (a, b) => a + b);
+    var roll = random.nextDouble() * total;
+    for (var i = 0; i < tierWeights.length; i++) {
+      roll -= tierWeights[i];
+      if (roll <= 0) return i;
     }
-    return draws;
+    return tierWeights.length - 1;
   }
 
   /// The per-tier probability of drawing each eligible player, for the
@@ -197,21 +214,25 @@ class PackEngine {
     return result;
   }
 
-  /// Expected economic value of one pack's contents under the actual draw
-  /// odds (GDD 5.5): the sum over the three tiers of the odds-weighted
-  /// expected economic value of that tier's draw.
+  /// Expected economic value of one pack's single player under the actual
+  /// draw odds (GDD 5.5): the tier-weighted average of each tier's
+  /// odds-weighted expected economic value.
   int expectedPackValue(PackScope scope, List<BasePlayer> pool) {
     final eligible = pool.where(scope.matches).toList();
     if (eligible.isEmpty) return 0;
     final tiers = tiersOf(eligible);
     final smoothing = economy.config.packOddsSmoothing;
+    final weightTotal = tierWeights.fold<double>(0, (a, b) => a + b);
     var total = 0.0;
     for (var t = 0; t < 3; t++) {
+      final tierShare = tierWeights[t] / weightTotal;
+      if (tierShare == 0) continue;
       final tier = _fallbackTier(tiers, t);
       if (tier.length <= 1) {
         // Single (or empty) tier: value is deterministic.
         if (tier.isNotEmpty) {
-          total += economy.economicValueOf(tier.single.marketValueEur);
+          total += tierShare *
+              economy.economicValueOf(tier.single.marketValueEur);
         }
         continue;
       }
@@ -226,7 +247,7 @@ class PackEngine {
         tierEv +=
             economy.economicValueOf(tier[i].marketValueEur) * (weights[i] / wSum);
       }
-      total += tierEv;
+      total += tierShare * tierEv;
     }
     return total.round();
   }

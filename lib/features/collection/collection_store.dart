@@ -342,7 +342,7 @@ class CollectionStore {
   // Packs
   // ---------------------------------------------------------------------------
 
-  /// Opens one owned pack: draws three players and persists each as an
+  /// Opens one owned pack: draws one player and persists it as an
   /// owned instance atomically with the pack's consumption (FR-010, NFR-003).
   Future<PackOpenResult> openPack({
     required int packId,
@@ -424,8 +424,8 @@ class CollectionStore {
     final pool = registry.all
         .where((p) => scope.matches(p))
         .toList(growable: false);
-    // A pack draws one player per tier: low, mid, high (GDD 5.3).
-    if (pool.length < 3) {
+    // A pack draws exactly one player.
+    if (pool.isEmpty) {
       throw const CollectionException('Not enough eligible players');
     }
     final engine = PackEngine(random: math.Random(0), economy: economy);

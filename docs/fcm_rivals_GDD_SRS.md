@@ -234,13 +234,13 @@ Players obtained from packs are permanently owned by the user until:
 
 ### 5.3 Pack Contents
 
-Each pack contains three players.
+Each pack contains exactly one player.
 
-The intended distribution:
+The player's Market Value tier is rolled per pack (equal chance by default):
 
-- One Low Market Value player.
-- One Medium Market Value player.
-- One High Market Value player.
+- Low Market Value tier.
+- Medium Market Value tier.
+- High Market Value tier.
 
 The exact tier boundaries and probabilities remain configurable.
 
@@ -1230,7 +1230,7 @@ This is a recommended starting structure. Small related components should remain
 
 **FR-009:** The system shall support the five pack categories.
 
-**FR-010:** Every pack shall contain three players according to its configured tier distribution.
+**FR-010:** Every pack shall contain exactly one player, drawn from a tier rolled according to its configured tier weights.
 
 **FR-011:** Pack probabilities shall depend on Market Value and eligible players.
 

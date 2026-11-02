@@ -38,22 +38,46 @@ List<BasePlayer> buildPool(int perDecade) => [
 
 void main() {
   group('PackEngine.open', () {
-    test('FR-010: every pack contains exactly three players', () {
+    test('every pack contains exactly one player', () {
       final engine = PackEngine(random: math.Random(7));
-      final draws = engine.open(const PackScope(category: PackCategory.global), buildPool(10));
-      expect(draws.length, 3);
-      expect(draws.map((d) => d.player.playerId).toSet().length, 3);
+      for (var i = 0; i < 50; i++) {
+        final draws = engine.open(
+            const PackScope(category: PackCategory.global), buildPool(10));
+        expect(draws.length, 1);
+      }
     });
 
-    test('draws follow low/mid/high tier order (GDD 5.3)', () {
+    test('the single player comes from a rolled tier, all tiers reachable', () {
       final engine = PackEngine(random: math.Random(11));
       final pool = buildPool(10);
-      final draws = engine.open(const PackScope(category: PackCategory.global), pool);
-      expect(draws[0].tier, 0);
-      expect(draws[1].tier, 1);
-      expect(draws[2].tier, 2);
-      // tier 0 cheapest player is 50k; tier boundaries on log scale
-      expect(draws[0].player.marketValueEur, lessThan(draws[2].player.marketValueEur));
+      final counts = [0, 0, 0];
+      for (var i = 0; i < 600; i++) {
+        final d = engine
+            .open(const PackScope(category: PackCategory.global), pool)
+            .single;
+        counts[d.tier]++;
+        final id = d.player.playerId;
+        // pool ids encode their tier: 1xxx low, 2xxx mid, 3xxx high
+        expect(id ~/ 1000, d.tier + 1);
+      }
+      // equal tier weights by default => each tier roughly a third
+      for (final c in counts) {
+        expect(c, inInclusiveRange(150, 250));
+      }
+    });
+
+    test('tierWeights can bias the tier roll', () {
+      final engine = PackEngine(
+          random: math.Random(4), tierWeights: const [1, 0, 0]);
+      final pool = buildPool(10);
+      for (var i = 0; i < 50; i++) {
+        expect(
+            engine
+                .open(const PackScope(category: PackCategory.global), pool)
+                .single
+                .tier,
+            0);
+      }
     });
 
     test('deterministic with a seeded rng (replayability)', () {
@@ -145,15 +169,19 @@ void main() {
       final engine = PackEngine(random: math.Random(31));
       final pool = buildPool(30);
       final lowIds = pool.take(10).map((p) => p.playerId).toSet();
+      var tier0Draws = 0;
       var lowHits = 0;
-      const draws = 300;
-      for (var i = 0; i < draws; i++) {
+      for (var i = 0; i < 900; i++) {
         final result = engine
-            .open(const PackScope(category: PackCategory.global), pool);
-        if (lowIds.contains(result.first.player.playerId)) lowHits++;
+            .open(const PackScope(category: PackCategory.global), pool)
+            .single;
+        if (result.tier != 0) continue;
+        tier0Draws++;
+        if (lowIds.contains(result.player.playerId)) lowHits++;
       }
+      expect(tier0Draws, greaterThan(200));
       // cheap third should win the tier-0 draw well over half the time
-      expect(lowHits, greaterThan(draws * 0.55));
+      expect(lowHits, greaterThan(tier0Draws * 0.55));
     });
 
     test('FR-011: odds respond to value — zero smoothing is uniform', () {
@@ -182,7 +210,7 @@ void main() {
         mkPlayer(1, 300_000, club: 'Small FC'),
         mkPlayer(2, 900_000, club: 'Small FC'),
       ]);
-      expect(draws.length, 2);
+      expect(draws.length, 1);
     });
   });
 

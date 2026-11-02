@@ -125,12 +125,12 @@ void main() {
 
     tearDown(() async => db.close());
 
-    test('position pack yields three players of that position, once', () async {
+    test('position pack yields one player of that position, once', () async {
       final packs = await store.getAvailablePacks();
       final stPack = packs.firstWhere((p) => p.scopeValue == 'ST');
       final result = await store.openPack(
           packId: stPack.id, random: math.Random(11));
-      expect(result.players.length, 3);
+      expect(result.players.length, 1);
       expect(result.players.every((p) => p.position.code == 'ST'), isTrue);
 
       // pack consumed
@@ -140,7 +140,7 @@ void main() {
 
       // players persisted as owned instances
       final collection = await store.getCollection();
-      expect(collection.length, 3);
+      expect(collection.length, 1);
 
       // double-open rejected
       expect(
@@ -156,7 +156,7 @@ void main() {
         await store.openPack(packId: pack.id, random: math.Random(5));
       }
       final collection = await store.getCollection();
-      expect(collection.length, 12); // 4 packs × 3 players
+      expect(collection.length, 4); // 4 packs × 1 player
       // every draw matches its pack's position scope
       expect(collection.every((c) => c.position.code == 'ST' || c.position.code == 'LW'),
           isTrue);

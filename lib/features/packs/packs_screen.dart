@@ -49,7 +49,7 @@ class PacksScreen extends ConsumerWidget {
                       ? '${position.code} Position Pack'
                       : 'Global Pack'),
                   subtitle: Text(
-                      '3 players · one low, one medium, one high value tier',
+                      '1 player · drawn from a low, medium or high value tier',
                       style: Theme.of(context).textTheme.bodySmall),
                   trailing: const Icon(Icons.card_giftcard_outlined),
                   onTap: () => _open(context, ref, pack.id),
@@ -104,7 +104,7 @@ class _FreePackAdCardState extends ConsumerState<_FreePackAdCard> {
             leading: const Icon(Icons.play_circle_outline),
             title: const Text('Free pack — watch an ad'),
             subtitle: Text(available
-                ? 'One global pack (3 players) for a completed rewarded ad'
+                ? 'One global pack (1 player) for a completed rewarded ad'
                 : 'Already claimed today · ads are always optional'),
             trailing: _busy
                 ? const SizedBox(

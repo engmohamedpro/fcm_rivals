@@ -87,21 +87,20 @@ void main() {
     final engine = PackEngine(random: math.Random(2026));
     final pool = db.all.toList();
 
-    // Global pack: 3 distinct players.
+    // Global pack: exactly one player.
     final global = engine.open(const PackScope(category: PackCategory.global), pool);
-    expect(global.length, 3);
-    expect(global.map((d) => d.player.playerId).toSet().length, 3);
+    expect(global.length, 1);
 
     // League pack (Premier League).
     final pl = engine.open(
         const PackScope(category: PackCategory.league, leagueCode: 'GB1'), pool);
-    expect(pl.length, 3);
+    expect(pl.length, 1);
     expect(pl.every((d) => d.player.leagueCode == 'GB1'), isTrue);
 
     // Nationality pack (Egypt).
     final egypt = engine.open(
         const PackScope(category: PackCategory.nationality, nationality: 'Egypt'), pool);
-    expect(egypt.length, 3);
+    expect(egypt.length, 1);
     expect(egypt.every((d) => d.player.nationality == 'Egypt'), isTrue);
 
     // Position pack (GK) and price sanity.
@@ -177,7 +176,7 @@ void main() {
       for (final p in (pool..sort((a, b) => b.marketValueEur.compareTo(a.marketValueEur))).take(100))
         p.playerId
     };
-    for (var i = 0; i < opens; i++) {
+    for (var i = 0; i < opens * 3; i++) {
       final draws = engine.open(const PackScope(category: PackCategory.global), pool);
       for (final d in draws) {
         if (top100Ids.contains(d.player.playerId)) highTierTop10Count++;
