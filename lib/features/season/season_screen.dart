@@ -100,12 +100,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     }
   }
 
-  Future<void> _simulateRound() => _run((store) async {
-        // Simulate the current round's AI fixtures (GDD 9.2 lockstep);
-        // the user's own fixture stays theirs to play.
-        await store.simulateAIFixturesThroughCurrentRound();
-      });
-
   Future<void> _showCompletion(SeasonCompletion completion) {
     final (outcomeLabel, outcomeColor, outcomeIcon) =
         switch (completion.outcome) {
@@ -402,27 +396,13 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                         height: 1.15),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: FcmButton(
-                          onPressed: _busy ? null : _playNextFixture,
-                          icon: Icons.play_arrow_rounded,
-                          label: 'Play match',
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        flex: 2,
-                        child: FcmButton(
-                          style: FcmButtonStyle.ghost,
-                          onPressed: _busy ? null : _simulateRound,
-                          icon: Icons.fast_forward_rounded,
-                          label: 'Sim rest',
-                        ),
-                      ),
-                    ],
+                  // Every fixture is played as a live matchday; the round's
+                  // AI fixtures resolve automatically in lockstep when the
+                  // result commits (GDD 9.2), so there is no sim-rest.
+                  FcmButton(
+                    onPressed: _busy ? null : _playNextFixture,
+                    icon: Icons.play_arrow_rounded,
+                    label: 'Play match',
                   ),
                 ],
               ),

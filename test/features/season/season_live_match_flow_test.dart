@@ -58,6 +58,24 @@ Future<void> _flush(WidgetTester tester, {Duration wait = const Duration(millise
   }
 }
 
+/// Pumps the auto-play ticker until the match reaches full time (at 4x:
+/// 200ms pumped time per match minute), dismissing the half-time pep-talk
+/// sheet with the default 'no talk' choice when it appears so the clock
+/// resumes. Bounded to ~120 match minutes of pumping so a broken ticker
+/// fails fast instead of hanging.
+Future<void> _playToFullTime(WidgetTester tester) async {
+  for (var i = 0; i < 220; i++) {
+    await tester.pump(const Duration(milliseconds: 200));
+    // The half-time sheet holds the clock — dismiss via the barrier
+    // (same as the 'no talk' choice below the fold).
+    if (find.text('Half-time pep talk').evaluate().isNotEmpty) {
+      await tester.tapAt(const Offset(400, 20));
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    if (find.text('Post-match recovery').evaluate().isNotEmpty) return;
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -112,19 +130,22 @@ void main() {
     await _flush(tester, wait: const Duration(milliseconds: 900));
 
     // The live match screen is pushed over the shell: real club names on
-    // the scoreboard (the friendly 'Cairo XI' placeholder is gone), live
-    // controls and the tactics entry point.
+    // the scoreboard, the auto-play controls (pause + 1x–4x speed; no
+    // skip-to-end exists anywhere) and the tactics entry point.
     expect(find.text('League · Round 1'), findsOneWidget);
     expect(find.text('FC Rivals'), findsWidgets);
     expect(find.text(opponent.opponentName), findsWidgets);
-    expect(find.text('Next minute'), findsOneWidget);
-    expect(find.text('Sim to end'), findsOneWidget);
+    expect(find.text('1x'), findsOneWidget);
+    expect(find.text('4x'), findsOneWidget);
+    expect(find.text('Next minute'), findsNothing);
+    expect(find.text('Sim to end'), findsNothing);
 
-    // Drive one live minute, then finish via quick-sim.
-    await tester.tap(find.text('Next minute'));
+    // The match plays itself: pump real time and the ticker advances
+    // match minutes. Flip to 4x first (200ms per match minute), handle
+    // the half-time talk when the clock holds, then play to full time.
+    await tester.tap(find.text('4x'));
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.text('Sim to end'));
-    await tester.pump(const Duration(milliseconds: 100));
+    await _playToFullTime(tester);
 
     // Post-match recovery sheet (GDD 15.3/19.3) — dismiss for the default
     // recovery (same as the 'No pep talk' tile below the fold).

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -18,6 +19,12 @@ typedef MatchFullTimeCallback = Future<void> Function(MatchReportResult report);
 /// Live match screen (GDD 13, GDD 16): minute-by-minute simulation with
 /// commentary feed, live tactical changes and the post-match report with
 /// the pep talk choice (GDD 11.6).
+///
+/// The match plays itself: a ticker-driven clock advances one minute per
+/// [_minuteDuration] of elapsed time, multiplied by the selected speed
+/// (1x–4x). The clock pauses while the half-time talk or the tactics
+/// sheet is open, and the user can pause/resume at any time — there is no
+/// skip-to-end; every match is watched to its final minute.
 ///
 /// Pushed as a full-screen route over the caller (league fixtures are
 /// launched from the Season tab). The [session] arrives ready to play —
@@ -42,7 +49,8 @@ class MatchScreen extends ConsumerStatefulWidget {
   ConsumerState<MatchScreen> createState() => _MatchScreenState();
 }
 
-class _MatchScreenState extends ConsumerState<MatchScreen> {
+class _MatchScreenState extends ConsumerState<MatchScreen>
+    with SingleTickerProviderStateMixin {
   final List<CommentaryLine> _lines = [];
   bool _finished = false;
   MatchReportResult? _report;
@@ -51,6 +59,66 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   String? _error;
   bool _halfTimeOffered = false;
   bool _finishing = false;
+
+  /// Auto-play clock. One match minute costs [_minuteDuration] of real
+  /// time at 1x; the speed multiplier divides it (800ms → 200ms at 4x).
+  late final Ticker _ticker;
+  static const Duration _minuteDuration = Duration(milliseconds: 800);
+
+  /// Playback speed: 1, 2, 3 or 4.
+  int _speed = 1;
+
+  /// User pause. While true the clock swallows elapsed time.
+  bool _paused = false;
+
+  /// True while a modal sheet owns the screen (half-time talk, tactics) —
+  /// the clock is held so the match never runs behind a decision.
+  bool _sheetOpen = false;
+
+  /// Real-time budget already paid toward the next match minute.
+  Duration _budget = Duration.zero;
+  Duration _lastElapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker(_onTick)..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  /// The auto-play heartbeat: converts elapsed real time × speed into
+  /// match minutes, stopping for pauses, open sheets and full time.
+  void _onTick(Duration elapsed) {
+    final session = widget.session;
+    final delta = elapsed - _lastElapsed;
+    _lastElapsed = elapsed;
+    if (session.isFinished) {
+      _ticker.stop();
+      return;
+    }
+    if (_paused || _sheetOpen || delta <= Duration.zero) return;
+    _budget += delta * _speed;
+    while (!session.isFinished && !_sheetOpen && _budget >= _minuteDuration) {
+      _budget -= _minuteDuration;
+      _advance();
+    }
+  }
+
+  void _setSpeed(int speed) {
+    if (speed == _speed || _finished) return;
+    fcmTick();
+    setState(() => _speed = speed);
+  }
+
+  void _togglePause() {
+    fcmTick();
+    setState(() => _paused = !_paused);
+  }
 
   void _advance() {
     final session = widget.session;
@@ -85,33 +153,23 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   Future<void> _chooseHalfTimeTalk() async {
     final session = widget.session;
     // Half-time pep talk (GDD 15.2): effects apply to the second half,
-    // ad-free like every pep talk (FR-043).
-    final talk = await showPepTalkChooser(
-      context: context,
-      title: 'Half-time pep talk',
-      subtitle: 'One choice for the second half — applies from kick-off '
-          'of the second half.',
-      talks: halfTimePepTalks,
-    );
-    if (talk != null && mounted && !session.isFinished) {
-      session.queueHalfTimeTalk(talk);
+    // ad-free like every pep talk (FR-043). The auto-play clock is held
+    // while the sheet is up, so the match waits for the decision.
+    _sheetOpen = true;
+    try {
+      final talk = await showPepTalkChooser(
+        context: context,
+        title: 'Half-time pep talk',
+        subtitle: 'One choice for the second half — applies from kick-off '
+            'of the second half.',
+        talks: halfTimePepTalks,
+      );
+      if (talk != null && mounted && !session.isFinished) {
+        session.queueHalfTimeTalk(talk);
+      }
+    } finally {
+      _sheetOpen = false;
     }
-  }
-
-  void _simToEnd() {
-    final session = widget.session;
-    if (session.isFinished) return;
-    session.simulateToEnd();
-    final lines = generateCommentary(
-      session.engine.events,
-      playerNames: session.allPlayerNames,
-      homeTeamName: session.homeTeamName,
-      awayTeamName: session.awayTeamName,
-    );
-    setState(() => _lines
-      ..clear()
-      ..addAll(lines));
-    _finishMatch();
   }
 
   Future<void> _finishMatch() async {
@@ -262,28 +320,23 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                     fullTime: _finished || state.isFinished,
                     userIsHome: session.userSide == MatchSide.home,
                   ),
-                  // Controls (GDD 10.4/16)
+                  // Controls (GDD 10.4/16): auto-play with pause and a
+                  // 1x–4x speed selector. No skip-to-end exists — every
+                  // match is played to its final minute.
                   if (!_finished)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
                       child: Row(
                         children: [
-                          Expanded(
-                            flex: 3,
-                            child: FcmButton(
-                              onPressed: _advance,
-                              icon: Icons.fast_forward_rounded,
-                              label: 'Next minute',
-                            ),
+                          _PlayPauseButton(
+                            paused: _paused,
+                            onTap: _togglePause,
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            flex: 3,
-                            child: FcmButton(
-                              style: FcmButtonStyle.ghost,
-                              onPressed: _simToEnd,
-                              icon: Icons.skip_next_rounded,
-                              label: 'Sim to end',
+                            child: _SpeedSelector(
+                              speed: _speed,
+                              onSelect: _setSpeed,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -299,7 +352,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: const Icon(Icons.tune_rounded,
-                                    color: Colors.white),
+                                    color: FcmColors.goldSoft),
                               ),
                             ),
                           ),
@@ -319,10 +372,16 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                             userSide: session.userSide,
                           )
                         : _lines.isEmpty
-                            ? const Center(
-                                child: Text('Kick-off! Tap “Next minute”.',
-                                    style:
-                                        TextStyle(color: FcmColors.textDim)),
+                            ? Center(
+                                child: Text(
+                                    _paused
+                                        ? 'Paused — press play to continue.'
+                                        : 'Kick-off! The match plays itself — '
+                                            'change speed or open tactics any '
+                                            'time.',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                        color: FcmColors.textDim)),
                               )
                             : ListView.builder(
                                 reverse: true,
@@ -350,13 +409,16 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
 
   /// Live tactical changes (GDD 10.4): formation, style, mentality and
   /// live actions with their explicit percentage effects (GDD 16), plus
-  /// substitutions (FR-023: five available).
-  void _showTacticsSheet(BuildContext context) {
+  /// substitutions (FR-023: five available). The auto-play clock is held
+  /// while the sheet is open, so changes are never made mid-minute.
+  Future<void> _showTacticsSheet(BuildContext context) async {
     final session = widget.session;
     final nextMinute = session.engine.state.minute + 1;
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) {
+    _sheetOpen = true;
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) {
         Widget section(String title, List<Widget> children) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -440,7 +502,105 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
             ),
           ],
         );
-      },
+        },
+      );
+    } finally {
+      _sheetOpen = false;
+    }
+  }
+}
+
+/// Round play/pause control. Gold while playing (the match is alive),
+/// pulsing red ember while paused so the state is unmistakable.
+class _PlayPauseButton extends StatelessWidget {
+  const _PlayPauseButton({required this.paused, required this.onTap});
+
+  final bool paused;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPressable(
+      onTap: onTap,
+      scale: 0.94,
+      child: Container(
+        width: 54,
+        height: 54,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: paused ? FcmColors.steelGradient : FcmColors.goldGradient,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: paused
+                ? FcmColors.bronze.withValues(alpha: 0.55)
+                : FcmColors.goldSoft.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Icon(
+          paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+          color: paused ? FcmColors.goldSoft : FcmColors.ink,
+          size: 30,
+        ),
+      ),
+    );
+  }
+}
+
+/// Segmented 1x / 2x / 3x / 4x speed selector. The selected segment is
+/// gold with ink text; the rest sit on steel. A small label shows the
+/// real-time cost of one match minute at the selected speed.
+class _SpeedSelector extends StatelessWidget {
+  const _SpeedSelector({required this.speed, required this.onSelect});
+
+  static const speeds = [1, 2, 3, 4];
+
+  final int speed;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: FcmColors.steelGradient,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: FcmColors.bronze.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          for (final s in speeds)
+            Expanded(
+              child: FcmPressable(
+                onTap: () => onSelect(s),
+                scale: 0.96,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  height: double.infinity,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: s == speed ? FcmColors.goldGradient : null,
+                    borderRadius: BorderRadius.circular(12),
+                    border: s == speed
+                        ? Border.all(
+                            color: FcmColors.goldSoft.withValues(alpha: 0.5))
+                        : Border.all(color: Colors.transparent),
+                  ),
+                  child: Text(
+                    '${s}x',
+                    style: TextStyle(
+                      color: s == speed ? FcmColors.ink : FcmColors.textDim,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
