@@ -100,6 +100,10 @@ void main() {
     expect(find.text('GOLD'), findsNWidgets(13));
     expect(find.text('FREE ×3'), findsNWidgets(4));
     expect(find.text('FREE ×1'), findsNWidgets(8));
+    // Owned cells show CLAIM (opens straight into the reveal), the rest
+    // BUY — identical cell layout either way.
+    expect(find.text('CLAIM'), findsNWidgets(12));
+    expect(find.text('BUY'), findsNWidgets(27));
 
     // store-level check: the 20 free packs (4 cheapest positions × 3 plus
     // one per other position, all bronze) exist and remain unopened

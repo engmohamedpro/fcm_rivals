@@ -88,9 +88,42 @@ void main() {
     final packs = await tester.runAsync(() => store.getAvailablePacks());
     expect(packs!.length, 20);
     expect(packs.every((p) => p.tier == 'bronze'), isTrue);
-    // Unowned tiers show BUY instead: 39 cells minus the 12 owned scopes
-    // (4 cheapest at ×3 + 8 others at ×1 stack under their bronze cells).
+    // Owned cells show CLAIM, unowned BUY — same size, style and layout:
+    // 39 cells minus the 12 owned scopes (4 cheapest at ×3 + 8 others at
+    // ×1 stack under their bronze cells).
+    expect(find.text('CLAIM'), findsNWidgets(12));
     expect(find.text('BUY'), findsNWidgets(27));
+  });
+
+  testWidgets('CLAIM opens the owned pack straight into the reveal — no dialog',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester);
+
+    final packsBefore = await tester.runAsync(() => store.getAvailablePacks());
+    final claimedId = packsBefore!.first.id;
+
+    await tester.tap(find.text('CLAIM').first);
+    // Real drift I/O resolves openPack before the reveal route builds.
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    // First pump processes the push, the following ones walk the route
+    // transition fully onstage.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // No purchase confirmation of any kind — straight to the sealed pack.
+    expect(find.text('YES'), findsNothing);
+    expect(find.text('NO'), findsNothing);
+    expect(find.textContaining('Buy'), findsNothing);
+    expect(find.text('TAP TO OPEN'), findsOneWidget);
+
+    // The claimed pack is consumed from the inventory.
+    final packsAfter = await tester.runAsync(() => store.getAvailablePacks());
+    expect(packsAfter!.any((p) => p.id == claimedId), isFalse);
+    expect(packsAfter.length, packsBefore.length - 1);
   });
 
   testWidgets('BUY opens a YES/NO confirmation and YES buys the tiered pack',

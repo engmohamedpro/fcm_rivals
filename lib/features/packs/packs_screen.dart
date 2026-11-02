@@ -333,12 +333,15 @@ class _StoreGrid extends StatelessWidget {
 }
 
 /// One store cell: the sealed foil pack exactly as it looks before
-/// opening (same [FoilPackPainter] as the reveal cinematic), tinted by
-/// the pack's tier — bronze, silver or gold — with a scope badge, the
-/// tier name, the title, and under it either the FREE ×N pill — when the
-/// club owns packs of this type — or the coin price with a BUY button
-/// that opens the purchase confirmation. The ⓘ badge opens the pack's
-/// contents list.
+/// opening (same [FoilPackPainter] as the reveal cinematic), painted in
+/// the pack's solid tier metal — bronze, silver or gold — with a scope
+/// badge, the tier name, the title, and under it a price slot plus one
+/// action button. Owned and buyable cells share the exact same layout:
+/// the slot shows the FREE ×N pill when the club owns packs of this
+/// type, the coin price otherwise; the button reads CLAIM — which opens
+/// the next owned pack straight into the reveal, no confirmation — or
+/// BUY, which opens the YES/NO purchase dialog. The ⓘ badge opens the
+/// pack's contents list.
 class _StorePackCell extends StatelessWidget {
   const _StorePackCell({
     required this.offer,
@@ -380,7 +383,7 @@ class _StorePackCell extends StatelessWidget {
                           shimmer: 0.42,
                           charge: 0,
                           glowColor: tierColor,
-                          tint: tierColor.withValues(alpha: 0.22),
+                          tint: tierColor,
                         ),
                       ),
                     ),
@@ -395,8 +398,7 @@ class _StorePackCell extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: FcmColors.night.withValues(alpha: 0.88),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: tierColor.withValues(alpha: 0.8)),
+                            border: Border.all(color: tierColor),
                           ),
                           child: Text(
                             scopeLabel,
@@ -451,40 +453,48 @@ class _StorePackCell extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          if (isFree)
-            FcmPill('FREE ×$ownedCount')
-          else ...[
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.monetization_on_rounded,
-                  size: 12,
-                  color: affordable ? FcmColors.gold : FcmColors.danger,
-                ),
-                const SizedBox(width: 3),
-                FitText(
-                  _formatCoins(offer.price),
-                  style: TextStyle(
-                    color: affordable ? FcmColors.gold : FcmColors.danger,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
+          // Price slot: FREE ×N pill for owned packs, coin price otherwise
+          // — fixed height so both variants keep one identical layout.
+          SizedBox(
+            height: 20,
+            child: Center(
+              child: isFree
+                  ? FcmPill('FREE ×$ownedCount')
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.monetization_on_rounded,
+                          size: 12,
+                          color:
+                              affordable ? FcmColors.gold : FcmColors.danger,
+                        ),
+                        const SizedBox(width: 3),
+                        FitText(
+                          _formatCoins(offer.price),
+                          style: TextStyle(
+                            color: affordable
+                                ? FcmColors.gold
+                                : FcmColors.danger,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
-            const SizedBox(height: 6),
-            // The explicit buy affordance: tapping it (or the cell) opens
-            // the YES/NO confirmation — nothing is ever bought silently.
-            SizedBox(
-              width: double.infinity,
-              child: FcmButton(
-                compact: true,
-                label: 'BUY',
-                onPressed: onTap,
-              ),
+          ),
+          const SizedBox(height: 6),
+          // CLAIM opens the next owned pack straight into the reveal —
+          // no confirmation dialog; BUY opens the YES/NO purchase dialog.
+          SizedBox(
+            width: double.infinity,
+            child: FcmButton(
+              compact: true,
+              label: isFree ? 'CLAIM' : 'BUY',
+              onPressed: onTap,
             ),
-          ],
+          ),
         ],
       ),
     );

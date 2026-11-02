@@ -61,8 +61,9 @@ class FoilPackPainter extends CustomPainter {
   /// Colour the pack's inner light turns toward while charging.
   final Color glowColor;
 
-  /// Store-tier wash over the foil body (bronze / silver / gold). Null
-  /// keeps the untinted charcoal leather — the classic sealed look.
+  /// Solid tier metal the whole foil is painted in — bronze / silver /
+  /// gold at full strength, never a translucent wash. Null keeps the
+  /// untinted charcoal leather — the classic sealed look.
   final Color? tint;
 
   @override
@@ -70,18 +71,18 @@ class FoilPackPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final path = _packPath(size);
 
+    // Foil palette: the brand charcoal, or the tier's own metallic ramp.
+    final shades = tint == null ? null : _foilShades(tint!);
+
     // Drop shadow.
     canvas.drawShadow(path, Colors.black, 18, true);
 
-    // Foil body: charcoal leather with a warm metal sheen (brand look),
-    // washed with the store tier's colour when one is given.
-    final bodyColors = tint == null
+    // Foil body: sheen at the top-left, tier metal across the middle,
+    // deep shade at the bottom-right — the pack reads as a solid bronze
+    // / silver / gold wrapper, not a dark one with a hint of colour.
+    final bodyColors = shades == null
         ? const [Color(0xFF3A342C), Color(0xFF17161A), Color(0xFF0B0A0E)]
-        : [
-            Color.lerp(const Color(0xFF3A342C), tint!, 0.55)!,
-            Color.lerp(const Color(0xFF17161A), tint!, 0.30)!,
-            const Color(0xFF0B0A0E),
-          ];
+        : [shades[0], shades[1], shades[3]];
     canvas.drawPath(
       path,
       Paint()
@@ -96,17 +97,13 @@ class FoilPackPainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(path);
 
-    // Metal band across the middle — tier-tinted, plain gold otherwise.
+    // Metal band across the middle — embossed dark edges, bright centre.
     final bandTop = size.height * 0.40;
     final bandRect =
         Rect.fromLTWH(0, bandTop, size.width, size.height * 0.20);
-    final bandColors = tint == null
+    final bandColors = shades == null
         ? const [Color(0xFF8A6E42), Color(0xFFF5E3B0), Color(0xFF8A6E42)]
-        : [
-            Color.lerp(const Color(0xFF8A6E42), tint!, 0.5)!,
-            Color.lerp(const Color(0xFFF5E3B0), tint!, 0.75)!,
-            Color.lerp(const Color(0xFF8A6E42), tint!, 0.5)!,
-          ];
+        : [shades[2], shades[0], shades[2]];
     canvas.drawRect(
       bandRect,
       Paint()
@@ -122,11 +119,12 @@ class FoilPackPainter extends CustomPainter {
         Offset(size.width / 2, bandRect.center.dy + size.height * 0.062),
         italic: true, spacing: 3);
 
-    // Crown + stars above the band.
-    _text(canvas, '★  ★  ★', size.width * 0.07, FcmColors.gold,
+    // Crown + stars above the band: bright tier metal when tinted.
+    _text(canvas, '★  ★  ★', size.width * 0.07,
+        shades == null ? FcmColors.gold : shades[0],
         Offset(size.width / 2, size.height * 0.30));
     _text(canvas, 'PLAYER PACK', size.width * 0.075,
-        (tint ?? FcmColors.goldSoft).withValues(alpha: 0.9),
+        shades == null ? FcmColors.goldSoft : shades[0],
         Offset(size.width / 2, size.height * 0.76),
         spacing: 3);
 
@@ -206,8 +204,26 @@ class FoilPackPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
-        ..color = FcmColors.gold.withValues(alpha: 0.45),
+        ..color = shades == null
+            ? FcmColors.gold.withValues(alpha: 0.45)
+            : shades[0],
     );
+  }
+
+  /// Metallic ramp of a tier colour: [light, base, dark, deep]. Derived
+  /// by shifting lightness only, so hue and saturation survive at full
+  /// strength — bronze looks like bronze, silver like silver.
+  static List<Color> _foilShades(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    final l = hsl.lightness;
+    Color shade(double lightness) =>
+        hsl.withLightness(lightness.clamp(0.0, 0.92)).toColor();
+    return [
+      shade(l + 0.22), // sheen — top-left highlight and band centre
+      base,            // the tier metal itself
+      shade(l * 0.45 + 0.07), // embossed band edges
+      shade(l * 0.25 + 0.04), // deep bottom-right of the foil
+    ];
   }
 
   void _text(Canvas canvas, String text, double size, Color color,
