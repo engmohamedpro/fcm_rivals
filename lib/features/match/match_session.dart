@@ -170,7 +170,7 @@ class MatchSession {
   /// [tactics] overrides the club's saved setup for this match only: its
   /// style and mentality replace the club's, and a different formation
   /// re-picks the whole squad in memory (same Auto Pick rules as the
-  /// Tactics tab) so the exact shape the user previewed kicks off.
+  /// Team tab) so the exact shape the user previewed kicks off.
   static Future<(MatchTeamInput, db.Club)> _userTeamInputs(
       CollectionStore store,
       {PreMatchTacticSelection? tactics}) async {

@@ -100,7 +100,7 @@ class Packs extends Table {
   IntColumn get clubId => integer()();
   TextColumn get category => text()();
   TextColumn get scopeValue => text().nullable()();
-  TextColumn get tier => text().withDefault(const Constant('bronze'))();
+  TextColumn get tier => text().withDefault(const Constant('rare'))();
   IntColumn get price => integer().withDefault(const Constant(0))();
   TextColumn get source => text().withDefault(const Constant('starting'))();
   BoolColumn get opened => boolean().withDefault(const Constant(false))();

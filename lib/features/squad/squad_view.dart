@@ -2,7 +2,7 @@
 ///
 /// One implementation of the tactics screen, used in two places:
 ///
-///  * the Tactics tab — every change goes straight to the club's saved
+///  * the Team tab — every change goes straight to the club's saved
 ///    setup and becomes the permanent default (GDD 10.4);
 ///  * the pre-match tactics phase — the same controls and the same pitch,
 ///    but the selection lives only for the match about to be played and
@@ -65,17 +65,17 @@ class TacticsSetupView extends StatelessWidget {
   final List<PlayerCard> reserves;
 
   /// Tactic change callbacks — the owner defines whether they persist
-  /// (Tactics tab) or apply to one match only (pre-match phase).
+  /// (Team tab) or apply to one match only (pre-match phase).
   final ValueChanged<String> onFormation;
   final ValueChanged<PlayingStyle> onStyle;
   final ValueChanged<Mentality> onMentality;
 
-  /// Shows the Auto Pick button (GDD 6.3) when non-null — the Tactics tab
+  /// Shows the Auto Pick button (GDD 6.3) when non-null — the Team tab
   /// persists a re-picked squad; pre-match hides it.
   final VoidCallback? onAutoPick;
 
   /// Whether cards carry their stamina bar. The pre-match phase shows
-  /// match-day fitness; the Tactics tab hides it — the saved setup is
+  /// match-day fitness; the Team tab hides it — the saved setup is
   /// about identity, not current match state.
   final bool showStamina;
 
@@ -472,10 +472,10 @@ class SquadPitch extends StatelessWidget {
   /// Slot index → card for the starting XI.
   final Map<int, PlayerCard> assignments;
 
-  /// Whether cards carry their stamina bar (hidden in the Tactics tab).
+  /// Whether cards carry their stamina bar (hidden in the Team tab).
   final bool showStamina;
 
-  /// Whether cards carry their stat row (hidden in the Tactics tab).
+  /// Whether cards carry their stat row (hidden in the Team tab).
   final bool showStats;
 
   /// Optional card tap (player detail sheet).
@@ -598,10 +598,10 @@ class SquadCardRow extends StatelessWidget {
   /// assigned players).
   final int emptySlots;
 
-  /// Whether cards carry their stamina bar (hidden in the Tactics tab).
+  /// Whether cards carry their stamina bar (hidden in the Team tab).
   final bool showStamina;
 
-  /// Whether cards carry their stat row (hidden in the Tactics tab).
+  /// Whether cards carry their stat row (hidden in the Team tab).
   final bool showStats;
 
   /// Optional card tap (player detail sheet).

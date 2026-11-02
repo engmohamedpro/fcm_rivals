@@ -215,36 +215,36 @@ void main() {
   group('PackTier (GDD 5.5 variety)', () {
     final pool = buildPool(30);
 
-    test('gold packs draw the high tier far more often than bronze', () {
-      final bronze = PackEngine(random: math.Random(3));
-      final gold = PackEngine(random: math.Random(3));
-      const bronzeScope =
-          PackScope(category: PackCategory.global, tier: PackTier.bronze);
-      const goldScope =
-          PackScope(category: PackCategory.global, tier: PackTier.gold);
-      var bronzeHigh = 0, goldHigh = 0;
+    test('legendary packs draw the high tier far more often than rare', () {
+      final rare = PackEngine(random: math.Random(3));
+      final legendary = PackEngine(random: math.Random(3));
+      const rareScope =
+          PackScope(category: PackCategory.global, tier: PackTier.rare);
+      const legendaryScope =
+          PackScope(category: PackCategory.global, tier: PackTier.legendary);
+      var rareHigh = 0, legendaryHigh = 0;
       const runs = 600;
       for (var i = 0; i < runs; i++) {
-        if (bronze.open(bronzeScope, pool).single.tier == 2) bronzeHigh++;
-        if (gold.open(goldScope, pool).single.tier == 2) goldHigh++;
+        if (rare.open(rareScope, pool).single.tier == 2) rareHigh++;
+        if (legendary.open(legendaryScope, pool).single.tier == 2) legendaryHigh++;
       }
       // bronze weights [1, .12, 0]: the high tier is only reachable via
       // fallback when the rolled low/mid tier is somehow empty — never
       // here. gold weights [.05, .45, 1]: high dominates.
-      expect(bronzeHigh, 0);
-      expect(goldHigh, greaterThan(runs * 0.6));
+      expect(rareHigh, 0);
+      expect(legendaryHigh, greaterThan(runs * 0.6));
     });
 
-    test('gold packs cost more than silver, silver more than bronze', () {
+    test('legendary packs cost more than epic, epic more than rare', () {
       final engine = PackEngine(random: math.Random(1));
       int priceOf(PackTier tier) => engine.packPriceFor(
           PackScope(category: PackCategory.global, tier: tier), pool);
-      final bronze = priceOf(PackTier.bronze);
-      final silver = priceOf(PackTier.silver);
-      final gold = priceOf(PackTier.gold);
-      expect(bronze, greaterThan(0));
-      expect(silver, greaterThan(bronze));
-      expect(gold, greaterThan(silver));
+      final rare = priceOf(PackTier.rare);
+      final epic = priceOf(PackTier.epic);
+      final legendary = priceOf(PackTier.legendary);
+      expect(rare, greaterThan(0));
+      expect(epic, greaterThan(rare));
+      expect(legendary, greaterThan(epic));
     });
 
     test('tier pricing holds per position scope too', () {
@@ -265,9 +265,9 @@ void main() {
                 position: position,
                 tier: tier),
             mixed);
-        expect(priceOf(PackTier.bronze), greaterThan(0));
-        expect(priceOf(PackTier.silver), greaterThan(priceOf(PackTier.bronze)));
-        expect(priceOf(PackTier.gold), greaterThan(priceOf(PackTier.silver)));
+        expect(priceOf(PackTier.rare), greaterThan(0));
+        expect(priceOf(PackTier.epic), greaterThan(priceOf(PackTier.rare)));
+        expect(priceOf(PackTier.legendary), greaterThan(priceOf(PackTier.epic)));
       }
     });
 
@@ -275,15 +275,15 @@ void main() {
       for (final tier in PackTier.values) {
         expect(PackTier.fromName(tier.name), tier);
       }
-      expect(PackTier.fromName(null), PackTier.bronze);
-      expect(PackTier.fromName('platinum'), PackTier.bronze);
+      expect(PackTier.fromName(null), PackTier.rare);
+      expect(PackTier.fromName('platinum'), PackTier.rare);
     });
 
     test('scope tier overrides the engine tierWeights', () {
       // Engine biased entirely to low, but the scope's gold weights win.
       final engine = PackEngine(random: math.Random(8), tierWeights: const [1, 0, 0]);
       const scope =
-          PackScope(category: PackCategory.global, tier: PackTier.gold);
+          PackScope(category: PackCategory.global, tier: PackTier.legendary);
       var high = 0;
       for (var i = 0; i < 100; i++) {
         if (engine.open(scope, pool).single.tier == 2) high++;

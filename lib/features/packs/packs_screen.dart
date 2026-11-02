@@ -15,7 +15,7 @@ import 'pack_contents_screen.dart';
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_opening_screen.dart';
 
-/// Packs tab — the store (GDD 5.5): one SECTION per scope — the global
+/// Store tab (nav label 'Store', GDD 5.5): one SECTION per scope — the global
 /// pack or one position — grouping its three tier varieties — Bronze /
 /// Silver / Gold, each with its own odds of better players and its own
 /// price — under a shared title and a shared strip of obtainable
@@ -94,7 +94,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
               return store.getPackPlayers(
                   category: category,
                   scopeValue: scopeValue,
-                  tier: PackTier.bronze);
+                  tier: PackTier.rare);
             },
             onViewAll: (offer) => _showContents(context, offer,
                 title: offer.scopeValue == null
@@ -166,6 +166,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   /// Buy flow: coins are the game's hard currency, so the purchase always
   /// passes an explicit YES/NO confirmation first (price and an
   /// affordability check up front); the store still validates atomically.
+  /// YES buys the pack and opens it straight into the reveal cinematic.
   Future<void> _buy(BuildContext context, StorePackOffer offer) async {
     final coins = ref.read(clubProvider).valueOrNull?.coins;
     final canAfford = coins == null || coins >= offer.price;
@@ -237,9 +238,14 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ),
     );
     if (confirmed != true || !context.mounted) return;
+    if (_opening) return;
+    setState(() => _opening = true);
     try {
+      // Buy, then fall straight into the reveal — the purchase is the
+      // point of the dialog, so YES plays the opening cinematic instead
+      // of parking the pack in the inventory behind a snackbar.
       final store = await ref.read(collectionStoreProvider.future);
-      await store.buyPack(
+      final pack = await store.buyPack(
         category: offer.category,
         tier: offer.tier,
         position: offer.category == PackCategory.position
@@ -248,10 +254,30 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       );
       ref.invalidate(availablePacksProvider);
       ref.invalidate(clubProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Pack bought — open it from the grid')));
-      }
+      if (!context.mounted) return;
+      // Captured before the push: the sell callback fires much later,
+      // inside the reveal, when this context may already be unmounted.
+      final messenger = ScaffoldMessenger.of(context);
+      final sellMessage = (int credit) => SnackBar(
+          content: Text('Sold for ${_groupDigits(credit)} coins'));
+      final random = ref.read(randomProvider);
+      final result = await store.openPack(packId: pack.id, random: random);
+      ref.invalidate(availablePacksProvider);
+      ref.invalidate(clubProvider);
+      ref.invalidate(collectionProvider);
+      if (!context.mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => PackOpeningScreen(
+          players: result.players,
+          ownedIds: result.ownedIds,
+          onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
+            ref.invalidate(clubProvider);
+            ref.invalidate(collectionProvider);
+            if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
+          }),
+        ),
+      ));
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -655,11 +681,15 @@ class _StorePackCell extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           // CLAIM opens the next owned pack straight into the reveal —
-          // no confirmation dialog; BUY opens the YES/NO purchase dialog.
+          // no confirmation dialog — in the success green with a gift
+          // icon, so a free pack reads instantly different from the
+          // gold BUY. BUY opens the YES/NO purchase dialog.
           SizedBox(
             width: double.infinity,
             child: FcmButton(
               compact: true,
+              style: isFree ? FcmButtonStyle.success : FcmButtonStyle.gold,
+              icon: isFree ? Icons.card_giftcard_rounded : null,
               label: isFree ? 'CLAIM' : 'BUY',
               onPressed: onTap,
             ),

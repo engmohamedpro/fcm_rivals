@@ -24,14 +24,15 @@ enum PackCategory {
   final String label;
 }
 
-/// Store pack varieties: each tier biases the Market Value tier roll
-/// toward better players — a Gold pack heavily favours the high tier, a
-/// Bronze pack almost never leaves the low tier — and is priced by its
-/// own expected contents, so better odds cost proportionally more Coins.
+/// Store pack rarities, named after the player-card rarities they bias
+/// toward: each tier weights the Market Value tier roll toward better
+/// players — a Legendary pack heavily favours the high tier, a Rare pack
+/// almost never leaves the low tier — and is priced by its own expected
+/// contents, so better odds cost proportionally more Coins.
 enum PackTier {
-  bronze('Bronze', [1.0, 0.12, 0.0]),
-  silver('Silver', [0.35, 1.0, 0.18]),
-  gold('Gold', [0.05, 0.45, 1.0]);
+  rare('Rare', [1.0, 0.12, 0.0]),
+  epic('Epic', [0.35, 1.0, 0.18]),
+  legendary('Legendary', [0.05, 0.45, 1.0]);
 
   const PackTier(this.label, this.weights);
 
@@ -42,20 +43,26 @@ enum PackTier {
   /// with [PackEngine.tierWeights] ordering.
   final List<double> weights;
 
-  /// Parses a persisted tier name; unknown values fall back to bronze.
-  static PackTier fromName(String? name) => values
-      .firstWhere((t) => t.name == name, orElse: () => PackTier.bronze);
+  /// Parses a persisted tier name. Rows written before the rarity
+  /// renaming stored the medal metals ('bronze'/'silver'/'gold'); they
+  /// map onto the same tiers. Unknown values fall back to rare.
+  static PackTier fromName(String? name) => switch (name) {
+        'epic' || 'silver' => PackTier.epic,
+        'legendary' || 'gold' => PackTier.legendary,
+        _ => PackTier.rare, // 'rare', legacy 'bronze', anything else
+      };
 }
 
-/// Store-tier accent colours, aligned with the rarity palette in the UI
-/// style (bronze → warm bronze, silver → cool silver, gold → champion
-/// gold). Cells, badges and foils draw from these so a pack's tier reads
-/// at a glance.
+/// Pack-rarity accent colours — the same palette as the player-card
+/// rarities ([CardRarity.accent]): rare → warm bronze, epic → cool
+/// silver, legendary → champion gold. Cells, badges and foils draw from
+/// these so a pack's rarity reads at a glance and matches the cards it
+/// draws.
 extension PackTierColor on PackTier {
   Color get accent => switch (this) {
-        PackTier.bronze => const Color(0xFFC89A5B),
-        PackTier.silver => const Color(0xFFD9D9E2),
-        PackTier.gold => const Color(0xFFF2D488),
+        PackTier.rare => const Color(0xFFC89A5B),
+        PackTier.epic => const Color(0xFFD9D9E2),
+        PackTier.legendary => const Color(0xFFF2D488),
       };
 }
 

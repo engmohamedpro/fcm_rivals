@@ -133,7 +133,7 @@ class PreMatchData {
 
   /// The user's persisted squad (slot index → card) for the tactics phase:
   /// the starting XI, bench and reserves re-rendered exactly like the
-  /// Tactics tab, stamina bars included (GDD 11).
+  /// Team tab, stamina bars included (GDD 11).
   final Map<int, PlayerCard> userSquad;
 }
 

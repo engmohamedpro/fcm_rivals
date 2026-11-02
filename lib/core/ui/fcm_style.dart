@@ -63,12 +63,21 @@ class FcmColors {
     end: Alignment.bottomRight,
     colors: [Color(0xFF2A2731), Color(0xFF17161B)],
   );
+
+  /// Free / claim action gradient (mint → success green) — reads as
+  /// "costs nothing" next to the gold BUY.
+  static const LinearGradient successGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFFC4E8C9), Color(0xFF8FD09A), Color(0xFF54845F)],
+  );
 }
 
 /// Card rarity. Derived from a player's rating so the same player looks the
-/// same in the pack reveal, the collection and the squad: bronze (rare),
-/// silver (epic) and gold (legendary) — the medal metals of the brand.
-/// Higher rarity gets bigger reveal effects (GDD 5.6).
+/// same in the pack reveal, the collection and the squad: rare, epic and
+/// legendary — one rarity language shared with the store's pack tiers,
+/// each carrying the metal accent of its pack. Higher rarity gets bigger
+/// reveal effects (GDD 5.6).
 enum CardRarity {
   rare,
   epic,
@@ -89,9 +98,9 @@ enum CardRarity {
       };
 
   String get label => switch (this) {
-        CardRarity.rare => 'BRONZE',
-        CardRarity.epic => 'SILVER',
-        CardRarity.legendary => 'GOLD',
+        CardRarity.rare => 'RARE',
+        CardRarity.epic => 'EPIC',
+        CardRarity.legendary => 'LEGENDARY',
       };
 
   /// Main accent colour (glow, rays, particles).

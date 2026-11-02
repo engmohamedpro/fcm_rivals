@@ -9,7 +9,7 @@
 ///      reserves, no tactics or condition), side-by-side strength bars
 ///      and the opponent's top three players as collection-style cards,
 ///      each staggering in.
-///   3. Tactics phase  — the SAME tactics screen as the Tactics tab
+///   3. Tactics phase  — the SAME tactics screen as the Team tab
 ///      (formation, playing style and mentality dropdowns with visible
 ///      percentage effects, pitch with stamina bars, bench and reserves),
 ///      except the changes apply to THIS MATCH ONLY: the club's saved
@@ -747,7 +747,7 @@ class _TopPlayersCard extends StatelessWidget {
 // -----------------------------------------------------------------------------
 
 /// Set up how this match is played (GDD 10.4): the SAME tactics screen as
-/// the Tactics tab — formation, playing style and mentality dropdowns
+/// the Team tab — formation, playing style and mentality dropdowns
 /// with their visible percentage effects, the pitch with per-player
 /// stamina bars (GDD 11), bench and reserves — with one difference: the
 /// changes apply to THIS MATCH ONLY and never touch the club's saved
@@ -779,7 +779,7 @@ class _TacticsPhase extends StatelessWidget {
     final squad = d.userSquad;
 
     // Starting XI, bench and reserves for the SELECTED shape: a changed
-    // formation re-picks the XI in memory (same rules as the Tactics tab's
+    // formation re-picks the XI in memory (same rules as the Team tab's
     // Auto Pick) so what the user sees is the team that will kick off.
     final (xi, bench, reserves) = _squadFor(formationCode, squad);
 
@@ -801,7 +801,7 @@ class _TacticsPhase extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Same as your Tactics tab — but these changes last only '
+                'Same as your Team tab — but these changes last only '
                 'until the final whistle. Your saved default setup is '
                 'untouched.',
                 textAlign: TextAlign.center,

@@ -88,7 +88,7 @@ void main() {
       final packs = await store.getAvailablePacks();
       expect(packs.length, 20);
       expect(packs.every((p) => p.category == 'position' && !p.opened), isTrue);
-      expect(packs.every((p) => p.tier == 'bronze'), isTrue);
+      expect(packs.every((p) => p.tier == 'rare'), isTrue);
       final counts = <String, int>{};
       for (final p in packs) {
         counts[p.scopeValue!] = (counts[p.scopeValue!] ?? 0) + 1;
@@ -110,7 +110,7 @@ void main() {
         for (final o in offers)
           if (o.category == PackCategory.position &&
               {'GK', 'CB', 'CM', 'RW'}.contains(o.scopeValue) &&
-              o.tier == PackTier.bronze)
+              o.tier == PackTier.rare)
             o.price
       ];
       expect(freePrices.length, 4);
@@ -118,7 +118,7 @@ void main() {
         for (final o in offers)
           if (o.category == PackCategory.position &&
               !{'GK', 'CB', 'CM', 'RW'}.contains(o.scopeValue) &&
-              o.tier == PackTier.bronze)
+              o.tier == PackTier.rare)
             o.price
       ];
       expect(otherPrices.length, 8);
@@ -245,10 +245,10 @@ void main() {
       expect(
           offers.where((o) => o.scopeValue == 'ST').map((o) => o.tier).toSet(),
           PackTier.values.toSet());
-      // Titles carry the tier, e.g. 'Gold Global Pack'.
-      expect(offers.map((o) => o.title).contains('Gold Global Pack'), isTrue);
+      // Titles carry the tier, e.g. 'Legendary Global Pack'.
+      expect(offers.map((o) => o.title).contains('Legendary Global Pack'), isTrue);
       expect(
-          offers.map((o) => o.title).contains('Silver ST Position Pack'),
+          offers.map((o) => o.title).contains('Epic ST Position Pack'),
           isTrue);
     });
 
@@ -260,8 +260,8 @@ void main() {
                 ? o.category == PackCategory.global
                 : o.scopeValue == scope);
         final byTier = {for (final o in scoped) o.tier: o.price};
-        expect(byTier[PackTier.silver]!, greaterThan(byTier[PackTier.bronze]!));
-        expect(byTier[PackTier.gold]!, greaterThan(byTier[PackTier.silver]!));
+        expect(byTier[PackTier.epic]!, greaterThan(byTier[PackTier.rare]!));
+        expect(byTier[PackTier.legendary]!, greaterThan(byTier[PackTier.epic]!));
       }
     });
 
@@ -269,11 +269,11 @@ void main() {
         () async {
       final offers = await store.getStoreOffers();
       final goldGlobal =
-          offers.firstWhere((o) => o.tier == PackTier.gold && o.scopeValue == null);
+          offers.firstWhere((o) => o.tier == PackTier.legendary && o.scopeValue == null);
       final before = (await store.getClub())!.coins;
       final pack = await store.buyPack(
-          category: PackCategory.global, tier: PackTier.gold);
-      expect(pack.tier, 'gold');
+          category: PackCategory.global, tier: PackTier.legendary);
+      expect(pack.tier, 'legendary');
       expect(pack.price, goldGlobal.price);
       expect(pack.scopeValue, isNull);
       expect((await store.getClub())!.coins, before - goldGlobal.price);
@@ -289,7 +289,7 @@ void main() {
       final players = await store.getPackPlayers(
           category: PackCategory.position,
           scopeValue: 'GK',
-          tier: PackTier.gold);
+          tier: PackTier.legendary);
       expect(players.length, 5); // the seed pool's GK count
       expect(players.every((p) => p.position.code == 'GK'), isTrue);
       final overalls = players.map((p) => p.baseStats.overall).toList();
@@ -300,7 +300,7 @@ void main() {
             ..sort((a, b) => b.compareTo(a))));
       // Global scope covers the whole pool.
       final global = await store.getPackPlayers(
-          category: PackCategory.global, tier: PackTier.bronze);
+          category: PackCategory.global, tier: PackTier.rare);
       expect(global.length, 60);
     });
   });

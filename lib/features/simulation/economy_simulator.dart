@@ -350,7 +350,7 @@ class EconomySimulator {
       // Keep a reserve so match-day stamina/recovery spending is never
       // blocked; stop at two unaffordable attempts in a row.
       Pack? bought;
-      for (final tier in [PackTier.gold, PackTier.silver, PackTier.bronze]) {
+      for (final tier in [PackTier.legendary, PackTier.epic, PackTier.rare]) {
         try {
           bought = await collection.buyPack(
               category: PackCategory.global, tier: tier);

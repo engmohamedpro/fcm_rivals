@@ -18,6 +18,7 @@ import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmButton;
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/packs/pack_contents_screen.dart';
+import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart'
     show PackCategory, PackTier;
 import 'package:fcm_rivals/features/packs/packs_screen.dart';
@@ -85,9 +86,9 @@ void main() {
     final global = offers!.firstWhere((o) => o.scopeValue == null);
     expect(find.text('${global.eligibleCount} PLAYERS'), findsOneWidget);
     // Three tier cells per section: 13 sections × 3.
-    expect(find.text('BRONZE'), findsNWidgets(13));
-    expect(find.text('SILVER'), findsNWidgets(13));
-    expect(find.text('GOLD'), findsNWidgets(13));
+    expect(find.text('RARE'), findsNWidgets(13));
+    expect(find.text('EPIC'), findsNWidgets(13));
+    expect(find.text('LEGENDARY'), findsNWidgets(13));
     // No rewarded-ad offer anywhere.
     expect(find.text('Free pack — watch an ad'), findsNothing);
 
@@ -97,7 +98,7 @@ void main() {
     expect(find.text('FREE ×1'), findsNWidgets(8));
     final packs = await tester.runAsync(() => store.getAvailablePacks());
     expect(packs!.length, 20);
-    expect(packs.every((p) => p.tier == 'bronze'), isTrue);
+    expect(packs.every((p) => p.tier == 'rare'), isTrue);
     // Owned cells show CLAIM, unowned BUY — same size, style and layout:
     // 39 cells minus the 12 owned scopes (4 cheapest at ×3 + 8 others at
     // ×1 stack under their bronze cells).
@@ -121,7 +122,7 @@ void main() {
 
     // The pool strip loads the shared scope pool as mini cards.
     final pool = await tester.runAsync(
-        () => store.getPackPlayers(category: PackCategory.position, scopeValue: 'ST', tier: PackTier.bronze));
+        () => store.getPackPlayers(category: PackCategory.position, scopeValue: 'ST', tier: PackTier.rare));
     expect(pool, isNotEmpty);
     expect(find.byType(FcmMiniCard), findsWidgets);
   });
@@ -157,7 +158,7 @@ void main() {
     expect(packsAfter.length, packsBefore.length - 1);
   });
 
-  testWidgets('BUY opens a YES/NO confirmation and YES buys the tiered pack',
+  testWidgets('BUY opens a YES/NO confirmation and YES buys AND opens the pack',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
@@ -166,18 +167,18 @@ void main() {
 
     final clubBefore = await tester.runAsync(() => store.getClub());
     final offers = await tester.runAsync(() => store.getStoreOffers());
-    // The first BUY on screen is the Bronze Global Pack cell.
-    final bronzeGlobal =
-        offers!.firstWhere((o) => o.tier == PackTier.bronze && o.scopeValue == null);
+    // The first BUY on screen is the Rare Global Pack cell.
+    final rareGlobal =
+        offers!.firstWhere((o) => o.tier == PackTier.rare && o.scopeValue == null);
 
     await tester.tap(find.text('BUY').first);
     await tester.pump();
 
     // Confirmation shows the price with YES and NO side by side in one
     // row — no balance line.
-    expect(find.text('Buy Bronze Global Pack?'), findsOneWidget);
+    expect(find.text('Buy Rare Global Pack?'), findsOneWidget);
     expect(
-        find.textContaining('${_group(bronzeGlobal.price)} Coins'),
+        find.textContaining('${_group(rareGlobal.price)} Coins'),
         findsOneWidget);
     expect(find.textContaining('Balance:'), findsNothing);
     expect(find.textContaining('after'), findsNothing);
@@ -193,20 +194,26 @@ void main() {
 
     await tester.tap(find.text('YES'));
     await tester.pump();
-    // buyPack + provider invalidation run real drift I/O.
+    // buyPack + openPack + provider invalidation run real drift I/O.
     await tester
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Pack bought — open it from the grid'), findsOneWidget);
-    // The pack landed in the inventory as a BRONZE pack and the coins
-    // were charged at the bronze price.
+    // YES falls straight into the reveal — no bought snackbar, no detour
+    // through the inventory.
+    expect(find.text('Pack bought — open it from the grid'), findsNothing);
+    expect(find.text('TAP TO OPEN'), findsOneWidget);
+    expect(find.byType(PackOpeningScreen), findsOneWidget);
+
+    // The purchase was real: coins charged at the rare price and the
+    // pack consumed — the draw already sits in the collection.
     final packs = await tester.runAsync(() => store.getAvailablePacks());
     final bought = packs!
-        .where((p) => p.category == 'global' && p.tier == 'bronze');
-    expect(bought, isNotEmpty);
+        .where((p) => p.category == 'global' && p.tier == 'rare');
+    expect(bought, isEmpty);
     final clubAfter = await tester.runAsync(() => store.getClub());
-    expect(clubAfter!.coins, clubBefore!.coins - bronzeGlobal.price);
+    expect(clubAfter!.coins, clubBefore!.coins - rareGlobal.price);
   });
 
   testWidgets('NO closes the confirmation without buying',
@@ -221,7 +228,7 @@ void main() {
     await tester.tap(find.text('NO'));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Buy Bronze Global Pack?'), findsNothing);
+    expect(find.text('Buy Rare Global Pack?'), findsNothing);
     expect(find.text('BUY'), findsNWidgets(27));
     final packs = await tester.runAsync(() => store.getAvailablePacks());
     expect(packs!.where((p) => p.category == 'global'), isEmpty);
@@ -270,7 +277,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(PackContentsScreen), findsOneWidget);
-    expect(find.text('Bronze Global Pack'), findsOneWidget);
+    expect(find.text('Rare Global Pack'), findsOneWidget);
 
     // The list shows every eligible player, ranked #1 (best) at the top,
     // with ratings but no stat rows.

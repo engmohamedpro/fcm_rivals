@@ -1,4 +1,4 @@
-/// FCM Rivals — full-card view for the Tactics tab.
+/// FCM Rivals — full-card view for the Team tab.
 ///
 /// Tapping a player anywhere in the tactical setup (pitch, bench or
 /// reserves) opens this full-screen moment instead of a detail sheet:

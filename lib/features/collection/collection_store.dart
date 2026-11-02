@@ -204,7 +204,7 @@ class CollectionStore {
         (
           position: position,
           price: engine.packPriceFor(
-              PackScope(category: PackCategory.position, position: position, tier: PackTier.bronze),
+              PackScope(category: PackCategory.position, position: position, tier: PackTier.rare),
               pool),
           poolSize:
               pool.where((p) => p.position == position).length,
@@ -268,7 +268,7 @@ class CollectionStore {
                 clubId: clubId,
                 category: 'position',
                 scopeValue: Value(position.code),
-                tier: const Value('bronze'),
+                tier: const Value('rare'),
                 source: const Value('starting'),
                 createdAt: now,
               ));
@@ -552,7 +552,7 @@ class CollectionStore {
   /// in the club's inventory like any other and is opened via [openPack].
   Future<Pack> buyPack({
     required PackCategory category,
-    PackTier tier = PackTier.bronze,
+    PackTier tier = PackTier.rare,
     String? nationality,
     Position? position,
   }) async {

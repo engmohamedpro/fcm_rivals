@@ -10,7 +10,7 @@ import 'player_card_reveal.dart';
 import 'squad_engine.dart' show PlayerCard;
 import 'squad_view.dart';
 
-/// Tactics tab: the club's permanent tactical setup (GDD 10) — formation,
+/// Team tab (nav label 'Team'): the club's permanent tactical setup (GDD 10) — formation,
 /// playing style and mentality as dropdowns with their visible percentage
 /// effects, the pitch with the starting XI and colour-coded stamina bars
 /// (GDD 11), bench and reserves, and Auto Pick (GDD 6.2/6.3/6.4).

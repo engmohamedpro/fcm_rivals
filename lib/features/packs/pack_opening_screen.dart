@@ -24,6 +24,7 @@ import '../../core/ui/country_flag.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
+import '../economy/economy_engine.dart';
 import 'pack_effects.dart';
 
 /// Haptics are garnish: a platform failure must never break the reveal.
@@ -375,7 +376,10 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                           child: FcmButton(
                             style: FcmButtonStyle.steel,
                             icon: Icons.sell_rounded,
-                            label: 'SELL',
+                            // The coin value the caller pays for THIS
+                            // player — a fresh pack draw is unupgraded.
+                            label:
+                                'SELL · ${formatCoins(EconomyEngine().sellPriceOf(_player))}',
                             loading: _selling,
                             onPressed: _selling ? null : _sell,
                           ),

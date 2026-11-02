@@ -357,7 +357,7 @@ class FitText extends StatelessWidget {
 // Buttons & panels
 // -----------------------------------------------------------------------------
 
-enum FcmButtonStyle { gold, steel, ghost }
+enum FcmButtonStyle { gold, steel, ghost, success }
 
 /// Premium gradient button. Labels shrink to fit; disabled when
 /// [onPressed] is null or [loading].
@@ -402,6 +402,11 @@ class FcmButton extends StatelessWidget {
         gradient = null;
         border = Colors.white.withValues(alpha: 0.30);
         glow = Colors.transparent;
+      case FcmButtonStyle.success:
+        fg = FcmColors.ink;
+        gradient = FcmColors.successGradient;
+        border = FcmColors.success.withValues(alpha: 0.5);
+        glow = FcmColors.success;
     }
     final height = compact ? 44.0 : 54.0;
     final textStyle = TextStyle(
@@ -1142,7 +1147,7 @@ class FcmNavItem {
   final IconData icon;
 
   /// Optional notification badge (hidden when null or zero) — e.g. the
-  /// number of unopened packs waiting on the Packs tab.
+  /// number of unopened packs waiting on the Store tab.
   final int? badge;
 }
 

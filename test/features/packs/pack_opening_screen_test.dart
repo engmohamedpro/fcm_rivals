@@ -2,8 +2,8 @@
 // position walkout → card flip → stats count up → NAME reveal → SELL /
 // KEEP buttons. The player's name is hidden until the stats have appeared.
 // The reveal is never skippable — the SKIP control is gone and the full
-// timeline always plays; SELL sits left of KEEP and sells the drawn player
-// through the caller's callback.
+// timeline always plays; SELL sits left of KEEP, carries the player's coin
+// value, and sells him through the caller's callback.
 //
 // The screen has repeating idle animations, so the test advances time with
 // explicit pumps instead of pumpAndSettle.
@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/core/ui/country_flag.dart';
+import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 
 BasePlayer _player({int overall = 87}) => BasePlayer(
@@ -76,7 +77,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.text('TEST STRIKER'), findsOneWidget);
     expect(find.text('91'), findsOneWidget);
-    expect(find.text('GOLD'), findsOneWidget);
+    expect(find.text('LEGENDARY'), findsOneWidget);
     // The fade-in itself takes 300ms after the done mark.
     await tester.pump(const Duration(milliseconds: 400));
     final done = tester
@@ -104,9 +105,13 @@ void main() {
     expect(mid.opacity, 0);
     await tester.pump(const Duration(seconds: 4));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('BRONZE'), findsOneWidget);
+    expect(find.text('RARE'), findsOneWidget);
     expect(find.text('KEEP PLAYER'), findsOneWidget);
-    expect(find.text('SELL'), findsOneWidget);
+    // SELL carries the player's coin value (overall 55 → the economy's
+    // sell price of a 90M-market-value player).
+    final sellValue =
+        const EconomyEngine().sellPriceOf(_player(overall: 55));
+    expect(find.text('SELL · ${formatCoins(sellValue)}'), findsOneWidget);
     final done = tester
         .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
     expect(done.opacity, 1);
@@ -123,7 +128,7 @@ void main() {
     ));
     await _revealAll(tester);
 
-    await tester.tap(find.text('SELL'));
+    await tester.tap(find.textContaining('SELL'));
     await tester.pump();
     // The sale ran for the FIRST player's owned id…
     expect(sold, [501]);
@@ -159,7 +164,7 @@ void main() {
       home: PackOpeningScreen(players: [_player()]),
     ));
     await _revealAll(tester);
-    expect(find.text('SELL'), findsNothing);
+    expect(find.textContaining('SELL'), findsNothing);
     expect(find.text('KEEP PLAYER'), findsOneWidget);
     await tester.tap(find.text('KEEP PLAYER'));
     await tester.pump();

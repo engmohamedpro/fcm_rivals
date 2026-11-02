@@ -76,27 +76,27 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     // Game shell with the four tabs (league matches are played live
-    // from the Season tab; the squad lives on the Tactics tab).
+    // from the Season tab; the squad lives on the Team tab).
     expect(find.text('Season'), findsWidgets);
-    expect(find.text('Tactics'), findsWidgets);
+    expect(find.text('Team'), findsWidgets);
     expect(find.text('Collection'), findsWidgets);
-    expect(find.text('Packs'), findsWidgets);
+    expect(find.text('Store'), findsWidgets);
     expect(find.text('Match'), findsNothing);
 
     // The Season tab opens first: the first campaign entry point renders.
     expect(find.text('Start your first season'), findsOneWidget);
 
-    // Switch to the Packs tab (now last in the nav) and check the
+    // Switch to the Store tab (last in the nav) and check the
     // sectioned store: one section per scope — global first, then every
-    // position — each with a shared title, its three tier cells and the
-    // shared player strip; the free starting packs stack as FREE ×N
-    // under their bronze cells.
-    await tester.tap(find.text('Packs'));
+    // position — each with a shared title, its three rarity cells and
+    // the shared player strip; the free starting packs stack as FREE ×N
+    // under their rare cells.
+    await tester.tap(find.text('Store'));
     await _settle(tester);
     expect(find.text('Global Pack'), findsOneWidget);
-    expect(find.text('BRONZE'), findsNWidgets(13));
-    expect(find.text('SILVER'), findsNWidgets(13));
-    expect(find.text('GOLD'), findsNWidgets(13));
+    expect(find.text('RARE'), findsNWidgets(13));
+    expect(find.text('EPIC'), findsNWidgets(13));
+    expect(find.text('LEGENDARY'), findsNWidgets(13));
     expect(find.text('FREE ×3'), findsNWidgets(4));
     expect(find.text('FREE ×1'), findsNWidgets(8));
     // Owned cells show CLAIM (opens straight into the reveal), the rest
@@ -105,10 +105,10 @@ void main() {
     expect(find.text('BUY'), findsNWidgets(27));
 
     // store-level check: the 20 free packs (4 cheapest positions × 3 plus
-    // one per other position, all bronze) exist and remain unopened
+    // one per other position, all rare) exist and remain unopened
     final packs = await store.getAvailablePacks();
     expect(packs.length, 20);
-    expect(packs.every((p) => p.tier == 'bronze'), isTrue);
+    expect(packs.every((p) => p.tier == 'rare'), isTrue);
     expect(packs.map((p) => p.scopeValue).toSet().length, 12);
     await db.close();
   });

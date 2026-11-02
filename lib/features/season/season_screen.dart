@@ -49,7 +49,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 
   /// Plays the next league fixture as a full matchday (GDD 13/16): the
   /// pre-match analysis screen (opponent form, W/D/L forecast, strength),
-  /// the tactics screen (same as the Tactics tab, but the setup applies to
+  /// the tactics screen (same as the Team tab, but the setup applies to
   /// this match only), the dressing-room pep talk (GDD 15.1), then the
   /// minute-by-minute engine with live tactics and substitutions,
   /// post-match recovery choice and the report — then the result is
