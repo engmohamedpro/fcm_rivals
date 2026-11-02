@@ -70,12 +70,13 @@ class _EntryGate extends ConsumerWidget {
   }
 }
 
-/// Bottom-navigation shell over season, packs, squad and collection.
-/// League matches are played live from the Season tab (GDD 13/16).
+/// Bottom-navigation shell over season, tactics, collection and packs.
+/// League matches are played live from the Season tab (GDD 13/16); the
+/// Tactics tab holds the squad, formation and tactical setup.
 ///
 /// Tabs are built lazily on first visit and then kept alive, so scroll
 /// positions and loaded data survive switching. The Packs item carries a
-/// badge with the number of unopened free packs.
+/// badge with the number of unopened packs.
 class GameShell extends ConsumerWidget {
   const GameShell({super.key});
 
@@ -84,9 +85,9 @@ class GameShell extends ConsumerWidget {
     final packs = ref.watch(availablePacksProvider).valueOrNull?.length ?? 0;
     final items = [
       const FcmNavItem('Season', Icons.sports_soccer),
-      FcmNavItem('Packs', Icons.style, badge: packs),
-      const FcmNavItem('Squad', Icons.groups),
+      const FcmNavItem('Tactics', Icons.tune_rounded),
       const FcmNavItem('Collection', Icons.collections_bookmark),
+      FcmNavItem('Packs', Icons.style, badge: packs),
     ];
 
     return _GameShellBody(items: items);
@@ -109,9 +110,9 @@ class _GameShellBodyState extends State<_GameShellBody> {
 
   Widget _page(int i) => switch (i) {
         0 => const SeasonScreen(),
-        1 => const PacksScreen(),
-        2 => const SquadScreen(),
-        _ => const CollectionScreen(),
+        1 => const SquadScreen(),
+        2 => const CollectionScreen(),
+        _ => const PacksScreen(),
       };
 
   @override

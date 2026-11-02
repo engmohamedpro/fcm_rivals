@@ -68,13 +68,6 @@ final availablePacksProvider = FutureProvider<List<Pack>>((ref) async {
   return store.getAvailablePacks();
 });
 
-/// Total free packs the club has ever received (starting packs + ad
-/// rewards + season rewards): the denominator of the Packs tab header.
-final totalFreePacksProvider = FutureProvider<int>((ref) async {
-  final store = await ref.watch(collectionStoreProvider.future);
-  return store.getTotalFreePacks();
-});
-
 /// The store's buyable pack offers with their coin prices (GDD 5.5).
 final storeOffersProvider =
     FutureProvider<List<StorePackOffer>>((ref) async {

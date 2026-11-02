@@ -430,20 +430,6 @@ class CollectionStore {
         .get();
   }
 
-  /// Total free packs the club has ever received (any source except
-  /// purchases): the 'n of total' denominator on the Packs tab.
-  Future<int> getTotalFreePacks() async {
-    final club = await getClub();
-    if (club == null) return 0;
-    final count = db.packs.id.count();
-    final row = await (db.selectOnly(db.packs)
-          ..addColumns([count])
-          ..where(db.packs.clubId.equals(club.id) &
-              db.packs.source.equals('purchase').not()))
-        .getSingle();
-    return row.read(count) ?? 0;
-  }
-
   /// The store's buyable packs (GDD 5.5): the global pack plus one per
   /// outfield position and goalkeeper, each priced by the Economy Engine's
   /// expected-contents formula. Prices are stable per dataset.

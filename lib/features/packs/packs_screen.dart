@@ -9,11 +9,15 @@ import '../../core/ui/fcm_widgets.dart';
 import '../../features/ads/ad_engine.dart' show AdRewardKind;
 import '../../features/collection/collection_store.dart' show StorePackOffer;
 import '../../features/packs/pack_engine.dart' show PackCategory;
+import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_opening_screen.dart';
 
-/// Packs tab: the store (GDD 5.5). Shows the club's free unopened packs —
-/// with their count and the total earned so far — above the buyable pack
-/// list, every offer with its coin price from the Economy Engine.
+/// Packs tab — the store (GDD 5.5): ONE grid of packs, every cell drawn as
+/// the sealed foil pack the player later sees in the opening cinematic.
+/// Owned (free) packs of a type show a FREE ×N pill in place of the price;
+/// otherwise the cell shows the coin price from the Economy Engine.
+/// Tapping a cell opens the next owned pack, or buys one when none are
+/// left — free and bought packs live side by side, never separated.
 class PacksScreen extends ConsumerStatefulWidget {
   const PacksScreen({super.key});
 
@@ -68,7 +72,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
               ),
             ),
           ]),
-          data: (packs) => _StoreList(
+          data: (packs) => _StoreGrid(
             packs: packs,
             offers: offers,
             coins: coins,
@@ -118,7 +122,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ref.invalidate(clubProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Pack added — open it below')));
+            const SnackBar(content: Text('Pack bought — open it from the grid')));
       }
     } catch (e) {
       if (context.mounted) {
@@ -129,9 +133,14 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   }
 }
 
-/// The store list: free packs section, then every buyable offer.
-class _StoreList extends StatelessWidget {
-  const _StoreList({
+/// Scope key shared by owned packs and store offers, e.g. 'global' or
+/// 'position:ST' — the join between inventory and grid cell.
+String _scopeKey(String category, String? scopeValue) =>
+    scopeValue == null ? category : '$category:$scopeValue';
+
+/// The store grid: rewarded-ad offer on top, then every pack cell.
+class _StoreGrid extends StatelessWidget {
+  const _StoreGrid({
     required this.packs,
     required this.offers,
     required this.coins,
@@ -149,252 +158,165 @@ class _StoreList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fixed: header, ad card, store header. Then one row per free pack,
-    // then one row per buyable offer.
-    final fixedRows = 3;
-    return ListView.builder(
-      // Build a generous window so a screenful of rows is always ready.
-      cacheExtent: 900,
+    // Owned unopened packs grouped by scope: their count replaces the
+    // price on the matching cell (free packs, GDD 5.8).
+    final owned = <String, List<Pack>>{};
+    for (final p in packs) {
+      owned.putIfAbsent(_scopeKey(p.category, p.scopeValue), () => []).add(p);
+    }
+    // Wide screens (the app clamps at 820) get more columns so cells
+    // keep phone-like proportions.
+    final columns = MediaQuery.of(context).size.width >= 700 ? 5 : 3;
+    return ListView(
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 24),
-      itemCount: fixedRows + packs.length + offers.length,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return _FreeSectionHeader(count: packs.length);
-        }
-        if (index == 1) {
-          return const FcmEntrance(index: 1, child: _FreePackAdCard());
-        }
-        final packIndex = index - 2;
-        if (packIndex < packs.length) {
-          final pack = packs[packIndex];
-          final position = pack.scopeValue != null
-              ? Position.fromCode(pack.scopeValue!)
-              : null;
-          return FcmEntrance(
-            index: packIndex,
-            dx: 24,
-            dy: 0,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _PackRow(
-                label: position?.code ?? 'G',
-                title: position != null
-                    ? '${position.code} Position Pack'
-                    : 'Global Pack',
-                onTap: opening ? null : () => onOpen(pack.id),
-              ),
-            ),
-          );
-        }
-        if (packIndex == packs.length) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 10),
-            child: Row(
-              children: [
-                const Icon(Icons.storefront_rounded,
-                    color: FcmColors.gold, size: 22),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FitText('BUY PACKS',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.3,
-                      )),
-                ),
-              ],
-            ),
-          );
-        }
-        final offerIndex = packIndex - packs.length - 1;
-        final offer = offers[offerIndex];
-        return FcmEntrance(
-          index: offerIndex,
-          dx: 20,
-          dy: 0,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _StoreOfferRow(
-              offer: offer,
-              coins: coins,
-              onBuy: () => onBuy(offer),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// 'FREE PACKS (n/total)' header with the club's unopened pack count and
-/// the total free packs earned since the club was founded.
-class _FreeSectionHeader extends ConsumerWidget {
-  const _FreeSectionHeader({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final total = ref.watch(totalFreePacksProvider).valueOrNull ?? 0;
-    return FcmEntrance(
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(
+      children: [
+        const FcmEntrance(index: 0, child: _FreePackAdCard()),
+        const SizedBox(height: 8),
+        GridView.count(
+          crossAxisCount: columns,
+          mainAxisSpacing: 20,
+          crossAxisSpacing: 8,
+          childAspectRatio: 0.46,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           children: [
-            const Icon(Icons.inventory_2_rounded,
-                color: FcmColors.gold, size: 22),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FitText(
-                count == 0
-                    ? 'FREE PACKS · $total opened'
-                    : 'FREE PACKS · $count of $total to open',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
-            FcmPill(
-              '$count',
-              color: count > 0 ? FcmColors.gold : FcmColors.silver,
-              filled: count > 0,
-            ),          ],
+            for (var i = 0; i < offers.length; i++)
+              () {
+                final offer = offers[i];
+                final ownedHere =
+                    owned[_scopeKey(offer.category.name, offer.scopeValue)] ??
+                        const <Pack>[];
+                return FcmEntrance(
+                  index: i,
+                  dx: 0,
+                  dy: 16,
+                  child: _StorePackCell(
+                    offer: offer,
+                    ownedCount: ownedHere.length,
+                    coins: coins,
+                    onTap: opening
+                        ? null
+                        : ownedHere.isNotEmpty
+                            ? () => onOpen(ownedHere.first.id)
+                            : () => onBuy(offer),
+                  ),
+                );
+              }(),
+          ],
         ),
-      ),
+      ],
     );
   }
 }
 
-/// One unopened free pack: foil icon, title and an OPEN pill.
-class _PackRow extends StatelessWidget {
-  const _PackRow({
-    required this.label,
-    required this.title,
+/// One store cell: the sealed foil pack exactly as it looks before
+/// opening (same [FoilPackPainter] as the reveal cinematic), a scope
+/// badge, the title, and under it either the coin price or — when the
+/// club owns packs of this type — a FREE ×N pill in its place.
+class _StorePackCell extends StatelessWidget {
+  const _StorePackCell({
+    required this.offer,
+    required this.ownedCount,
+    required this.coins,
     required this.onTap,
   });
 
-  final String label;
-  final String title;
+  final StorePackOffer offer;
+  final int ownedCount;
+  final int? coins;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return FcmPanel(
-      radius: 18,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      onTap: onTap,
-      child: Row(
-        children: [
-          _MiniPack(label: label),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FitText(title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800)),
-                const SizedBox(height: 2),
-                const Text(
-                  '1 player · low, medium or high value tier',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: FcmColors.textDim, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const FcmPill('OPEN'),
-        ],
-      ),
-    );
-  }
-}
-
-/// One buyable pack offer (GDD 5.5): title, eligible pool size and the
-/// coin price. Disabled with a hint when the balance is too low.
-class _StoreOfferRow extends StatelessWidget {
-  const _StoreOfferRow({
-    required this.offer,
-    required this.coins,
-    required this.onBuy,
-  });
-
-  final StorePackOffer offer;
-  final int? coins;
-  final VoidCallback onBuy;
-
-  @override
-  Widget build(BuildContext context) {
+    final isFree = ownedCount > 0;
     final affordable = coins == null || coins! >= offer.price;
-    return FcmPanel(
-      radius: 18,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      accent: affordable ? null : FcmColors.danger,
-      onTap: onBuy,
-      child: Row(
+    final scopeLabel = offer.scopeValue ?? 'ANY';
+    final shortTitle =
+        offer.scopeValue == null ? 'Global Pack' : '${offer.scopeValue} Pack';
+
+    return FcmPressable(
+      onTap: onTap,
+      scale: 0.93,
+      child: Column(
         children: [
-          _MiniPack(
-              label: offer.scopeValue ?? 'G',
-              tint: FcmColors.steelGradient),
-          const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: kPackAspect,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: FoilPackPainter(
+                          shimmer: 0.42,
+                          charge: 0,
+                          glowColor: FcmColors.gold,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 12,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: FcmColors.night.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: FcmColors.gold.withValues(alpha: 0.7)),
+                          ),
+                          child: Text(
+                            scopeLabel,
+                            style: const TextStyle(
+                              color: FcmColors.gold,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          FitText(
+            shortTitle,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          if (isFree)
+            FcmPill('FREE ×$ownedCount')
+          else
+            Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                FitText(offer.title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800)),
-                const SizedBox(height: 2),
-                Text(
-                  '${offer.eligibleCount} eligible players · 1 draw',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: FcmColors.textDim, fontSize: 12),
+                Icon(
+                  Icons.monetization_on_rounded,
+                  size: 12,
+                  color: affordable ? FcmColors.gold : FcmColors.danger,
+                ),
+                const SizedBox(width: 3),
+                FitText(
+                  _formatCoins(offer.price),
+                  style: TextStyle(
+                    color: affordable ? FcmColors.gold : FcmColors.danger,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.monetization_on_rounded,
-                      color: FcmColors.gold, size: 16),
-                  const SizedBox(width: 4),
-                  FitText(_formatCoins(offer.price),
-                      style: const TextStyle(
-                          color: FcmColors.gold,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900)),
-                ],
-              ),
-              if (!affordable) ...[
-                const SizedBox(height: 2),
-                const Text('Not enough coins',
-                    style: TextStyle(
-                        color: FcmColors.danger,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700)),
-              ],
-            ],
-          ),
         ],
       ),
     );
@@ -430,7 +352,7 @@ class _FreePackAdCardState extends ConsumerState<_FreePackAdCard> {
       builder: (context, snapshot) {
         final available = snapshot.data != null;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12, top: 4),
+          padding: const EdgeInsets.only(bottom: 6, top: 4),
           child: Opacity(
             opacity: available ? 1 : 0.6,
             child: FcmPanel(
@@ -499,7 +421,6 @@ class _FreePackAdCardState extends ConsumerState<_FreePackAdCard> {
         playbackCompleted: true,
       );
       ref.invalidate(availablePacksProvider);
-      ref.invalidate(totalFreePacksProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Free pack added to your packs')));
@@ -512,47 +433,5 @@ class _FreePackAdCardState extends ConsumerState<_FreePackAdCard> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-}
-
-/// Tiny foil-pack icon for the pack list. [tint] switches between the
-/// golden free packs and the steel store offers.
-class _MiniPack extends StatelessWidget {
-  const _MiniPack({required this.label, this.tint = FcmColors.goldGradient});
-
-  final String label;
-  final Gradient tint;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 52,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF3A342C), Color(0xFF141419)],
-        ),
-        border: Border.all(color: FcmColors.gold, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-              color: FcmColors.bronze.withValues(alpha: 0.55), blurRadius: 10),
-        ],
-      ),
-      child: Container(
-        width: 40,
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        decoration: BoxDecoration(gradient: tint),
-        child: FitText(label,
-            align: Alignment.center,
-            style: const TextStyle(
-                color: FcmColors.ink,
-                fontWeight: FontWeight.w900,
-                fontSize: 14)),
-      ),
-    );
   }
 }

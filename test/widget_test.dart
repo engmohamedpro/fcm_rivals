@@ -76,21 +76,25 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     // Game shell with the four tabs (league matches are played live
-    // from the Season tab).
+    // from the Season tab; the squad lives on the Tactics tab).
     expect(find.text('Season'), findsWidgets);
-    expect(find.text('Packs'), findsWidgets);
-    expect(find.text('Squad'), findsWidgets);
+    expect(find.text('Tactics'), findsWidgets);
     expect(find.text('Collection'), findsWidgets);
+    expect(find.text('Packs'), findsWidgets);
     expect(find.text('Match'), findsNothing);
 
     // The Season tab opens first: the first campaign entry point renders.
     expect(find.text('Start your first season'), findsOneWidget);
 
-    // Switch to the Packs tab and check the starting packs render.
+    // Switch to the Packs tab (now last in the nav) and check the store
+    // grid renders: every cell shows the sealed pack, and the owned
+    // starting packs display FREE ×N in place of the price.
     await tester.tap(find.text('Packs'));
     await _settle(tester);
-    expect(find.text('ST Position Pack'), findsNWidgets(3));
-    expect(find.text('LW Position Pack'), findsNWidgets(3));
+    expect(find.text('ST Pack'), findsOneWidget);
+    expect(find.text('LW Pack'), findsOneWidget);
+    expect(find.text('Global Pack'), findsOneWidget);
+    expect(find.text('FREE ×3'), findsNWidgets(12));
 
     // store-level check: all 36 packs exist and remain unopened
     final packs = await store.getAvailablePacks();
