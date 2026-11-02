@@ -1,10 +1,12 @@
 /// FCM Rivals — pre-match opponent analysis (GDD 13 pre-match screen).
 ///
-/// Computes the head-to-head forecast the user sees before kick-off:
-/// win/draw/loss probabilities from a Monte-Carlo run of the REAL match
-/// engine over the exact two squads (same code path that decides the
-/// actual fixture, so the percentages are honest), plus side-by-side
-/// strength totals and the opponent's recent league form.
+/// Computes the head-to-head forecast the user sees before kick-off from
+/// the FULL squad lists of both clubs — starting XI, bench and reserves
+/// all count alike. The run is deliberately neutral: no tactics, no
+/// mentality, no stamina drain, no red cards or injuries — a like-for-like
+/// measure of squad quality on paper, so changing formation, style or
+/// who starts cannot move the numbers. Goal probabilities follow the same
+/// funnel constants as the live engine (GDD 12.3 steps 1-8).
 ///
 /// Pure Dart, no UI, no database — everything arrives as plain values so
 /// the module stays unit-testable (GDD development rule 4).
@@ -44,7 +46,7 @@ class MatchForecast {
   /// Share of simulated matches in which the user conceded none.
   final int cleanSheetPercent;
 
-  /// Effective team totals at kick-off (GDD 12.2 pipeline).
+  /// Neutral squad-quality totals (every player, no tactics or condition).
   final TeamTotals userTotals;
   final TeamTotals opponentTotals;
 
@@ -58,22 +60,23 @@ class MatchForecast {
       (userTotals.defence - opponentTotals.defence).round();
 }
 
-/// Inputs for one forecast: both teams exactly as the fixture will start.
+/// Inputs for one forecast: every player of both squads (XI + bench +
+/// reserves). Attributes are taken raw — stamina is ignored, and there is
+/// no formation, style or mentality to apply.
 class ForecastInput {
   const ForecastInput({
-    required this.userTeam,
-    required this.opponentTeam,
-    required this.userAtHome,
+    required this.userSquad,
+    required this.opponentSquad,
   });
 
-  final MatchTeamInput userTeam;
-  final MatchTeamInput opponentTeam;
-  final bool userAtHome;
+  final List<MatchPlayer> userSquad;
+  final List<MatchPlayer> opponentSquad;
 }
 
 /// Everything the pre-match analysis screen shows (GDD 13): fixture names,
-/// the Monte-Carlo forecast, the opponent's recent form and their key men.
-/// Constructed by the season store; rendered by the pre-match screen.
+/// the Monte-Carlo forecast, the opponent's recent form and their top
+/// players. Constructed by the season store; rendered by the pre-match
+/// screen.
 class PreMatchData {
   const PreMatchData({
     required this.fixtureLabel,
@@ -109,9 +112,18 @@ class PreMatchData {
   final int opponentPosition;
   final int userPosition;
 
-  /// Opponent's three highest-rated players in the squad (starters and
-  /// bench): name, position code and overall.
-  final List<({String name, String position, int overall})> opponentKeyMen;
+  /// Opponent's three highest-rated players in the whole squad: identity
+  /// plus raw attributes, rendered as collection-style cards.
+  final List<
+      ({
+        String name,
+        String position,
+        int overall,
+        int attack,
+        int support,
+        int defence,
+        int goalkeeping,
+      })> opponentKeyMen;
 
   /// The club's persisted formation / playing style / mentality (GDD 10) —
   /// the starting point of the pre-match tactics selection.
@@ -125,12 +137,15 @@ class PreMatchData {
   final Map<int, PlayerCard> userSquad;
 }
 
-/// Runs the Monte-Carlo forecast with the real engine.
+/// Runs the Monte-Carlo forecast over the two full squad lists.
 ///
-/// [samples] full matches are simulated from fresh seeds; each run is a
-/// complete 90 minutes so red cards, stamina drift and AI tactical changes
-/// all shape the outcome the user sees. [forecastSeed] makes the whole
-/// forecast reproducible for tests and replay records.
+/// [samples] full matches are simulated; each minute draws 0/1/2 attack
+/// segments exactly like the live engine, possession goes to the side
+/// with the better support quality, and every segment runs the engine's
+/// chance → shot accuracy → goalkeeper reaction funnel on the squad's
+/// neutral totals. No stamina, cards, injuries, tactics or home edge are
+/// modelled. [forecastSeed] makes the whole forecast reproducible for
+/// tests and replay records.
 MatchForecast forecastMatch({
   required ForecastInput input,
   int samples = 120,
@@ -140,35 +155,28 @@ MatchForecast forecastMatch({
 }) {
   final rnd = random ?? math.Random(forecastSeed);
 
-  // Totals at kick-off: a fresh engine's minute-0 snapshot runs the exact
-  // GDD 12.2 pipeline (stamina scaling → mentality → style → home
-  // advantage) for both sides, including the home edge of the real venue.
-  final probe = MatchEngine(
-    seed: forecastSeed,
-    config: config,
-    home: input.userAtHome ? input.userTeam : input.opponentTeam,
-    away: input.userAtHome ? input.opponentTeam : input.userTeam,
-  );
-  final userTotals = probe.totalsOf(
-      input.userAtHome ? MatchSide.home : MatchSide.away);
-  final opponentTotals = probe.totalsOf(
-      input.userAtHome ? MatchSide.away : MatchSide.home);
+  // Neutral squad quality: every player, natural position, raw attributes.
+  final userTotals = squadQualityTotals(input.userSquad);
+  final opponentTotals = squadQualityTotals(input.opponentSquad);
 
   var wins = 0, draws = 0, losses = 0;
   var userGoals = 0, opponentGoals = 0, cleanSheets = 0;
 
   for (var i = 0; i < samples; i++) {
-    final seed = rnd.nextInt(1 << 31);
-    final engine = MatchEngine(
-      seed: seed,
-      config: config,
-      home: input.userAtHome ? input.userTeam : input.opponentTeam,
-      away: input.userAtHome ? input.opponentTeam : input.userTeam,
-    );
-    engine.simulateToEnd();
-    final state = engine.state;
-    final ug = input.userAtHome ? state.scoreHome : state.scoreAway;
-    final og = input.userAtHome ? state.scoreAway : state.scoreHome;
+    var ug = 0, og = 0;
+    for (var minute = 0; minute < 90; minute++) {
+      final segments = _drawSegmentCount(rnd, config.segmentWeights);
+      for (var s = 0; s < segments; s++) {
+        final userPoss = userTotals.support /
+            (userTotals.support + opponentTotals.support);
+        if (rnd.nextDouble() < userPoss) {
+          ug += _segmentGoals(rnd, config, userTotals.attack, opponentTotals);
+        } else {
+          og +=
+              _segmentGoals(rnd, config, opponentTotals.attack, userTotals);
+        }
+      }
+    }
     userGoals += ug;
     opponentGoals += og;
     if (og == 0) cleanSheets++;
@@ -180,16 +188,63 @@ MatchForecast forecastMatch({
       draws++;
     }
   }
+  // Asserted by the sum-to-100 invariant: every sample is a win, draw or
+  // loss, so the remainder percent is exactly the loss share.
+  assert(wins + draws + losses == samples);
+
+  // Third percent as the remainder so the three always sum to exactly
+  // 100 (rounding each independently can drift to 99 or 101).
+  final winP = (100 * wins / samples).round();
+  final drawP = (100 * draws / samples).round();
 
   return MatchForecast(
     samples: samples,
-    winPercent: (100 * wins / samples).round(),
-    drawPercent: (100 * draws / samples).round(),
-    lossPercent: (100 * losses / samples).round(),
+    winPercent: winP,
+    drawPercent: drawP,
+    lossPercent: (100 - winP - drawP).clamp(0, 100),
     avgUserGoals: userGoals / samples,
     avgOpponentGoals: opponentGoals / samples,
     cleanSheetPercent: (100 * cleanSheets / samples).round(),
     userTotals: userTotals,
     opponentTotals: opponentTotals,
   );
+}
+
+/// P(0/1/2 attack segments per minute), same weights as the engine.
+int _drawSegmentCount(math.Random rnd, List<double> weights) {
+  final roll = rnd.nextDouble();
+  if (roll < weights[0]) return 0;
+  if (roll < weights[0] + weights[1]) return 1;
+  return 2;
+}
+
+/// Goals scored by one attack segment (GDD 12.3 steps 4-8 with the
+/// engine's funnel constants, neutralised): chance creation from the
+/// attack-vs-defence ratio, then shot accuracy and goalkeeper reaction
+/// against the defending squad's keeper quality. No fouls, cards,
+/// penalties or free kicks — nothing but squad quality decides.
+int _segmentGoals(
+    math.Random rnd, MatchEngineConfig c, double attack, TeamTotals def) {
+  final attackRatio = attack / (attack + def.defence);
+  final chanceP =
+      (c.chanceBase + c.chanceScale * attackRatio).clamp(0.05, c.chanceMax);
+  if (rnd.nextDouble() >= chanceP) return 0;
+
+  final big = rnd.nextDouble() < 0.15;
+  final onTargetP = (c.onTargetBase +
+          c.onTargetScale * (attack / 100) +
+          (big ? 0.18 : 0.0))
+      .clamp(0.10, 0.95);
+  final goalP = (c.goalBase +
+          c.goalScale *
+              (attack / (attack + def.goalkeeping * 1.5)) *
+              (big ? 1.25 : 1.0))
+      .clamp(0.04, 0.88);
+
+  if (rnd.nextDouble() < c.blockChance) return 0;
+  if (rnd.nextDouble() < onTargetP / (1 - c.blockChance) &&
+      rnd.nextDouble() < goalP) {
+    return 1;
+  }
+  return 0;
 }

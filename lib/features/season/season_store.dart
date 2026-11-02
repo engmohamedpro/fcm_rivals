@@ -387,45 +387,16 @@ class SeasonStore {
     final mentality = Mentality.values.firstWhere(
         (m) => m.name == club.mentality,
         orElse: () => Mentality.balanced);
-    final userTeam = MatchTeamInput(
-      teamId: club.id,
-      teamName: club.name,
-      formationCode: club.formationCode,
-      style: style,
-      mentality: mentality,
-      starters: [
-        for (var slot = 0; slot < Formation.startingXiSize; slot++)
-          _userMatchPlayer(squad[slot]!),
-      ],
-      bench: [
-        for (var slot = Formation.startingXiSize;
-            slot < Formation.squadSize && squad.containsKey(slot);
-            slot++)
-          _userMatchPlayer(squad[slot]!),
-      ],
-    );
-    final opponentStyle = PlayingStyle.values.firstWhere(
-        (s) => s.name == opponent.club.playingStyle,
-        orElse: () => PlayingStyle.balanced);
-    final opponentMentality = Mentality.values.firstWhere(
-        (m) => m.name == opponent.club.mentality,
-        orElse: () => Mentality.balanced);
-    final opponentTeam = MatchTeamInput(
-      teamId: opponent.club.id,
-      teamName: opponent.club.name,
-      formationCode: opponent.club.formationCode,
-      style: opponentStyle,
-      mentality: opponentMentality,
-      starters: opponent.starters,
-      bench: opponent.bench,
-      aiControlled: true,
-    );
-
+    // The user's FULL squad list: starting XI, bench and reserves — every
+    // owned player counts toward the forecast, not just the selected XI.
+    final userSquadList = [
+      for (var slot = 0; slot < Formation.squadSize; slot++)
+        if (squad.containsKey(slot)) _userMatchPlayer(squad[slot]!),
+    ];
     final forecast = forecastMatch(
       input: ForecastInput(
-        userTeam: userTeam,
-        opponentTeam: opponentTeam,
-        userAtHome: next.isHome,
+        userSquad: userSquadList,
+        opponentSquad: [...opponent.starters, ...opponent.bench],
       ),
       random: math.Random(next.fixtureId * 31 + 17),
     );
@@ -462,11 +433,19 @@ class SeasonStore {
     ];
 
     // Top-3 rated players of the whole squad (starters and bench), with
-    // their position code for the analysis list.
+    // full attributes for the collection-style analysis cards.
     final keyMen = [
       for (final p in [...opponent.starters, ...opponent.bench]
           ..sort((a, b) => _overallOf(b).compareTo(_overallOf(a))))
-        (name: p.name, position: p.position.code, overall: _overallOf(p)),
+        (
+          name: p.name,
+          position: p.position.code,
+          overall: _overallOf(p),
+          attack: p.attack,
+          support: p.support,
+          defence: p.defence,
+          goalkeeping: p.goalkeeping,
+        ),
     ].take(3).toList();
 
     return PreMatchData(

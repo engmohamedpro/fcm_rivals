@@ -1,8 +1,9 @@
 // Regression tests for the pre-match analysis phase (GDD 13):
 //
-//  * the analysis is about the OPPONENT: a header with crest, table
-//    position and last-five form pips; loss/draw/win percents in one
-//    row; the strength card; the opponent's top-3 rated players;
+//  * the analysis is about the OPPONENT: a compact header strip with
+//    crest, table position and last-five form pips; loss/draw/win
+//    percents in one row; the strength card; the opponent's top-3 rated
+//    players as three collection-style cards side by side;
 //  * the analysis phase shows a BACK action that exits the matchday
 //    build-up before anything is committed (the fixture stays unplayed);
 //    hosts can substitute their own exit via onExit;
@@ -12,6 +13,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:fcm_rivals/core/ui/player_card.dart';
 import 'package:fcm_rivals/features/match/match_engine.dart' show TeamTotals;
 import 'package:fcm_rivals/features/match/match_forecast.dart';
 import 'package:fcm_rivals/features/match/pre_match_screen.dart';
@@ -41,9 +43,12 @@ PreMatchData get _data => PreMatchData(
       opponentPosition: 5,
       userPosition: 12,
       opponentKeyMen: const [
-        (name: 'Omar Gamal', position: 'ST', overall: 84),
-        (name: 'Karim Fouad', position: 'CB', overall: 81),
-        (name: 'Ali Soliman', position: 'GK', overall: 79),
+        (name: 'Omar Gamal', position: 'ST', overall: 84,
+            attack: 86, support: 80, defence: 42, goalkeeping: 12),
+        (name: 'Karim Fouad', position: 'CB', overall: 81,
+            attack: 48, support: 66, defence: 87, goalkeeping: 15),
+        (name: 'Ali Soliman', position: 'GK', overall: 79,
+            attack: 18, support: 44, defence: 62, goalkeeping: 83),
       ],
     );
 
@@ -116,14 +121,23 @@ void main() {
     expect(find.text('DEFENCE'), findsOneWidget);
     expect(find.text('GOALKEEPING'), findsOneWidget);
 
-    // The old THEIR SEASON card is gone; top-3 players replace it.
+    // The old THEIR SEASON card is gone; three collection-style player
+    // cards side by side replace it (same card face as the Collection
+    // tab, one row, each carrying rating, position and stat columns).
     expect(find.text('THEIR SEASON'), findsNothing);
     expect(find.text('TOP PLAYERS'), findsOneWidget);
-    expect(find.text('Omar Gamal'), findsOneWidget);
-    expect(find.text('Karim Fouad'), findsOneWidget);
-    expect(find.text('Ali Soliman'), findsOneWidget);
-    expect(find.text('ST'), findsOneWidget);
-    expect(find.text('GK'), findsOneWidget);
+    expect(find.byType(FcmPlayerCard), findsNWidgets(3));
+    final cards =
+        tester.widgetList<FcmPlayerCard>(find.byType(FcmPlayerCard));
+    final names = [for (final c in cards) c.player.name];
+    expect(names, containsAll(['Omar Gamal', 'Karim Fouad', 'Ali Soliman']));
+    final cardFinders =
+        find.byType(FcmPlayerCard).evaluate().map((e) => find.byWidgetPredicate((w) => w == e.widget));
+    final dyTop = tester.getTopLeft(cardFinders.first).dy;
+    for (final f in cardFinders) {
+      expect(tester.getTopLeft(f).dy, closeTo(dyTop, 1),
+          reason: 'the three cards sit side by side in one row');
+    }
   });
 
   testWidgets('analysis phase shows a BACK that exits the matchday',

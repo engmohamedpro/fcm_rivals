@@ -2,10 +2,13 @@
 ///
 /// The full-screen experience before a fixture:
 ///
-///   1. VS header      — both clubs crest-to-crest with the fixture label.
-///   2. Analysis phase — win/draw/loss probabilities (Monte-Carlo of the
-///      real engine), side-by-side strength bars, opponent form line and
-///      key-men ratings, each staggering in.
+///   1. Opponent header — the rival under the microscope: crest, league
+///      position and last-five form in one compact strip.
+///   2. Analysis phase — win/draw/loss probabilities (a neutral
+///      Monte-Carlo over BOTH full squad lists: starting XI, bench and
+///      reserves, no tactics or condition), side-by-side strength bars
+///      and the opponent's top three players as collection-style cards,
+///      each staggering in.
 ///   3. Tactics phase  — the SAME tactics screen as the Tactics tab
 ///      (formation, playing style and mentality dropdowns with visible
 ///      percentage effects, pitch with stamina bars, bench and reserves),
@@ -24,8 +27,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../../core/ui/player_card.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import '../squad/squad_view.dart';
@@ -226,8 +231,9 @@ class _AnalysisPhase extends StatelessWidget {
   }
 }
 
-/// The opponent under the microscope: crest, table position and last-five
-/// form pips (W/D/L) — the user's own club stays out of the analysis.
+/// The opponent under the microscope, in one compact strip: crest, club
+/// name with league position, and the last-five form pips (W/D/L) — the
+/// user's own club stays out of the analysis.
 class _OpponentHeader extends StatelessWidget {
   const _OpponentHeader({required this.data});
 
@@ -249,6 +255,7 @@ class _OpponentHeader extends StatelessWidget {
         .join();
     return FcmEntrance(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -276,91 +283,123 @@ class _OpponentHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Container(
-            width: 64,
-            height: 64,
-            alignment: Alignment.center,
+            padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: FcmColors.steelGradient,
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  FcmColors.bronze.withValues(alpha: 0.10),
+                  Colors.white.withValues(alpha: 0.03),
+                ],
+              ),
               border: Border.all(
-                  color: FcmColors.bronze.withValues(alpha: 0.7), width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: FcmColors.bronze.withValues(alpha: 0.35),
-                  blurRadius: 18,
-                ),
-              ],
+                  color: FcmColors.bronze.withValues(alpha: 0.35)),
             ),
-            child: FitText(initials,
-                align: Alignment.center,
-                style: const TextStyle(
-                    color: FcmColors.goldSoft,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20)),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            d.opponentClubName,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            '${ordinalOf(d.opponentPosition)} in the table',
-            style: const TextStyle(
-              color: FcmColors.goldSoft,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (d.opponentForm.isEmpty)
-            const Text('First round of the season',
-                style: TextStyle(color: FcmColors.textDim, fontSize: 12))
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
               children: [
-                for (var i = 0; i < d.opponentForm.length; i++)
-                  Container(
-                    width: 22,
-                    height: 22,
-                    margin: EdgeInsets.only(left: i == 0 ? 0 : 5),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: formPip[d.opponentForm[i]]!
-                          .withValues(alpha: 0.18),
-                      border: Border.all(
-                        color: formPip[d.opponentForm[i]]!
-                            .withValues(alpha: 0.7),
+                Container(
+                  width: 52,
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: FcmColors.steelGradient,
+                    border: Border.all(
+                        color: FcmColors.bronze.withValues(alpha: 0.7),
+                        width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FcmColors.bronze.withValues(alpha: 0.35),
+                        blurRadius: 16,
                       ),
-                    ),
-                    child: FcmEntrance(
-                      index: i,
-                      dy: 0,
-                      duration: const Duration(milliseconds: 300),
-                      child: Text(
-                        d.opponentForm[i],
-                        style: TextStyle(
-                          color: formPip[d.opponentForm[i]],
+                    ],
+                  ),
+                  child: FitText(initials,
+                      align: Alignment.center,
+                      style: const TextStyle(
+                          color: FcmColors.goldSoft,
                           fontWeight: FontWeight.w900,
-                          fontSize: 11,
+                          fontSize: 17)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        d.opponentClubName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                          height: 1.15,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${ordinalOf(d.opponentPosition)} in the table',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: FcmColors.goldSoft,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (d.opponentForm.isEmpty)
+                  const Text('First round',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          TextStyle(color: FcmColors.textDim, fontSize: 11))
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < d.opponentForm.length; i++)
+                        Container(
+                          width: 20,
+                          height: 20,
+                          margin: EdgeInsets.only(left: i == 0 ? 0 : 4),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: formPip[d.opponentForm[i]]!
+                                .withValues(alpha: 0.18),
+                            border: Border.all(
+                              color: formPip[d.opponentForm[i]]!
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ),
+                          child: FcmEntrance(
+                            index: i,
+                            dy: 0,
+                            duration: const Duration(milliseconds: 300),
+                            child: Text(
+                              d.opponentForm[i],
+                              style: TextStyle(
+                                color: formPip[d.opponentForm[i]],
+                                fontWeight: FontWeight.w900,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
               ],
             ),
+          ),
         ],
       ),
     );
@@ -624,8 +663,9 @@ class _MirrorBar extends StatelessWidget {
   }
 }
 
-/// The opponent's three highest-rated players in the squad: overall badge,
-/// position tag and name.
+/// The opponent's three highest-rated players, rendered as collection
+/// player cards (same shield face, rarity metals and stat columns as the
+/// Collection tab) side by side in one row.
 class _TopPlayersCard extends StatelessWidget {
   const _TopPlayersCard({required this.data});
 
@@ -634,8 +674,9 @@ class _TopPlayersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = data;
+    final width = (MediaQuery.of(context).size.width - 28 - 16) / 3;
     return FcmPanel(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -648,68 +689,58 @@ class _TopPlayersCard extends StatelessWidget {
               letterSpacing: 2,
             ),
           ),
-          const SizedBox(height: 8),
-          for (var i = 0; i < d.opponentKeyMen.length; i++)
-            FcmEntrance(
-              index: i,
-              dx: 18,
-              dy: 0,
-              duration: const Duration(milliseconds: 360),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.white.withValues(alpha: 0.06),
-                        border: Border.all(
-                            color: FcmColors.bronze.withValues(alpha: 0.4)),
-                      ),
-                      child: FitText(
-                        '${d.opponentKeyMen[i].overall}',
-                        style: const TextStyle(
-                          color: FcmColors.goldSoft,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                        ),
-                      ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < d.opponentKeyMen.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: FcmEntrance(
+                    index: i,
+                    dx: 22,
+                    dy: 0,
+                    duration: const Duration(milliseconds: 380),
+                    child: FcmPlayerCard(
+                      player: _basePlayerOf(d.opponentKeyMen[i]),
+                      rarity: CardRarity.fromOverall(
+                          d.opponentKeyMen[i].overall),
+                      overall: d.opponentKeyMen[i].overall,
+                      width: width,
                     ),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      width: 34,
-                      child: FitText(
-                        d.opponentKeyMen[i].position,
-                        style: const TextStyle(
-                          color: FcmColors.textDim,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        d.opponentKeyMen[i].name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              ],
+            ],
+          ),
         ],
       ),
+    );
+  }
+
+  /// The key-man record mapped onto a [BasePlayer] so the real collection
+  /// card face renders it; identity fields the analysis does not know
+  /// stay neutral (the flag falls back to a football glyph).
+  static BasePlayer _basePlayerOf(
+      ({String name, String position, int overall, int attack, int support,
+              int defence, int goalkeeping}) m) {
+    final stats = BaseStats(
+      overall: m.overall,
+      attack: m.attack,
+      support: m.support,
+      defence: m.defence,
+      goalkeeping: m.goalkeeping,
+    );
+    return BasePlayer(
+      playerId: -1 - m.overall,
+      name: m.name,
+      position: Position.fromCode(m.position),
+      age: 0,
+      nationality: '',
+      club: '',
+      leagueCode: '',
+      marketValueEur: 0,
+      baseStats: stats,
     );
   }
 }

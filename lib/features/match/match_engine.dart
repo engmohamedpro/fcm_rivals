@@ -325,6 +325,43 @@ class TeamTotals {
   final double goalkeeping;
 }
 
+/// Neutral squad-quality totals for the pre-match forecast (GDD 13): the
+/// role-weighted mean of EVERY player's raw attributes keyed by natural
+/// position — the whole squad list (starting XI + bench + reserves) counts
+/// alike, with no formation slots, no stamina scaling, no tactics, no
+/// mentality and no home edge. A like-for-like measure of what each squad
+/// is worth on paper.
+TeamTotals squadQualityTotals(List<MatchPlayer> squad) {
+  double attackSum = 0, supportSum = 0, defenceSum = 0;
+  var attackW = 0.0, supportW = 0.0, defenceW = 0.0;
+  double gkSum = 0;
+  var gkCount = 0;
+  for (final p in squad) {
+    final pos = p.position;
+    final aw = _MatchEngineRole.attack[pos]!;
+    final sw = _MatchEngineRole.support[pos]!;
+    final dw = _MatchEngineRole.defence[pos]!;
+    attackSum += p.attack * aw;
+    attackW += aw;
+    supportSum += p.support * sw;
+    supportW += sw;
+    defenceSum += p.defence * dw;
+    defenceW += dw;
+    if (pos == Position.gk) {
+      gkSum += p.goalkeeping;
+      gkCount++;
+    }
+  }
+  return TeamTotals(
+    attack: attackW > 0 ? attackSum / attackW : 0,
+    support: supportW > 0 ? supportSum / supportW : 0,
+    defence: defenceW > 0 ? defenceSum / defenceW : 0,
+    // No goalkeeper in the list at all: the engine's fallback for a
+    // missing keeper applies (GDD 12.3 step 8).
+    goalkeeping: gkCount > 0 ? gkSum / gkCount : 40,
+  );
+}
+
 /// Public match snapshot for UI and persistence (GDD 26.1).
 class MatchState {
   const MatchState({
