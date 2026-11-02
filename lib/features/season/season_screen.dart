@@ -273,20 +273,35 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
         ? 0.0
         : (summary.roundsPlayed / summary.roundsTotal).clamp(0.0, 1.0);
 
+    // The opponent's current table position, shown on the next-fixture
+    // card (null while standings load or if the club is somehow absent).
+    int? opponentPos;
+    if (next != null) {
+      for (final e in standings ?? const <StandingEntry>[]) {
+        if (e.clubId == next.opponentClubId) {
+          opponentPos = e.position;
+          break;
+        }
+      }
+    }
+
+    // Top padding matches the sides, so the header card sits in even
+    // whitespace like the tactics control card.
     return ListView(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 24),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
       children: [
         // Header: division, progress and outcome.
         FcmEntrance(
           child: FcmPanel(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 52,
-                      height: 52,
+                      width: 44,
+                      height: 44,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -302,9 +317,9 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                           style: const TextStyle(
                               color: FcmColors.ink,
                               fontWeight: FontWeight.w900,
-                              fontSize: 20)),
+                              fontSize: 17)),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,7 +330,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                                 : 'Season ${summary.ordinal} · Division ${summary.division}',
                             style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w900),
                           ),
                           const SizedBox(height: 2),
@@ -331,11 +346,11 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: SizedBox(
-                    height: 8,
+                    height: 6,
                     child: Stack(
                       children: [
                         Container(color: Colors.white.withValues(alpha: 0.10)),
@@ -369,6 +384,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
             child: FcmPanel(
               accent: FcmColors.gold,
               glow: true,
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -381,7 +397,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                               color: FcmColors.gold,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1.2,
-                              fontSize: 12),
+                              fontSize: 11),
                         ),
                       ),
                       FcmPill(next.isHome ? 'HOME' : 'AWAY',
@@ -391,25 +407,46 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                           filled: false),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    next.isHome
-                        ? 'vs ${next.opponentName} (home)'
-                        : 'at ${next.opponentName} (away)',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        height: 1.15),
+                  const SizedBox(height: 6),
+                  // The opponent and their current table position on one
+                  // shrinking line, so long club names never overflow.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: next.isHome
+                                ? 'vs ${next.opponentName} (home)'
+                                : 'at ${next.opponentName} (away)',
+                          ),
+                          if (opponentPos != null)
+                            TextSpan(
+                              text:
+                                  '  ·  ${_ordinal(opponentPos)} in the table',
+                              style: const TextStyle(
+                                  color: FcmColors.goldSoft,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          height: 1.15),
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   // Every fixture is played as a live matchday; the round's
                   // AI fixtures resolve automatically in lockstep when the
                   // result commits (GDD 9.2), so there is no sim-rest.
                   FcmButton(
                     onPressed: _busy ? null : _playNextFixture,
+                    compact: true,
                     icon: Icons.play_arrow_rounded,
                     label: 'Play match',
                   ),
@@ -492,6 +529,17 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     );
   }
 }
+
+/// 1st, 2nd, 3rd, 4th… for table positions.
+String _ordinal(int n) => switch (n % 100) {
+      11 || 12 || 13 => '${n}th',
+      _ => switch (n % 10) {
+          1 => '${n}st',
+          2 => '${n}nd',
+          3 => '${n}rd',
+          _ => '${n}th',
+        },
+    };
 
 class _Hdr extends StatelessWidget {
   const _Hdr(this.text, {this.end = false});
