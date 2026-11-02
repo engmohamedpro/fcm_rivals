@@ -16,6 +16,7 @@ import '../../core/domain/players.dart';
 import '../collection/collection_store.dart';
 import '../match/match_engine.dart';
 import '../match/match_session.dart';
+import '../match/stamina.dart' show StaminaConfig, recoverStamina;
 import '../match/tactics.dart' show PlayingStyle, Mentality;
 import 'season_engine.dart';
 
@@ -303,6 +304,35 @@ class SeasonStore {
     return AiOpponentSquad(club: club, starters: starters, bench: bench);
   }
 
+  /// Persists an AI club's post-match stamina (GDD 11 applies to every
+  /// club, not just the user): match-end stamina plus the same natural
+  /// recovery the user's squad gets, so AI squads tire and heal across a
+  /// season symmetrically with the player. Until now AI clubs kept 100%
+  /// stamina forever — a large hidden difficulty asymmetry found by the
+  /// §30 simulation harness.
+  Future<void> _persistAiStamina({
+    required int aiClubId,
+    required Iterable<MatchPlayer> players,
+    required int restDays,
+  }) async {
+    for (final p in players) {
+      if (p.minutesPlayed == 0) continue;
+      final row = await (db.select(db.aiPlayers)
+            ..where((a) => a.id.equals(-(p.playerId + 10_000))))
+          .getSingleOrNull();
+      if (row == null) continue;
+      final recovered = recoverStamina(
+        config: const StaminaConfig(),
+        currentStamina: p.stamina,
+        minutesPlayed: p.minutesPlayed,
+        restDays: restDays,
+      );
+      await (db.update(db.aiPlayers)..where((a) => a.id.equals(row.id)))
+          .write(AiPlayersCompanion(
+              staminaPercent: Value(recovered.round().clamp(0, 100))));
+    }
+  }
+
   /// Creates a live match session for the user's next fixture. The UI
   /// drives it; call [commitFixtureResult] with the finished session.
   Future<MatchSession> startNextFixture(CollectionStore store) async {
@@ -323,6 +353,10 @@ class SeasonStore {
 
   /// Records a played fixture: the MatchResult row (FR-038). Stamina and
   /// match rewards were already applied by [MatchSession.finish].
+  ///
+  /// The engine's home/away orientation follows the fixture (user home =
+  /// user is MatchSide.home), so goals map straight through: the club
+  /// listed as home is the side the engine tracked as home.
   Future<void> commitFixtureResult(MatchSession session, NextFixture fixture) async {
     final state = session.engine.state;
     final season = await getActiveSeason();
@@ -335,9 +369,17 @@ class SeasonStore {
       round: fixture.round,
       homeClubId: fixture.isHome ? season.userClubId : fixture.opponentClubId,
       awayClubId: fixture.isHome ? fixture.opponentClubId : season.userClubId,
-      homeGoals: fixture.isHome ? state.scoreHome : state.scoreAway,
-      awayGoals: fixture.isHome ? state.scoreAway : state.scoreHome,
+      homeGoals: state.scoreHome,
+      awayGoals: state.scoreAway,
       seed: session.engine.seed,
+    );
+    // The AI opponent's squad also tires and recovers (GDD 11 symmetry).
+    final aiSide =
+        fixture.isHome ? MatchSide.away : MatchSide.home;
+    await _persistAiStamina(
+      aiClubId: fixture.opponentClubId,
+      players: session.engine.playersOf(aiSide),
+      restDays: 3,
     );
   }
 
@@ -425,8 +467,8 @@ class SeasonStore {
           round: f.round,
           homeClubId: f.homeClubId,
           awayClubId: f.awayClubId,
-          homeGoals: isHome ? session.engine.state.scoreHome : session.engine.state.scoreAway,
-          awayGoals: isHome ? session.engine.state.scoreAway : session.engine.state.scoreHome,
+          homeGoals: session.engine.state.scoreHome,
+          awayGoals: session.engine.state.scoreAway,
           seed: session.engine.seed,
         );
       } else {
@@ -474,6 +516,15 @@ class SeasonStore {
       awayGoals: match.state.scoreAway,
       seed: match.seed,
     );
+    // Both AI squads tire and recover symmetrically (GDD 11).
+    await _persistAiStamina(
+        aiClubId: f.homeClubId,
+        players: match.playersOf(MatchSide.home),
+        restDays: 3);
+    await _persistAiStamina(
+        aiClubId: f.awayClubId,
+        players: match.playersOf(MatchSide.away),
+        restDays: 3);
   }
 
   Future<void> _insertResult(

@@ -17,7 +17,11 @@ class StaminaConfig {
     this.minStamina = 0,
     this.maxStamina = 100,
     this.baseRecovery = 18,
-    this.recoveryPerRestDay = 7,
+    // Calibrated by the §30/§31 simulation harness: a 38-match season
+    // (GDD 9.2) plays roughly every 3–4 days, and a full match drains
+    // ~45 points. Recovery must exceed that or squads spiral from 100
+    // down to ~20 within five fixtures (18 + 3×14 = 60 ≥ 45).
+    this.recoveryPerRestDay = 14,
     this.minutesPlayedPenalty = 12,
     this.substituteRecoveryBonus = 6,
     this.exhaustedThreshold = 60,

@@ -18,10 +18,15 @@ import '../../core/domain/players.dart';
 class EconomyConfig {
   const EconomyConfig({
     this.valueReferenceEur = 50_000_000,
-    this.economicValueAtReference = 10_000_000,
+    // Calibrated by the §30 economy simulation: a full season (38 match
+    // rewards + season reward) banks roughly 70–150k Coins, so the
+    // reference economic value must live in that world — €50M ≈ 30k
+    // Coins. The previous 10M anchor made dynamic pack prices (GDD 5.5)
+    // cost ~5,900 match rewards, i.e. unbuyable forever.
+    this.economicValueAtReference = 30_000,
     this.valueGrowthExponent = 0.5,
-    this.minEconomicValue = 50,
-    this.maxEconomicValue = 200_000_000,
+    this.minEconomicValue = 5,
+    this.maxEconomicValue = 600_000,
     this.sellingPercentage = 0.6,
     this.upgradeValueMultiplier = 0.35,
     this.upgradeLevelGrowth = 1.5,

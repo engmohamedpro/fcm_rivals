@@ -364,6 +364,64 @@ class CollectionStore {
         .get();
   }
 
+  /// Buys one pack with Coins (GDD 5.5: prices come from the Economy
+  /// Engine's expected-contents formula, charged atomically with a
+  /// ledger row). The bought pack lands in the club's inventory like any
+  /// other and is opened via [openPack].
+  Future<Pack> buyPack({
+    required PackCategory category,
+    String? leagueCode,
+    String? nationality,
+    String? club,
+    Position? position,
+  }) async {
+    final userClub = await getClub();
+    if (userClub == null) {
+      throw const CollectionException('No club');
+    }
+    final registry = await _ensureRegistry();
+    final scope = PackScope(
+      category: category,
+      leagueCode: leagueCode,
+      nationality: nationality,
+      club: club,
+      position: position,
+    );
+    final pool = registry.all
+        .where((p) => scope.matches(p))
+        .toList(growable: false);
+    // A pack draws one player per tier: low, mid, high (GDD 5.3).
+    if (pool.length < 3) {
+      throw const CollectionException('Not enough eligible players');
+    }
+    final engine = PackEngine(random: math.Random(0), economy: economy);
+    final price = engine.packPriceFor(scope, pool);
+    if (price <= 0) {
+      throw const CollectionException('Pack price must be positive');
+    }
+    if (userClub.coins < price) {
+      throw const CollectionException('Not enough coins');
+    }
+    final now = DateTime.now();
+    return db.transaction(() async {
+      await (db.update(db.clubs)..where((c) => c.id.equals(userClub.id)))
+          .write(ClubsCompanion(coins: Value(userClub.coins - price)));
+      await db.coinLedger(userClub.id, -price,
+          reason: 'pack_purchase',
+          detail: 'Bought ${category.name} pack');
+      final id = await db.into(db.packs).insert(PacksCompanion.insert(
+            clubId: userClub.id,
+            category: category.name,
+            scopeValue: Value(position?.code ?? leagueCode ?? nationality ?? club),
+            price: Value(price),
+            source: const Value('purchase'),
+            createdAt: now,
+          ));
+      return (await (db.select(db.packs)..where((p) => p.id.equals(id)))
+          .getSingle());
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Collection
   // ---------------------------------------------------------------------------
@@ -522,6 +580,14 @@ class CollectionStore {
             ..where((o) => o.id.equals(duplicateOwnedId)))
           .write(const OwnedPlayersCompanion(
               status: Value('merged'), squadSlot: Value(null)));
+      // The duplicate may have been a starter (merged INTO from the
+      // bench): its slot is now empty — re-run Auto Pick so every XI
+      // slot stays filled (GDD 6.4 invariant, next fixture depends on it).
+      if (duplicate.squadSlot != null && duplicate.squadSlot! < Formation.startingXiSize) {
+        final cards = await getCollection();
+        final formation = formationByCode(club.formationCode);
+        await saveSquad(squad.autoPick(cards, formation));
+      }
     });
 
     return MergeResult(

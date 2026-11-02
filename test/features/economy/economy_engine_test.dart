@@ -28,7 +28,8 @@ void main() {
     const eco = EconomyEngine();
 
     test('reference point anchors the curve (GDD 17.2)', () {
-      expect(eco.economicValueOf(50_000_000), 10_000_000);
+      // §30-calibrated anchor: €50M ≈ 30k Coins.
+      expect(eco.economicValueOf(50_000_000), 30_000);
     });
 
     test('non-linear: each doubling multiplies value by the same factor', () {
@@ -45,10 +46,10 @@ void main() {
     });
 
     test('clamped to sane bounds', () {
-      expect(eco.economicValueOf(0), 50);
-      // 1 EUR is (1/50M)^0.5 * 10M ≈ 1.4k — tiny but not clamped
-      expect(eco.economicValueOf(1), 1414);
-      expect(eco.economicValueOf(10_000_000_000), lessThanOrEqualTo(200_000_000));
+      expect(eco.economicValueOf(0), 5);
+      // 1 EUR is (1/50M)^0.5 * 30k ≈ 4.2 — clamped to the floor
+      expect(eco.economicValueOf(1), 5);
+      expect(eco.economicValueOf(10_000_000_000), lessThanOrEqualTo(600_000));
     });
 
     test('stable across imports: same value => same economic value', () {
@@ -61,7 +62,7 @@ void main() {
 
     test('base selling price is the configured percentage', () {
       final p = player(marketValueEur: 50_000_000);
-      expect(eco.sellPriceOf(p), 6_000_000); // 10M * 0.6
+      expect(eco.sellPriceOf(p), 18_000); // 30k * 0.6 (§30 calibration)
     });
 
     test('upgraded players sell for more, growing with level', () {
@@ -71,8 +72,8 @@ void main() {
       final plus3 = eco.sellPriceOfUpgraded(p, 3);
       expect(plus1, greaterThan(base));
       expect(plus3, greaterThan(plus1));
-      // exactly +10% of ev per level: 6M * 1.1 = 6.6M
-      expect(plus1, 6_600_000);
+      // exactly +10% of ev per level: 18k * 1.1 = 19.8k
+      expect(plus1, 19_800);
     });
 
     test('FR-008: removal compensation equals upgraded selling formula', () {

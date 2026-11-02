@@ -240,11 +240,14 @@ void main() {
 
     test('two consecutive matches accumulate stamina effects (GDD 11.5)',
         () async {
-      await playFriendly(seed: 21);
+      // One-day rest: fatigue survives into the next match. With the
+      // §30-calibrated recovery (3+ days fully restores a full match's
+      // drain), only a short rest leaves carried fatigue.
+      await playFriendly(seed: 21, restDays: 1);
       final afterFirst = {
         for (final c in await store.getCollection()) c.ownedId: c.staminaPercent,
       };
-      await playFriendly(seed: 22);
+      await playFriendly(seed: 22, restDays: 1);
       final afterSecond = {
         for (final c in await store.getCollection()) c.ownedId: c.staminaPercent,
       };

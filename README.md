@@ -7,9 +7,10 @@ The full game design and requirements live in [`docs/fcm_rivals_GDD_SRS.md`](doc
 
 ## Current state (development build)
 
-Five iterations are complete — the foundation engines, the collection
+Six iterations are complete — the foundation engines, the collection
 layer, the Match Engine with live tactics, the Division & Season system,
-and Pep Talks with rewarded advertisements. The GDD's development rules (§36) are followed: data model first,
+Pep Talks with rewarded advertisements, and the simulation & balance
+harness (GDD §30–33) that calibrates them. The GDD's development rules (§36) are followed: data model first,
 engines as pure Dart with no UI dependencies, atomic coin transactions.
 
 | Module | Path | Covers |
@@ -27,6 +28,7 @@ engines as pure Dart with no UI dependencies, atomic coin transactions.
 | Tactics | `lib/features/match/` | 10 playing styles, 7 mentalities, 5 live actions with explicit percentage modifiers (GDD 10/16) |
 | Pep Talks | `lib/features/match/` | pre-match and half-time motivational choices with visible percentage modifiers applied through the engine command pipeline, post-match recovery choice (GDD 15) |
 | Rewarded Ads | `lib/features/ads/` | pure validation engine (completion, duplicate prevention, daily limits, replay window) + AdUsage ledger; ad-boosted +15% recovery and match replay (GDD 19, FR-040..FR-043) |
+| Simulation Harness | `lib/features/simulation/` | MatchSimulator (GDD 31 metrics + determinism checks) and EconomySimulator (GDD 30/32/33 multi-season saves through the real stores); `tool/simulation_report_test.dart` regenerates the balance report |
 | Season Engine | `lib/features/season/` | division difficulty scaling, AI club + squad generation through the stats curve, double round-robin fixtures, standings, promotion/relegation, position-based rewards (GDD 9/18, FR-035..FR-039) |
 | Season Store | `lib/features/season/` | season lifecycle over Drift: 20-club divisions, fixture play through the MatchEngine, quick simulation, history preservation, rewards with ledger |
 | Collection Store | `lib/features/collection/` | atomic pack open/sell/merge, club creation with 36 starting packs, dataset-update compensation, coin ledger, match result persistence (FR-012..FR-016) |
@@ -63,7 +65,7 @@ stats byte-for-byte; upgrades live on owned instances and survive updates.
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs  # regenerate drift code
 flutter analyze
-flutter test     # 181 tests: engines, match engine, season system, pep talks, rewarded ads, update rules, store integration, UI flow
+flutter test     # 194 tests: engines, match engine, season system, pep talks, rewarded ads, simulation harness invariants, update rules, store integration, UI flow
 flutter run
 ```
 
@@ -71,7 +73,9 @@ Requires Flutter 3.47.9 stable / Dart 3.13.7 (`sdk: ^3.13.7`).
 
 ## Roadmap
 
-Next per the GDD's Definition of Done (§37): the economy simulation
-harness (§30) with balance tuning, additional ad reward surfaces (free
-pack, upgrade discount, multipliers — GDD 19.3), and carrying over
+The simulation harness (§30–33) is in place and has already driven three
+balance fixes (economy anchor, stamina recovery curve, away-fixture
+result inversion). Next per the GDD's Definition of Done (§37): tune
+promotion rates from the harness data, additional ad reward surfaces
+(free pack, upgrade discount, multipliers — GDD 19.3), and carrying over
 promoted/relegated clubs between divisions (GDD 9.5).
