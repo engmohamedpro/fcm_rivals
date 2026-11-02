@@ -59,16 +59,22 @@ class SquadScreen extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
           children: [
+            // The tactical setup is always available — with an empty
+            // collection the pitch simply renders its empty slots —
+            // so the tab never hides itself behind a placeholder; the
+            // hint above the view just explains how to fill it.
             if (squad.isEmpty)
-              const FcmPanel(
-                child: Text(
-                  'Open packs to collect players, then tap Auto Pick.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: FcmColors.textDim),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 14),
+                child: FcmPanel(
+                  child: Text(
+                    'Open packs to collect players, then tap Auto Pick.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: FcmColors.textDim),
+                  ),
                 ),
-              )
-            else
-              TacticsSetupView(
+              ),
+            TacticsSetupView(
                 formationCode: club?.formationCode ?? '4-3-3',
                 style: style,
                 mentality: mentality,

@@ -6,7 +6,6 @@ import '../../core/database/app_database.dart' show Pack;
 import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
-import '../../features/ads/ad_engine.dart' show AdRewardKind;
 import '../../features/collection/collection_store.dart' show StorePackOffer;
 import '../../features/packs/pack_engine.dart' show PackCategory;
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
@@ -15,9 +14,10 @@ import 'pack_opening_screen.dart';
 /// Packs tab — the store (GDD 5.5): ONE grid of packs, every cell drawn as
 /// the sealed foil pack the player later sees in the opening cinematic.
 /// Owned (free) packs of a type show a FREE ×N pill in place of the price;
-/// otherwise the cell shows the coin price from the Economy Engine.
-/// Tapping a cell opens the next owned pack, or buys one when none are
-/// left — free and bought packs live side by side, never separated.
+/// otherwise the cell shows the coin price from the Economy Engine with a
+/// BUY button under it. Tapping a cell opens the next owned pack, or opens
+/// a YES/NO purchase confirmation when none are left — free and bought
+/// packs live side by side, never separated.
 class PacksScreen extends ConsumerStatefulWidget {
   const PacksScreen({super.key});
 
@@ -109,7 +109,81 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     }
   }
 
+  /// Buy flow: coins are the game's hard currency, so the purchase always
+  /// passes an explicit YES/NO confirmation first (price, balance and an
+  /// affordability check up front); the store still validates atomically.
   Future<void> _buy(BuildContext context, StorePackOffer offer) async {
+    final coins = ref.read(clubProvider).valueOrNull?.coins;
+    final canAfford = coins == null || coins >= offer.price;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: FcmColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Buy ${offer.title}?',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.monetization_on_rounded,
+                    color: FcmColors.gold, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  '${_groupDigits(offer.price)} Coins',
+                  style: const TextStyle(
+                    color: FcmColors.gold,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            if (coins != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                canAfford
+                    ? 'Balance: ${_groupDigits(coins)} Coins '
+                        '· ${_groupDigits(coins - offer.price)} after'
+                    : 'Balance: ${_groupDigits(coins)} Coins',
+                style: const TextStyle(
+                    color: FcmColors.textDim, fontWeight: FontWeight.w600),
+              ),
+            ],
+            if (!canAfford) ...[
+              const SizedBox(height: 10),
+              const Text('Not enough coins',
+                  style: TextStyle(
+                      color: FcmColors.danger, fontWeight: FontWeight.w800)),
+            ],
+          ],
+        ),
+        actions: [
+          FcmButton(
+            compact: true,
+            style: FcmButtonStyle.steel,
+            label: 'NO',
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+          ),
+          FcmButton(
+            compact: true,
+            label: 'YES',
+            onPressed: canAfford
+                ? () => Navigator.of(dialogContext).pop(true)
+                : null,
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
     try {
       final store = await ref.read(collectionStoreProvider.future);
       await store.buyPack(
@@ -133,12 +207,17 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   }
 }
 
+/// Thousands separator for dialog prices and balances, e.g. 12500 → 12,500.
+String _groupDigits(int value) => value
+    .toString()
+    .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
+
 /// Scope key shared by owned packs and store offers, e.g. 'global' or
 /// 'position:ST' — the join between inventory and grid cell.
 String _scopeKey(String category, String? scopeValue) =>
     scopeValue == null ? category : '$category:$scopeValue';
 
-/// The store grid: rewarded-ad offer on top, then every pack cell.
+/// The store grid: every pack cell.
 class _StoreGrid extends StatelessWidget {
   const _StoreGrid({
     required this.packs,
@@ -170,8 +249,6 @@ class _StoreGrid extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 24),
       children: [
-        const FcmEntrance(index: 0, child: _FreePackAdCard()),
-        const SizedBox(height: 8),
         GridView.count(
           crossAxisCount: columns,
           mainAxisSpacing: 20,
@@ -211,8 +288,9 @@ class _StoreGrid extends StatelessWidget {
 
 /// One store cell: the sealed foil pack exactly as it looks before
 /// opening (same [FoilPackPainter] as the reveal cinematic), a scope
-/// badge, the title, and under it either the coin price or — when the
-/// club owns packs of this type — a FREE ×N pill in its place.
+/// badge, the title, and under it either the FREE ×N pill — when the
+/// club owns packs of this type — or the coin price with a BUY button
+/// that opens the purchase confirmation.
 class _StorePackCell extends StatelessWidget {
   const _StorePackCell({
     required this.offer,
@@ -297,7 +375,7 @@ class _StorePackCell extends StatelessWidget {
           const SizedBox(height: 3),
           if (isFree)
             FcmPill('FREE ×$ownedCount')
-          else
+          else ...[
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -317,6 +395,18 @@ class _StorePackCell extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 6),
+            // The explicit buy affordance: tapping it (or the cell) opens
+            // the YES/NO confirmation — nothing is ever bought silently.
+            SizedBox(
+              width: double.infinity,
+              child: FcmButton(
+                compact: true,
+                label: 'BUY',
+                onPressed: onTap,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -330,108 +420,4 @@ String _formatCoins(int value) {
   }
   if (value >= 10000) return '${(value / 1000).round()}K';
   return '$value';
-}
-
-/// Rewarded-ad free pack offer (GDD 19.3 'Free user-selected pack'):
-/// one global pack per day for one completed ad. Always optional.
-class _FreePackAdCard extends ConsumerStatefulWidget {
-  const _FreePackAdCard();
-
-  @override
-  ConsumerState<_FreePackAdCard> createState() => _FreePackAdCardState();
-}
-
-class _FreePackAdCardState extends ConsumerState<_FreePackAdCard> {
-  bool _busy = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return FutureBuilder<AdRewardKind?>(
-      future: _adAvailable(),
-      builder: (context, snapshot) {
-        final available = snapshot.data != null;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 6, top: 4),
-          child: Opacity(
-            opacity: available ? 1 : 0.6,
-            child: FcmPanel(
-              accent: available ? FcmColors.gold : null,
-              glow: available,
-              onTap: available && !_busy ? _claim : null,
-              child: Row(
-                children: [
-                  const FcmIconBadge(
-                      icon: Icons.play_arrow_rounded, size: 52),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const FitText('Free pack — watch an ad',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16)),
-                        const SizedBox(height: 2),
-                        Text(
-                          available
-                              ? 'One global pack (1 player) for a completed rewarded ad'
-                              : 'Already claimed today · ads are always optional',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: FcmColors.textDim),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_busy)
-                    const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Non-null when the free-pack ad is still available today.
-  Future<AdRewardKind?> _adAvailable() async {
-    final ads = await ref.read(adStoreProvider.future);
-    final club = await ref.read(clubProvider.future);
-    if (club == null) return null;
-    return await ads.remainingToday(club.id, AdRewardKind.freePack) > 0
-        ? AdRewardKind.freePack
-        : null;
-  }
-
-  Future<void> _claim() async {
-    setState(() => _busy = true);
-    try {
-      final ads = await ref.read(adStoreProvider.future);
-      final club = await ref.read(clubProvider.future);
-      if (club == null) return;
-      // Playback is simulated in v1; the store validates completion.
-      await ads.grantFreePack(
-        clubId: club.id,
-        category: PackCategory.global,
-        playbackCompleted: true,
-      );
-      ref.invalidate(availablePacksProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Free pack added to your packs')));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ad reward unavailable')));
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 }
