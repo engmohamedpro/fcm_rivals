@@ -43,7 +43,8 @@ class FcmLogoLoading extends StatelessWidget {
   }
 }
 
-/// Compact text wordmark for app bars: silver "FCM" + gold "RIVALS".
+/// Compact text wordmark for app bars: silver "FCM" + champagne "RIVALS",
+/// matching the logo's metal-on-black signature.
 class FcmWordmark extends StatelessWidget {
   const FcmWordmark({super.key, this.size = 22});
 

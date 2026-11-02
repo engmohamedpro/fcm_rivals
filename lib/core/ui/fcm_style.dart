@@ -1,7 +1,8 @@
 /// FCM Rivals — shared visual language (premium dark UI).
 ///
-/// Colours are taken from the brand art: deep stadium navy, trophy gold and
-/// the blue / purple / gold card tiers.
+/// Colours are taken from the brand art: near-black charcoal surfaces, a
+/// champagne-gold metal accent and a silver wordmark — no saturated hues
+/// anywhere, so the whole game reads like the logo (gold on black).
 library;
 
 import 'package:flutter/material.dart';
@@ -10,39 +11,64 @@ import 'package:flutter/material.dart';
 class FcmColors {
   FcmColors._();
 
-  static const Color night = Color(0xFF040A1C);
-  static const Color navy = Color(0xFF0A1A44);
-  static const Color surface = Color(0xFF0D1F52);
-  static const Color surfaceHigh = Color(0xFF15296B);
-  static const Color royal = Color(0xFF2A5CFF);
-  static const Color gold = Color(0xFFFFC53D);
-  static const Color goldDeep = Color(0xFFC98A00);
-  static const Color goldSoft = Color(0xFFFFE08A);
-  static const Color pitch = Color(0xFF1FA64A);
-  static const Color silver = Color(0xFFDDE3F0);
-  static const Color textDim = Color(0xFF9FB0D9);
-  static const Color success = Color(0xFF2EE59D);
-  static const Color danger = Color(0xFFFF5470);
+  /// Deepest background tone of the brand art.
+  static const Color night = Color(0xFF0B0A0E);
 
-  /// Primary call-to-action gradient (gold).
+  /// Raised charcoal surface.
+  static const Color surface = Color(0xFF141419);
+
+  /// Brighter charcoal for overlays and chips.
+  static const Color surfaceHigh = Color(0xFF1E1D24);
+
+  /// Warm charcoal (the leather-brown tone of the brand art).
+  static const Color ember = Color(0xFF2E2925);
+
+  /// Dark bronze — borders, dim accents, secondary highlights.
+  static const Color bronze = Color(0xFF8A6E42);
+
+  /// Brand gold — the champagne tone of the logo emblem.
+  static const Color gold = Color(0xFFD9B871);
+
+  /// Bright champagne — highlights and gradient tops.
+  static const Color goldSoft = Color(0xFFF5E3B0);
+
+  /// Deepest gold-brown, for gradient tails.
+  static const Color goldDeep = Color(0xFF6E5426);
+
+  /// Silver — the logo wordmark tone, for secondary text and emblems.
+  static const Color silver = Color(0xFFC9C4B8);
+
+  /// Muted pitch green (backdrop only — never a UI accent).
+  static const Color pitch = Color(0xFF57683F);
+
+  /// Warm gray body text.
+  static const Color textDim = Color(0xFF8F8A80);
+
+  static const Color success = Color(0xFF8FD09A);
+  static const Color danger = Color(0xFFD96A62);
+
+  /// Ink that sits on gold surfaces.
+  static const Color ink = Color(0xFF241806);
+
+  /// Primary call-to-action gradient (champagne → gold → bronze).
   static const LinearGradient goldGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFFFE08A), Color(0xFFFFC53D), Color(0xFFE09A00)],
+    colors: [Color(0xFFF5E3B0), Color(0xFFD9B871), Color(0xFF8A6E42)],
   );
 
-  /// Secondary button / panel gradient (royal blue).
-  static const LinearGradient royalGradient = LinearGradient(
+  /// Secondary button / panel gradient (charcoal steel with gold warmth).
+  static const LinearGradient steelGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF3A6BFF), Color(0xFF1B3FB8)],
+    colors: [Color(0xFF2A2731), Color(0xFF17161B)],
   );
 }
 
 /// Card rarity. Derived from a player's rating so the same player looks the
-/// same in the pack reveal, the collection and the squad: blue (rare),
-/// purple (epic) and gold (legendary). Higher rarity gets bigger reveal
-/// effects (GDD 5.6).
+/// same in the pack reveal, the collection and the squad: bronze (rare),
+/// silver (epic) and gold (legendary) — the medal metals of the brand.
+/// Higher rarity gets bigger reveal effects (GDD 5.6).
 enum CardRarity {
   rare,
   epic,
@@ -63,41 +89,42 @@ enum CardRarity {
       };
 
   String get label => switch (this) {
-        CardRarity.rare => 'RARE',
-        CardRarity.epic => 'EPIC',
-        CardRarity.legendary => 'LEGENDARY',
+        CardRarity.rare => 'BRONZE',
+        CardRarity.epic => 'SILVER',
+        CardRarity.legendary => 'GOLD',
       };
 
   /// Main accent colour (glow, rays, particles).
   Color get accent => switch (this) {
-        CardRarity.rare => const Color(0xFF3D8BFF),
-        CardRarity.epic => const Color(0xFFB65CFF),
-        CardRarity.legendary => const Color(0xFFFFC53D),
+        CardRarity.rare => const Color(0xFFC89A5B),
+        CardRarity.epic => const Color(0xFFD9D9E2),
+        CardRarity.legendary => const Color(0xFFF2D488),
       };
 
   /// Card face gradient, top-left → bottom-right.
   List<Color> get faceGradient => switch (this) {
         CardRarity.rare => const [
-            Color(0xFF6FB1FF),
-            Color(0xFF2A62E0),
-            Color(0xFF10286B),
+            Color(0xFFEBD3A4),
+            Color(0xFFA57C3F),
+            Color(0xFF523A18),
           ],
         CardRarity.epic => const [
-            Color(0xFFD59BFF),
-            Color(0xFF8A3FE0),
-            Color(0xFF2E1065),
+            Color(0xFFF4F4F8),
+            Color(0xFFADAFBC),
+            Color(0xFF4E505A),
           ],
         CardRarity.legendary => const [
-            Color(0xFFFFE9A3),
-            Color(0xFFF2B01E),
-            Color(0xFF8A5A00),
+            Color(0xFFFFF3C4),
+            Color(0xFFE0B968),
+            Color(0xFF7A4E00),
           ],
       };
 
   /// Text colour that stays readable on [faceGradient].
   Color get ink => switch (this) {
         CardRarity.legendary => const Color(0xFF2B1B00),
-        _ => Colors.white,
+        CardRarity.epic => const Color(0xFF17181C),
+        CardRarity.rare => const Color(0xFF2B1D08),
       };
 
   /// 1.0 for rare, up to 2.0 for legendary — scales particles, ray length
@@ -140,13 +167,13 @@ class FcmPageTransitions extends PageTransitionsBuilder {
 /// Premium dark Material theme used by the whole app.
 ThemeData buildFcmTheme() {
   final scheme = ColorScheme.fromSeed(
-    seedColor: FcmColors.royal,
+    seedColor: FcmColors.gold,
     brightness: Brightness.dark,
   ).copyWith(
     primary: FcmColors.gold,
-    onPrimary: const Color(0xFF2B1B00),
-    secondary: FcmColors.royal,
-    surface: FcmColors.navy,
+    onPrimary: FcmColors.ink,
+    secondary: FcmColors.bronze,
+    surface: FcmColors.surface,
     surfaceContainerHighest: FcmColors.surfaceHigh,
     error: FcmColors.danger,
     onSurfaceVariant: FcmColors.textDim,
@@ -250,8 +277,8 @@ ThemeData buildFcmTheme() {
       labelStyle: const TextStyle(
           color: Colors.white, fontWeight: FontWeight.w700),
       secondaryLabelStyle: const TextStyle(
-          color: Color(0xFF2B1B00), fontWeight: FontWeight.w800),
-      checkmarkColor: const Color(0xFF2B1B00),
+          color: FcmColors.ink, fontWeight: FontWeight.w800),
+      checkmarkColor: FcmColors.ink,
       side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
@@ -268,7 +295,7 @@ ThemeData buildFcmTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: FcmColors.gold,
-        foregroundColor: const Color(0xFF2B1B00),
+        foregroundColor: FcmColors.ink,
         textStyle: const TextStyle(
             fontWeight: FontWeight.w900, letterSpacing: 1.0, fontSize: 15),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),

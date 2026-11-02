@@ -181,7 +181,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final raysStrength =
         Interval(0.22, 0.36).transform(t) * (0.55 + 0.25 * rarity.intensity);
     final glowTint = Color.lerp(
-        const Color(0xFF9CC2FF), rarity.accent, math.min(1.0, charge * 1.2))!;
+        FcmColors.goldSoft, rarity.accent, math.min(1.0, charge * 1.2))!;
 
     final burst =
         ((t - _T.burstStart) / (_T.burstEnd - _T.burstStart)).clamp(0.0, 1.0);
@@ -203,7 +203,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
               center: const Alignment(0, -0.1),
               radius: 1.1,
               colors: [
-                Color.lerp(FcmColors.navy, rarity.accent,
+                Color.lerp(FcmColors.surface, rarity.accent,
                     0.30 * (isFirst ? charge : 1.0))!,
                 FcmColors.night,
               ],
@@ -281,7 +281,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         if (flash > 0)
           IgnorePointer(
             child: ColoredBox(
-              color: Color.lerp(Colors.white, rarity.accent, 0.25)!
+              color: Color.lerp(FcmColors.goldSoft, rarity.accent, 0.25)!
                   .withValues(alpha: flash),
             ),
           ),

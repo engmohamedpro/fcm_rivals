@@ -315,12 +315,12 @@ class _MiniPack extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4F8BFF), Color(0xFF0B1E78)],
+          colors: [Color(0xFF3A342C), Color(0xFF141419)],
         ),
         border: Border.all(color: FcmColors.gold, width: 1.5),
         boxShadow: [
           BoxShadow(
-              color: FcmColors.royal.withValues(alpha: 0.55), blurRadius: 10),
+              color: FcmColors.bronze.withValues(alpha: 0.55), blurRadius: 10),
         ],
       ),
       child: Container(
@@ -330,7 +330,7 @@ class _MiniPack extends StatelessWidget {
         child: FitText(label,
             align: Alignment.center,
             style: const TextStyle(
-                color: Color(0xFF2B1B00),
+                color: FcmColors.ink,
                 fontWeight: FontWeight.w900,
                 fontSize: 14)),
       ),

@@ -68,14 +68,14 @@ class FoilPackPainter extends CustomPainter {
     // Drop shadow.
     canvas.drawShadow(path, Colors.black, 18, true);
 
-    // Foil body.
+    // Foil body: charcoal leather with a warm metal sheen (brand look).
     canvas.drawPath(
       path,
       Paint()
         ..shader = const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF3F7DFF), Color(0xFF1230A8), Color(0xFF081650)],
+          colors: [Color(0xFF3A342C), Color(0xFF17161A), Color(0xFF0B0A0E)],
           stops: [0.0, 0.5, 1.0],
         ).createShader(rect),
     );
@@ -92,9 +92,9 @@ class FoilPackPainter extends CustomPainter {
       Paint()
         ..shader = const LinearGradient(
           colors: [
-            Color(0xFFB87800),
-            Color(0xFFFFE08A),
-            Color(0xFFC98A00),
+            Color(0xFF8A6E42),
+            Color(0xFFF5E3B0),
+            Color(0xFF8A6E42),
           ],
         ).createShader(bandRect),
     );
@@ -111,11 +111,11 @@ class FoilPackPainter extends CustomPainter {
     _text(canvas, '★  ★  ★', size.width * 0.07, FcmColors.gold,
         Offset(size.width / 2, size.height * 0.30));
     _text(canvas, 'PLAYER PACK', size.width * 0.075,
-        Colors.white.withValues(alpha: 0.85),
+        FcmColors.goldSoft.withValues(alpha: 0.85),
         Offset(size.width / 2, size.height * 0.76),
         spacing: 3);
 
-    // Idle foil shimmer.
+    // Idle foil shimmer: warm champagne sweep.
     final sx = -size.width * 0.5 + shimmer * size.width * 2.2;
     final sweep = Path()
       ..moveTo(sx, size.height)
@@ -127,9 +127,9 @@ class FoilPackPainter extends CustomPainter {
       sweep,
       Paint()
         ..shader = LinearGradient(colors: [
-          Colors.white.withValues(alpha: 0.0),
-          Colors.white.withValues(alpha: 0.38),
-          Colors.white.withValues(alpha: 0.0),
+          FcmColors.goldSoft.withValues(alpha: 0.0),
+          FcmColors.goldSoft.withValues(alpha: 0.30),
+          FcmColors.goldSoft.withValues(alpha: 0.0),
         ]).createShader(
             Rect.fromLTWH(sx, 0, size.width * 0.7, size.height)),
     );
@@ -191,7 +191,7 @@ class FoilPackPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
-        ..color = Colors.white.withValues(alpha: 0.55),
+        ..color = FcmColors.gold.withValues(alpha: 0.45),
     );
   }
 

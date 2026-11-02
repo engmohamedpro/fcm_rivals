@@ -209,7 +209,7 @@ class _PlayerDetailSheet extends StatelessWidget {
                       FcmPill('LEVEL +${card.upgradeLevel}'),
                     if (copies >= 2)
                       FcmPill('×$copies COPIES',
-                          color: FcmColors.royal, filled: false),
+                          color: FcmColors.bronze, filled: false),
                     if (inSquad)
                       const FcmPill('IN SQUAD',
                           color: FcmColors.success, filled: false),
@@ -280,7 +280,7 @@ class _PlayerDetailSheet extends StatelessWidget {
                       child: FcmButton(
                         label: 'Merge duplicate (+1)',
                         icon: Icons.merge_type,
-                        style: FcmButtonStyle.royal,
+                        style: FcmButtonStyle.steel,
                         onPressed: () => _run(context, actions!.onMerge),
                       ),
                     ),

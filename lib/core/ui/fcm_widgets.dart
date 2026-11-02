@@ -6,7 +6,7 @@
 /// * [FcmBackdrop]   — animated stadium-night background (drifting light).
 /// * [FcmEntrance]   — staggered fade + slide-in for list items.
 /// * [FcmPressable]  — tactile press-scale with haptic tick.
-/// * [FcmButton]     — gold / royal / ghost gradient buttons.
+/// * [FcmButton]     — gold / steel / ghost gradient buttons.
 /// * [FcmPanel]      — glass card with accent border and glow.
 /// * [FcmCountUp]    — numbers that roll to their new value.
 /// * [FcmStatBar]    — animated attribute bar.
@@ -20,11 +20,12 @@ import 'package:flutter/services.dart';
 
 import 'fcm_style.dart';
 
-/// Rating → colour used by bars and pills (green elite → red weak).
+/// Rating → colour used by bars and pills (champagne elite → ember weak),
+/// desaturated to sit inside the brand's gold-on-black palette.
 Color ratingColor(num v) {
   if (v >= 80) return FcmColors.success;
   if (v >= 65) return FcmColors.gold;
-  if (v >= 45) return const Color(0xFFFF9F43);
+  if (v >= 45) return const Color(0xFFC89A5B);
   return FcmColors.danger;
 }
 
@@ -109,7 +110,7 @@ class _BackdropPainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF071030), FcmColors.night, Color(0xFF030814)],
+          colors: [Color(0xFF151318), FcmColors.night, Color(0xFF09080C)],
         ).createShader(rect),
     );
 
@@ -128,15 +129,15 @@ class _BackdropPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final base = math.max(w, h);
     orb(Offset(w * (0.2 + 0.1 * math.sin(t)), h * (0.12 + 0.05 * math.cos(t))),
-        base * 0.55, FcmColors.royal, 0.34);
+        base * 0.55, FcmColors.gold, 0.11);
     orb(Offset(w * (0.85 + 0.08 * math.cos(t * 2)), h * (0.35 + 0.06 * math.sin(t))),
-        base * 0.42, tint, 0.10);
+        base * 0.42, tint, 0.07);
     orb(Offset(w * (0.5 + 0.12 * math.sin(t * 1.5)), h * (1.0 + 0.03 * math.cos(t))),
-        base * 0.55, FcmColors.pitch, 0.16);
+        base * 0.55, FcmColors.pitch, 0.12);
 
     // Faint stadium-light diagonals.
     final line = Paint()
-      ..color = Colors.white.withValues(alpha: 0.018)
+      ..color = FcmColors.goldSoft.withValues(alpha: 0.016)
       ..strokeWidth = 26;
     for (var i = -3; i < 8; i++) {
       final x = w * i / 5 + math.sin(t) * 14;
@@ -347,7 +348,7 @@ class FitText extends StatelessWidget {
 // Buttons & panels
 // -----------------------------------------------------------------------------
 
-enum FcmButtonStyle { gold, royal, ghost }
+enum FcmButtonStyle { gold, steel, ghost }
 
 /// Premium gradient button. Labels shrink to fit; disabled when
 /// [onPressed] is null or [loading].
@@ -378,15 +379,15 @@ class FcmButton extends StatelessWidget {
     final Color glow;
     switch (style) {
       case FcmButtonStyle.gold:
-        fg = const Color(0xFF2B1B00);
+        fg = FcmColors.ink;
         gradient = FcmColors.goldGradient;
-        border = null;
+        border = FcmColors.goldSoft.withValues(alpha: 0.5);
         glow = FcmColors.gold;
-      case FcmButtonStyle.royal:
-        fg = Colors.white;
-        gradient = FcmColors.royalGradient;
-        border = null;
-        glow = FcmColors.royal;
+      case FcmButtonStyle.steel:
+        fg = FcmColors.goldSoft;
+        gradient = FcmColors.steelGradient;
+        border = FcmColors.bronze.withValues(alpha: 0.55);
+        glow = Colors.transparent;
       case FcmButtonStyle.ghost:
         fg = Colors.white;
         gradient = null;
@@ -438,7 +439,7 @@ class FcmButton extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: gradient,
               borderRadius: BorderRadius.circular(16),
-              border: border != null ? Border.all(color: border) : null,
+              border: Border.all(color: border),
               boxShadow: enabled && gradient != null
                   ? [
                       BoxShadow(
@@ -495,7 +496,7 @@ class FcmPanel extends StatelessWidget {
         border: Border.all(
           color: a != null
               ? a.withValues(alpha: 0.55)
-              : Colors.white.withValues(alpha: 0.10),
+              : FcmColors.bronze.withValues(alpha: 0.28),
         ),
         boxShadow: [
           BoxShadow(
@@ -654,7 +655,7 @@ class FcmPill extends StatelessWidget {
         maxLines: 1,
         softWrap: false,
         style: TextStyle(
-          color: filled ? const Color(0xFF14110A) : color,
+          color: filled ? FcmColors.ink : color,
           fontSize: 12,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.4,
@@ -783,7 +784,7 @@ class FcmCoinChip extends StatelessWidget {
             ),
             child: const Text('C',
                 style: TextStyle(
-                    color: Color(0xFF2B1B00),
+                    color: FcmColors.ink,
                     fontWeight: FontWeight.w900,
                     fontSize: 13)),
           ),
@@ -830,7 +831,7 @@ class FcmBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xEE070F2B),
+        color: const Color(0xEE121014),
         border: Border(
             top: BorderSide(color: Colors.white.withValues(alpha: 0.10))),
         boxShadow: [

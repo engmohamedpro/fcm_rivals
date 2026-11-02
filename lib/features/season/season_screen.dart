@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../match/match_forecast.dart'
+    show PreMatchData;
+import '../match/tactics.dart' show MatchPepTalk;
 import '../match/match_screen.dart';
-import '../match/tactics.dart';
+import '../match/pre_match_screen.dart';
 import 'season_engine.dart' show StandingEntry;
 import 'season_store.dart';
 
@@ -43,11 +46,12 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 
   Future<void> _startSeason() => _run((store) => store.startSeason(division: 1));
 
-  /// Plays the next league fixture as a full live match (GDD 13/16):
-  /// pre-match pep talk, minute-by-minute engine with live tactics and
-  /// substitutions, post-match recovery choice and the report — then the
-  /// result is committed to the season (FR-038) and the round's AI
-  /// fixtures resolve in lockstep (GDD 9.2).
+  /// Plays the next league fixture as a full matchday (GDD 13/16): the
+  /// pre-match analysis screen (opponent form, W/D/L forecast, strength),
+  /// the dressing-room pep talk (GDD 15.1), then the minute-by-minute
+  /// engine with live tactics and substitutions, post-match recovery
+  /// choice and the report — then the result is committed to the season
+  /// (FR-038) and the round's AI fixtures resolve in lockstep (GDD 9.2).
   Future<void> _playNextFixture() async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -55,16 +59,19 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       final store = await ref.read(seasonStoreProvider.future);
       final next = (await store.getNextFixture())!;
       if (!mounted) return;
-      // Pre-match pep talk (GDD 15.1): one optional choice, ad-free.
-      final talk = await showPepTalkChooser(
-        context: context,
-        title: 'Pre-match pep talk',
-        subtitle:
-            'One motivational choice before kick-off — effects last the '
-            'whole match.',
-        talks: preMatchPepTalks,
+      // The matchday build-up: analysis + dressing room, then the chosen
+      // pep talk (null = no talk). Ad-free by design (FR-043).
+      MatchPepTalk? talk;
+      final kickedOff = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) => _PreMatchRoute(
+            loadData: () => store.loadPreMatchData(
+                ref.read(collectionStoreProvider).value!),
+            onKickOff: (t) => talk = t,
+          ),
+        ),
       );
-      if (!mounted) return;
+      if (!mounted || kickedOff != true) return;
       final collection = await ref.read(collectionStoreProvider.future);
       final session =
           await store.startNextFixture(collection, preMatchTalk: talk);
@@ -290,7 +297,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                       child: FitText('D${summary.division}',
                           align: Alignment.center,
                           style: const TextStyle(
-                              color: Color(0xFF2B1B00),
+                              color: FcmColors.ink,
                               fontWeight: FontWeight.w900,
                               fontSize: 20)),
                     ),
@@ -377,7 +384,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                       FcmPill(next.isHome ? 'HOME' : 'AWAY',
                           color: next.isHome
                               ? FcmColors.success
-                              : FcmColors.royal,
+                              : FcmColors.bronze,
                           filled: false),
                     ],
                   ),
@@ -600,6 +607,80 @@ class _StandingRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Route body for the matchday build-up: loads the pre-match analysis
+/// off the database, hands the chosen pep talk back through [onKickOff]
+/// and pops `true` so the caller knows kick-off was pressed (vs. backed
+/// out, which leaves the fixture unplayed).
+class _PreMatchRoute extends StatefulWidget {
+  const _PreMatchRoute({required this.loadData, required this.onKickOff});
+
+  final Future<PreMatchData> Function() loadData;
+  final ValueChanged<MatchPepTalk?> onKickOff;
+
+  @override
+  State<_PreMatchRoute> createState() => _PreMatchRouteState();
+}
+
+class _PreMatchRouteState extends State<_PreMatchRoute> {
+  Future<PreMatchData>? _future;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.loadData();
+  }
+
+  Future<void> _kickOff(MatchPepTalk? talk) async {
+    widget.onKickOff(talk);
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PreMatchData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: FcmColors.night,
+            appBar: AppBar(
+              leading: BackButton(
+                  color: FcmColors.gold,
+                  onPressed: () => Navigator.of(context).pop(false)),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: FcmPanel(
+                  accent: FcmColors.danger,
+                  child: Text('${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white)),
+                ),
+              ),
+            ),
+          );
+        }
+        final data = snapshot.data;
+        if (data == null) {
+          return Scaffold(
+            backgroundColor: FcmColors.night,
+            body: const Center(
+              child: CircularProgressIndicator(color: FcmColors.gold),
+            ),
+          );
+        }
+        return PreMatchScreen(
+          data: data,
+          error: _error,
+          onKickOff: _kickOff,
+        );
+      },
     );
   }
 }

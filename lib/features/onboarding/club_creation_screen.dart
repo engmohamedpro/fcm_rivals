@@ -22,13 +22,15 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
   int _crestIndex = 0;
   bool _submitting = false;
 
+  /// Crest swatches stay inside the brand's warm metal palette: champagne,
+  /// bronze, ember, olive, steel and oxblood.
   static const _crestColors = [
-    Color(0xFF16A34A), // green
-    Color(0xFF2A5CFF), // blue
-    Color(0xFFE11D48), // red
-    Color(0xFFFFB020), // amber
-    Color(0xFF9333EA), // purple
-    Color(0xFF475569), // slate
+    Color(0xFFD9B871), // champagne gold
+    Color(0xFF8A6E42), // bronze
+    Color(0xFF2E2925), // ember charcoal
+    Color(0xFF57683F), // olive pitch
+    Color(0xFF8D8A96), // steel silver
+    Color(0xFF7A3B36), // oxblood
   ];
 
   @override

@@ -52,7 +52,7 @@ void main() {
     expect(find.text('87'), findsOneWidget);
     expect(find.text('91'), findsOneWidget);
     expect(find.text('ATT'), findsOneWidget);
-    expect(find.text('LEGENDARY'), findsOneWidget);
+    expect(find.text('GOLD'), findsOneWidget);
     // The fade-in itself takes 300ms after the done mark.
     await tester.pump(const Duration(milliseconds: 400));
     final done = tester
@@ -75,7 +75,7 @@ void main() {
     await tester.tap(find.text('SKIP'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('RARE'), findsOneWidget);
+    expect(find.text('BRONZE'), findsOneWidget);
     expect(find.text('KEEP PLAYER'), findsOneWidget);
   });
 }

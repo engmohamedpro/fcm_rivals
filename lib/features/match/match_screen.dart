@@ -295,7 +295,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                                 width: 54,
                                 height: 54,
                                 decoration: BoxDecoration(
-                                  gradient: FcmColors.royalGradient,
+                                  gradient: FcmColors.steelGradient,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: const Icon(Icons.tune_rounded,
@@ -473,7 +473,7 @@ class _Scoreboard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
       child: FcmPanel(
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-        accent: FcmColors.royal,
+        accent: FcmColors.bronze,
         glow: true,
         child: Column(
           children: [
@@ -582,13 +582,13 @@ class _Team extends StatelessWidget {
             shape: BoxShape.circle,
             gradient: isUser
                 ? FcmColors.goldGradient
-                : FcmColors.royalGradient,
+                : FcmColors.steelGradient,
             border: Border.all(color: Colors.white24),
           ),
           child: FitText(initials,
               align: Alignment.center,
               style: TextStyle(
-                  color: isUser ? const Color(0xFF2B1B00) : Colors.white,
+                  color: isUser ? FcmColors.ink : FcmColors.goldSoft,
                   fontWeight: FontWeight.w900,
                   fontSize: 16)),
         ),
@@ -946,7 +946,7 @@ class MatchReportView extends StatelessWidget {
   static Color _ratingColor(double r) {
     if (r >= 7.5) return FcmColors.success;
     if (r >= 6.5) return FcmColors.gold;
-    if (r >= 5.5) return const Color(0xFFFF9F43);
+    if (r >= 5.5) return const Color(0xFFC89A5B);
     return FcmColors.danger;
   }
 
@@ -1274,7 +1274,7 @@ class _StatsTable extends StatelessWidget {
                                   flex: 1000 - left,
                                   child: const DecoratedBox(
                                     decoration: BoxDecoration(
-                                        gradient: FcmColors.royalGradient),
+                                        gradient: FcmColors.steelGradient),
                                   ),
                                 ),
                               ],

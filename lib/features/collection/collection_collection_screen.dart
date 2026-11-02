@@ -426,7 +426,7 @@ class _GridCard extends StatelessWidget {
               Positioned(
                 left: -4,
                 bottom: 22,
-                child: FcmPill('×$copies', color: FcmColors.royal),
+                child: FcmPill('×$copies', color: FcmColors.bronze),
               ),
             if (inSquad)
               const Positioned(

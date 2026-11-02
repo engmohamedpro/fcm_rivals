@@ -454,7 +454,7 @@ class _CardBackPainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF16307A), Color(0xFF071236)],
+          colors: [Color(0xFF2A2731), Color(0xFF121014)],
         ).createShader(rect),
     );
     canvas.save();

@@ -79,7 +79,7 @@ class SquadScreen extends ConsumerWidget {
                         Expanded(
                           child: FcmButton(
                             compact: true,
-                            style: FcmButtonStyle.royal,
+                            style: FcmButtonStyle.steel,
                             icon: Icons.grid_on_rounded,
                             label: formation.name,
                             onPressed: () => _pickFormation(context, ref),
@@ -352,7 +352,7 @@ class _PitchPainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF0F6B35), Color(0xFF15823F)],
+          colors: [Color(0xFF41502F), Color(0xFF57683F)],
         ).createShader(rect),
     );
     const bands = 10;

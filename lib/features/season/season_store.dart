@@ -17,9 +17,12 @@ import '../ads/ad_engine.dart';
 import '../ads/ad_store.dart';
 import '../collection/collection_store.dart';
 import '../match/match_engine.dart';
+import '../match/match_forecast.dart';
 import '../match/match_session.dart';
 import '../match/stamina.dart' show StaminaConfig, recoverStamina;
 import '../match/tactics.dart' show PlayingStyle, Mentality, MatchPepTalk;
+import '../squad/formations.dart';
+import '../squad/squad_engine.dart' show PlayerCard;
 import 'season_engine.dart';
 
 /// Season-specific errors.
@@ -356,6 +359,137 @@ class SeasonStore {
               staminaPercent: Value(recovered.round().clamp(0, 100))));
     }
   }
+
+  /// Everything the pre-match analysis screen shows (GDD 13): both squads
+  /// as engine inputs, the Monte-Carlo forecast of the fixture, the
+  /// opponent's last five results and their key men. Pure read path — no
+  /// state changes until the match is actually played.
+  Future<PreMatchData> loadPreMatchData(CollectionStore store) async {
+    final next = await getNextFixture();
+    if (next == null) {
+      throw const SeasonException('No fixture to play');
+    }
+    final opponent = await loadOpponent(next.opponentClubId);
+    final club = await store.getClub();
+    if (club == null) {
+      throw const SeasonException('No club');
+    }
+    final squad = await store.getSquad();
+    if (squad.length < Formation.startingXiSize) {
+      throw const CollectionException(
+          'A full starting XI is required to play a match');
+    }
+
+    final style = PlayingStyle.values.firstWhere(
+        (s) => s.name == club.playingStyle,
+        orElse: () => PlayingStyle.balanced);
+    final mentality = Mentality.values.firstWhere(
+        (m) => m.name == club.mentality,
+        orElse: () => Mentality.balanced);
+    final userTeam = MatchTeamInput(
+      teamId: club.id,
+      teamName: club.name,
+      formationCode: club.formationCode,
+      style: style,
+      mentality: mentality,
+      starters: [
+        for (var slot = 0; slot < Formation.startingXiSize; slot++)
+          _userMatchPlayer(squad[slot]!),
+      ],
+      bench: [
+        for (var slot = Formation.startingXiSize;
+            slot < Formation.squadSize && squad.containsKey(slot);
+            slot++)
+          _userMatchPlayer(squad[slot]!),
+      ],
+    );
+    final opponentStyle = PlayingStyle.values.firstWhere(
+        (s) => s.name == opponent.club.playingStyle,
+        orElse: () => PlayingStyle.balanced);
+    final opponentMentality = Mentality.values.firstWhere(
+        (m) => m.name == opponent.club.mentality,
+        orElse: () => Mentality.balanced);
+    final opponentTeam = MatchTeamInput(
+      teamId: opponent.club.id,
+      teamName: opponent.club.name,
+      formationCode: opponent.club.formationCode,
+      style: opponentStyle,
+      mentality: opponentMentality,
+      starters: opponent.starters,
+      bench: opponent.bench,
+      aiControlled: true,
+    );
+
+    final forecast = forecastMatch(
+      input: ForecastInput(
+        userTeam: userTeam,
+        opponentTeam: opponentTeam,
+        userAtHome: next.isHome,
+      ),
+      random: math.Random(next.fixtureId * 31 + 17),
+    );
+
+    // Opponent context: league positions, last five results, key men.
+    final standings = await getStandings();
+    int positionOf(bool isUser) {
+      for (final e in standings) {
+        if (isUser ? e.name == club.name : e.clubId == opponent.club.id) {
+          return e.position;
+        }
+      }
+      return 1;
+    }
+
+    final season = await getActiveSeason();
+    final results = season == null
+        ? <MatchResult>[]
+        : await (db.select(db.matchResults)
+              ..where((r) =>
+                  r.seasonId.equals(season.id) &
+                  (r.homeClubId.equals(opponent.club.id) |
+                      r.awayClubId.equals(opponent.club.id))))
+            .get()
+          ..sort((a, b) => a.round.compareTo(b.round));
+    final form = [
+      for (final r in results.length <= 5 ? results : results.sublist(results.length - 5))
+        () {
+          final home = r.homeClubId == opponent.club.id;
+          final gf = home ? r.homeGoals : r.awayGoals;
+          final ga = home ? r.awayGoals : r.homeGoals;
+          return gf > ga ? 'W' : (gf < ga ? 'L' : 'D');
+        }()
+    ];
+
+    final keyMen = [
+      for (final p in [...opponent.starters]..sort((a, b) => _overallOf(b).compareTo(_overallOf(a))))
+        (name: p.name, overall: _overallOf(p)),
+    ].take(3).toList();
+
+    return PreMatchData(
+      fixtureLabel: 'League · Round ${next.round}',
+      userClubName: club.name,
+      opponentClubName: opponent.club.name,
+      userAtHome: next.isHome,
+      forecast: forecast,
+      opponentForm: form,
+      opponentPosition: positionOf(false),
+      userPosition: positionOf(true),
+      opponentKeyMen: keyMen,
+    );
+  }
+
+  static int _overallOf(MatchPlayer p) => ((p.attack + p.support + p.defence) / 3).round();
+
+  static MatchPlayer _userMatchPlayer(PlayerCard card) => MatchPlayer(
+        playerId: card.ownedId,
+        name: card.base.name,
+        position: card.position,
+        attack: card.attribute(PlayerAttribute.attack),
+        support: card.attribute(PlayerAttribute.support),
+        defence: card.attribute(PlayerAttribute.defence),
+        goalkeeping: card.attribute(PlayerAttribute.goalkeeping),
+        stamina: card.staminaPercent.toDouble(),
+      );
 
   /// Creates a live match session for the user's next fixture. The UI
   /// drives it; call [commitFixtureResult] with the finished session.

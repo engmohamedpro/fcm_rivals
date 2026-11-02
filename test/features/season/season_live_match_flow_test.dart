@@ -93,14 +93,23 @@ void main() {
         findsOneWidget);
     expect(find.text('Play match'), findsOneWidget);
 
-    // Kick-off: the pre-match pep talk sheet (GDD 15.1) comes first.
+    // Kick-off: the matchday build-up screen comes first (GDD 13): the
+    // VS header with the forecast, then the dressing-room pep talk.
     await tester.tap(find.text('Play match'));
-    await _flush(tester);
-    expect(find.text('Pre-match pep talk'), findsOneWidget);
-    // 'Skip' sits below the fold of the scrollable sheet — dismissing
-    // the sheet (barrier tap) is the same skip choice.
-    await tester.tapAt(const Offset(400, 20));
-    await _flush(tester);
+    await _flush(tester, wait: const Duration(milliseconds: 900));
+    expect(find.text('MATCH FORECAST'), findsOneWidget);
+    expect(find.text('STRENGTH'), findsOneWidget);
+    expect(find.textContaining('simulated matches'), findsOneWidget);
+
+    // Continue into the dressing room (GDD 15.1 pre-match pep talk).
+    await tester.tap(find.text('CONTINUE'));
+    await _flush(tester, wait: const Duration(milliseconds: 600));
+    expect(find.text('DRESSING ROOM'), findsOneWidget);
+    expect(find.text('Deliver your team talk'), findsOneWidget);
+
+    // Kick off with the default 'no talk' tile selected.
+    await tester.tap(find.text('KICK OFF'));
+    await _flush(tester, wait: const Duration(milliseconds: 900));
 
     // The live match screen is pushed over the shell: real club names on
     // the scoreboard (the friendly 'Cairo XI' placeholder is gone), live
