@@ -163,7 +163,7 @@ class _ControlCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final formation = formationByCode(formationCode);
     return FcmPanel(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -171,15 +171,15 @@ class _ControlCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Flexible(child: _info('FORMATION', formation.name)),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Flexible(child: _info('STYLE', style.displayName)),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Flexible(child: _info('MENTALITY', mentality.displayName)),
               const Spacer(),
               _rating(),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             children: [
               if (onAutoPick != null) ...[
@@ -221,7 +221,7 @@ class _ControlCard extends StatelessWidget {
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.5)),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           FitText(value,
               style: const TextStyle(
                   color: Colors.white,
@@ -243,14 +243,14 @@ class _ControlCard extends StatelessWidget {
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.5)),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           FcmCountUp(
             value: teamRating,
             style: TextStyle(
               color: ratingColor(teamRating),
-              fontSize: 28,
+              fontSize: 22,
               fontWeight: FontWeight.w900,
-              height: 1.1,
+              height: 1.0,
             ),
           ),
         ],
