@@ -54,8 +54,10 @@ class SquadScreen extends ConsumerWidget {
             (m) => m.name == club?.mentality,
             orElse: () => Mentality.balanced);
 
+        // Top padding matches the sides and the gap below the control
+        // card, so the card sits in even whitespace on all four sides.
         return ListView(
-          padding: const EdgeInsets.fromLTRB(14, 4, 14, 24),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
           children: [
             if (squad.isEmpty)
               const FcmPanel(
@@ -80,8 +82,10 @@ class SquadScreen extends ConsumerWidget {
                     _changeTactics(context, ref, mentality: m.name),
                 onAutoPick: () => _autoPick(context, ref),
                 // The saved setup is about identity — match-day fitness
-                // (stamina) belongs to the pre-match phase only.
+                // (stamina) and the per-card stat rows belong to the
+                // pre-match phase only.
                 showStamina: false,
+                showStats: false,
                 onPlayerTap: (card) =>
                     showPlayerDetail(context, card: card, inSquad: true),
               ),

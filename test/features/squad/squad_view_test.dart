@@ -4,8 +4,8 @@
 //    CLOSES with the team rating — one line, no overflow, at any width
 //    (a previous rating + Auto Pick + TACTICS row overflowed ~40px on
 //    phones; the actions now live on their own full-width row below);
-//  * showStamina toggles the stamina bars (the Tactics tab hides them,
-//    the pre-match phase shows them).
+//  * showStamina toggles the stamina bars and showStats the stat rows
+//    (the Tactics tab hides both, the pre-match phase shows them).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -34,7 +34,11 @@ PlayerCard _card(int id, Position position, {int stamina = 100}) =>
       ),
     );
 
-Widget _host({bool showStamina = true, List<PlayerCard>? bench}) =>
+Widget _host({
+  bool showStamina = true,
+  bool showStats = true,
+  List<PlayerCard>? bench,
+}) =>
     MaterialApp(
       home: Scaffold(
         backgroundColor: Colors.black,
@@ -51,6 +55,7 @@ Widget _host({bool showStamina = true, List<PlayerCard>? bench}) =>
             onMentality: (_) {},
             onAutoPick: () {},
             showStamina: showStamina,
+            showStats: showStats,
           ),
         ),
       ),
@@ -117,5 +122,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(_staminaTracks(), 0,
         reason: 'no stamina bar when showStamina is false');
+  });
+
+  testWidgets('stat rows render only when shown',
+      (WidgetTester tester) async {
+    final bench = [_card(1, Position.st)];
+
+    await tester.pumpWidget(_host(bench: bench));
+    await tester.pumpAndSettle();
+    expect(find.text('ATT'), findsOneWidget);
+    expect(find.text('SUP'), findsOneWidget);
+    expect(find.text('DEF'), findsOneWidget);
+
+    // The Tactics tab's shape: no stats, no stamina — just the shield
+    // and the surname.
+    await tester.pumpWidget(
+        _host(bench: bench, showStamina: false, showStats: false));
+    await tester.pumpAndSettle();
+    expect(find.text('ATT'), findsNothing);
+    expect(find.text('SUP'), findsNothing);
+    expect(find.text('DEF'), findsNothing);
   });
 }

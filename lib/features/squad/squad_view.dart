@@ -30,8 +30,8 @@ import 'squad_engine.dart';
 /// The whole tactical setup column: the control card (the setup row —
 /// formation, playing style, mentality — closed by the team rating, with
 /// the Auto Pick and TACTICS actions under it), the pitch with the
-/// starting XI and per-player stats (stamina bars when [showStamina]),
-/// then the bench and reserves strips.
+/// starting XI (stamina bars and stat rows only when [showStamina] /
+/// [showStats] ask for them), then the bench and reserves strips.
 class TacticsSetupView extends StatelessWidget {
   const TacticsSetupView({
     super.key,
@@ -46,6 +46,7 @@ class TacticsSetupView extends StatelessWidget {
     required this.onMentality,
     this.onAutoPick,
     this.showStamina = true,
+    this.showStats = true,
     this.onPlayerTap,
   });
 
@@ -77,6 +78,11 @@ class TacticsSetupView extends StatelessWidget {
   /// match-day fitness; the Tactics tab hides it — the saved setup is
   /// about identity, not current match state.
   final bool showStamina;
+
+  /// Whether cards carry their three-column stat row (ATT/SUP/DEF …).
+  /// The pre-match phase shows it for match-day decisions; the Tactics
+  /// tab hides it — the setup surface stays about shape, not attributes.
+  final bool showStats;
 
   /// Opens the player detail sheet; null makes the cards non-tappable.
   final void Function(PlayerCard card)? onPlayerTap;
@@ -116,13 +122,17 @@ class TacticsSetupView extends StatelessWidget {
             formation: formationByCode(formationCode),
             assignments: xi,
             showStamina: showStamina,
+            showStats: showStats,
             onPlayerTap: onPlayerTap,
           ),
         ),
         if (bench.isNotEmpty) ...[
           FcmSectionTitle('Bench (${bench.length}/${Formation.benchSize})'),
           SquadCardRow(
-              cards: bench, showStamina: showStamina, onPlayerTap: onPlayerTap),
+              cards: bench,
+              showStamina: showStamina,
+              showStats: showStats,
+              onPlayerTap: onPlayerTap),
         ],
         if (reserves.isNotEmpty) ...[
           FcmSectionTitle(
@@ -130,6 +140,7 @@ class TacticsSetupView extends StatelessWidget {
           SquadCardRow(
               cards: reserves,
               showStamina: showStamina,
+              showStats: showStats,
               onPlayerTap: onPlayerTap),
         ],
       ],
@@ -451,6 +462,7 @@ class SquadPitch extends StatelessWidget {
     required this.formation,
     required this.assignments,
     this.showStamina = true,
+    this.showStats = true,
     this.onPlayerTap,
   });
 
@@ -461,6 +473,9 @@ class SquadPitch extends StatelessWidget {
 
   /// Whether cards carry their stamina bar (hidden in the Tactics tab).
   final bool showStamina;
+
+  /// Whether cards carry their stat row (hidden in the Tactics tab).
+  final bool showStats;
 
   /// Optional card tap (player detail sheet).
   final void Function(PlayerCard card)? onPlayerTap;
@@ -545,7 +560,7 @@ class SquadPitch extends StatelessWidget {
                                 warn: fs.position != card.position,
                                 stamina:
                                     showStamina ? card.staminaPercent : null,
-                                stats: statsOf(card),
+                                stats: showStats ? statsOf(card) : null,
                               ),
                             ),
                     );
@@ -559,13 +574,15 @@ class SquadPitch extends StatelessWidget {
   }
 }
 
-/// Horizontal strip of mini cards (bench / reserves): stats, the surname
-/// under each shield and — when [showStamina] is set — the stamina bar.
+/// Horizontal strip of mini cards (bench / reserves): the surname under
+/// each shield, the stat row and — when [showStamina] is set — the
+/// stamina bar.
 class SquadCardRow extends StatelessWidget {
   const SquadCardRow({
     super.key,
     required this.cards,
     this.showStamina = true,
+    this.showStats = true,
     this.onPlayerTap,
   });
 
@@ -574,6 +591,9 @@ class SquadCardRow extends StatelessWidget {
   /// Whether cards carry their stamina bar (hidden in the Tactics tab).
   final bool showStamina;
 
+  /// Whether cards carry their stat row (hidden in the Tactics tab).
+  final bool showStats;
+
   /// Optional card tap (player detail sheet).
   final void Function(PlayerCard card)? onPlayerTap;
 
@@ -581,8 +601,14 @@ class SquadCardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Shield + surname, plus the optional stat row and stamina bar
+    // (20 + 22 + 8 = the flat 50 the full strip always used).
+    final stripHeight = cardWidth / kPlayerCardAspect +
+        20 +
+        (showStats ? 22 : 0) +
+        (showStamina ? 8 : 0);
     return SizedBox(
-      height: cardWidth / kPlayerCardAspect + 50,
+      height: stripHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: cards.length,
@@ -602,7 +628,7 @@ class SquadCardRow extends StatelessWidget {
                 rarity: rarityOf(c),
                 width: cardWidth,
                 stamina: showStamina ? c.staminaPercent : null,
-                stats: statsOf(c),
+                stats: showStats ? statsOf(c) : null,
               ),
             ),
           );
