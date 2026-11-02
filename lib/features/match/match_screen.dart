@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../../core/ui/match_backdrop.dart';
 import '../squad/formations.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
@@ -161,7 +162,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       final talk = await showPepTalkChooser(
         context: context,
         title: 'Half-time pep talk',
-        subtitle: 'One choice for the second half — applies from kick-off '
+        subtitle:
+            'One choice for the second half — applies from kick-off '
             'of the second half.',
         talks: halfTimePepTalks,
       );
@@ -193,7 +195,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       }
 
       final report = await session.finish(
-          pepTalk: talk, adBoostedRecovery: usedAdBoost);
+        pepTalk: talk,
+        adBoostedRecovery: usedAdBoost,
+      );
       // Persistent-competition hook (GDD 9.2): the league fixture is
       // committed with the result, AI stamina and lockstep simulation.
       await widget.onFullTime?.call(report);
@@ -233,15 +237,18 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
-            Text('Post-match recovery',
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(color: Colors.white)),
+            Text(
+              'Post-match recovery',
+              style: theme.textTheme.titleLarge?.copyWith(color: Colors.white),
+            ),
             const SizedBox(height: 4),
             Text(
-                'Choose one recovery focus for the squad (bonus to natural '
-                'recovery, GDD 11.6):',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: FcmColors.textDim)),
+              'Choose one recovery focus for the squad (bonus to natural '
+              'recovery, GDD 11.6):',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: FcmColors.textDim,
+              ),
+            ),
             const SizedBox(height: 12),
             for (final choice in PepTalk.values)
               _SheetOption(
@@ -250,7 +257,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                     '+${(choice.recoveryBonus * 100).round()}% natural recovery',
                 icon: Icons.healing_rounded,
                 onTap: () => Navigator.pop(
-                    sheetContext, _RecoveryChoice(pepTalk: choice)),
+                  sheetContext,
+                  _RecoveryChoice(pepTalk: choice),
+                ),
               ),
             if (!won)
               _SheetOption(
@@ -259,8 +268,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                     '+15% natural recovery for the whole squad (GDD 19.3)',
                 icon: Icons.movie_rounded,
                 accent: FcmColors.gold,
-                onTap: () =>
-                    Navigator.pop(sheetContext, const _RecoveryChoice.boosted()),
+                onTap: () => Navigator.pop(
+                  sheetContext,
+                  const _RecoveryChoice.boosted(),
+                ),
               ),
             _SheetOption(
               title: 'No pep talk',
@@ -287,123 +298,132 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     final state = session.engine.state;
 
     return Scaffold(
+      // The stadium backdrop flows behind the transparent app bar, so
+      // the photo frames the scoreboard instead of a flat bar.
+      extendBodyBehindAppBar: true,
       appBar: AppBar(title: Text(widget.title ?? 'Live match')),
-      body: FcmBackdrop(
-        child: _error != null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: FcmPanel(
-                    accent: FcmColors.danger,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 14),
-                        FcmButton(
-                          onPressed: _finishMatch,
-                          label: 'Retry',
-                          icon: Icons.refresh_rounded,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            : Column(
-                children: [
-                  _Scoreboard(
-                    home: session.homeTeamName,
-                    away: session.awayTeamName,
-                    scoreHome: state.scoreHome,
-                    scoreAway: state.scoreAway,
-                    minute: state.minute,
-                    fullTime: _finished || state.isFinished,
-                    userIsHome: session.userSide == MatchSide.home,
-                  ),
-                  // Controls (GDD 10.4/16): auto-play with pause and a
-                  // 1x–4x speed selector. No skip-to-end exists — every
-                  // match is played to its final minute.
-                  if (!_finished)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-                      child: Row(
+      body: FcmMatchBackdrop(
+        // The photo runs edge to edge behind the app bar; the content
+        // column stays below it.
+        child: SafeArea(
+          child: _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: FcmPanel(
+                      accent: FcmColors.danger,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _PlayPauseButton(
-                            paused: _paused,
-                            onTap: _togglePause,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _SpeedSelector(
-                              speed: _speed,
-                              onSelect: _setSpeed,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Tooltip(
-                            message: 'Tactics',
-                            child: FcmPressable(
-                              onTap: () => _showTacticsSheet(context),
-                              child: Container(
-                                width: 54,
-                                height: 54,
-                                decoration: BoxDecoration(
-                                  gradient: FcmColors.steelGradient,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Icon(Icons.tune_rounded,
-                                    color: FcmColors.goldSoft),
-                              ),
-                            ),
+                          Text(_error!, textAlign: TextAlign.center),
+                          const SizedBox(height: 14),
+                          FcmButton(
+                            onPressed: _finishMatch,
+                            label: 'Retry',
+                            icon: Icons.refresh_rounded,
                           ),
                         ],
                       ),
                     ),
-                  // Commentary feed / report
-                  Expanded(
-                    child: _finished && _report != null
-                        ? MatchReportView(
-                            report: _report!,
-                            homeTeamName: session.homeTeamName,
-                            awayTeamName: session.awayTeamName,
-                            pepTalk: _pepTalk,
-                            adBoostedRecovery: _usedAdBoost,
-                            onPepTalk: _applyPepTalk,
-                            userSide: session.userSide,
-                          )
-                        : _lines.isEmpty
-                            ? Center(
-                                child: Text(
-                                    _paused
-                                        ? 'Paused — press play to continue.'
-                                        : 'Kick-off! The match plays itself — '
-                                            'change speed or open tactics any '
-                                            'time.',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        color: FcmColors.textDim)),
-                              )
-                            : ListView.builder(
-                                reverse: true,
-                                padding:
-                                    const EdgeInsets.fromLTRB(14, 6, 14, 16),
-                                itemCount: _lines.length,
-                                itemBuilder: (context, index) {
-                                  final lineNo = _lines.length - 1 - index;
-                                  return FcmEntrance(
-                                    key: ValueKey('line-$lineNo'),
-                                    dx: -18,
-                                    dy: 0,
-                                    duration:
-                                        const Duration(milliseconds: 320),
-                                    child: _CommentaryRow(line: _lines[lineNo]),
-                                  );
-                                },
-                              ),
                   ),
-                ],
-              ),
+                )
+              : Column(
+                  children: [
+                    _Scoreboard(
+                      home: session.homeTeamName,
+                      away: session.awayTeamName,
+                      scoreHome: state.scoreHome,
+                      scoreAway: state.scoreAway,
+                      minute: state.minute,
+                      fullTime: _finished || state.isFinished,
+                      userIsHome: session.userSide == MatchSide.home,
+                    ),
+                    // Controls (GDD 10.4/16): auto-play with pause and a
+                    // 1x–4x speed selector. No skip-to-end exists — every
+                    // match is played to its final minute.
+                    if (!_finished)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+                        child: Row(
+                          children: [
+                            _PlayPauseButton(
+                              paused: _paused,
+                              onTap: _togglePause,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _SpeedSelector(
+                                speed: _speed,
+                                onSelect: _setSpeed,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Tooltip(
+                              message: 'Tactics',
+                              child: FcmPressable(
+                                onTap: () => _showTacticsSheet(context),
+                                child: Container(
+                                  width: 54,
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    gradient: FcmColors.steelGradient,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(
+                                    Icons.tune_rounded,
+                                    color: FcmColors.goldSoft,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    // Commentary feed / report
+                    Expanded(
+                      child: _finished && _report != null
+                          ? MatchReportView(
+                              report: _report!,
+                              homeTeamName: session.homeTeamName,
+                              awayTeamName: session.awayTeamName,
+                              pepTalk: _pepTalk,
+                              adBoostedRecovery: _usedAdBoost,
+                              onPepTalk: _applyPepTalk,
+                              userSide: session.userSide,
+                            )
+                          : _lines.isEmpty
+                          ? Center(
+                              child: Text(
+                                _paused
+                                    ? 'Paused — press play to continue.'
+                                    : 'Kick-off! The match plays itself — '
+                                          'change speed or open tactics any '
+                                          'time.',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: FcmColors.textDim,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              reverse: true,
+                              padding: const EdgeInsets.fromLTRB(14, 6, 14, 16),
+                              itemCount: _lines.length,
+                              itemBuilder: (context, index) {
+                                final lineNo = _lines.length - 1 - index;
+                                return FcmEntrance(
+                                  key: ValueKey('line-$lineNo'),
+                                  dx: -18,
+                                  dy: 0,
+                                  duration: const Duration(milliseconds: 320),
+                                  child: _CommentaryRow(line: _lines[lineNo]),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -420,26 +440,27 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       await showModalBottomSheet<void>(
         context: context,
         builder: (sheetContext) {
-        Widget section(String title, List<Widget> children) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                  child: Text(title.toUpperCase(),
-                      style: const TextStyle(
-                          color: FcmColors.gold,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2)),
+          Widget section(String title, List<Widget> children) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    color: FcmColors.gold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
                 ),
-                ...children,
-              ],
-            );
-        return ListView(
-          children: [
-            section(
-              'Formation',
-              [
+              ),
+              ...children,
+            ],
+          );
+          return ListView(
+            children: [
+              section('Formation', [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Wrap(
@@ -449,24 +470,25 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                       for (final f in formations)
                         FcmOptionChip(
                           label: f.name,
-                          selected: f.code ==
+                          selected:
+                              f.code ==
                               session.engine.formationOf(session.userSide),
                           onTap: () {
-                            session.queueCommand(ChangeFormationCommand(
+                            session.queueCommand(
+                              ChangeFormationCommand(
                                 atMinute: nextMinute,
                                 side: session.userSide,
-                                formationCode: f.code));
+                                formationCode: f.code,
+                              ),
+                            );
                             Navigator.pop(sheetContext);
                           },
                         ),
                     ],
                   ),
                 ),
-              ],
-            ),
-            section(
-              'Playing style',
-              [
+              ]),
+              section('Playing style', [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Wrap(
@@ -479,21 +501,21 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                           selected:
                               s == session.engine.styleOf(session.userSide),
                           onTap: () {
-                            session.queueCommand(ChangeStyleCommand(
+                            session.queueCommand(
+                              ChangeStyleCommand(
                                 atMinute: nextMinute,
                                 side: session.userSide,
-                                style: s));
+                                style: s,
+                              ),
+                            );
                             Navigator.pop(sheetContext);
                           },
                         ),
                     ],
                   ),
                 ),
-              ],
-            ),
-            section(
-              'Mentality',
-              [
+              ]),
+              section('Mentality', [
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -502,20 +524,20 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                       ActionChip(
                         label: Text(m.displayName),
                         onPressed: () {
-                          session.queueCommand(ChangeMentalityCommand(
+                          session.queueCommand(
+                            ChangeMentalityCommand(
                               atMinute: nextMinute,
                               side: session.userSide,
-                              mentality: m));
+                              mentality: m,
+                            ),
+                          );
                           Navigator.pop(sheetContext);
                         },
                       ),
                   ],
                 ),
-              ],
-            ),
-            section(
-              'Live action (10 minutes)',
-              [
+              ]),
+              section('Live action (10 minutes)', [
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -524,25 +546,25 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                       ActionChip(
                         label: Text(a.displayName),
                         onPressed: () {
-                          session.queueCommand(LiveActionCommand(
+                          session.queueCommand(
+                            LiveActionCommand(
                               atMinute: nextMinute,
                               side: session.userSide,
-                              action: a));
+                              action: a,
+                            ),
+                          );
                           Navigator.pop(sheetContext);
                         },
                       ),
                   ],
                 ),
-              ],
-            ),
-            _SubstitutionSection(
-              session: session,
-              side: session.userSide,
-              onSubstitutionQueued: () => Navigator.pop(sheetContext),
-            ),
-            section(
-              'Effects',
-              [
+              ]),
+              _SubstitutionSection(
+                session: session,
+                side: session.userSide,
+                onSubstitutionQueued: () => Navigator.pop(sheetContext),
+              ),
+              section('Effects', [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
@@ -553,10 +575,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
-              ],
-            ),
-          ],
-        );
+              ]),
+            ],
+          );
         },
       );
     } finally {
@@ -639,7 +660,8 @@ class _SpeedSelector extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: s == speed
                         ? Border.all(
-                            color: FcmColors.goldSoft.withValues(alpha: 0.5))
+                            color: FcmColors.goldSoft.withValues(alpha: 0.5),
+                          )
                         : Border.all(color: Colors.transparent),
                   ),
                   child: Text(
@@ -695,14 +717,18 @@ class _Scoreboard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(child: _Team(name: home, isUser: userIsHome)),
+                Expanded(
+                  child: _Team(name: home, isUser: userIsHome),
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 450),
                     transitionBuilder: (child, anim) => ScaleTransition(
                       scale: CurvedAnimation(
-                          parent: anim, curve: Curves.easeOutBack),
+                        parent: anim,
+                        curve: Curves.easeOutBack,
+                      ),
                       child: FadeTransition(opacity: anim, child: child),
                     ),
                     child: Text(
@@ -719,7 +745,9 @@ class _Scoreboard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Expanded(child: _Team(name: away, isUser: !userIsHome)),
+                Expanded(
+                  child: _Team(name: away, isUser: !userIsHome),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -737,8 +765,9 @@ class _Scoreboard extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         widthFactor: f,
                         child: const DecoratedBox(
-                          decoration:
-                              BoxDecoration(gradient: FcmColors.goldGradient),
+                          decoration: BoxDecoration(
+                            gradient: FcmColors.goldGradient,
+                          ),
                         ),
                       ),
                     ),
@@ -750,10 +779,7 @@ class _Scoreboard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (!fullTime) ...[
-                  const _LiveDot(),
-                  const SizedBox(width: 8),
-                ],
+                if (!fullTime) ...[const _LiveDot(), const SizedBox(width: 8)],
                 Text(
                   fullTime ? 'Full time' : "$minute'",
                   style: TextStyle(
@@ -795,17 +821,18 @@ class _Team extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: isUser
-                ? FcmColors.goldGradient
-                : FcmColors.steelGradient,
+            gradient: isUser ? FcmColors.goldGradient : FcmColors.steelGradient,
             border: Border.all(color: Colors.white24),
           ),
-          child: FitText(initials,
-              align: Alignment.center,
-              style: TextStyle(
-                  color: isUser ? FcmColors.ink : FcmColors.goldSoft,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16)),
+          child: FitText(
+            initials,
+            align: Alignment.center,
+            style: TextStyle(
+              color: isUser ? FcmColors.ink : FcmColors.goldSoft,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -836,8 +863,9 @@ class _LiveDot extends StatefulWidget {
 class _LiveDotState extends State<_LiveDot>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1100))
-    ..repeat(reverse: true);
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
 
   @override
   void dispose() {
@@ -888,9 +916,7 @@ class _CommentaryRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         color: big ? FcmColors.gold.withValues(alpha: 0.12) : null,
         border: big
-            ? Border(
-                left: BorderSide(color: FcmColors.gold, width: 3),
-              )
+            ? Border(left: BorderSide(color: FcmColors.gold, width: 3))
             : null,
       ),
       child: Row(
@@ -898,11 +924,14 @@ class _CommentaryRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 40,
-            child: FitText("${line.minute}'",
-                style: TextStyle(
-                    color: big ? FcmColors.gold : FcmColors.textDim,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13)),
+            child: FitText(
+              "${line.minute}'",
+              style: TextStyle(
+                color: big ? FcmColors.gold : FcmColors.textDim,
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+              ),
+            ),
           ),
           Expanded(
             child: Text(
@@ -936,13 +965,17 @@ Future<MatchPepTalk?> showPepTalkChooser({
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
-          Text(title,
-              style:
-                  theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
+          Text(
+            title,
+            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white),
+          ),
           const SizedBox(height: 4),
-          Text(subtitle,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: FcmColors.textDim)),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: FcmColors.textDim,
+            ),
+          ),
           const SizedBox(height: 12),
           for (final talk in talks)
             _SheetOption(
@@ -1000,15 +1033,22 @@ class _SheetOption extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: TextStyle(
-                          color: muted ? Colors.white60 : Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: muted ? Colors.white60 : Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: const TextStyle(
-                          color: FcmColors.textDim, fontSize: 12)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: FcmColors.textDim,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1054,8 +1094,9 @@ class _SubstitutionSectionState extends State<_SubstitutionSection> {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
         child: Text(
-            'Substitutions ($used/$max used — none remaining)',
-            style: theme.textTheme.titleSmall),
+          'Substitutions ($used/$max used — none remaining)',
+          style: theme.textTheme.titleSmall,
+        ),
       );
     }
 
@@ -1064,15 +1105,18 @@ class _SubstitutionSectionState extends State<_SubstitutionSection> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Text('Substitutions ($used/$max used)',
-              style: theme.textTheme.titleSmall),
+          child: Text(
+            'Substitutions ($used/$max used)',
+            style: theme.textTheme.titleSmall,
+          ),
         ),
         if (_selectedOut != null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               'Coming off: ${_selectedOut!.name} — pick the substitute:',
-              style: theme.textTheme.bodySmall),
+              style: theme.textTheme.bodySmall,
+            ),
           ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1086,20 +1130,23 @@ class _SubstitutionSectionState extends State<_SubstitutionSection> {
                     avatar: CircleAvatar(
                       backgroundColor:
                           theme.colorScheme.surfaceContainerHighest,
-                      child: Text('${p.stamina.round()}%',
-                          style: theme.textTheme.labelSmall),
+                      child: Text(
+                        '${p.stamina.round()}%',
+                        style: theme.textTheme.labelSmall,
+                      ),
                     ),
                     label: Text('${p.name} (${p.position.code})'),
-                    onPressed: () =>
-                        setState(() => _selectedOut = p),
+                    onPressed: () => setState(() => _selectedOut = p),
                   )
               else
                 for (final p in bench)
                   ActionChip(
                     avatar: CircleAvatar(
                       backgroundColor: theme.colorScheme.secondaryContainer,
-                      child: Text('${p.stamina.round()}%',
-                          style: theme.textTheme.labelSmall),
+                      child: Text(
+                        '${p.stamina.round()}%',
+                        style: theme.textTheme.labelSmall,
+                      ),
                     ),
                     label: Text('${p.name} (${p.position.code})'),
                     onPressed: () => _queueSubstitution(p),
@@ -1122,12 +1169,14 @@ class _SubstitutionSectionState extends State<_SubstitutionSection> {
   void _queueSubstitution(MatchPlayer inPlayer) {
     final out = _selectedOut;
     if (out == null) return;
-    widget.session.queueCommand(SubstitutionCommand(
-      atMinute: widget.session.engine.state.minute + 1,
-      side: widget.side,
-      outPlayerId: out.playerId,
-      inPlayerId: inPlayer.playerId,
-    ));
+    widget.session.queueCommand(
+      SubstitutionCommand(
+        atMinute: widget.session.engine.state.minute + 1,
+        side: widget.side,
+        outPlayerId: out.playerId,
+        inPlayerId: inPlayer.playerId,
+      ),
+    );
     widget.onSubstitutionQueued();
   }
 }
@@ -1202,19 +1251,22 @@ class MatchReportView extends StatelessWidget {
                     curve: Curves.elasticOut,
                     builder: (context, v, child) =>
                         Transform.scale(scale: v, child: child),
-                    child: FitText(verdict,
-                        align: Alignment.center,
-                        style: TextStyle(
-                          color: verdictColor,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 5,
-                          shadows: [
-                            Shadow(
-                                color: verdictColor.withValues(alpha: 0.6),
-                                blurRadius: 22),
-                          ],
-                        )),
+                    child: FitText(
+                      verdict,
+                      align: Alignment.center,
+                      style: TextStyle(
+                        color: verdictColor,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 5,
+                        shadows: [
+                          Shadow(
+                            color: verdictColor.withValues(alpha: 0.6),
+                            blurRadius: 22,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -1222,22 +1274,29 @@ class MatchReportView extends StatelessWidget {
                   'Full time: $homeTeamName $home - $away $awayTeamName',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800),
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.monetization_on_rounded,
-                        color: FcmColors.gold, size: 20),
+                    const Icon(
+                      Icons.monetization_on_rounded,
+                      color: FcmColors.gold,
+                      size: 20,
+                    ),
                     const SizedBox(width: 6),
-                    Text('Reward: ${report.rewardCoins} coins',
-                        style: const TextStyle(
-                            color: FcmColors.gold,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900)),
+                    Text(
+                      'Reward: ${report.rewardCoins} coins',
+                      style: const TextStyle(
+                        color: FcmColors.gold,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1253,21 +1312,28 @@ class MatchReportView extends StatelessWidget {
               child: Row(
                 children: [
                   const FcmIconBadge(
-                      icon: Icons.emoji_events_rounded, size: 50),
+                    icon: Icons.emoji_events_rounded,
+                    size: 50,
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FitText(report.manOfTheMatch!.name,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900)),
+                        FitText(
+                          report.manOfTheMatch!.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                         Text(
                           'Man of the Match · rating ${report.manOfTheMatch!.rating.toStringAsFixed(1)}',
                           style: const TextStyle(
-                              color: FcmColors.textDim, fontSize: 12),
+                            color: FcmColors.textDim,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -1294,33 +1360,45 @@ class MatchReportView extends StatelessWidget {
                       children: [
                         SizedBox(
                           width: 42,
-                          child: FitText(r.position.code,
-                              style: const TextStyle(
-                                  color: FcmColors.textDim,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800)),
+                          child: FitText(
+                            r.position.code,
+                            style: const TextStyle(
+                              color: FcmColors.textDim,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
                         Expanded(
-                          child: FitText(r.name,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
+                          child: FitText(
+                            r.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                         if (r.goals > 0)
                           Padding(
                             padding: const EdgeInsets.only(left: 6),
-                            child: Text('⚽ ×${r.goals}',
-                                style: const TextStyle(fontSize: 12)),
+                            child: Text(
+                              '⚽ ×${r.goals}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         if (r.assists > 0)
                           Padding(
                             padding: const EdgeInsets.only(left: 6),
-                            child: Text('🅰 ×${r.assists}',
-                                style: const TextStyle(fontSize: 12)),
+                            child: Text(
+                              '🅰 ×${r.assists}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         const SizedBox(width: 10),
-                        FcmPill(r.rating.toStringAsFixed(1),
-                            color: _ratingColor(r.rating)),
+                        FcmPill(
+                          r.rating.toStringAsFixed(1),
+                          color: _ratingColor(r.rating),
+                        ),
                       ],
                     ),
                   ),
@@ -1406,8 +1484,10 @@ class _StatsTable extends StatelessWidget {
       case 'passAccuracy':
         return s.passesAttempted == 0
             ? (0.0, '—')
-            : (100 * s.passAccuracy.toDouble(),
-                '${(100 * s.passAccuracy).round()}%');
+            : (
+                100 * s.passAccuracy.toDouble(),
+                '${(100 * s.passAccuracy).round()}%',
+              );
       case 'corners':
         return (s.corners.toDouble(), '${s.corners}');
       case 'fouls':
@@ -1427,81 +1507,94 @@ class _StatsTable extends StatelessWidget {
       child: Column(
         children: [
           for (final (label, key) in _rows)
-            Builder(builder: (context) {
-              final (hv, hs) = _side(stats.home, key);
-              final (av, aw) = _side(stats.away, key);
-              final total = hv + av;
-              final share = total <= 0 ? 0.5 : (hv / total).clamp(0.0, 1.0);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FitText(hs,
+            Builder(
+              builder: (context) {
+                final (hv, hs) = _side(stats.home, key);
+                final (av, aw) = _side(stats.away, key);
+                final total = hv + av;
+                final share = total <= 0 ? 0.5 : (hv / total).clamp(0.0, 1.0);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FitText(
+                              hs,
                               style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 15)),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: FitText(label,
-                              align: Alignment.center,
-                              style: const TextStyle(
-                                  color: FcmColors.textDim,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                        Expanded(
-                          child: FitText(aw,
-                              align: Alignment.centerRight,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 15)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.5, end: share),
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, f, _) {
-                        final left = (f * 1000).round().clamp(1, 999);
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: SizedBox(
-                            height: 6,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  flex: left,
-                                  child: const DecoratedBox(
-                                    decoration: BoxDecoration(
-                                        gradient: FcmColors.goldGradient),
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                Expanded(
-                                  flex: 1000 - left,
-                                  child: const DecoratedBox(
-                                    decoration: BoxDecoration(
-                                        gradient: FcmColors.steelGradient),
-                                  ),
-                                ),
-                              ],
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }),
+                          Expanded(
+                            flex: 2,
+                            child: FitText(
+                              label,
+                              align: Alignment.center,
+                              style: const TextStyle(
+                                color: FcmColors.textDim,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: FitText(
+                              aw,
+                              align: Alignment.centerRight,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.5, end: share),
+                        duration: const Duration(milliseconds: 800),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, f, _) {
+                          final left = (f * 1000).round().clamp(1, 999);
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: SizedBox(
+                              height: 6,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: left,
+                                    child: const DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: FcmColors.goldGradient,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Expanded(
+                                    flex: 1000 - left,
+                                    child: const DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: FcmColors.steelGradient,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
