@@ -86,10 +86,12 @@ class SquadScreen extends ConsumerWidget {
                 // pre-match phase only.
                 showStamina: false,
                 showStats: false,
-                // Tapping a player shows the full card big with the
-                // reveal animation (flip, count-up, name last) — the
-                // detail sheet with its stat bars stays on the
-                // Collection tab where the actions live.
+                // Tapping a player shows the full card big with an
+                // animated zoom (rays, sparkle, pulsing glow) — a
+                // showcase of a known player, not a pack-style reveal:
+                // no counting, no masked name. The detail sheet with
+                // its stat bars and actions stays on the Collection
+                // tab, where the actions live.
                 onPlayerTap: (card) =>
                     showPlayerCardReveal(context, card: card),
               ),

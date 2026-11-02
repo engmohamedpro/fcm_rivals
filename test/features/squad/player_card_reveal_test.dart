@@ -1,7 +1,8 @@
-// Regression tests for the Tactics-tab full-card reveal: tapping a
-// player opens a full-screen moment where the card back flips into the
-// full-size card, the rating and attributes count up, the name lands
-// LAST (masked as dashes until then) and a tap anywhere dismisses it.
+// Regression tests for the Tactics-tab full-card view: tapping a player
+// opens a full-screen animated card moment. The user already knows this
+// player — their own squad — so the name, rating, attributes and upgrade
+// badge must be fully visible from the moment the card arrives: no card
+// back, no dash-masked identity, no counting. A tap anywhere dismisses.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,34 +49,34 @@ Future<void> _open(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('the back flips into the full card, name lands last',
+  testWidgets('card zooms in face-up — identity and stats visible at once',
       (WidgetTester tester) async {
     await _open(tester);
 
-    // Early: the card BACK is showing, the face is still hidden.
-    await tester.pump(const Duration(milliseconds: 150));
-    expect(find.byType(FcmPlayerCardBack), findsOneWidget);
-    expect(find.byType(FcmPlayerCard), findsNothing);
-
-    // Flip finished (0.40 of 2200ms): the full card face is up, but the
-    // identity is still masked — the stats are counting.
-    await tester.pump(const Duration(milliseconds: 1050));
+    // Mid-entrance (~120ms): the face is already up with everything on
+    // it — no card back, no masked name, no counting to wait for.
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(find.byType(FcmPlayerCard), findsOneWidget);
     expect(find.byType(FcmPlayerCardBack), findsNothing);
-    expect(find.byType(FcmPlayerCard), findsOneWidget);
-    expect(find.text('— — —'), findsOneWidget);
-
-    // Done: name revealed, upgrade badge and hint in place.
-    await tester.pump(const Duration(milliseconds: 1300));
     expect(find.text('KARIM FOUAD'), findsOneWidget);
+    expect(find.text('ATT'), findsOneWidget);
     expect(find.text('+2'), findsOneWidget);
-    expect(find.text('TAP TO CLOSE'), findsOneWidget);
+    expect(find.text('— — —'), findsNothing);
+    expect(find.text('— · —'), findsNothing);
+
+    // Entrance finished: identity unchanged, hint now in place.
+    await tester.pump(const Duration(milliseconds: 1500));
     expect(find.byType(FcmPlayerCard), findsOneWidget);
+    expect(find.text('KARIM FOUAD'), findsOneWidget);
+    expect(find.text('ATT'), findsOneWidget);
+    expect(find.text('— — —'), findsNothing);
+    expect(find.text('TAP TO CLOSE'), findsOneWidget);
   });
 
-  testWidgets('a tap anywhere dismisses the reveal',
+  testWidgets('a tap anywhere dismisses the card view',
       (WidgetTester tester) async {
     await _open(tester);
-    await tester.pump(const Duration(milliseconds: 2500));
+    await tester.pump(const Duration(milliseconds: 1500));
     expect(find.byType(FcmPlayerCard), findsOneWidget);
 
     // Corner AND centre both close it: the whole overlay is tappable.
@@ -90,7 +91,7 @@ void main() {
     final context = tester.element(find.text('REVEAL'));
     showPlayerCardReveal(context, card: _card());
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 2500));
+    await tester.pump(const Duration(milliseconds: 1500));
     expect(find.byType(FcmPlayerCard), findsOneWidget);
     await tester.tapAt(tester.getCenter(find.byType(FcmPlayerCard)));
     await tester.pump();

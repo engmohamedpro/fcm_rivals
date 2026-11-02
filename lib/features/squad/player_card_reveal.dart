@@ -1,12 +1,14 @@
-/// FCM Rivals — full-card reveal for the Tactics tab.
+/// FCM Rivals — full-card view for the Tactics tab.
 ///
 /// Tapping a player anywhere in the tactical setup (pitch, bench or
 /// reserves) opens this full-screen moment instead of a detail sheet:
-/// the card back flips over into the full-size card, light rays sweep
-/// in behind it in the rarity colour, sparks burst as the face lands,
-/// then the rating and attributes count up and the name reveals last —
-/// the same beats as the pack opening (GDD 5.6), compressed into a
-/// two-second walkout. Tap anywhere to dismiss.
+/// the full-size card zooms in face-up over light rays in the rarity
+/// colour, sparks burst as it settles, the foil sweeps once and the
+/// glow keeps pulsing while idle. Unlike the pack opening (GDD 5.6)
+/// there is NO reveal suspense — this is the user's own player, so the
+/// name, rating, attributes and upgrade badge are fully visible from
+/// the moment the face arrives: no card back, no counting, no masked
+/// name. Tap anywhere to dismiss.
 library;
 
 import 'dart:math' as math;
@@ -15,14 +17,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/ui/fcm_style.dart';
-import '../../core/ui/player_card.dart' show FcmPlayerCard, FcmPlayerCardBack, pulse;
+import '../../core/ui/player_card.dart' show FcmPlayerCard, pulse;
 import '../collection/player_detail_sheet.dart'
     show cardStatsOf, rarityOf;
 import '../packs/pack_effects.dart'
     show LightRaysPainter, ParticleBurstPainter, Spark;
 import 'squad_engine.dart' show PlayerCard;
 
-/// Haptics are garnish: a platform failure must never break the reveal.
+/// Haptics are garnish: a platform failure must never break the view.
 void _haptic(Future<void> Function() fn) {
   try {
     fn().catchError((Object _) {});
@@ -31,16 +33,14 @@ void _haptic(Future<void> Function() fn) {
 
 /// Timeline marks, as fractions of the master controller.
 class _T {
-  static const flip = Interval(0.05, 0.40, curve: Curves.easeOutCubic);
-  static const burst = Interval(0.34, 0.62);
-  static const shine = Interval(0.36, 0.58, curve: Curves.easeInOut);
-  static const stats = Interval(0.40, 0.72, curve: Curves.easeOut);
-  static const nameIn = Interval(0.72, 0.88, curve: Curves.easeOutBack);
-  static const hintIn = Interval(0.90, 1.0, curve: Curves.easeOut);
-  static const done = 0.88;
+  static const enter = Interval(0.04, 0.42, curve: Curves.easeOutCubic);
+  static const burst = Interval(0.28, 0.56);
+  static const shine = Interval(0.30, 0.54, curve: Curves.easeInOut);
+  static const hintIn = Interval(0.68, 0.86, curve: Curves.easeOut);
+  static const done = 0.56;
 }
 
-/// Opens the full-card reveal for [card] as a full-screen route.
+/// Opens the full-card view for [card] as a full-screen route.
 Future<void> showPlayerCardReveal(
   BuildContext context, {
   required PlayerCard card,
@@ -49,7 +49,7 @@ Future<void> showPlayerCardReveal(
     PageRouteBuilder<void>(
       opaque: false,
       barrierDismissible: false,
-      // The reveal carries its own entrance (the flip); the route only
+      // The card carries its own entrance (the zoom); the route only
       // needs a quick dim, and the same fade runs in reverse on dismiss.
       transitionDuration: const Duration(milliseconds: 200),
       reverseTransitionDuration: const Duration(milliseconds: 200),
@@ -60,7 +60,7 @@ Future<void> showPlayerCardReveal(
   );
 }
 
-/// The full-screen reveal itself: scrim, rotating rays, the flipping
+/// The full-screen card view itself: scrim, rotating rays, the zooming
 /// card and the spark burst, all driven by one master timeline.
 class PlayerCardReveal extends StatefulWidget {
   const PlayerCardReveal({super.key, required this.card});
@@ -83,7 +83,7 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
   void initState() {
     super.initState();
     _seq = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2200))
+        vsync: this, duration: const Duration(milliseconds: 1500))
       ..addListener(_onTick)..forward();
     _idle = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2600))
@@ -108,18 +108,14 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
   void _onTick() {
     final t = _seq.value;
     bool crossed(double mark) => _lastT < mark && t >= mark;
-    if (crossed(0.40)) _haptic(HapticFeedback.mediumImpact);
-    if (crossed(0.50) || crossed(0.60)) {
-      _haptic(HapticFeedback.selectionClick);
-    }
-    if (crossed(0.72)) _haptic(HapticFeedback.lightImpact);
+    if (crossed(0.28)) _haptic(HapticFeedback.lightImpact);
+    if (crossed(0.42)) _haptic(HapticFeedback.mediumImpact);
     _lastT = t;
   }
 
   @override
   Widget build(BuildContext context) {
-    final card = widget.card;
-    final rarity = rarityOf(card);
+    final rarity = rarityOf(widget.card);
     final size = MediaQuery.sizeOf(context);
     final cardWidth = math.min(size.width * 0.68, 300.0);
 
@@ -136,7 +132,6 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
             animation: Listenable.merge([_seq, _idle, _spin]),
             builder: (context, _) {
               final t = _seq.value;
-              final flipT = _T.flip.transform(t);
 
               return Stack(
                 fit: StackFit.expand,
@@ -160,9 +155,9 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
                   // the burst converge.
                   Align(
                     alignment: const Alignment(0, -0.08),
-                    child: _buildCard(t, flipT, cardWidth, rarity),
+                    child: _buildCard(t, _T.enter.transform(t), cardWidth, rarity),
                   ),
-                  // Sparks fly OVER the card as the face lands.
+                  // Sparks fly OVER the card as it settles.
                   CustomPaint(
                     painter: ParticleBurstPainter(
                       progress: _T.burst.transform(t),
@@ -170,7 +165,7 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
                       color: rarity.accent,
                     ),
                   ),
-                  // Dismiss hint once the walkout has finished.
+                  // Dismiss hint once the entrance has finished.
                   if (t >= _T.done)
                     Align(
                       alignment: Alignment.bottomCenter,
@@ -199,52 +194,49 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
     );
   }
 
-  /// The flipping card: back → front with the pack's transform (scale
-  /// easeOutBack, upward drift, 3D turn), then the rating and attributes
-  /// count up and the name lands last — `statProgress` / `nameProgress`
-  /// carry those beats on the card face itself.
+  /// The card itself: zooms in FACE-UP — quick fade, easeOutBack scale,
+  /// upward drift and a small 3D turn-in. No card back and no
+  /// statProgress/nameProgress, so the identity and attributes are
+  /// rendered in full from the first frame of the face: the user knows
+  /// this player already, this is a showcase, not a reveal.
   Widget _buildCard(
-      double t, double flipT, double cardWidth, CardRarity rarity) {
+      double t, double enterT, double cardWidth, CardRarity rarity) {
     final card = widget.card;
-    final angle = (1 - flipT) * math.pi; // π (back) → 0 (front)
-    final showBack = angle >= math.pi / 2;
-    final scale =
-        0.55 + 0.45 * Curves.easeOutBack.transform(flipT.clamp(0.0, 1.0));
-    final stats = _T.stats.transform(t);
-    final name = _T.nameIn.transform(t);
+    final e = Curves.easeOutBack.transform(enterT.clamp(0.0, 1.0));
+    final fade = Curves.easeOut.transform(((t - 0.02) / 0.16).clamp(0.0, 1.0));
 
-    // Foil: one sweep during the reveal, then a gentle loop.
+    // Foil: one sweep as the card settles, then a gentle loop.
     final done = t >= _T.done;
-    final double? shine =
-        done ? _idle.value : (t >= 0.36 ? _T.shine.transform(t) : null);
+    final double? shine = done
+        ? _idle.value
+        : (t >= _T.shine.begin ? _T.shine.transform(t) : null);
 
     final rot = Matrix4.identity()
       ..setEntry(3, 2, 0.0012)
-      ..rotateY(showBack ? angle - math.pi : angle);
+      ..rotateY((1 - e) * 0.55);
 
-    return Transform.translate(
-      offset: Offset(0, (1 - flipT) * 50),
-      child: Transform.scale(
-        scale: scale,
-        child: Transform(
-          alignment: Alignment.center,
-          transform: rot,
-          child: showBack
-              ? FcmPlayerCardBack(rarity: rarity, width: cardWidth)
-              : FcmPlayerCard(
-                  player: card.base,
-                  rarity: rarity,
-                  width: cardWidth,
-                  overall: card.overall,
-                  stats: cardStatsOf(card),
-                  upgradeLevel: card.upgradeLevel,
-                  statProgress: stats,
-                  nameProgress: name,
-                  shine: shine,
-                  glow: (0.55 + 0.45 * pulse(_idle.value)) *
-                      flipT.clamp(0.0, 1.0) *
-                      (0.6 + 0.2 * rarity.intensity),
-                ),
+    return Opacity(
+      opacity: fade,
+      child: Transform.translate(
+        offset: Offset(0, (1 - e) * 46),
+        child: Transform.scale(
+          scale: 0.62 + 0.38 * e,
+          child: Transform(
+            alignment: Alignment.center,
+            transform: rot,
+            child: FcmPlayerCard(
+              player: card.base,
+              rarity: rarity,
+              width: cardWidth,
+              overall: card.overall,
+              stats: cardStatsOf(card),
+              upgradeLevel: card.upgradeLevel,
+              shine: shine,
+              glow: (0.55 + 0.45 * pulse(_idle.value)) *
+                  enterT.clamp(0.0, 1.0) *
+                  (0.6 + 0.2 * rarity.intensity),
+            ),
+          ),
         ),
       ),
     );
