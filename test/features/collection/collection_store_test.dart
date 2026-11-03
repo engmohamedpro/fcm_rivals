@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/database/app_database.dart';
+import 'package:fcm_rivals/core/domain/players.dart' show Position;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
@@ -49,6 +50,11 @@ final List<List<dynamic>> seedRows = [
         'Egypt',
         500_000 + (i * 3_000_000) + p * 100_000,
       ],
+  // One legendary-priced striker so the store's tier shelving has a
+  // legendary player to find in at least one position: €40M rates 86,
+  // above the 82 legendary line. Every other position tops out in the
+  // epic band, so their Legendary packs stay off the shelf.
+  [999, 'Legend Striker', 'ST', 'Egypt', 40_000_000],
 ];
 
 Future<CollectionStore> seededStore(AppDatabase db) async {
@@ -255,17 +261,25 @@ void main() {
 
     tearDown(() async => db.close());
 
-    test('three tiers of global pack and per position — 39 offers', () async {
+    test('position sections only, tiers shelved when the pool has the '
+        'rarity — 24 offers', () async {
       final offers = await store.getStoreOffers();
-      expect(offers.length, 3 + 12 * 3);
-      final globals = offers.where((o) => o.category == PackCategory.global);
-      expect(globals.length, 3);
-      expect(globals.map((o) => o.tier).toSet(), PackTier.values.toSet());
+      // The global pack is gone: every offer is position-scoped.
+      expect(offers.any((o) => o.category == PackCategory.global), isFalse);
+      expect(offers.every((o) => o.scopeValue != null), isTrue);
+      // Every position holds rare and epic players, so 12 sections × 2
+      // tiers; only ST (with its €40M legend) also shelves Legendary.
+      expect(offers.length, 12 * 2 + 1);
       expect(
           offers.where((o) => o.scopeValue == 'ST').map((o) => o.tier).toSet(),
           PackTier.values.toSet());
-      // Titles carry the tier, e.g. 'Legendary Global Pack'.
-      expect(offers.map((o) => o.title).contains('Legendary Global Pack'), isTrue);
+      // A position without legendary players shelves no Legendary pack.
+      expect(
+          offers.where((o) => o.scopeValue == 'GK').map((o) => o.tier).toSet(),
+          {PackTier.rare, PackTier.epic});
+      // Titles carry the tier, e.g. 'Legendary ST Position Pack'.
+      expect(offers.map((o) => o.title).contains('Legendary ST Position Pack'),
+          isTrue);
       expect(
           offers.map((o) => o.title).contains('Epic ST Position Pack'),
           isTrue);
@@ -273,29 +287,31 @@ void main() {
 
     test('gold costs most, bronze least, for the same scope', () async {
       final offers = await store.getStoreOffers();
-      for (final scope in ['${null}', 'ST', 'GK']) {
-        final scoped = offers.where((o) =>
-            scope == '${null}'
-                ? o.category == PackCategory.global
-                : o.scopeValue == scope);
+      for (final scope in ['ST', 'GK']) {
+        final scoped = offers.where((o) => o.scopeValue == scope);
         final byTier = {for (final o in scoped) o.tier: o.price};
         expect(byTier[PackTier.epic]!, greaterThan(byTier[PackTier.rare]!));
-        expect(byTier[PackTier.legendary]!, greaterThan(byTier[PackTier.epic]!));
+        if (byTier.containsKey(PackTier.legendary)) {
+          expect(
+              byTier[PackTier.legendary]!, greaterThan(byTier[PackTier.epic]!));
+        }
       }
     });
 
     test('buyPack records the tier on the pack and charges its price',
         () async {
       final offers = await store.getStoreOffers();
-      final goldGlobal =
-          offers.firstWhere((o) => o.tier == PackTier.legendary && o.scopeValue == null);
+      final legendSt = offers
+          .firstWhere((o) => o.tier == PackTier.legendary && o.scopeValue == 'ST');
       final before = (await store.getClub())!.coins;
       final pack = await store.buyPack(
-          category: PackCategory.global, tier: PackTier.legendary);
+          category: PackCategory.position,
+          position: Position.st,
+          tier: PackTier.legendary);
       expect(pack.tier, 'legendary');
-      expect(pack.price, goldGlobal.price);
-      expect(pack.scopeValue, isNull);
-      expect((await store.getClub())!.coins, before - goldGlobal.price);
+      expect(pack.price, legendSt.price);
+      expect(pack.scopeValue, 'ST');
+      expect((await store.getClub())!.coins, before - legendSt.price);
       // it is unopened and openable with gold odds
       expect(pack.opened, isFalse);
       final result =
@@ -317,10 +333,11 @@ void main() {
           overalls,
           equals(overalls.toList()
             ..sort((a, b) => b.compareTo(a))));
-      // Global scope covers the whole pool.
+      // Global scope covers the whole pool — the 60 seeded positional
+      // players plus the one legendary striker.
       final global = await store.getPackPlayers(
           category: PackCategory.global, tier: PackTier.rare);
-      expect(global.length, 60);
+      expect(global.length, 61);
     });
   });
 

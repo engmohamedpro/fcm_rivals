@@ -10,8 +10,10 @@
 ///  * ad economy: every ad surface's coin value per watch
 ///
 /// Expectations are calibrated to MEASURED values (§34 harness, real
-/// pool): rare ≈ 1,046 / epic ≈ 3,905 / legendary ≈ 11,358 coins (the
-/// legendary tier prices at its 1.4x premium margin, rebalance Ch.8).
+/// pool, per-position EV pricing): rare ≈ 914-1,188 / epic ≈ 2,838-4,058
+/// / legendary ≈ 8,203-11,794 coins across the position scopes (the
+/// legendary tier prices at its 1.4x premium margin, rebalance Ch.8;
+/// LM/RM shelve no Legendary pack — their pools hold no 82+ players).
 library;
 
 import 'dart:io';
@@ -114,70 +116,84 @@ void main() {
       }
     });
 
-    test('global pack prices sit in the 1k-30k band across tiers', () {
-      // Measured on the shipped dataset: rare ~1,046, epic ~3,905,
-      // legendary ~10,141 — EV-priced off the real pool.
-      final globals = offers
-          .where((o) => o.category == PackCategory.global)
-          .toList()
-        ..sort((a, b) => a.price.compareTo(b.price));
-      expect(globals, hasLength(3));
-      expect(globals.first.price, inInclusiveRange(600, 3_000));
-      expect(globals.last.price, inInclusiveRange(6_000, 30_000));
-      // The tier ladder itself is steep: legendary costs ~8-12x rare.
-      expect(globals.last.price / globals.first.price,
-          inInclusiveRange(6, 16));
+    test('position pack prices sit in their bands across tiers', () {
+      // Measured on the shipped dataset (per-position EV pools): rare
+      // 914-1,188, epic 2,838-4,058, legendary 8,203-11,794 — the RM
+      // pool prices lowest, RW highest within each tier.
+      final byTier = <PackTier, List<int>>{};
+      for (final o in offers) {
+        byTier.putIfAbsent(o.tier, () => []).add(o.price);
+      }
+      expect(byTier[PackTier.rare], hasLength(12));
+      expect(byTier[PackTier.epic], hasLength(12));
+      // LM and RM hold no legendary players, so no legendary offers.
+      expect(byTier[PackTier.legendary], hasLength(10));
+      for (final p in byTier[PackTier.rare]!) {
+        expect(p, inInclusiveRange(600, 3_000));
+      }
+      for (final p in byTier[PackTier.epic]!) {
+        expect(p, inInclusiveRange(2_000, 8_000));
+      }
+      for (final p in byTier[PackTier.legendary]!) {
+        expect(p, inInclusiveRange(6_000, 30_000));
+      }
+      // The tier ladder itself is steep within one scope: legendary
+      // costs ~8-11x rare, epic ~3-4x rare.
+      final st = {for (final o in offers) if (o.scopeValue == 'ST') o.tier: o.price};
+      expect(st[PackTier.epic]! / st[PackTier.rare]!, inInclusiveRange(2, 6));
+      expect(st[PackTier.legendary]! / st[PackTier.rare]!, inInclusiveRange(6, 16));
     });
 
     test('rare packs are pocket change; legendary is ~2-8 matches', () {
       // Measured after the legendary-margin rebalance (Ch.8): rare
-      // ~1,046 (~0.4 matches), legendary ~11,358 (~4.7 matches at
-      // 2.4k/match; was 10,141/4.2 at the flat 1.25x margin). Rare pulls
-      // median OVR ~40, so the cheap price is honest filler pricing.
+      // ~914-1,188 (~0.4 matches), legendary ~8,203-11,794 (~4.5
+      // matches at 2.4k/match). Rare pulls median OVR ~40, so the cheap
+      // price is honest filler pricing.
       const perMatch = 2400;
-      final rare = offers
-          .firstWhere((o) =>
-              o.category == PackCategory.global && o.tier == PackTier.rare)
-          .price;
-      final legendary = offers
-          .firstWhere((o) =>
-              o.category == PackCategory.global && o.tier == PackTier.legendary)
-          .price;
-      expect(rare / perMatch, inInclusiveRange(0.15, 1.5));
-      expect(legendary / perMatch, inInclusiveRange(2, 8));
+      final rarePrices = offers
+          .where((o) => o.tier == PackTier.rare)
+          .map((o) => o.price)
+          .toList();
+      final legendaryPrices = offers
+          .where((o) => o.tier == PackTier.legendary)
+          .map((o) => o.price)
+          .toList();
+      for (final p in rarePrices) {
+        expect(p / perMatch, inInclusiveRange(0.15, 1.5));
+      }
+      for (final p in legendaryPrices) {
+        expect(p / perMatch, inInclusiveRange(2, 8));
+      }
     });
 
-    test('position packs track the global price with a real pool spread',
-        () {
-      // Measured (legendary tier): the RM pack lands ~58% of global, RW
-      // ~104% — the EV of a filtered pool genuinely differs because
-      // position value distributions differ (the RM pool is cheaper on
-      // average). Kept as a measured band: 50%-115% of same-tier global.
-      final globalByTier = {
-        for (final o in offers.where((o) => o.category == PackCategory.global))
-          o.tier: o.price,
-      };
-      for (final o
-          in offers.where((o) => o.category == PackCategory.position)) {
-        final reference = globalByTier[o.tier]!;
-        expect(o.price, inInclusiveRange((reference * 0.50).round(),
-            (reference * 1.15).round()),
-            reason:
-                '${o.title} at ${o.price} vs global ${o.tier.name} $reference');
+    test('the pool spread is real but bounded across scopes', () {
+      // Measured: within a tier the cheapest scope (RM) lands ~77-87%
+      // of the most expensive (RW/ST) — the EV of a filtered pool
+      // genuinely differs because position value distributions differ.
+      final byTier = <PackTier, List<int>>{};
+      for (final o in offers) {
+        byTier.putIfAbsent(o.tier, () => []).add(o.price);
+      }
+      for (final prices in byTier.values) {
+        prices.sort();
+        expect(prices.last / prices.first, inInclusiveRange(0.5, 1.6),
+            reason: 'same-tier scope spread must stay bounded');
       }
     });
 
     test('starting coins buy a sensible opening haul (3+ rare packs)', () {
-      final rare = offers
-          .firstWhere((o) =>
-              o.category == PackCategory.global && o.tier == PackTier.rare)
-          .price;
-      expect(config.startingCoins / rare, greaterThan(3));
-      final legendary = offers
-          .firstWhere((o) =>
-              o.category == PackCategory.global && o.tier == PackTier.legendary)
-          .price;
-      expect(config.startingCoins / legendary, lessThan(6));
+      final cheapestRare = offers
+          .where((o) => o.tier == PackTier.rare)
+          .map((o) => o.price)
+          .reduce((a, b) => a < b ? a : b);
+      expect(config.startingCoins / cheapestRare, greaterThan(3));
+      final legendaryPrices = offers
+          .where((o) => o.tier == PackTier.legendary)
+          .map((o) => o.price)
+          .toList();
+      for (final p in legendaryPrices) {
+        expect(config.startingCoins / p, lessThan(6));
+      }
     });
   });
 

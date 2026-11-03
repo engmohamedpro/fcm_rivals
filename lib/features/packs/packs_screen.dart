@@ -16,15 +16,17 @@ import 'pack_contents_screen.dart';
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_opening_screen.dart';
 
-/// Store tab (nav label 'Store', GDD 5.5): one SECTION per scope — the global
-/// pack or one position — grouping its three tier varieties — Rare /
-/// Epic / Legendary, each with its own odds of better players and its own
-/// price — under a shared title. Owned (free) packs of a type show a
-/// FREE ×N pill in place of the price; otherwise the cell shows the coin
-/// price. There is no per-cell button: tapping the pack itself opens it —
-/// an owned pack straight into the reveal, a buyable one into the YES/NO
-/// purchase confirmation. Each section's ghost players icon button opens
-/// the scope's full contents list (searchable, filterable by
+/// Store tab (nav label 'Store', GDD 5.5): one SECTION per position,
+/// grouping its tier varieties — Rare / Epic / Legendary, each with its
+/// own odds of better players and its own price — under a shared title.
+/// A tier only shelves when the position's pool holds a player of that
+/// rarity, so a section without, say, legendary players simply shows one
+/// cell fewer. Owned (free) packs of a type show a FREE ×N pill in place
+/// of the price; otherwise the cell shows the coin price. There is no
+/// per-cell button: tapping the pack itself opens it — an owned pack
+/// straight into the reveal, a buyable one into the YES/NO purchase
+/// confirmation. Each section's ghost players icon button opens the
+/// scope's full contents list (searchable, filterable by
 /// nationality).
 class PacksScreen extends ConsumerStatefulWidget {
   const PacksScreen({super.key});
@@ -363,11 +365,12 @@ class _StoreGrid extends StatelessWidget {
   }
 }
 
-/// One scope group: shared title — 'Global Pack' or 'ST Pack' — with a
+/// One scope group: shared title — 'ST Pack', 'LM Pack', ... — with a
 /// compact players icon button at the end of the title row, and the
-/// row of the three tier cells side by side. The three rarities of one
-/// scope draw from the exact same pool; the contents list behind that
-/// one button is the single place that pool is shown.
+/// row of the tier cells side by side (two cells when the pool holds no
+/// player of the missing rarity). All rarities of one scope draw from
+/// the exact same pool; the contents list behind that one button is the
+/// single place that pool is shown.
 class _ScopeSection extends StatelessWidget {
   const _ScopeSection({
     super.key,
@@ -399,8 +402,7 @@ class _ScopeSection extends StatelessWidget {
         if (byTier.containsKey(t)) byTier[t]!,
     ];
     final head = ordered.first;
-    final scopeLabel =
-        head.scopeValue == null ? 'Global Pack' : '${head.scopeValue} Pack';
+    final scopeLabel = '${head.scopeValue} Pack';
 
           // One visual group: title, players icon entry and the tier cells
     // share a single raised surface, so what belongs together reads as

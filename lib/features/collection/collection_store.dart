@@ -25,6 +25,7 @@ import '../player_database/player_database.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import '../upgrades/upgrade_engine.dart';
+import '../../core/ui/fcm_style.dart' show CardRarity;
 
 /// Thrown when an operation would leave persistent state inconsistent.
 class CollectionException implements Exception {
@@ -534,16 +535,26 @@ class CollectionStore {
         .get();
   }
 
-  /// The store's buyable packs (GDD 5.5): three tiers of the global pack
-  /// — Bronze / Silver / Gold — and three tiers for every position, each
+  /// The store's buyable packs (GDD 5.5): one section per position, each
   /// tier with its own odds of better players and its own price from the
   /// Economy Engine's expected-contents formula (better odds cost more).
   /// Prices are stable per dataset.
+  ///
+  /// A tier only goes on the shelf when the position's pool actually
+  /// contains players of that pack's rarity — no legendary players in
+  /// the pool, no legendary pack (the dataset's LM and RM pools hold no
+  /// 82+ players, so those sections show Rare and Epic only).
   Future<List<StorePackOffer>> getStoreOffers() async {
     final registry = await _ensureRegistry();
     final pool = registry.all.toList(growable: false);
 
-    StorePackOffer offerFor(PackCategory category, String? scopeValue,
+    CardRarity rarityOf(PackTier tier) => switch (tier) {
+          PackTier.rare => CardRarity.rare,
+          PackTier.epic => CardRarity.epic,
+          PackTier.legendary => CardRarity.legendary,
+        };
+
+    StorePackOffer? offerFor(PackCategory category, String? scopeValue,
         PackTier tier, String baseTitle) {
       final scope = PackScope(
         category: category,
@@ -552,25 +563,31 @@ class CollectionStore {
             : null,
         tier: tier,
       );
+      final eligible = pool.where(scope.matches).toList(growable: false);
+      if (!eligible.any((p) =>
+          CardRarity.fromOverall(p.baseStats.overall) == rarityOf(tier))) {
+        return null;
+      }
       return StorePackOffer(
         category: category,
         title: '${tier.label} $baseTitle',
         scopeValue: scopeValue,
         tier: tier,
         price: PackEngine(random: math.Random(0), economy: economy)
-            .packPriceFor(scope, pool),
-        eligibleCount: pool.where(scope.matches).length,
+            .packPriceFor(scope, eligible),
+        eligibleCount: eligible.length,
       );
     }
 
-    return [
-      for (final tier in PackTier.values)
-        offerFor(PackCategory.global, null, tier, 'Global Pack'),
-      for (final position in Position.values)
-        for (final tier in PackTier.values)
-          offerFor(PackCategory.position, position.code, tier,
-              '${position.code} Position Pack'),
-    ];
+    final offers = <StorePackOffer>[];
+    for (final position in Position.values) {
+      for (final tier in PackTier.values) {
+        final offer = offerFor(PackCategory.position, position.code, tier,
+            '${position.code} Position Pack');
+        if (offer != null) offers.add(offer);
+      }
+    }
+    return offers;
   }
 
   /// Buys one pack with Coins (GDD 5.5: prices come from the Economy

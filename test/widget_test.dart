@@ -89,12 +89,14 @@ void main() {
     expect(find.text('Start your first season'), findsOneWidget);
 
     // Switch to the Store tab (last in the nav) and check the
-    // sectioned store: one section per scope — global first, then every
-    // position — each with a shared title, its three rarity cells; the
-    // free starting packs stack as FREE ×N plates under their rare cells.
+    // sectioned store: one section per position — each with a shared
+    // title, its rarity cells shelved only when the position's pool
+    // holds a player of that rarity — and the free starting packs
+    // stacking as FREE ×N plates under their rare cells.
     await tester.tap(find.text('Store'));
     await _settle(tester);
-    expect(find.text('Global Pack'), findsOneWidget);
+    expect(find.text('Global Pack'), findsNothing);
+    expect(find.text('ST Pack'), findsOneWidget);
     // The tier names are stamped on the foil's plate (painted, not Text
     // widgets), so no tier labels render as text under the cells.
     expect(find.text('RARE'), findsNothing);

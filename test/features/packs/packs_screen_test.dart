@@ -1,7 +1,8 @@
-// Store tab behaviour (GDD 5.5): one section per scope — global first,
-// then every position — grouping its three rarity varieties under a
-// shared title, plus the BUY confirmation flow and the contents list
-// behind each cell's players icon button.
+// Store tab behaviour (GDD 5.5): one section per position, grouping the
+// tier varieties under a shared title — a tier only shelves when the
+// position's pool holds a player of that rarity — plus the BUY
+// confirmation flow and the contents list behind each cell's players
+// icon button.
 //
 // The store runs real drift I/O over an in-memory database, so async
 // flushes use tester.runAsync (FakeAsync doesn't perform real I/O).
@@ -69,29 +70,41 @@ void main() {
     await pumpScreen(tester);
   }
 
-  testWidgets('sectioned store: shared scope titles, three tier cells per '
+  testWidgets('sectioned store: shared scope titles, tier cells per '
       'section, owned packs stack under their tier', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // 13 scope sections (global + 12 positions), one shared title each —
-    // and no per-cell titles left over from the old flat grid.
-    expect(find.text('Global Pack'), findsOneWidget);
+    // 12 position sections, one shared title each — the global pack is
+    // gone from the store, and no per-cell titles are left over from the
+    // old flat grid.
+    expect(find.text('Global Pack'), findsNothing);
     expect(find.text('ST Pack'), findsOneWidget);
     expect(find.text('LW Pack'), findsOneWidget);
     expect(find.text('FREE ×3'), findsNothing);
+    // A tier only shelves when the position's pool holds a player of
+    // that rarity: LM and RM have no 82+ players in the bundled dataset,
+    // so their sections show Rare and Epic cells only — every other
+    // position carries all three tiers.
+    final offers = await tester.runAsync(() => store.getStoreOffers());
+    expect(offers!.where((o) => o.scopeValue == 'LM').map((o) => o.tier),
+        containsAllInOrder([PackTier.rare, PackTier.epic]));
+    expect(offers.where((o) => o.scopeValue == 'RM').map((o) => o.tier),
+        containsAllInOrder([PackTier.rare, PackTier.epic]));
+    expect(offers.where((o) => o.scopeValue == 'ST').map((o) => o.tier),
+        containsAllInOrder(
+            [PackTier.rare, PackTier.epic, PackTier.legendary]));
+    expect(offers.length, 12 * 3 - 2);
     // No pool sizes or player strips on the store anymore: the contents
     // list behind the players icon button is the one place the pool is
     // shown.
-    final offers = await tester.runAsync(() => store.getStoreOffers());
-    expect(offers!.firstWhere((o) => o.scopeValue == null).eligibleCount,
-        greaterThan(0));
-    // One compact players icon button per section title row (13), not
+    expect(offers.any((o) => o.scopeValue == null), isFalse);
+    // One compact players icon button per section title row (12), not
     // per cell: the contents pool is per-scope. The text label is gone —
     // the icon (with its tooltip) is the whole button.
-    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(13));
+    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(12));
     expect(find.text('VIEW PLAYERS'), findsNothing);
     // The tier name is stamped on the foil's plate (painted, not a
     // Text widget), so no tier labels render under the cells anymore.
@@ -121,7 +134,7 @@ void main() {
     expect(find.text('BUY'), findsNothing);
     // Every section title row carries a players icon button into the
     // scope's shared pool.
-    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(13));
+    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(12));
     // No player preview strip on the store itself.
     expect(find.byType(FcmMiniCard), findsNothing);
   });
@@ -133,10 +146,9 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // The rare global cell is priced (starter packs are position-scoped),
-    // so it shows the coin plate.
-    final cell =
-        find.byKey(const ValueKey('store-pack-global-ANY-rare')).first;
+    // The rare CAM cell is priced (CAM is not a starter-formation slot,
+    // so no free stack hides its price), so it shows the coin plate.
+    final cell = find.byKey(const ValueKey('store-pack-position-CAM-rare')).first;
     final pack = find
         .descendant(of: cell, matching: find.byType(CustomPaint))
         .first;
@@ -218,13 +230,16 @@ void main() {
 
     final clubBefore = await tester.runAsync(() => store.getClub());
     final offers = await tester.runAsync(() => store.getStoreOffers());
-    // The first BUY on screen is the Rare Global Pack cell.
-    final rareGlobal =
-        offers!.firstWhere((o) => o.tier == PackTier.rare && o.scopeValue == null);
+    // The first BUY on screen is the Rare CAM Pack cell — CAM is not a
+    // starter-formation slot, so its cells carry no free stack.
+    final rareCam = offers!
+        .firstWhere((o) => o.tier == PackTier.rare && o.scopeValue == 'CAM');
 
-    await tester.tap(find.byKey(ValueKey(
-            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
-        .first);
+    final camCell =
+        find.byKey(const ValueKey('store-pack-position-CAM-rare')).first;
+    await tester.ensureVisible(camCell);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(camCell);
     await tester.pump();
 
     // Confirmation shows the price — the same C coin glyph the top bar's
@@ -232,7 +247,7 @@ void main() {
     // YES and NO side by side in one row and no balance line. The price
     // row is scoped to the dialog (the store behind it shows coin
     // prices on every cell too).
-    expect(find.text('Buy Rare Global Pack?'), findsOneWidget);
+    expect(find.text('Buy Rare CAM Position Pack?'), findsOneWidget);
     final dialog = find.byType(AlertDialog);
     expect(dialog, findsOneWidget);
     expect(
@@ -240,8 +255,7 @@ void main() {
         findsOneWidget);
     expect(
         find.descendant(
-            of: dialog,
-            matching: find.textContaining('${_group(rareGlobal.price)}')),
+            of: dialog, matching: find.textContaining(_group(rareCam.price))),
         findsOneWidget);
     expect(
         find.descendant(of: dialog, matching: find.textContaining('Coins')),
@@ -281,13 +295,14 @@ void main() {
     expect(find.byType(PackOpeningScreen), findsOneWidget);
 
     // The purchase was real: coins charged at the rare price and the
-    // pack consumed — the draw already sits in the collection.
+    // pack consumed by the reveal (the 22 starter packs are untouched
+    // — all position-scoped rares — so the count staying at 22 is the
+    // proof the bought pack was opened) — the draw already sits in the
+    // collection.
     final packs = await tester.runAsync(() => store.getAvailablePacks());
-    final bought = packs!
-        .where((p) => p.category == 'global' && p.tier == 'rare');
-    expect(bought, isEmpty);
+    expect(packs!.length, 22);
     final clubAfter = await tester.runAsync(() => store.getClub());
-    expect(clubAfter!.coins, clubBefore!.coins - rareGlobal.price);
+    expect(clubAfter!.coins, clubBefore!.coins - rareCam.price);
   });
 
   testWidgets('NO closes the confirmation without buying',
@@ -297,16 +312,18 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    await tester.tap(find.byKey(ValueKey(
-            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
-        .first);
+    final camCell =
+        find.byKey(const ValueKey('store-pack-position-CAM-rare')).first;
+    await tester.ensureVisible(camCell);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(camCell);
     await tester.pump();
     await tester.tap(find.text('NO'));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Buy Rare Global Pack?'), findsNothing);
+    expect(find.text('Buy Rare CAM Position Pack?'), findsNothing);
     final packs = await tester.runAsync(() => store.getAvailablePacks());
-    expect(packs!.where((p) => p.category == 'global'), isEmpty);
+    expect(packs!.length, 22, reason: 'nothing was bought');
   });
 
   testWidgets('a pack the club cannot afford disables YES in the dialog',
@@ -328,9 +345,11 @@ void main() {
     });
 
     await pumpScreen(tester);
-    await tester.tap(find.byKey(ValueKey(
-            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
-        .first);
+    final camCell =
+        find.byKey(const ValueKey('store-pack-position-CAM-rare')).first;
+    await tester.ensureVisible(camCell);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(camCell);
     await tester.pump();
 
     expect(find.text('Not enough coins'), findsOneWidget);
@@ -355,7 +374,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(PackContentsScreen), findsOneWidget);
-    expect(find.text('Rare Global Pack'), findsOneWidget);
+    expect(find.text('Rare ST Position Pack'), findsOneWidget);
 
     // The list shows the eligible players as mini cards with no rank
     // numbers, no stat rows.
@@ -373,8 +392,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(PackContentsScreen), findsNothing);
-    expect(find.byKey(ValueKey(
-            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}')),
+    expect(
+        find.byKey(const ValueKey('store-pack-position-ST-rare')),
         findsOneWidget);
   });
 
@@ -390,15 +409,19 @@ void main() {
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump(const Duration(milliseconds: 50));
 
-    // The search field narrows the list to matching names: two Haalands
-    // ship in the bundled dataset (Erling and Markus), one Erling.
+    // The search field narrows the list to matching names: one Haaland
+    // is a striker in the bundled dataset (Erling), so searching the ST
+    // pool finds exactly him.
     await tester.enterText(find.byType(TextField), 'haaland');
-    await tester.pump();
-    expect(find.byType(FcmMiniCard), findsNWidgets(2));
-    await tester.enterText(find.byType(TextField), 'erling haaland');
     await tester.pump();
     expect(find.byType(FcmMiniCard), findsOneWidget);
     expect(find.text('Erling Haaland'), findsOneWidget);
+    // A query that matches nothing shows the empty state: the ST pool
+    // holds no player with a q in its name.
+    await tester.enterText(find.byType(TextField), 'qq');
+    await tester.pump();
+    expect(find.byType(FcmMiniCard), findsNothing);
+    expect(find.text('No players match your search'), findsOneWidget);
 
     // Clearing the search restores the full, best-first pool.
     await tester.enterText(find.byType(TextField), '');
@@ -427,8 +450,8 @@ void main() {
     expect(find.text('All nationalities'), findsOneWidget);
     expect(find.byIcon(Icons.search_rounded), findsOneWidget);
     // The dropdown offers every nationality present in the pool.
-    final pool = await tester.runAsync(
-        () => store.getPackPlayers(category: PackCategory.global, tier: PackTier.rare));
+    final pool = await tester.runAsync(() =>
+        store.getPackPlayers(category: PackCategory.position, scopeValue: 'ST', tier: PackTier.rare));
     final expected = pool!.map((p) => p.nationality).toSet().length;
     expect(find.byType(DropdownButton<String?>), findsOneWidget);
     expect(expected, greaterThan(50));
@@ -444,10 +467,10 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // --- Buy a pack and watch its reveal to the end. ---
-    final buyCell = find.byKey(ValueKey(
-            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
-        .first;
+    // --- Buy a pack and watch its reveal to the end. CAM carries no
+    // starter stack, so its rare cell is a clean buy. ---
+    final buyCell =
+        find.byKey(const ValueKey('store-pack-position-CAM-rare')).first;
     await tester.ensureVisible(buyCell);
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(buyCell);
