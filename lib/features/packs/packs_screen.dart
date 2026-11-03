@@ -189,11 +189,12 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.monetization_on_rounded,
-                    color: FcmColors.gold, size: 22),
+                // The same C coin the top bar shows — one currency, one
+                // icon everywhere.
+                const FcmCoinGlyph(size: 22),
                 const SizedBox(width: 8),
                 Text(
-                  '${_groupDigits(offer.price)} Coins',
+                  _groupDigits(offer.price),
                   style: const TextStyle(
                     color: FcmColors.gold,
                     fontSize: 22,
@@ -595,11 +596,11 @@ class _StorePackCellState extends State<_StorePackCell>
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.monetization_on_rounded,
+                        FcmCoinGlyph(
                           size: 12,
-                          color:
-                              affordable ? FcmColors.gold : FcmColors.danger,
+                          color: affordable
+                              ? null
+                              : FcmColors.danger,
                         ),
                         const SizedBox(width: 3),
                         FitText(

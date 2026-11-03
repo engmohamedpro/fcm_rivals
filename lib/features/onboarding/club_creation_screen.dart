@@ -28,16 +28,10 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
   String _formationCode = formations.first.code;
   bool _submitting = false;
 
-  /// Crest swatches stay inside the brand's warm metal palette: champagne,
-  /// bronze, ember, olive, steel and oxblood.
-  static const _crestColors = [
-    Color(0xFFD9B871), // champagne gold
-    Color(0xFF8A6E42), // bronze
-    Color(0xFF2E2925), // ember charcoal
-    Color(0xFF57683F), // olive pitch
-    Color(0xFF8D8A96), // steel silver
-    Color(0xFF7A3B36), // oxblood
-  ];
+  /// Crest swatches live in the shared brand palette
+  /// ([FcmColors.crestPalette]) — the same colours show up live wherever
+  /// the club is represented (match momentum bar).
+  static const _crestColors = FcmColors.crestPalette;
 
   @override
   void dispose() {

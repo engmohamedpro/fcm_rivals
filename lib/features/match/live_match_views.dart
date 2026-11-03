@@ -35,6 +35,8 @@ class MatchHeader extends StatelessWidget {
     required this.onTogglePause,
     required this.onSetSpeed,
     required this.onTactics,
+    this.momentum,
+    this.userTeamColor = FcmColors.gold,
   });
 
   final String home;
@@ -49,6 +51,14 @@ class MatchHeader extends StatelessWidget {
   final VoidCallback onTogglePause;
   final ValueChanged<int> onSetSpeed;
   final VoidCallback onTactics;
+
+  /// Live momentum share of the HOME side, 0..1 (null before kick-off —
+  /// the bar opens at the dead-level 50/50 split).
+  final double? momentum;
+
+  /// The user's crest colour — fills the user's half of the momentum
+  /// bar (the opponent's half stays white). Defaults to brand gold.
+  final Color userTeamColor;
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +162,16 @@ class MatchHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
+            // Momentum bar (GDD 13.2 live feel): the tug-of-war strip —
+            // the user's crest colour vs white, dead level 50/50 at
+            // kick-off and pushed by whoever is on top in the last
+            // minutes.
+            MomentumBar(
+              homeShare: momentum ?? 0.5,
+              userIsHome: userIsHome,
+              userTeamColor: userTeamColor,
+            ),
+            const SizedBox(height: 8),
             // Controls fused into the same panel: play/pause, 1x–3x
             // speed, tactics. One compact row instead of a second
             // floating block below the scoreboard.
@@ -241,6 +261,83 @@ class _TeamChip extends StatelessWidget {
   }
 }
 
+/// The live momentum tug-of-war bar: the user's half of the strip fills
+/// with their crest colour, the opponent's half stays white, and the
+/// divide slides toward whoever is on top. Dead level (50/50) at
+/// kick-off — the split only moves once the match has events.
+///
+/// The fill re-tweens over 600ms so each match minute nudges the divide
+/// smoothly instead of snapping; a neutral tick mark pins the centre so
+/// "who has the momentum" reads at a glance against dead level.
+class MomentumBar extends StatelessWidget {
+  const MomentumBar({
+    super.key,
+    required this.homeShare,
+    required this.userIsHome,
+    this.userTeamColor = FcmColors.gold,
+  });
+
+  /// Momentum share of the HOME side, 0..1 (0.5 = dead level).
+  final double homeShare;
+
+  /// Which half belongs to the user: their crest colour fills it, the
+  /// opponent's half is white.
+  final bool userIsHome;
+
+  /// The user's crest colour (brand gold by default).
+  final Color userTeamColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = homeShare.clamp(0.0, 1.0);
+    final userShare = userIsHome ? clamped : 1 - clamped;
+    final userColor = userTeamColor;
+    // The opponent's white is dimmed a touch so it reads as a strip,
+    // not a searchlight, against the dark panel.
+    final opponentColor = Colors.white.withValues(alpha: 0.85);
+
+    return SizedBox(
+      height: 8,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Stack(
+          children: [
+            // Full-width opponent white: the user's colour slides over
+            // it from the left (or right when the user is away), so the
+            // divide IS the momentum reading.
+            ColoredBox(color: opponentColor),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.5, end: userShare),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOut,
+              builder: (context, f, _) => Align(
+                alignment: userIsHome
+                    ? Alignment.centerLeft
+                    : Alignment.centerRight,
+                child: FractionallySizedBox(
+                  widthFactor: f,
+                  child: ColoredBox(color: userColor),
+                ),
+              ),
+            ),
+            // Centre tick: the dead-level mark the divide fights over.
+            const Align(
+              alignment: Alignment.center,
+              child: Center(
+                child: VerticalDivider(
+                  width: 2,
+                  thickness: 2,
+                  color: Colors.black26,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Pulsing red "live" indicator — the one animated widget in the
 /// header, and it repaints only itself.
 class _LiveDot extends StatefulWidget {
@@ -249,7 +346,6 @@ class _LiveDot extends StatefulWidget {
   @override
   State<_LiveDot> createState() => _LiveDotState();
 }
-
 class _LiveDotState extends State<_LiveDot>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
@@ -993,8 +1089,9 @@ Future<MatchPepTalk?> showPepTalkChooser({
 /// that takes the match away.
 ///
 /// The options are compact rows (label + effect summary — GDD 15:
-/// effects must be visible) with a "say nothing" escape. Tapping
-/// anywhere outside dismisses without a talk.
+/// effects must be visible) with a "say nothing" escape. The card is
+/// NOT dismissible by tapping outside it: a decision (talk, skip, or
+/// edit-then-decide) must be made before the second half kicks off.
 class TouchlinePepTalkCard extends StatelessWidget {
   const TouchlinePepTalkCard({
     super.key,
@@ -1026,102 +1123,100 @@ class TouchlinePepTalkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: GestureDetector(
-        // Tap outside the card = skip (no talk).
-        onTap: onSkip,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          color: Colors.black.withValues(alpha: 0.55),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: FcmPanel(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            accent: FcmColors.bronze,
-            glow: true,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.record_voice_over_rounded,
-                        color: FcmColors.gold, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FitText(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (scoreHeader != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: FcmColors.gold.withValues(alpha: 0.10),
-                      border: Border(
-                          top: BorderSide(
-                              color: FcmColors.gold.withValues(alpha: 0.5)),
-                          bottom: BorderSide(
-                              color: FcmColors.gold.withValues(alpha: 0.5))),
-                    ),
-                    child: Text(
-                      scoreHeader!,
-                      textAlign: TextAlign.center,
+      child: Container(
+        // The scrim blocks taps on the frozen match behind the card —
+        // deliberately inert: an accidental tap outside must NOT skip
+        // the talk. The decision has to be one of the card's options.
+        color: Colors.black.withValues(alpha: 0.55),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: FcmPanel(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          accent: FcmColors.bronze,
+          glow: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.record_voice_over_rounded,
+                      color: FcmColors.gold, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FitText(
+                      title,
                       style: const TextStyle(
-                        color: FcmColors.gold,
-                        fontSize: 15,
+                        color: Colors.white,
+                        fontSize: 17,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
                       ),
                     ),
                   ),
                 ],
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: FcmColors.textDim,
-                    fontSize: 12,
-                    height: 1.35,
+              ),
+              if (scoreHeader != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: FcmColors.gold.withValues(alpha: 0.10),
+                    border: Border(
+                        top: BorderSide(
+                            color: FcmColors.gold.withValues(alpha: 0.5)),
+                        bottom: BorderSide(
+                            color: FcmColors.gold.withValues(alpha: 0.5))),
                   ),
-                ),
-                const SizedBox(height: 10),
-                for (final talk in talks)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: _PepTalkOption(
-                      talk: talk,
-                      onTap: () => onChoose(talk),
+                  child: Text(
+                    scoreHeader!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
                     ),
-                  ),
-                if (onEditTactics != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: FcmButton(
-                      compact: true,
-                      icon: Icons.tune_rounded,
-                      label: 'EDIT TACTICS',
-                      onPressed: onEditTactics,
-                    ),
-                  ),
-                TextButton(
-                  onPressed: onSkip,
-                  child: const Text(
-                    'Say nothing — back to the match',
-                    style:
-                        TextStyle(color: FcmColors.textDim, fontSize: 12),
                   ),
                 ),
               ],
-            ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: FcmColors.textDim,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 10),
+              for (final talk in talks)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: _PepTalkOption(
+                    talk: talk,
+                    onTap: () => onChoose(talk),
+                  ),
+                ),
+              if (onEditTactics != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: FcmButton(
+                    compact: true,
+                    icon: Icons.tune_rounded,
+                    label: 'EDIT TACTICS',
+                    onPressed: onEditTactics,
+                  ),
+                ),
+              TextButton(
+                onPressed: onSkip,
+                child: const Text(
+                  'Say nothing — back to the match',
+                  style:
+                      TextStyle(color: FcmColors.textDim, fontSize: 12),
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -99,6 +99,15 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     away: TeamMatchStats.empty(),
   );
 
+  /// Live momentum share of the HOME side (0..1). Null before any match
+  /// minute exists — the header's tug-of-war bar opens dead level at
+  /// 50/50, exactly as a match kicks off.
+  double? _momentum;
+
+  /// The user's crest colour (momentum bar user half). Null until the
+  /// club row loads; brand gold stands in for that blink.
+  Color? _userTeamColor;
+
   /// Auto-scroll: whether the feed should keep the newest line in view.
   /// Turns off the moment the user scrolls up to read history and back
   /// on when they return to the bottom.
@@ -143,6 +152,20 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     // The last chosen playback speed carries over — the preference
     // sticks FOREVER, across matches and app restarts (GDD 26.2).
     unawaited(_loadPersistedSpeed());
+    // The user's crest colour tints their half of the momentum bar.
+    unawaited(_loadUserCrestColor());
+  }
+
+  Future<void> _loadUserCrestColor() async {
+    try {
+      final store = await ref.read(collectionStoreProvider.future);
+      final club = await store.getClub();
+      if (mounted && club != null) {
+        setState(() => _userTeamColor = FcmColors.crestColor(club.crestIndex));
+      }
+    } catch (_) {
+      // A storage hiccup leaves the bar's user half at brand gold.
+    }
   }
 
   Future<void> _loadPersistedSpeed() async {
@@ -249,6 +272,13 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         final awayId = session.awayTeamId;
         if (homeId != null && awayId != null) {
           _stats = computeStats(
+            session.engine.events,
+            homeTeamId: homeId,
+            awayTeamId: awayId,
+          );
+          // Momentum: trailing-window pressure share — the header bar's
+          // divide nudges toward whoever is on top right now.
+          _momentum = computeMomentum(
             session.engine.events,
             homeTeamId: homeId,
             awayTeamId: awayId,
@@ -532,6 +562,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                   session.userSide == MatchSide.home,
                               paused: _paused,
                               speed: _speed,
+                              momentum: _momentum,
+                              userTeamColor:
+                                  _userTeamColor ?? FcmColors.gold,
                               onTogglePause: _togglePause,
                               onSetSpeed: _setSpeed,
                               onTactics: () => _openLiveTactics(context),
@@ -837,14 +870,12 @@ class _MatchReportViewState extends State<MatchReportView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.monetization_on_rounded,
-                            color: FcmColors.gold,
-                            size: 20,
-                          ),
+                          // The same C coin the top bar shows — one
+                          // currency, one icon everywhere.
+                          const FcmCoinGlyph(size: 20),
                           const SizedBox(width: 6),
                           Text(
-                            'Reward: ${report.rewardCoins} coins',
+                            'Reward: ${report.rewardCoins}',
                             style: const TextStyle(
                               color: FcmColors.gold,
                               fontSize: 16,

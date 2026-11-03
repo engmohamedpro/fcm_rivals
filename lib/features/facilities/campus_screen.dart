@@ -5,12 +5,11 @@
 /// manager invests match rewards across seasons for small permanent
 /// boosts — training facilities add a few percent to a playing
 /// attribute for every player, the recovery centre speeds post-match
-/// healing, the medical centre cuts injury risk. The screen leads with
-/// a header card summarising today's combined effect, then one
-/// [FacilityCard] per building showing the live effect at the current
-/// level, the effect the NEXT level buys, the escalating price and the
-/// total invested so far — so the curve is always legible (GDD 15:
-/// effects must be visible).
+/// healing, the medical centre cuts injury risk. One [FacilityCard]
+/// per building shows the live effect at the current level, the effect
+/// the NEXT level buys, the escalating price and the total invested so
+/// far — so the curve is always legible (GDD 15: effects must be
+/// visible) without a redundant summary card repeating them.
 library;
 
 import 'package:flutter/material.dart';
@@ -57,7 +56,7 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
     final club = ref.watch(clubProvider).valueOrNull;
     final campus = ref.watch(campusProvider).valueOrNull ?? CampusLevels.empty;
     final costs = defaultFacilitiesCosts;
-    final fractions = campus.attributeFractions;
+    final coins = club?.coins ?? 0;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -91,25 +90,15 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        FcmEntrance(
-          index: 1,
-          child: _CampusSummaryCard(
-            coins: club?.coins ?? 0,
-            fractions: fractions,
-            recoveryBonus: campus.recoveryBonusPercent,
-            injuryReduction: campus.injuryRiskReductionPercent,
-          ),
-        ),
-        const SizedBox(height: 12),
         for (var i = 0; i < Facility.values.length; i++)
           FcmEntrance(
-            index: 2 + i,
+            index: 1 + i,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: FacilityCard(
                 facility: Facility.values[i],
                 level: campus.levelOf(Facility.values[i]),
-                coins: club?.coins ?? 0,
+                coins: coins,
                 costs: costs,
                 busy: _busy == Facility.values[i],
                 onUpgrade: () => _upgrade(Facility.values[i]),
@@ -117,117 +106,6 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
             ),
           ),
       ],
-    );
-  }
-}
-
-/// Header card: the club's coin balance and the combined effect of
-/// today's campus — the numbers every building contributes to.
-class _CampusSummaryCard extends StatelessWidget {
-  const _CampusSummaryCard({
-    required this.coins,
-    required this.fractions,
-    required this.recoveryBonus,
-    required this.injuryReduction,
-  });
-
-  final int coins;
-  final ({double attack, double support, double defence, double goalkeeping})
-      fractions;
-  final double recoveryBonus;
-  final double injuryReduction;
-
-  static String _pct(double v) {
-    final pts = v * 100;
-    return '+${pts.toStringAsFixed(pts.truncateToDouble() == pts ? 0 : 1)}%';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FcmPanel(
-      accent: FcmColors.bronze,
-      glow: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.account_balance_rounded,
-                  color: FcmColors.gold, size: 22),
-              const SizedBox(width: 8),
-              const Text(
-                'CAMPUS EFFECT TODAY',
-                style: TextStyle(
-                  color: FcmColors.gold,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
-              ),
-              const Spacer(),
-              FcmCoinChip(coins: coins),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _EffectPill(icon: Icons.sports_soccer_rounded,
-                  label: 'ATT ${_pct(fractions.attack)}'),
-              _EffectPill(icon: Icons.hub_rounded,
-                  label: 'SUP ${_pct(fractions.support)}'),
-              _EffectPill(icon: Icons.shield_rounded,
-                  label: 'DEF ${_pct(fractions.defence)}'),
-              _EffectPill(icon: Icons.sports_handball_rounded,
-                  label: 'GK ${_pct(fractions.goalkeeping)}'),
-              _EffectPill(
-                  icon: Icons.spa_rounded,
-                  label:
-                      'RECOVERY +${recoveryBonus.toStringAsFixed(1)}%'),
-              _EffectPill(
-                  icon: Icons.medical_services_rounded,
-                  label:
-                      'INJURY RISK −${injuryReduction.toStringAsFixed(1)}%'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EffectPill extends StatelessWidget {
-  const _EffectPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: FcmColors.gold),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -372,8 +250,8 @@ class FacilityCard extends StatelessWidget {
               if (!maxed)
                 FcmButton(
                   compact: true,
-                  icon: Icons.monetization_on_rounded,
-                  label: '$price',
+                  coinValue: price,
+                  label: '',
                   loading: busy,
                   style: affordable
                       ? FcmButtonStyle.gold

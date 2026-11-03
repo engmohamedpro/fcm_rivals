@@ -14,7 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
-import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmButton;
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
+    show FcmButton, FcmCoinGlyph;
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/packs/pack_contents_screen.dart';
@@ -186,12 +187,30 @@ void main() {
         .first);
     await tester.pump();
 
-    // Confirmation shows the price with YES and NO side by side in one
-    // row — no balance line.
+    // Confirmation shows the price — the same C coin glyph the top bar's
+    // balance chip uses, no 'Coins' word, no dollar money icon — with
+    // YES and NO side by side in one row and no balance line. The price
+    // row is scoped to the dialog (the store behind it shows coin
+    // prices on every cell too).
     expect(find.text('Buy Rare Global Pack?'), findsOneWidget);
+    final dialog = find.byType(AlertDialog);
+    expect(dialog, findsOneWidget);
     expect(
-        find.textContaining('${_group(rareGlobal.price)} Coins'),
+        find.descendant(of: dialog, matching: find.byType(FcmCoinGlyph)),
         findsOneWidget);
+    expect(
+        find.descendant(
+            of: dialog,
+            matching: find.textContaining('${_group(rareGlobal.price)}')),
+        findsOneWidget);
+    expect(
+        find.descendant(of: dialog, matching: find.textContaining('Coins')),
+        findsNothing);
+    expect(
+        find.descendant(
+            of: dialog,
+            matching: find.byIcon(Icons.monetization_on_rounded)),
+        findsNothing);
     expect(find.textContaining('Balance:'), findsNothing);
     expect(find.textContaining('after'), findsNothing);
     expect(find.text('YES'), findsOneWidget);

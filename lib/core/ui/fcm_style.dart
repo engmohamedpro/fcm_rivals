@@ -71,6 +71,24 @@ class FcmColors {
     end: Alignment.bottomCenter,
     colors: [Color(0xFFC4E8C9), Color(0xFF8FD09A), Color(0xFF54845F)],
   );
+
+  /// Crest swatches the manager picks from at club creation: champagne,
+  /// bronze, ember, olive, steel and oxblood — the brand's warm metals.
+  /// Shared by the creation picker and everywhere the club's colour is
+  /// shown live (e.g. the match momentum bar's user half).
+  static const List<Color> crestPalette = [
+    Color(0xFFD9B871), // champagne gold
+    Color(0xFF8A6E42), // bronze
+    Color(0xFF2E2925), // ember charcoal
+    Color(0xFF57683F), // olive pitch
+    Color(0xFF8D8A96), // steel silver
+    Color(0xFF7A3B36), // oxblood
+  ];
+
+  /// The club's crest colour by saved [crestIndex] — clamped so a stale
+  /// index (older save, future palette change) can never crash the UI.
+  static Color crestColor(int index) =>
+      crestPalette[index.clamp(0, crestPalette.length - 1)];
 }
 
 /// Card rarity. Derived from a player's rating so the same player looks the

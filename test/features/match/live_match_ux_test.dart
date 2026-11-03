@@ -369,6 +369,135 @@ void main() {
     });
   });
 
+  group('live momentum (GDD 13.2 tug-of-war bar)', () {
+    // Minimal synthetic event over a chosen minute/team.
+    MatchEvent ev(int minute, MatchEventType type, int teamId,
+            {Map<String, dynamic> metadata = const {}}) =>
+        MatchEvent(
+          eventId: minute * 10 + type.index,
+          minute: minute,
+          second: 0,
+          type: type,
+          side: teamId == 1 ? MatchSide.home : MatchSide.away,
+          teamId: teamId,
+          metadata: metadata,
+        );
+
+    test('dead level before any events, and with only structural ones',
+        () {
+      expect(
+          computeMomentum(const [], homeTeamId: 1, awayTeamId: 2), 0.5);
+      // Kick-off/whistle moments carry no momentum signal.
+      expect(
+          computeMomentum([
+            ev(1, MatchEventType.kickoff, 1),
+            ev(45, MatchEventType.halfTime, 1),
+          ], homeTeamId: 1, awayTeamId: 2),
+          0.5);
+    });
+
+    test('shots and goals push the share to the attacking side', () {
+      final events = [
+        ev(80, MatchEventType.possession, 1),
+        ev(82, MatchEventType.shot, 2),
+        ev(84, MatchEventType.shot, 2),
+        ev(86, MatchEventType.goal, 2),
+      ];
+      final share =
+          computeMomentum(events, homeTeamId: 1, awayTeamId: 2);
+      expect(share, lessThan(0.4));
+      // Mirror: home does the same, the share mirrors with it.
+      final mirrored = computeMomentum([
+        ev(80, MatchEventType.possession, 2),
+        ev(82, MatchEventType.shot, 1),
+        ev(84, MatchEventType.shot, 1),
+        ev(86, MatchEventType.goal, 1),
+      ], homeTeamId: 1, awayTeamId: 2);
+      expect(mirrored, greaterThan(0.6));
+      expect(mirrored + share, closeTo(1.0, 0.0001));
+    });
+
+    test('events age out of the trailing window', () {
+      // A home goal 30 minutes ago vs an away shot just now: the old
+      // goal counts for nothing — the window keeps the reading live.
+      final events = [
+        ev(50, MatchEventType.goal, 1),
+        ev(80, MatchEventType.shot, 2),
+      ];
+      final share =
+          computeMomentum(events, homeTeamId: 1, awayTeamId: 2);
+      expect(share, lessThan(0.3));
+    });
+
+    test("a booked side's opponent gains: cards read as pressure", () {
+      final events = [
+        ev(80, MatchEventType.card, 1, metadata: {'card': 'yellow'}),
+        ev(81, MatchEventType.shot, 2),
+      ];
+      final share =
+          computeMomentum(events, homeTeamId: 1, awayTeamId: 2);
+      expect(share, lessThan(0.4));
+    });
+
+    test('realistic matches keep the share inside believable bounds',
+        () {
+      // Across seeds and lop-sided strengths (85 vs 45 overall), the
+      // trailing momentum share stays in football's believable band —
+      // the dominant side can own long spells, but a 15-minute window
+      // with shots, saves and clearances never pins the bar to its end.
+      const positions = [
+        Position.gk, Position.lb, Position.cb, Position.cb, Position.rb,
+        Position.lm, Position.cm, Position.cm, Position.rm,
+        Position.st, Position.st,
+      ];
+      List<MatchPlayer> team(int base, int strength) => [
+            for (var i = 0; i < 11; i++)
+              MatchPlayer(
+                playerId: base + i,
+                name: 'P $i',
+                position: positions[i],
+                attack: strength,
+                support: strength,
+                defence: strength,
+                goalkeeping: positions[i] == Position.gk ? 70 : 20,
+              ),
+          ];
+      for (var seed = 1; seed <= 8; seed++) {
+        final engine = MatchEngine(
+          seed: seed,
+          home: MatchTeamInput(
+            teamId: 1,
+            teamName: 'Home',
+            formationCode: '4-4-2',
+            style: PlayingStyle.balanced,
+            mentality: Mentality.balanced,
+            starters: team(100, 85),
+            bench: const [],
+            aiControlled: true,
+          ),
+          away: MatchTeamInput(
+            teamId: 2,
+            teamName: 'Away',
+            formationCode: '4-3-3',
+            style: PlayingStyle.balanced,
+            mentality: Mentality.balanced,
+            starters: team(300, 45),
+            bench: const [],
+            aiControlled: true,
+          ),
+        );
+        final events = engine.simulateToEnd();
+        final share =
+            computeMomentum(events, homeTeamId: 1, awayTeamId: 2);
+        // Even a 40-point strength gap can only NEAR-pin the bar: the
+        // trailing window still contains the underdog's clearances,
+        // fouls won and throw-in spells.
+        expect(share, greaterThan(0.10));
+        expect(share, lessThan(1.0));
+      }
+    });
+  });
+
   group('the half-time card reads as half time (GDD 15.2)', () {
     testWidgets('score banner + edit-tactics entry are present', (tester) async {
       MatchPepTalk? chosen;
@@ -419,6 +548,89 @@ void main() {
       await tester.pump();
       expect(find.text('Post-match talk'), findsOneWidget);
       expect(find.text('EDIT TACTICS'), findsNothing);
+    });
+
+    testWidgets('the card is NOT dismissible by tapping outside it',
+        (tester) async {
+      var skipped = false;
+      MatchPepTalk? chosen;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              TouchlinePepTalkCard(
+                title: 'HALF TIME',
+                scoreHeader: 'Home FC 1 – 0 Away FC',
+                subtitle: 'Pep talk for the second half.',
+                talks: halfTimePepTalks,
+                onChoose: (t) => chosen = t,
+                onSkip: () => skipped = true,
+                onEditTactics: () {},
+              ),
+            ],
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      // Tapping the scrim around the card does nothing — the manager
+      // must pick a talk or 'say nothing'; no accidental dismissal.
+      await tester.tapAt(const Offset(20, 40));
+      await tester.pump();
+      expect(skipped, isFalse);
+      expect(chosen, isNull);
+      // The card is still up.
+      expect(find.text('HALF TIME'), findsOneWidget);
+
+      // 'Say nothing' is the explicit escape — that still works.
+      await tester.tap(find.text('Say nothing — back to the match'));
+      await tester.pump();
+      expect(skipped, isTrue);
+    });
+  });
+
+  group('momentum bar widget', () {
+    testWidgets('renders the tug-of-war halves at dead level and pushed',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: const Scaffold(
+          body: MomentumBar(
+            homeShare: 0.5,
+            userIsHome: true,
+            userTeamColor: Color(0xFF7A3B36),
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 700));
+      // Dead level: both halves are present, the strip is one widget.
+      expect(find.byType(MomentumBar), findsOneWidget);
+
+      // Pushed hard home (user home): still renders — the divide slid.
+      await tester.pumpWidget(MaterialApp(
+        home: const Scaffold(
+          body: MomentumBar(
+            homeShare: 0.85,
+            userIsHome: true,
+            userTeamColor: Color(0xFF7A3B36),
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(find.byType(MomentumBar), findsOneWidget);
+
+      // User away: the SAME home share flips to the opponent's side —
+      // the user's colour always fills the user's half.
+      await tester.pumpWidget(MaterialApp(
+        home: const Scaffold(
+          body: MomentumBar(
+            homeShare: 0.85,
+            userIsHome: false,
+            userTeamColor: Color(0xFF7A3B36),
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(find.byType(MomentumBar), findsOneWidget);
     });
   });
 }

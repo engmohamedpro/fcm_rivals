@@ -102,6 +102,114 @@ class TeamMatchStats {
   double get averageXg => shots == 0 ? 0 : xg / shots;
 }
 
+/// Live momentum share 0..1 for the HOME side over the trailing
+/// [window] minutes of pressure (default ~15 minutes — the "who is on
+/// top RIGHT NOW" reading a pundit gives, not a whole-match average).
+///
+/// Inputs are the events themselves, weighted by how loudly each one
+/// says "this team is doing the pushing": a shot is worth more than a
+/// corner, a big chance or a goal weighs heaviest, plain possession
+/// minutes carry a small share so the bar keeps breathing in quiet
+/// spells, and winning the ball back counts a little too — pressing is
+/// momentum. Events age out of the window, so a red-hot start fades if
+/// the other side takes over.
+///
+/// Before any events the match is dead level: exactly 0.5, the bar's
+/// kick-off 50/50 split.
+double computeMomentum(
+  List<MatchEvent> events, {
+  required int homeTeamId,
+  required int awayTeamId,
+  int window = 15,
+}) {
+  // Weights: how strongly each event shouts "we are on top".
+  const shotW = 4.0;
+  const bigW = 6.0; // big chance / penalty won
+  const goalW = 10.0;
+  const cardAgainstW = 3.0; // a booking means the OTHER side pressed
+  const cornerW = 2.0;
+  const foulWonW = 1.0;
+  const possW = 1.0;
+  const pressW = 0.5; // winning the ball back
+
+  var lastMinute = 0;
+  for (final e in events) {
+    if (e.minute > lastMinute) lastMinute = e.minute;
+  }
+  final fromMinute = lastMinute - window + 1;
+
+  var home = 0.0;
+  var away = 0.0;
+  for (final e in events) {
+    if (e.minute < fromMinute) continue;
+    final isHome = e.teamId == homeTeamId;
+    switch (e.type) {
+      // Possession and passes are one share per minute held.
+      case MatchEventType.possession:
+      case MatchEventType.passMove:
+        if (isHome) {
+          home += possW;
+        } else {
+          away += possW;
+        }
+      // Dispossessed: e.teamId is the side that LOST the ball — the
+      // other side's press gets the credit.
+      case MatchEventType.dispossessed:
+        if (isHome) {
+          away += pressW;
+        } else {
+          home += pressW;
+        }
+      case MatchEventType.corner:
+        if (isHome) {
+          home += cornerW;
+        } else {
+          away += cornerW;
+        }
+      // Foul: e.teamId is the fouler — the fouled side gets the share.
+      case MatchEventType.foul:
+        if (isHome) {
+          away += foulWonW;
+        } else {
+          home += foulWonW;
+        }
+      case MatchEventType.penaltyAwarded:
+      case MatchEventType.shot:
+        var w = e.type == MatchEventType.penaltyAwarded ? bigW : shotW;
+        if (e.metadata['isBigChance'] == true) w = bigW;
+        if (isHome) {
+          home += w;
+        } else {
+          away += w;
+        }
+      case MatchEventType.goal:
+        if (isHome) {
+          home += goalW;
+        } else {
+          away += goalW;
+        }
+      // A card is usually shown to the side under the cosh.
+      case MatchEventType.card:
+        if (isHome) {
+          away += cardAgainstW;
+        } else {
+          home += cardAgainstW;
+        }
+      // Structural moments carry no momentum signal.
+      case MatchEventType.kickoff:
+      case MatchEventType.halfTime:
+      case MatchEventType.fullTime:
+      case MatchEventType.offside:
+      case MatchEventType.substitution:
+      case MatchEventType.tacticalChange:
+      case MatchEventType.liveAction:
+        break;
+    }
+  }
+  if (home + away <= 0) return 0.5;
+  return home / (home + away);
+}
+
 /// Derives per-team statistics from the event timeline (FR-032).
 MatchStatsReport computeStats(List<MatchEvent> events,
     {required int homeTeamId, required int awayTeamId}) {

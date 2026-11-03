@@ -898,12 +898,17 @@ class FcmStatBar extends StatelessWidget {
 /// The app's currency glyph: the gold-gradient coin with the 'C' mark,
 /// exactly as it appears in the top bar's balance chip. Reusable
 /// wherever a coin amount is shown — e.g. the SELL price of a revealed
-/// player.
+/// player. ONE currency icon for the whole game: nothing else (dollar
+/// signs, money material icons) marks coin amounts.
 class FcmCoinGlyph extends StatelessWidget {
-  const FcmCoinGlyph({super.key, this.size = 16});
+  const FcmCoinGlyph({super.key, this.size = 16, this.color});
 
   /// The coin's diameter; the 'C' scales with it.
   final double size;
+
+  /// Flat override for the coin's gold face (e.g. danger red when a
+  /// price is unaffordable); null keeps the brand gold gradient.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -911,9 +916,10 @@ class FcmCoinGlyph extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: FcmColors.goldGradient,
+        gradient: color == null ? FcmColors.goldGradient : null,
+        color: color,
       ),
       child: Text('C',
           style: TextStyle(

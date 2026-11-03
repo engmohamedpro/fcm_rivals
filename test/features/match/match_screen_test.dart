@@ -136,6 +136,11 @@ void main() {
     expect(find.text('4x'), findsNothing);
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
 
+    // The momentum tug-of-war bar rides inside the same header panel —
+    // the user's crest colour vs the opponent's white, dead level
+    // 50/50 until the match's pressure pushes the divide.
+    expect(find.byType(MomentumBar), findsOneWidget);
+
     // The stats strip sits above the commentary feed with its labels —
     // always visible (no hide/collapse toggle) and trimmed to the
     // numbers a glance needs: xG and pass accuracy are out.
