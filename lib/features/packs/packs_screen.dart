@@ -229,20 +229,26 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   /// one exists (reward packs beyond the shelves fall back to a derived
   /// name).
   _ChainTarget? _chainTargetForPack(Pack pack) {
+    // The persisted row stores the category and tier as plain text;
+    // the chain target speaks the enums (unknown values fall back the
+    // same way the pack engine parses them).
+    final category = PackCategory.values
+        .asNameMap()[pack.category] ?? PackCategory.global;
+    final tier = PackTier.fromName(pack.tier);
     final probe = _ChainTarget(
-      category: pack.category,
+      category: category,
       scopeValue: pack.scopeValue,
-      tier: pack.tier,
+      tier: tier,
     );
     final match = _offerFor(probe);
     final title = match?.title ??
-        (pack.category == PackCategory.position
-            ? '${pack.scopeValue} ${pack.tier.label} Pack'
-            : '${pack.tier.label} ${pack.category.label}');
+        (category == PackCategory.position
+            ? '${pack.scopeValue} ${tier.label} Pack'
+            : '${tier.label} ${category.label}');
     return _ChainTarget(
-      category: pack.category,
+      category: category,
       scopeValue: pack.scopeValue,
-      tier: pack.tier,
+      tier: tier,
       title: title,
     );
   }
@@ -266,9 +272,9 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   }
 
   bool _sameSlot(Pack pack, _ChainTarget target) =>
-      pack.category == target.category &&
+      PackCategory.values.asNameMap()[pack.category] == target.category &&
       pack.scopeValue == target.scopeValue &&
-      pack.tier == target.tier;
+      PackTier.fromName(pack.tier) == target.tier;
 
   StorePackOffer? _offerFor(_ChainTarget target) {
     final offers =

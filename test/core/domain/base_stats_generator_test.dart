@@ -6,9 +6,9 @@ import 'package:fcm_rivals/core/domain/base_stats_generator.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
 
 void main() {
-  group('BaseStatsGenerator', () {
-    const gen = BaseStatsGenerator();
+  const gen = BaseStatsGenerator();
 
+  group('BaseStatsGenerator', () {
     test('rating follows the log curve and doubles add constant rating', () {
       // 84 at reference (50M), 4 rating per doubling.
       expect(gen.baseRatingFor(50_000_000), 84);
@@ -151,7 +151,8 @@ void main() {
         for (var s = 0; s < n; s++)
           gen.generate(p, value, seed: 1000 + s).valueOf(a)
       ];
-      return values.fold<int>(0, (sum, v) => sum + v) / n;
+      return values.fold<double>(
+          0, (sum, v) => sum + v) / n;
     }
 
     test('ST: attack top, support ordinary, defence least', () {
@@ -269,12 +270,32 @@ void main() {
     });
 
     test('same value, different positions: no clone profiles', () {
-      final shapes = <String>{};
+      // Mirror twins (LB/RB, LM/RM, LW/RW) legitimately share the same
+      // expected shape — the per-player seed differentiates individuals.
+      // Every OTHER pair of positions must field a different profile.
+      const mirrors = {
+        Position.lb: Position.rb,
+        Position.rb: Position.lb,
+        Position.lm: Position.rm,
+        Position.rm: Position.lm,
+        Position.lw: Position.rw,
+        Position.rw: Position.lw,
+      };
+      final profiles = <Position, String>{};
       for (final p in Position.values) {
         final s = gen.generate(p, value);
-        shapes.add('${s.attack}/${s.support}/${s.defence}/${s.goalkeeping}');
+        profiles[p] =
+            '${s.attack}/${s.support}/${s.defence}/${s.goalkeeping}';
       }
-      expect(shapes.length, Position.values.length);
+      for (var i = 0; i < Position.values.length; i++) {
+        for (var j = i + 1; j < Position.values.length; j++) {
+          final a = Position.values[i];
+          final b = Position.values[j];
+          if (mirrors[a] == b) continue;
+          expect(profiles[a], isNot(profiles[b]),
+              reason: '$a and $b share the same expected profile');
+        }
+      }
     });
   });
 

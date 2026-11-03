@@ -179,9 +179,11 @@ class _AppBarChrome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
+    // The sheen paints OVER the gradient as the Container's foreground
+    // decoration (a DecoratedBox has no foreground layer of its own).
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           stops: [0, 0.55, 1],
@@ -191,20 +193,20 @@ class _AppBarChrome extends StatelessWidget {
             FcmColors.night,
           ],
         ),
-        border: const Border(
+        border: Border(
           top: BorderSide(color: Color(0x0FFFFFFF)),
         ),
-        // A faint warm sheen behind the wordmark, painted over the
-        // gradient (full-bleed via foregroundDecoration).
-        foregroundDecoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(-0.7, -1.2),
-            radius: 1.4,
-            colors: [
-              Color(0x14D9B871),
-              Colors.transparent,
-            ],
-          ),
+      ),
+      // A faint warm sheen behind the wordmark, painted over the
+      // gradient (full-bleed via foregroundDecoration).
+      foregroundDecoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(-0.7, -1.2),
+          radius: 1.4,
+          colors: [
+            Color(0x14D9B871),
+            Colors.transparent,
+          ],
         ),
       ),
     );
