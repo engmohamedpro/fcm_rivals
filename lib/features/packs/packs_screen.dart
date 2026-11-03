@@ -422,47 +422,53 @@ class _ScopeSection extends StatelessWidget {
             trailing: _ViewPlayersButton(onPressed: () => onInfo(head)),
           ),
           const SizedBox(height: 2),
-          // The cells size the row themselves: the pack fills its cell's
-          // full width by aspect ratio and the price plate hugs its foot,
-          // so there is no fixed height to centre inside — no dead air
-          // above the pack or between the pack and its price.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < ordered.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: _StorePackCell(
-                    key: ValueKey('store-pack-'
-                        '${ordered[i].category.name}'
-                        '-${ordered[i].scopeValue ?? 'ANY'}'
-                        '-${ordered[i].tier.name}'),
-                    offer: ordered[i],
-                    ownedCount: owned[_scopeKey(
-                            ordered[i].category.name,
-                            ordered[i].scopeValue,
-                            ordered[i].tier.name)]
-                        ?.length ??
-                        0,
-                    coins: coins,
-                    onTap: () {
-                      final ownedHere = (owned[_scopeKey(
+          // Packs keep the exact size they have on a full three-pack
+          // shelf: every cell gets the width a third of the row would
+          // give it, so a section that shelves only one or two tiers
+          // shows the same pack height as the full rows instead of
+          // stretching giant foils. The short shelf is centred as a
+          // group, keeping the same 8px rhythm between cells.
+          LayoutBuilder(builder: (context, rowConstraints) {
+            final shelfCellWidth = (rowConstraints.maxWidth - 2 * 8) / 3;
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < ordered.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  SizedBox(
+                    width: shelfCellWidth,
+                    child: _StorePackCell(
+                      key: ValueKey('store-pack-'
+                          '${ordered[i].category.name}'
+                          '-${ordered[i].scopeValue ?? 'ANY'}'
+                          '-${ordered[i].tier.name}'),
+                      offer: ordered[i],
+                      ownedCount: owned[_scopeKey(
                               ordered[i].category.name,
                               ordered[i].scopeValue,
-                              ordered[i].tier.name)] ??
-                          const <Pack>[]);
-                      if (opening) return;
-                      if (ownedHere.isNotEmpty) {
-                        onOpen(ownedHere.first.id, ordered[i].tier);
-                      } else {
-                        onBuy(ordered[i]);
-                      }
-                    },
+                              ordered[i].tier.name)]
+                          ?.length ??
+                          0,
+                      coins: coins,
+                      onTap: () {
+                        final ownedHere = (owned[_scopeKey(
+                                ordered[i].category.name,
+                                ordered[i].scopeValue,
+                                ordered[i].tier.name)] ??
+                            const <Pack>[]);
+                        if (opening) return;
+                        if (ownedHere.isNotEmpty) {
+                          onOpen(ownedHere.first.id, ordered[i].tier);
+                        } else {
+                          onBuy(ordered[i]);
+                        }
+                      },
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
-          ),
+            );
+          }),
         ],
       ),
     );
