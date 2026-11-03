@@ -11,20 +11,23 @@ import '../../core/domain/players.dart';
 /// Tunable stamina parameters (GDD 11.4: no fixed per-minute drain).
 class StaminaConfig {
   const StaminaConfig({
-    this.baseDrainPerMinute = 0.45,
+    this.baseDrainPerMinute = 0.30,
     this.positionWorkload = defaultPositionWorkload,
-    this.eventActivityDrain = 0.10,
+    this.eventActivityDrain = 0.08,
     this.minStamina = 0,
     this.maxStamina = 100,
-    // Recalibrated so rotation MATTERS (GDD 11.5 realism): a full match
-    // drains ~45 points and a standard 3-day break now recovers only
-    // 8 + 3×9 = 35 — a manager who fields the same XI every week grinds
-    // starters down ~10 points a match, while substituted and rotated
-    // players hold near 90-100. The previous 18 + 3×14 = 60 restored
-    // every full-match starter to ~92 within one break, making squad
-    // rotation pointless.
-    this.baseRecovery = 8,
-    this.recoveryPerRestDay = 9,
+    // Realistic match cost (the old 0.45/min ground a balanced starter
+    // down ~45 points a match while a 3-day break only restored 23 —
+    // squads collapsed into the exhausted zone within a few rounds).
+    // Now a full match at balanced tactics costs ~30 points (starters
+    // finish around 70, keepers near 85, gegenpressing near 60), and a
+    // standard 3-day break restores 10 + 3×10 − 12 = 28 for a full-match
+    // starter — a weekly cycle is roughly break-even, substitutes stay
+    // fresh (10 + 3×10 + 5) and rotation still PAYS: in congested
+    // 2-day spells a starter recovers only 18, so the same XI bleeds
+    // condition cup week after cup week (GDD 11.5).
+    this.baseRecovery = 10,
+    this.recoveryPerRestDay = 10,
     this.minutesPlayedPenalty = 12,
     this.substituteRecoveryBonus = 6,
     this.exhaustedThreshold = 60,
