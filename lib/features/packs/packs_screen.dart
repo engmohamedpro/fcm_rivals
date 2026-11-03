@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/database/app_database.dart' show Pack;
 import '../../core/domain/players.dart' show Position;
-import '../../core/ui/fcm_logo.dart' show FcmFullLogo;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../features/collection/collection_store.dart'
@@ -337,17 +336,19 @@ class _StoreGrid extends StatelessWidget {
 
     // The whole store in one eagerly-built column: every section renders
     // once (same cost as the old shrink-wrapped grid) and stays findable
-    // for tests; the RefreshIndicator still has its scrollable.
+    // for tests; the RefreshIndicator still has its scrollable. The same
+    // 14px rhythm runs on all four sides and between sections, so the
+    // shelves read as one evenly padded board.
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(14, 6, 14, 24),
+      padding: const EdgeInsets.all(14),
       child: Column(
         children: [
-          const _StoreHero(),
-          for (final key in sectionOrder)
+          for (var i = 0; i < sectionOrder.length; i++) ...[
+            if (i > 0) const SizedBox(height: 14),
             _ScopeSection(
-              key: ValueKey('store-section-$key'),
-              offers: sections[key]!,
+              key: ValueKey('store-section-${sectionOrder[i]}'),
+              offers: sections[sectionOrder[i]]!,
               owned: owned,
               coins: coins,
               opening: opening,
@@ -355,25 +356,8 @@ class _StoreGrid extends StatelessWidget {
               onBuy: onBuy,
               onInfo: onInfo,
             ),
+          ],
         ],
-      ),
-    );
-  }
-}
-
-/// The store's masthead: the full FCM 27 Rivals crest, feathered into the
-/// night background so it floats above the shelves like a showroom sign.
-class _StoreHero extends StatelessWidget {
-  const _StoreHero();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      key: ValueKey('store-hero'),
-      height: 120,
-      child: OverflowBox(
-        maxHeight: 190,
-        child: FcmFullLogo(size: 190),
       ),
     );
   }
@@ -420,69 +404,64 @@ class _ScopeSection extends StatelessWidget {
 
     // One visual group: title, VIEW PLAYERS entry and the tier cells
     // share a single raised surface, so what belongs together reads as
-    // together at a glance — sections are separated by night gaps.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        FcmPanel(
-          padding: const EdgeInsets.fromLTRB(10, 2, 10, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Shared title with the pool entry point at the end of
-              // the row: the contents list is per-scope (all three tiers
-              // draw from the same pool), so one compact button serves
-              // the whole section.
-              FcmSectionTitle(
-                scopeLabel,
-                trailing: _ViewPlayersButton(onPressed: () => onInfo(head)),
-              ),
-              const SizedBox(height: 2),
-              SizedBox(
-                height: 260,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < ordered.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 8),
-                      Expanded(
-                        child: _StorePackCell(
-                          key: ValueKey('store-pack-'
-                              '${ordered[i].category.name}'
-                              '-${ordered[i].scopeValue ?? 'ANY'}'
-                              '-${ordered[i].tier.name}'),
-                          offer: ordered[i],
-                          ownedCount: owned[_scopeKey(
-                                  ordered[i].category.name,
-                                  ordered[i].scopeValue,
-                                  ordered[i].tier.name)]
-                              ?.length ??
-                              0,
-                          coins: coins,
-                          onTap: () {
-                            final ownedHere = (owned[_scopeKey(
-                                    ordered[i].category.name,
-                                    ordered[i].scopeValue,
-                                    ordered[i].tier.name)] ??
-                                const <Pack>[]);
-                            if (opening) return;
-                            if (ownedHere.isNotEmpty) {
-                              onOpen(ownedHere.first.id, ordered[i].tier);
-                            } else {
-                              onBuy(ordered[i]);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+    // together at a glance — sections are separated by the grid's even
+    // 14px rhythm, not by a gap of their own.
+    return FcmPanel(
+      padding: const EdgeInsets.fromLTRB(10, 2, 10, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Shared title with the pool entry point at the end of
+          // the row: the contents list is per-scope (all three tiers
+          // draw from the same pool), so one compact button serves
+          // the whole section.
+          FcmSectionTitle(
+            scopeLabel,
+            trailing: _ViewPlayersButton(onPressed: () => onInfo(head)),
           ),
-        ),
-        const SizedBox(height: 12),
-      ],
+          const SizedBox(height: 2),
+          SizedBox(
+            height: 260,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < ordered.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: _StorePackCell(
+                      key: ValueKey('store-pack-'
+                          '${ordered[i].category.name}'
+                          '-${ordered[i].scopeValue ?? 'ANY'}'
+                          '-${ordered[i].tier.name}'),
+                      offer: ordered[i],
+                      ownedCount: owned[_scopeKey(
+                              ordered[i].category.name,
+                              ordered[i].scopeValue,
+                              ordered[i].tier.name)]
+                          ?.length ??
+                          0,
+                      coins: coins,
+                      onTap: () {
+                        final ownedHere = (owned[_scopeKey(
+                                ordered[i].category.name,
+                                ordered[i].scopeValue,
+                                ordered[i].tier.name)] ??
+                            const <Pack>[]);
+                        if (opening) return;
+                        if (ownedHere.isNotEmpty) {
+                          onOpen(ownedHere.first.id, ordered[i].tier);
+                        } else {
+                          onBuy(ordered[i]);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
