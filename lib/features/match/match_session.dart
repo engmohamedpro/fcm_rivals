@@ -287,6 +287,17 @@ class MatchSession {
           p.playerId: p.name,
       };
 
+  /// The engine team id of the home side — the user's club id when the
+  /// user is home, the opponent's id otherwise. Live statistics tag
+  /// events by these ids ([computeStats]); null for friendly previews
+  /// that run without a persisted club, where stats simply stay empty.
+  int? get homeTeamId =>
+      userSide == MatchSide.home ? _club?.id : _opponentTeamId;
+
+  /// The engine team id of the away side — mirror of [homeTeamId].
+  int? get awayTeamId =>
+      userSide == MatchSide.home ? _opponentTeamId : _club?.id;
+
   /// Queues a live tactical change (GDD 10.4/16).
   void queueCommand(MatchCommand command) => engine.queueCommand(command);
 

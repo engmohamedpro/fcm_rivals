@@ -30,6 +30,10 @@ class CommentaryLine {
 class TeamMatchStats {
   TeamMatchStats();
 
+  /// All-zero stats for the pre-kick-off strip (and club-less friendly
+  /// previews): every number reads as an empty dash until play starts.
+  TeamMatchStats.empty();
+
   int possessionMinutes = 0;
   int passesAttempted = 0;
   int passesCompleted = 0;

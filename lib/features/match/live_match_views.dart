@@ -1,0 +1,810 @@
+/// FCM Rivals — live match widgets (GDD 13): compact scoreboard header,
+/// the live stats strip and the commentary feed.
+///
+/// Kept separate from [MatchScreen]'s flow logic so every widget here is
+/// a plain stateless row: the screen rebuilds once per match minute and
+/// none of these own animation controllers — the old per-row entrance
+/// animations were the jank source at 4x speed, not the simulation.
+library;
+
+import 'package:flutter/material.dart';
+
+import '../../core/ui/fcm_style.dart';
+import '../../core/ui/fcm_widgets.dart';
+import 'match_report.dart';
+import 'tactics.dart';
+
+/// Compact live header: one tight panel fusing scoreboard, clock and
+/// controls. Team crest chips and score on the first row, the 90-minute
+/// progress bar with the live minute under it, and the play/pause +
+/// 1x–4x speed + tactics controls in the last row — roughly half the
+/// vertical space of the old stack (scoreboard panel, then a separate
+/// controls row), which is vertical budget the commentary feed now owns.
+class MatchHeader extends StatelessWidget {
+  const MatchHeader({
+    required this.home,
+    required this.away,
+    required this.scoreHome,
+    required this.scoreAway,
+    required this.minute,
+    required this.fullTime,
+    required this.userIsHome,
+    required this.paused,
+    required this.speed,
+    required this.onTogglePause,
+    required this.onSetSpeed,
+    required this.onTactics,
+  });
+
+  final String home;
+  final String away;
+  final int scoreHome;
+  final int scoreAway;
+  final int minute;
+  final bool fullTime;
+  final bool userIsHome;
+  final bool paused;
+  final int speed;
+  final VoidCallback onTogglePause;
+  final ValueChanged<int> onSetSpeed;
+  final VoidCallback onTactics;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (minute / 90).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      child: FcmPanel(
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+        accent: FcmColors.bronze,
+        glow: true,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _TeamChip(name: home, isUser: userIsHome),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 450),
+                    transitionBuilder: (child, anim) => ScaleTransition(
+                      scale: CurvedAnimation(
+                        parent: anim,
+                        curve: Curves.easeOutBack,
+                      ),
+                      child: FadeTransition(opacity: anim, child: child),
+                    ),
+                    child: Text(
+                      '$scoreHome - $scoreAway',
+                      key: ValueKey('$scoreHome-$scoreAway'),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _TeamChip(name: away, isUser: !userIsHome),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Match clock: the 90-minute progress bar with the live
+            // minute riding at its right end.
+            Row(
+              children: [
+                const _LiveDot(),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: SizedBox(
+                      height: 5,
+                      child: Stack(
+                        children: [
+                          Container(
+                            color: Colors.white.withValues(alpha: 0.10),
+                          ),
+                          TweenAnimationBuilder<double>(
+                            tween: Tween(
+                              begin: 0,
+                              end: fullTime ? 1.0 : progress,
+                            ),
+                            duration: const Duration(milliseconds: 400),
+                            builder: (context, f, _) =>
+                                FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: f,
+                              child: const DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: FcmColors.goldGradient,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 44,
+                  child: FitText(
+                    fullTime ? 'FT' : "$minute'",
+                    align: Alignment.center,
+                    style: TextStyle(
+                      color: fullTime ? FcmColors.gold : Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Controls fused into the same panel: play/pause, 1x–4x
+            // speed, tactics. One compact row instead of a second
+            // floating block below the scoreboard.
+            Row(
+              children: [
+                _HeaderIconButton(
+                  icon: paused
+                      ? Icons.play_arrow_rounded
+                      : Icons.pause_rounded,
+                  gold: !paused,
+                  tooltip: paused ? 'Resume' : 'Pause',
+                  onTap: onTogglePause,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _SpeedSelector(speed: speed, onSelect: onSetSpeed),
+                ),
+                const SizedBox(width: 8),
+                _HeaderIconButton(
+                  icon: Icons.tune_rounded,
+                  gold: false,
+                  tooltip: 'Tactics',
+                  onTap: onTactics,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Round crest chip + club name, one per side of the score. Horizontal —
+/// the old vertical column (crest over name) paid two lines for what
+/// this says in one.
+class _TeamChip extends StatelessWidget {
+  const _TeamChip({required this.name, required this.isUser});
+
+  final String name;
+  final bool isUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = name
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient:
+                isUser ? FcmColors.goldGradient : FcmColors.steelGradient,
+            border: Border.all(color: Colors.white24),
+          ),
+          child: FitText(
+            initials,
+            align: Alignment.center,
+            style: TextStyle(
+              color: isUser ? FcmColors.ink : FcmColors.goldSoft,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: FitText(
+            name,
+            style: TextStyle(
+              color: isUser ? FcmColors.gold : Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Pulsing red "live" indicator — the one animated widget in the
+/// header, and it repaints only itself.
+class _LiveDot extends StatefulWidget {
+  const _LiveDot();
+
+  @override
+  State<_LiveDot> createState() => _LiveDotState();
+}
+
+class _LiveDotState extends State<_LiveDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) => Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: FcmColors.danger,
+          boxShadow: [
+            BoxShadow(
+              color: FcmColors.danger
+                  .withValues(alpha: 0.3 + 0.5 * _c.value),
+              blurRadius: 4 + 8 * _c.value,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Segmented 1x / 2x / 3x / 4x speed selector, compressed to sit inside
+/// the header panel. The selected segment is gold with ink text.
+class _SpeedSelector extends StatelessWidget {
+  const _SpeedSelector({required this.speed, required this.onSelect});
+
+  static const speeds = [1, 2, 3, 4];
+
+  final int speed;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: FcmColors.steelGradient,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: FcmColors.bronze.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          for (final s in speeds)
+            Expanded(
+              child: FcmPressable(
+                onTap: () => onSelect(s),
+                scale: 0.96,
+                child: Container(
+                  height: double.infinity,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: s == speed ? FcmColors.goldGradient : null,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(
+                    '${s}x',
+                    style: TextStyle(
+                      color: s == speed ? FcmColors.ink : FcmColors.textDim,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Square icon button for the header control row (play/pause, tactics).
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+    this.gold = false,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String tooltip;
+  final bool gold;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: FcmPressable(
+        onTap: onTap,
+        scale: 0.94,
+        child: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: gold ? FcmColors.goldGradient : FcmColors.steelGradient,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: gold
+                  ? FcmColors.goldSoft.withValues(alpha: 0.5)
+                  : FcmColors.bronze.withValues(alpha: 0.55),
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: gold ? FcmColors.ink : FcmColors.goldSoft,
+            size: 24,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One live statistic row: home value — label — away value with a share
+/// bar between them. Plain stateless; numbers update in place (no
+/// tweening per minute — the bar animating on every one of 90 rebuilds
+/// was pure churn).
+class _LiveStatsRow extends StatelessWidget {
+  const _LiveStatsRow({
+    required this.label,
+    required this.homeText,
+    required this.awayText,
+    required this.homeShare,
+  });
+
+  final String label;
+  final String homeText;
+  final String awayText;
+  final double homeShare;
+
+  @override
+  Widget build(BuildContext context) {
+    final left = (homeShare * 1000).round().clamp(1, 999);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: FitText(
+                  homeText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: FitText(
+                  label,
+                  align: Alignment.center,
+                  style: const TextStyle(
+                    color: FcmColors.textDim,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: FitText(
+                  awayText,
+                  align: Alignment.centerRight,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: SizedBox(
+              height: 5,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: left,
+                    child: const DecoratedBox(
+                      decoration:
+                          BoxDecoration(gradient: FcmColors.goldGradient),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Expanded(
+                    flex: 1000 - left,
+                    child: const DecoratedBox(
+                      decoration:
+                          BoxDecoration(gradient: FcmColors.steelGradient),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Live match statistics strip (GDD 13.2): possession, shots, shots on
+/// target, xG and pass accuracy, recomputed from the event timeline
+/// every match minute. Collapsible — the strip leads the commentary
+/// feed, and one tap folds it to a single summary line so the feed can
+/// own the screen on tall commentary stretches.
+class LiveMatchStatsPanel extends StatelessWidget {
+  const LiveMatchStatsPanel({
+    super.key,
+    required this.stats,
+    required this.homeTeamName,
+    required this.awayTeamName,
+    required this.collapsed,
+    required this.onToggle,
+  });
+
+  final MatchStatsReport stats;
+  final String homeTeamName;
+  final String awayTeamName;
+  final bool collapsed;
+  final VoidCallback onToggle;
+
+  static String _pct(double v) => '${(100 * v).round()}%';
+
+  @override
+  Widget build(BuildContext context) {
+    final h = stats.home;
+    final a = stats.away;
+    final totalPossession = h.possessionMinutes + a.possessionMinutes;
+    final possH = totalPossession == 0
+        ? 0.5
+        : h.possessionMinutes / totalPossession;
+    final possTextH =
+        totalPossession == 0 ? '—' : _pct(possH);
+    final possTextA =
+        totalPossession == 0 ? '—' : _pct(1 - possH);
+    final totalShots = h.shots + a.shots;
+    final totalOnTarget = h.shotsOnTarget + a.shotsOnTarget;
+    final passH = h.passesAttempted == 0
+        ? (0.0, '—')
+        : (h.passAccuracy, _pct(h.passAccuracy));
+    final passA = a.passesAttempted == 0
+        ? (0.0, '—')
+        : (a.passAccuracy, _pct(a.passAccuracy));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+      child: FcmPanel(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        accent: FcmColors.bronze,
+        onTap: onToggle,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.query_stats_rounded,
+                  size: 16,
+                  color: FcmColors.gold,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: FitText(
+                    homeTeamName,
+                    style: const TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                FitText(
+                  collapsed ? 'Match stats' : 'Hide stats',
+                  style: const TextStyle(
+                    color: FcmColors.textDim,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
+                ),
+                Icon(
+                  collapsed
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.keyboard_arrow_up_rounded,
+                  size: 16,
+                  color: FcmColors.textDim,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FitText(
+                    awayTeamName,
+                    align: Alignment.centerRight,
+                    style: const TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (!collapsed) ...[
+              const SizedBox(height: 6),
+              _LiveStatsRow(
+                label: 'Possession',
+                homeText: possTextH,
+                awayText: possTextA,
+                homeShare: possH,
+              ),
+              _LiveStatsRow(
+                label: 'Shots',
+                homeText: '${h.shots}',
+                awayText: '${a.shots}',
+                homeShare: totalShots == 0
+                    ? 0.5
+                    : h.shots / totalShots,
+              ),
+              _LiveStatsRow(
+                label: 'On target',
+                homeText: '${h.shotsOnTarget}',
+                awayText: '${a.shotsOnTarget}',
+                homeShare: totalOnTarget == 0
+                    ? 0.5
+                    : h.shotsOnTarget / totalOnTarget,
+              ),
+              _LiveStatsRow(
+                label: 'Expected goals',
+                homeText: h.shots == 0 ? '—' : h.xg.toStringAsFixed(1),
+                awayText: a.shots == 0 ? '—' : a.xg.toStringAsFixed(1),
+                homeShare: (h.xg + a.xg) <= 0
+                    ? 0.5
+                    : (h.xg / (h.xg + a.xg)).clamp(0.0, 1.0),
+              ),
+              _LiveStatsRow(
+                label: 'Pass accuracy',
+                homeText: passH.$2,
+                awayText: passA.$2,
+                homeShare: (passH.$1 + passA.$1) <= 0
+                    ? 0.5
+                    : passH.$1 / (passH.$1 + passA.$1),
+              ),
+            ] else
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${possTextH == '—' ? '50%' : possTextH} possession · '
+                      '${h.shots}–${a.shots} shots',
+                      style: const TextStyle(
+                        color: FcmColors.textDim,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One commentary line; key moments (importance 2) glow gold. Plain
+/// stateless row — no entrance animation: entries appear in place, and
+/// the full history scrolls up naturally.
+class CommentaryRow extends StatelessWidget {
+  const CommentaryRow({super.key, required this.line});
+
+  final CommentaryLine line;
+
+  @override
+  Widget build(BuildContext context) {
+    final big = line.importance == 2;
+    final color = switch (line.importance) {
+      2 => FcmColors.gold,
+      1 => Colors.white,
+      _ => FcmColors.textDim,
+    };
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: big ? FcmColors.gold.withValues(alpha: 0.12) : null,
+        border: big
+            ? Border(left: BorderSide(color: FcmColors.gold, width: 3))
+            : null,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 38,
+            child: FitText(
+              "${line.minute}'",
+              style: TextStyle(
+                color: big ? FcmColors.gold : FcmColors.textDim,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              line.text,
+              style: TextStyle(
+                color: color,
+                fontSize: big ? 14 : 13,
+                height: 1.3,
+                fontWeight: big ? FontWeight.w800 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pep-talk chooser sheet (GDD 15): one optional choice, ad-free (FR-043).
+/// Returns null when skipped or dismissed.
+Future<MatchPepTalk?> showPepTalkChooser({
+  required BuildContext context,
+  required String title,
+  required String subtitle,
+  required List<MatchPepTalk> talks,
+}) {
+  final theme = Theme.of(context);
+  return showModalBottomSheet<MatchPepTalk>(
+    context: context,
+    builder: (sheetContext) => SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: FcmColors.textDim,
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (final talk in talks)
+            SheetOption(
+              title: talk.label,
+              subtitle: '${talk.effectSummary}\n${talk.description}',
+              icon: Icons.record_voice_over_rounded,
+              onTap: () => Navigator.pop(sheetContext, talk),
+            ),
+          SheetOption(
+            title: 'Skip',
+            subtitle: 'No pep talk',
+            icon: Icons.block_rounded,
+            muted: true,
+            onTap: () => Navigator.pop(sheetContext),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Option row used by the pep-talk and recovery sheets.
+class SheetOption extends StatelessWidget {
+  const SheetOption({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+    this.accent,
+    this.muted = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? accent;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = muted ? Colors.white38 : (accent ?? FcmColors.gold);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: FcmPanel(
+        radius: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        accent: accent,
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: muted ? Colors.white60 : Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: FcmColors.textDim,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
