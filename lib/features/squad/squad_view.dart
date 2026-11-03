@@ -26,7 +26,9 @@ import '../../core/ui/player_card.dart';
 import '../collection/player_detail_sheet.dart' show rarityOf;
 import '../match/tactics.dart';
 import 'formations.dart';
+import 'squad_drag.dart';
 import 'squad_engine.dart';
+import 'squad_swap.dart' show SquadDropTarget, SquadZone;
 
 /// The whole tactical setup column: the control card (the setup row —
 /// formation, playing style, mentality — closed by the team rating, with
@@ -50,6 +52,7 @@ class TacticsSetupView extends StatelessWidget {
     this.showStats = true,
     this.showReserves = true,
     this.onPlayerTap,
+    this.swapping,
   });
 
   /// Currently selected formation code (e.g. '4-3-3').
@@ -94,6 +97,11 @@ class TacticsSetupView extends StatelessWidget {
   /// Opens the player detail sheet; null makes the cards non-tappable.
   final void Function(PlayerCard card)? onPlayerTap;
 
+  /// Enables hold-and-drag swapping between the pitch, the bench and the
+  /// reserves (Team tab). Null leaves every card as a plain, non-draggable
+  /// card — the pre-match and live surfaces.
+  final SquadSwapping? swapping;
+
   @override
   Widget build(BuildContext context) {
     final teamRating = xi.isEmpty
@@ -122,39 +130,57 @@ class TacticsSetupView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        FcmEntrance(
-          index: 1,
-          child: SquadPitch(
-            formation: formationByCode(formationCode),
-            assignments: xi,
-            showStamina: showStamina,
-            showStats: showStats,
-            onPlayerTap: onPlayerTap,
+        // The pitch and both strips share one drag scope when swapping is
+        // on, so a card can be carried from any of them onto any other.
+        _maybeSwapScope(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (swapping != null) const SquadSwapHint(),
+              FcmEntrance(
+                index: 1,
+                child: SquadPitch(
+                  formation: formationByCode(formationCode),
+                  assignments: xi,
+                  showStamina: showStamina,
+                  showStats: showStats,
+                  onPlayerTap: onPlayerTap,
+                ),
+              ),
+              // Bench and reserves never hide: the sections stay with
+              // their full quota of slots, unassigned ones rendered as
+              // empty cards (GDD 11 — the 23-man surface is always
+              // visible as a whole).
+              FcmSectionTitle(
+                  'Bench (${bench.length}/${Formation.benchSize})'),
+              SquadCardRow(
+                  cards: bench,
+                  emptySlots: Formation.benchSize - bench.length,
+                  zone: SquadZone.bench,
+                  showStamina: showStamina,
+                  showStats: showStats,
+                  onPlayerTap: onPlayerTap),
+              if (showReserves) ...[
+                FcmSectionTitle(
+                    'Reserves (${reserves.length}/${Formation.reservesSize})'),
+                SquadCardRow(
+                    cards: reserves,
+                    emptySlots: Formation.reservesSize - reserves.length,
+                    zone: SquadZone.reserves,
+                    showStamina: showStamina,
+                    showStats: showStats,
+                    onPlayerTap: onPlayerTap),
+              ],
+            ],
           ),
         ),
-        // Bench and reserves never hide: the sections stay with their
-        // full quota of slots, unassigned ones rendered as empty cards
-        // (GDD 11 — the 23-man surface is always visible as a whole).
-        FcmSectionTitle('Bench (${bench.length}/${Formation.benchSize})'),
-        SquadCardRow(
-            cards: bench,
-            emptySlots: Formation.benchSize - bench.length,
-            showStamina: showStamina,
-            showStats: showStats,
-            onPlayerTap: onPlayerTap),
-        if (showReserves) ...[
-          FcmSectionTitle(
-              'Reserves (${reserves.length}/${Formation.reservesSize})'),
-          SquadCardRow(
-              cards: reserves,
-              emptySlots: Formation.reservesSize - reserves.length,
-              showStamina: showStamina,
-              showStats: showStats,
-              onPlayerTap: onPlayerTap),
-        ],
       ],
     );
   }
+
+  Widget _maybeSwapScope(Widget child) => swapping == null
+      ? child
+      : SquadDragHost(swapping: swapping!, child: child);
 }
 
 /// The single control card of the tactics screen. Its top row carries
@@ -579,24 +605,37 @@ class SquadPitch extends StatelessWidget {
                       left: 8 + (fs.x / 100) * (pw - slotW - 16),
                       top: 8 + (1 - fs.y / 100) * (ph - slotH - 16),
                       width: slotW,
-                      child: card == null
-                          ? _EmptySlot(position: fs.position, width: cardW)
-                          : FcmPressable(
-                              onTap: onPlayerTap == null
-                                  ? null
-                                  : () => onPlayerTap!(card),
-                              child: FcmMiniCard(
-                                overall: card.overall,
-                                position: card.position.code,
-                                name: card.base.name.split(' ').last,
-                                rarity: rarityOf(card),
-                                width: cardW,
-                                warn: fs.position != card.position,
-                                stamina:
-                                    showStamina ? card.staminaPercent : null,
-                                stats: showStats ? statsOf(card) : null,
+                      // A held player can be dropped on any slot: onto a
+                      // player (swap) or onto an empty slot (move).
+                      child: SquadDropZone(
+                        target: card == null
+                            ? SquadDropTarget.xiSlot(slot)
+                            : SquadDropTarget.player(card),
+                        child: card == null
+                            ? _EmptySlot(position: fs.position, width: cardW)
+                            : SquadDraggable(
+                                card: card,
+                                feedbackSize: Size(slotW, cardW / kPlayerCardAspect + 20),
+                                feedback: _dragFeedback(card, cardW),
+                                child: FcmPressable(
+                                  onTap: onPlayerTap == null
+                                      ? null
+                                      : () => onPlayerTap!(card),
+                                  child: FcmMiniCard(
+                                    overall: card.overall,
+                                    position: card.position.code,
+                                    name: card.base.name.split(' ').last,
+                                    rarity: rarityOf(card),
+                                    width: cardW,
+                                    warn: fs.position != card.position,
+                                    stamina: showStamina
+                                        ? card.staminaPercent
+                                        : null,
+                                    stats: showStats ? statsOf(card) : null,
+                                  ),
+                                ),
                               ),
-                            ),
+                      ),
                     );
                   }(),
               ],
@@ -620,12 +659,17 @@ class SquadCardRow extends StatelessWidget {
     super.key,
     required this.cards,
     this.emptySlots = 0,
+    this.zone,
     this.showStamina = true,
     this.showStats = true,
     this.onPlayerTap,
   });
 
   final List<PlayerCard> cards;
+
+  /// Which part of the squad this strip is — lets a held player be dropped
+  /// on its empty places. Null makes the empty places plain placeholders.
+  final SquadZone? zone;
 
   /// Placeholder cards appended after the real ones (quota minus the
   /// assigned players).
@@ -658,23 +702,38 @@ class SquadCardRow extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 6),
         itemBuilder: (context, i) {
           if (i >= cards.length) {
-            return const _EmptyBenchCard();
+            final z = zone;
+            return z == null
+                ? const _EmptyBenchCard()
+                : SquadDropZone(
+                    target: SquadDropTarget.emptyIn(z),
+                    child: const _EmptyBenchCard(),
+                  );
           }
           final c = cards[i];
           return FcmEntrance(
             index: i,
             dx: 20,
             dy: 0,
-            child: FcmPressable(
-              onTap: onPlayerTap == null ? null : () => onPlayerTap!(c),
-              child: FcmMiniCard(
-                overall: c.overall,
-                position: c.position.code,
-                name: c.base.name.split(' ').last,
-                rarity: rarityOf(c),
-                width: cardWidth,
-                stamina: showStamina ? c.staminaPercent : null,
-                stats: showStats ? statsOf(c) : null,
+            child: SquadDropZone(
+              target: SquadDropTarget.player(c),
+              child: SquadDraggable(
+                card: c,
+                feedbackSize:
+                    Size(cardWidth + 12, cardWidth / kPlayerCardAspect + 20),
+                feedback: _dragFeedback(c, cardWidth),
+                child: FcmPressable(
+                  onTap: onPlayerTap == null ? null : () => onPlayerTap!(c),
+                  child: FcmMiniCard(
+                    overall: c.overall,
+                    position: c.position.code,
+                    name: c.base.name.split(' ').last,
+                    rarity: rarityOf(c),
+                    width: cardWidth,
+                    stamina: showStamina ? c.staminaPercent : null,
+                    stats: showStats ? statsOf(c) : null,
+                  ),
+                ),
               ),
             ),
           );
@@ -683,6 +742,16 @@ class SquadCardRow extends StatelessWidget {
     );
   }
 }
+
+/// The card that follows the finger while a player is dragged: the plain
+/// mini card (no stamina bar or stat row), the same size as on the page.
+Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
+      overall: card.overall,
+      position: card.position.code,
+      name: card.base.name.split(' ').last,
+      rarity: rarityOf(card),
+      width: width,
+    );
 
 /// An unassigned formation slot: a ghost mini card — the exact shape,
 /// size and layout of a filled one (same painter silhouette, same text

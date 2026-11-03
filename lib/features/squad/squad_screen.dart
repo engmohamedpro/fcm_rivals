@@ -7,13 +7,18 @@ import '../../core/ui/fcm_widgets.dart';
 import '../../features/match/tactics.dart';
 import 'formations.dart';
 import 'player_card_reveal.dart';
+import 'squad_drag.dart' show SquadSwapping;
 import 'squad_engine.dart' show PlayerCard;
+import 'squad_swap.dart';
 import 'squad_view.dart';
 
 /// Team tab (nav label 'Team'): the club's permanent tactical setup (GDD 10) — formation,
 /// playing style and mentality as dropdowns with their visible percentage
 /// effects, the pitch with the starting XI and colour-coded stamina bars
 /// (GDD 11), bench and reserves, and Auto Pick (GDD 6.2/6.3/6.4).
+/// Players can be held and dropped on each other to swap places between the
+/// pitch, the bench and the reserves — a starting slot only accepts a
+/// player of its own position.
 /// Every change here is saved immediately as the club's default setup;
 /// the pre-match screen reuses the same view for match-only overrides.
 class SquadScreen extends ConsumerWidget {
@@ -100,11 +105,66 @@ class SquadScreen extends ConsumerWidget {
                 // tab, where the actions live.
                 onPlayerTap: (card) =>
                     showPlayerCardReveal(context, card: card),
+                // Hold a player and drop him on another to swap them
+                // (pitch ↔ bench ↔ reserves). The same plan validates the
+                // green / red hover feedback and the final drop.
+                swapping: SquadSwapping(
+                  rejection: (dragged, target) => planSquadDrop(
+                    formation: formationByCode(
+                        club?.formationCode ?? '4-3-3'),
+                    squad: squad,
+                    dragged: dragged,
+                    target: target,
+                  ).rejection,
+                  onSwap: (dragged, target) => _swap(
+                    context,
+                    ref,
+                    formationCode: club?.formationCode ?? '4-3-3',
+                    squad: squad,
+                    dragged: dragged,
+                    target: target,
+                  ),
+                ),
               ),
           ],
         );
       },
     );
+  }
+
+  /// Applies a drag-and-drop swap: validated once more against the squad
+  /// as it is now, then saved as the club's squad. A refused drop explains
+  /// itself in a snackbar and changes nothing.
+  Future<void> _swap(
+    BuildContext context,
+    WidgetRef ref, {
+    required String formationCode,
+    required Map<int, PlayerCard> squad,
+    required PlayerCard dragged,
+    required SquadDropTarget target,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    void say(String message) => messenger
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
+
+    final outcome = planSquadDrop(
+      formation: formationByCode(formationCode),
+      squad: squad,
+      dragged: dragged,
+      target: target,
+    );
+    if (!outcome.isAccepted) {
+      say(outcome.rejection!);
+      return;
+    }
+    try {
+      final store = await ref.read(collectionStoreProvider.future);
+      await store.saveSquad(outcome.assignment!);
+      ref.invalidate(squadProvider);
+    } catch (e) {
+      say('$e'.replaceFirst('CollectionException: ', ''));
+    }
   }
 
   /// Persists the club's tactical setup (GDD 10.2/10.3) — used by the
