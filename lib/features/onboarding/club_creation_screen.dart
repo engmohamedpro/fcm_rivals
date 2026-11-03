@@ -186,13 +186,28 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                                   height: 1.4),
                             ),
                             const SizedBox(height: 10),
-                            for (final f in formations)
-                              _FormationOption(
-                                formation: f,
-                                selected: f.code == _formationCode,
-                                onTap: () =>
-                                    setState(() => _formationCode = f.code),
+                            // The formation catalogue scrolls inside a
+                            // bounded window: fourteen shapes inline
+                            // would stretch the page and push the submit
+                            // button far below the fold.
+                            ConstrainedBox(
+                              constraints:
+                                  const BoxConstraints(maxHeight: 300),
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  children: [
+                                    for (final f in formations)
+                                      _FormationOption(
+                                        formation: f,
+                                        selected:
+                                            f.code == _formationCode,
+                                        onTap: () => setState(
+                                            () => _formationCode = f.code),
+                                      ),
+                                  ],
+                                ),
                               ),
+                            ),
                           ],
                         ),
                       ),

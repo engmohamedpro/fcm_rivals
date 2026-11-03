@@ -20,16 +20,20 @@ void main() {
         pitchRows(formationByCode(code)).map((r) => r.length).toList();
 
     test('groups the lines of each shape, keeper first', () {
-      expect(shape('4-3-3'), [1, 4, 3, 3]);
       expect(shape('4-4-2'), [1, 4, 4, 2]);
+      expect(shape('4-3-3'), [1, 4, 3, 3]);
       expect(shape('4-2-3-1'), [1, 4, 2, 3, 1]);
-      expect(shape('4-1-4-1'), [1, 4, 1, 4, 1]);
+      expect(shape('4-1-4-1'), [1, 4, 5, 1]);
+      expect(shape('4-5-1'), [1, 4, 5, 1]);
+      expect(shape('4-4-1-1'), [1, 4, 4, 1, 1]);
+      expect(shape('4-2-2-2'), [1, 4, 2, 2, 2]);
+      expect(shape('4-1-2-1-2'), [1, 4, 3, 1, 2]);
+      expect(shape('4-3-2-1'), [1, 4, 3, 2, 1]);
       expect(shape('3-5-2'), [1, 3, 5, 2]);
       expect(shape('3-4-3'), [1, 3, 4, 3]);
+      expect(shape('3-4-1-2'), [1, 3, 4, 1, 2]);
       expect(shape('5-3-2'), [1, 5, 3, 2]);
       expect(shape('5-4-1'), [1, 5, 4, 1]);
-      expect(shape('4-2-2-2'), [1, 4, 2, 2, 2]);
-      expect(shape('4-3-2-1'), [1, 4, 3, 2, 1]);
     });
 
     test('every slot is in exactly one line and lines read left to right',
@@ -193,5 +197,154 @@ void main() {
       expect(a.boxes[i].left, b.boxes[i].left);
       expect(a.boxes[i].top, b.boxes[i].top);
     }
+  });
+
+  group('horizontal centring', () {
+    // The formation data is symmetric about x=50; the rendered line must
+    // sit centred on the pitch whatever the card size and however much
+    // the spacing pass had to move the cards.
+    test('every symmetric formation renders centred', () {
+      for (final f in formations) {
+        for (final width in _widths) {
+          for (final extras in [false, true]) {
+            final layout = computePitchLayout(
+              formation: f,
+              width: width,
+              height: width / 0.66,
+              showStats: extras,
+              showStamina: extras,
+            );
+            for (final row in layout.rows) {
+              if (row.length < 2) continue;
+              final first = layout.boxes[row.first];
+              final last = layout.boxes[row.last];
+              final edgeLeft = first.left;
+              final edgeRight = width - last.right;
+              expect(
+                (edgeLeft - edgeRight).abs(),
+                lessThan(1.0),
+                reason: '${f.code} on ${width}px: the line from '
+                    '${first.left.toStringAsFixed(1)} to '
+                    '${last.right.toStringAsFixed(1)} is off-centre by '
+                    '${(edgeLeft - edgeRight).abs().toStringAsFixed(1)}px',
+              );
+            }
+          }
+        }
+      }
+    });
+  });
+
+  group('role depth on the pitch', () {
+    // Card-centre height: the middle of the rendered card (top + half
+    // the footprint), the fairest read of "who stands where".
+    double cardMidY(PitchLayout layout, int i) =>
+        layout.boxes[i].top + layout.boxes[i].height / 2;
+
+    test('a CDM stands clearly deeper than a CM, in every shape', () {
+      for (final f in formations) {
+        final cdm = f.slots
+            .indexWhere((s) => s.position.code == 'CDM');
+        if (cdm < 0) continue;
+        for (final width in [362.0, 900.0]) {
+          final layout = computePitchLayout(
+              formation: f, width: width, height: width / 0.66);
+          for (var i = 0; i < f.slots.length; i++) {
+            if (f.slots[i].position.code != 'CM') continue;
+            expect(cardMidY(layout, cdm),
+                greaterThan(cardMidY(layout, i) + 4),
+                reason: '${f.code} on ${width}px: the CDM must read '
+                    'deeper than the CM beside him');
+          }
+        }
+      }
+    });
+
+    test('a CAM stands clearly higher than a CM, in every shape', () {
+      for (final f in formations) {
+        final cam = f.slots.indexWhere((s) => s.position.code == 'CAM');
+        if (cam < 0) continue;
+        for (final width in [362.0, 900.0]) {
+          final layout = computePitchLayout(
+              formation: f, width: width, height: width / 0.66);
+          for (var i = 0; i < f.slots.length; i++) {
+            if (f.slots[i].position.code != 'CM') continue;
+            expect(cardMidY(layout, cam), lessThan(cardMidY(layout, i) - 4),
+                reason: '${f.code} on ${width}px: the CAM must read '
+                    'higher than the CM behind him');
+          }
+        }
+      }
+    });
+
+    test('full backs stand clearly ahead of the centre backs', () {
+      // A back four's LB/RB (and a back five's WBs) must read AHEAD of
+      // the CB line — "a bit forward", never in line with it.
+      for (final f in formations) {
+        final fbCodes = ['4-4-2', '4-3-3', '4-2-3-1', '4-1-4-1', '4-5-1',
+            '4-4-1-1', '4-2-2-2', '4-1-2-1-2', '4-3-2-1'];
+        if (!fbCodes.contains(f.code)) continue;
+        for (final width in [362.0, 900.0]) {
+          final layout = computePitchLayout(
+              formation: f, width: width, height: width / 0.66);
+          double top(int i) => layout.boxes[i].top;
+          for (var i = 0; i < f.slots.length; i++) {
+            final code = f.slots[i].position.code;
+            if (code != 'LB' && code != 'RB') continue;
+            for (var j = 0; j < f.slots.length; j++) {
+              if (f.slots[j].position.code != 'CB') continue;
+              expect(top(i) + 6, lessThan(top(j)),
+                  reason: '${f.code} on ${width}px: the $code must read '
+                      'ahead of the CB line');
+            }
+          }
+        }
+      }
+    });
+
+    test('wing backs of a back five read ahead of the CBs', () {
+      for (final code in ['5-3-2', '5-4-1']) {
+        final f = formationByCode(code);
+        for (final width in [362.0, 900.0]) {
+          final layout = computePitchLayout(
+              formation: f, width: width, height: width / 0.66);
+          double top(int i) => layout.boxes[i].top;
+          for (var i = 0; i < f.slots.length; i++) {
+            final p = f.slots[i].position.code;
+            if (p != 'LB' && p != 'RB') continue;
+            for (var j = 0; j < f.slots.length; j++) {
+              if (f.slots[j].position.code != 'CB') continue;
+              expect(top(i) + 6, lessThan(top(j)),
+                  reason: '$code on ${width}px: the $p must read ahead '
+                      'of the CB line');
+            }
+          }
+        }
+      }
+    });
+  });
+
+  group('the catalogue', () {
+    test('has the classic set', () {
+      const expected = [
+        '4-3-3', '4-4-2', '4-2-3-1', '4-1-4-1', '4-5-1', '4-4-1-1',
+        '4-2-2-2', '4-1-2-1-2', '4-3-2-1', '3-5-2', '3-4-3', '3-4-1-2',
+        '5-3-2', '5-4-1',
+      ];
+      expect(formations.map((f) => f.code), expected);
+    });
+
+    test('every formation is valid and x-symmetric about 50', () {
+      for (final f in formations) {
+        expect(f.isValid, isTrue, reason: '${f.code}: 11 slots, GK first');
+        // Symmetric shapes: for every slot at x there is one at 100-x
+        // (allowing the same slot when x == 50).
+        final xs = [for (final s in f.slots) s.x]..sort();
+        for (final x in xs) {
+          expect(xs.contains(100 - x), isTrue,
+              reason: '${f.code}: x $x has no mirror at ${100 - x}');
+        }
+      }
+    });
   });
 }

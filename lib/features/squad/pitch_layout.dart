@@ -43,6 +43,13 @@ const double kPitchCardMaxWidth = 64;
 /// (back line, midfield, attack…). The keeper is always a line of his own.
 const double kPitchRowSplit = 12;
 
+/// Vertical air reserved between two lines (and above the top line) for
+/// the STAGGER: a line's deeper or higher players (a holding midfielder
+/// under the engineers, a striker over the wingers) may use up to one
+/// reserve each side, so role depth stays visible even when the pitch is
+/// packed and the cards small.
+const double kPitchStaggerReserve = 8;
+
 /// Width : height of a card — kept equal to `kPlayerCardAspect`; this file
 /// stays free of UI imports.
 const double _cardAspect = 0.70;
@@ -147,7 +154,13 @@ PitchLayout computePitchLayout({
     final sw = w + kPitchSlotPad;
     final sh = pitchFootprintHeight(w,
         showStats: showStats, showStamina: showStamina);
-    if (rowCount * sh + (rowCount - 1) * kPitchGapV >
+    // The vertical budget keeps a stagger reserve between the lines (see
+    // [kPitchStaggerReserve]): lines whose players stand at different
+    // depths need air to show it, so a five-line shape gives up a little
+    // card size instead of flattening its holding midfielder.
+    if (rowCount * sh +
+            (rowCount - 1) * (kPitchGapV + 2 * kPitchStaggerReserve) +
+            kPitchStaggerReserve >
         height - 2 * kPitchMargin) {
       return false;
     }
@@ -196,48 +209,107 @@ PitchLayout computePitchLayout({
     }
     tops[0] = math.min(tops[0], height - kPitchMargin - sh);
   }
-
-  // Slots keep a little of the formation's own stagger (a holding
-  // midfielder a touch deeper than the wide men) — but only as much as the
-  // free space between the lines allows, so the lines never collide.
-  var slack = double.infinity;
-  for (var k = 1; k < rowCount; k++) {
-    slack = math.min(slack, tops[k - 1] - tops[k]);
+  // Re-space the lines: every gap at least [kPitchGapV] plus two
+  // stagger reserves (one per facing line), any leftover height shared
+  // between the gaps in proportion to their own size — the formation
+  // keeps its depth structure and fills the pitch. The keeper sits
+  // flush at the bottom edge; the top line keeps one reserve of
+  // headroom for its own stagger.
+  {
+    final usable = height - 2 * kPitchMargin;
+    final minGap = kPitchGapV + 2 * kPitchStaggerReserve;
+    final gaps = <double>[
+      for (var k = 1; k < rowCount; k++)
+        math.max(tops[k - 1] - tops[k] - sh, minGap),
+    ];
+    var need = rowCount * sh + kPitchStaggerReserve;
+    for (final g in gaps) {
+      need += g;
+    }
+    if (need <= usable) {
+      final extra = usable - need;
+      final gapSum = gaps.fold<double>(0, (a, g) => a + g);
+      tops[0] = height - kPitchMargin - sh; // the keeper, flush
+      var top = tops[0];
+      for (var k = 1; k < rowCount; k++) {
+        final g = gapSum > 0
+            ? gaps[k - 1] + extra * gaps[k - 1] / gapSum
+            : gaps[k - 1] + extra / gaps.length;
+        top -= sh + g;
+        tops[k] = top;
+      }
+    }
   }
-  final allow = math.max(0.0, (slack - step) / 2);
 
   final boxes = List<PitchBox>.filled(slots.length, const PitchBox(0, 0, 0, 0));
   for (var k = 0; k < rowCount; k++) {
     final row = rows[k]; // already left → right
     final rowMean = meanY(row);
 
-    // Left edges from the formation's x, then pushed to the minimum
-    // spacing from the left and the right so the line never overlaps and
-    // never leaves the pitch; left-to-right order is preserved.
-    final lefts = <double>[
-      for (final i in row) kPitchMargin + slots[i].x / 100 * spanX,
+    // Unclamped, each slot would sit exactly at its own formation depth
+    // (the row's mean places the line, the stagger differentiates inside
+    // it). The stagger budget below keeps that safe: a slot may use at
+    // most HALF the air to any other line — the facing slot of that
+    // line may claim the other half — and never leave the pitch.
+    var allow = double.infinity;
+    for (var k2 = 0; k2 < rowCount; k2++) {
+      if (k2 == k) continue;
+      allow = math.min(allow, (tops[k2] - tops[k]).abs() - sh - kPitchGapV);
+    }
+    allow = math.min(allow, tops[k] - kPitchMargin);
+    allow = math.min(allow, height - kPitchMargin - sh - tops[k]);
+    allow = math.max(0.0, allow / 2);
+
+    // Slot CENTRES from the formation's x. Centres, not left edges: a
+    // symmetric formation (left back 14, right back 86) then reads
+    // symmetric on the pitch whatever the card size. A formation's
+    // outermost x (a 5-x-x wing back at 10) can map outside the card's
+    // usable range, so the centres start clamped into it.
+    final minC = kPitchMargin + sw / 2;
+    final maxC = width - kPitchMargin - sw / 2;
+    final centres = <double>[
+      for (final i in row)
+        (kPitchMargin + sw / 2 + slots[i].x / 100 * spanX)
+            .clamp(minC, maxC)
+            .toDouble(),
     ];
+    // Push the centres apart to the minimum spacing, clamp the line
+    // into the pitch, then RE-CENTRE the occupied span on the pitch so
+    // the line's outer cards end up equidistant from the edges — a
+    // symmetric formation reads symmetric (the centring fix).
     final stepX = sw + kPitchGapH;
-    final maxLeft = width - kPitchMargin - sw;
     for (var pass = 0; pass < 6; pass++) {
-      for (var j = 1; j < lefts.length; j++) {
-        lefts[j] = math.max(lefts[j], lefts[j - 1] + stepX);
+      for (var j = 1; j < centres.length; j++) {
+        centres[j] = math.max(centres[j], centres[j - 1] + stepX);
       }
-      if (lefts.last > maxLeft) {
-        lefts[lefts.length - 1] = maxLeft;
-        for (var j = lefts.length - 2; j >= 0; j--) {
-          lefts[j] = math.min(lefts[j], lefts[j + 1] - stepX);
+      if (centres.last > maxC) {
+        centres[centres.length - 1] = maxC;
+        for (var j = centres.length - 2; j >= 0; j--) {
+          centres[j] = math.min(centres[j], centres[j + 1] - stepX);
         }
       }
-      lefts[0] = math.max(lefts[0], kPitchMargin);
+      centres[0] = math.max(centres[0], minC);
+    }
+    if (centres.length > 1) {
+      final span = centres.last - centres.first;
+      if (span < maxC - minC) {
+        // The line fits with room: place its occupied span centrally.
+        final shift = (minC + maxC - span) / 2 - centres.first;
+        for (var j = 0; j < centres.length; j++) {
+          centres[j] += shift;
+        }
+      }
     }
 
     for (var j = 0; j < row.length; j++) {
       final i = row[j];
+      // The stagger keeps the formation's own depth differences inside
+      // a merged line — a holding midfielder visibly deeper than the
+      // wide men beside him.
       final stagger = (-(slots[i].y - rowMean) / 100 * spanY)
           .clamp(-allow, allow)
           .toDouble();
-      boxes[i] = PitchBox(lefts[j], tops[k] + stagger, sw, sh);
+      boxes[i] = PitchBox(centres[j] - sw / 2, tops[k] + stagger, sw, sh);
     }
   }
 

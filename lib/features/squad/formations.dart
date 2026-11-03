@@ -3,6 +3,16 @@
 /// A formation is pure data: 11 slots, each a field position with pitch
 /// coordinates for rendering (x: 0..100 left→right, y: 0..100 own goal→
 /// opponent goal). Adding formations requires no code changes.
+///
+/// The coordinates are ROLE-CORRECT, not just line-correct: every slot's
+/// depth (y) comes from its role's rung on the shared ladder below, so a
+/// holding midfielder always sits visibly deeper than an engineer, who
+/// sits visibly deeper than a playmaker, whatever the shape. Full backs
+/// (LB/RB) stand clearly ahead of their centre backs, and wing backs in
+/// a back five live half a pitch higher still — a 3-x-x shape defends
+/// with the back three and attacks with its wing backs already advanced.
+/// x values are symmetric about 50 (a left back at 14 mirrors a right
+/// back at 86), so every line reads centred.
 library;
 
 import '../../core/domain/players.dart';
@@ -40,137 +50,213 @@ class Formation {
   static const int reservesSize = 5;
 }
 
-/// All supported formations (GDD 6.4 examples).
+/// The depth ladder every formation shares: how far up the pitch (y, own
+/// goal → opponent goal) each role stands. Distinct rungs are at least
+/// four apart, so adjacent roles are always visibly apart on the pitch.
+const double _gkY = 5;
+const double _cbY = 18;
+const double _cbMidY = 15; // the middle CB of a back three
+const double _fbY = 30; // LB / RB in a back four
+const double _wb5Y = 26; // wing backs in a back five (5-x-x)
+const double _wbY = 46; // wing backs of a back three (3-x-x mid five)
+const double _cdmY = 43;
+const double _cmY = 50;
+const double _lmY = 54;
+const double _camY = 64;
+const double _lwY = 74;
+const double _stY = 84;
+
+/// All supported formations (GDD 6.4, extended). Ordered from the
+/// balanced staples to the specialisms.
 const List<Formation> formations = [
+  // --- back four, flat midfield rows ---
   Formation('4-3-3', '4-3-3', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.lb, 14, 24),
-    FormationSlot(Position.cb, 36, 18),
-    FormationSlot(Position.cb, 64, 18),
-    FormationSlot(Position.rb, 86, 24),
-    FormationSlot(Position.cdm, 50, 40),
-    FormationSlot(Position.cm, 32, 50),
-    FormationSlot(Position.cm, 68, 50),
-    FormationSlot(Position.lw, 16, 74),
-    FormationSlot(Position.st, 50, 84),
-    FormationSlot(Position.rw, 84, 74),
-  ]),
-  Formation('4-2-3-1', '4-2-3-1', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.lb, 14, 24),
-    FormationSlot(Position.cb, 36, 18),
-    FormationSlot(Position.cb, 64, 18),
-    FormationSlot(Position.rb, 86, 24),
-    FormationSlot(Position.cdm, 36, 42),
-    FormationSlot(Position.cdm, 64, 42),
-    FormationSlot(Position.lw, 16, 64),
-    FormationSlot(Position.cam, 50, 62),
-    FormationSlot(Position.rw, 84, 64),
-    FormationSlot(Position.st, 50, 84),
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.cdm, 50, _cdmY),
+    FormationSlot(Position.cm, 32, _cmY),
+    FormationSlot(Position.cm, 68, _cmY),
+    FormationSlot(Position.lw, 16, _lwY),
+    FormationSlot(Position.st, 50, _stY),
+    FormationSlot(Position.rw, 84, _lwY),
   ]),
   Formation('4-4-2', '4-4-2', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.lb, 14, 24),
-    FormationSlot(Position.cb, 36, 18),
-    FormationSlot(Position.cb, 64, 18),
-    FormationSlot(Position.rb, 86, 24),
-    FormationSlot(Position.lm, 14, 52),
-    FormationSlot(Position.cm, 38, 48),
-    FormationSlot(Position.cm, 62, 48),
-    FormationSlot(Position.rm, 86, 52),
-    FormationSlot(Position.st, 40, 82),
-    FormationSlot(Position.st, 60, 82),
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.lm, 14, _lmY),
+    FormationSlot(Position.cm, 38, _cmY),
+    FormationSlot(Position.cm, 62, _cmY),
+    FormationSlot(Position.rm, 86, _lmY),
+    FormationSlot(Position.st, 40, _stY),
+    FormationSlot(Position.st, 60, _stY),
+  ]),
+  Formation('4-2-3-1', '4-2-3-1', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.cdm, 36, _cdmY),
+    FormationSlot(Position.cdm, 64, _cdmY),
+    FormationSlot(Position.lw, 16, _camY),
+    FormationSlot(Position.cam, 50, _camY),
+    FormationSlot(Position.rw, 84, _camY),
+    FormationSlot(Position.st, 50, _stY),
   ]),
   Formation('4-1-4-1', '4-1-4-1', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.lb, 14, 24),
-    FormationSlot(Position.cb, 36, 18),
-    FormationSlot(Position.cb, 64, 18),
-    FormationSlot(Position.rb, 86, 24),
-    FormationSlot(Position.cdm, 50, 38),
-    FormationSlot(Position.lm, 14, 56),
-    FormationSlot(Position.cm, 38, 54),
-    FormationSlot(Position.cm, 62, 54),
-    FormationSlot(Position.rm, 86, 56),
-    FormationSlot(Position.st, 50, 84),
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.cdm, 50, _cdmY),
+    FormationSlot(Position.lm, 14, _lmY),
+    FormationSlot(Position.cm, 38, _cmY),
+    FormationSlot(Position.cm, 62, _cmY),
+    FormationSlot(Position.rm, 86, _lmY),
+    FormationSlot(Position.st, 50, _stY),
   ]),
-  Formation('3-5-2', '3-5-2', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.cb, 28, 18),
-    FormationSlot(Position.cb, 50, 16),
-    FormationSlot(Position.cb, 72, 18),
-    FormationSlot(Position.lm, 12, 48),
-    FormationSlot(Position.cm, 34, 44),
-    FormationSlot(Position.cdm, 50, 38),
-    FormationSlot(Position.cm, 66, 44),
-    FormationSlot(Position.rm, 88, 48),
-    FormationSlot(Position.st, 40, 82),
-    FormationSlot(Position.st, 60, 82),
+  Formation('4-5-1', '4-5-1', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.lm, 14, _lmY),
+    FormationSlot(Position.cm, 34, _cmY),
+    FormationSlot(Position.cdm, 50, _cdmY),
+    FormationSlot(Position.cm, 66, _cmY),
+    FormationSlot(Position.rm, 86, _lmY),
+    FormationSlot(Position.st, 50, _stY),
   ]),
-  Formation('3-4-3', '3-4-3', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.cb, 28, 18),
-    FormationSlot(Position.cb, 50, 16),
-    FormationSlot(Position.cb, 72, 18),
-    FormationSlot(Position.lm, 14, 48),
-    FormationSlot(Position.cm, 38, 46),
-    FormationSlot(Position.cm, 62, 46),
-    FormationSlot(Position.rm, 86, 48),
-    FormationSlot(Position.lw, 18, 76),
-    FormationSlot(Position.st, 50, 84),
-    FormationSlot(Position.rw, 82, 76),
-  ]),
-  Formation('5-3-2', '5-3-2', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.lb, 10, 26),
-    FormationSlot(Position.cb, 30, 17),
-    FormationSlot(Position.cb, 50, 15),
-    FormationSlot(Position.cb, 70, 17),
-    FormationSlot(Position.rb, 90, 26),
-    FormationSlot(Position.cm, 32, 48),
-    FormationSlot(Position.cdm, 50, 42),
-    FormationSlot(Position.cm, 68, 48),
-    FormationSlot(Position.st, 40, 80),
-    FormationSlot(Position.st, 60, 80),
-  ]),
-  Formation('5-4-1', '5-4-1', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.lb, 10, 26),
-    FormationSlot(Position.cb, 30, 17),
-    FormationSlot(Position.cb, 50, 15),
-    FormationSlot(Position.cb, 70, 17),
-    FormationSlot(Position.rb, 90, 26),
-    FormationSlot(Position.lm, 14, 54),
-    FormationSlot(Position.cm, 38, 50),
-    FormationSlot(Position.cm, 62, 50),
-    FormationSlot(Position.rm, 86, 54),
-    FormationSlot(Position.st, 50, 82),
+
+  // --- back four, second strikers / playmakers ---
+  Formation('4-4-1-1', '4-4-1-1', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.lm, 14, 51),
+    FormationSlot(Position.cm, 38, _cmY),
+    FormationSlot(Position.cm, 62, _cmY),
+    FormationSlot(Position.rm, 86, 51),
+    FormationSlot(Position.cam, 50, _camY),
+    FormationSlot(Position.st, 50, _stY),
   ]),
   Formation('4-2-2-2', '4-2-2-2', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.lb, 14, 24),
-    FormationSlot(Position.cb, 36, 18),
-    FormationSlot(Position.cb, 64, 18),
-    FormationSlot(Position.rb, 86, 24),
-    FormationSlot(Position.cdm, 36, 42),
-    FormationSlot(Position.cdm, 64, 42),
-    FormationSlot(Position.cam, 32, 64),
-    FormationSlot(Position.cam, 68, 64),
-    FormationSlot(Position.st, 40, 82),
-    FormationSlot(Position.st, 60, 82),
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.cdm, 36, _cdmY),
+    FormationSlot(Position.cdm, 64, _cdmY),
+    FormationSlot(Position.cam, 32, _camY),
+    FormationSlot(Position.cam, 68, _camY),
+    FormationSlot(Position.st, 40, _stY),
+    FormationSlot(Position.st, 60, _stY),
   ]),
-  Formation('4-3-2-1', '4-3-2-1', [
-    FormationSlot(Position.gk, 50, 5),
-    FormationSlot(Position.lb, 14, 24),
-    FormationSlot(Position.cb, 36, 18),
-    FormationSlot(Position.cb, 64, 18),
-    FormationSlot(Position.rb, 86, 24),
-    FormationSlot(Position.cm, 30, 44),
-    FormationSlot(Position.cdm, 50, 40),
-    FormationSlot(Position.cm, 70, 44),
-    FormationSlot(Position.cam, 36, 64),
-    FormationSlot(Position.cam, 64, 64),
-    FormationSlot(Position.st, 50, 84),
+  Formation('4-1-2-1-2', '4-1-2-1-2 (diamond)', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.cdm, 50, _cdmY),
+    FormationSlot(Position.cm, 26, _cmY),
+    FormationSlot(Position.cm, 74, _cmY),
+    FormationSlot(Position.cam, 50, _camY),
+    FormationSlot(Position.st, 40, _stY),
+    FormationSlot(Position.st, 60, _stY),
+  ]),
+  Formation('4-3-2-1', '4-3-2-1 (Christmas tree)', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 14, _fbY),
+    FormationSlot(Position.cb, 36, _cbY),
+    FormationSlot(Position.cb, 64, _cbY),
+    FormationSlot(Position.rb, 86, _fbY),
+    FormationSlot(Position.cm, 30, _cmY),
+    FormationSlot(Position.cdm, 50, _cdmY),
+    FormationSlot(Position.cm, 70, _cmY),
+    FormationSlot(Position.cam, 36, _camY),
+    FormationSlot(Position.cam, 64, _camY),
+    FormationSlot(Position.st, 50, _stY),
+  ]),
+
+  // --- back three, wing backs advanced (3-x-x family) ---
+  Formation('3-5-2', '3-5-2', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.cb, 28, _cbY),
+    FormationSlot(Position.cb, 50, _cbMidY),
+    FormationSlot(Position.cb, 72, _cbY),
+    FormationSlot(Position.lm, 10, _wbY),
+    FormationSlot(Position.cm, 34, _cmY),
+    FormationSlot(Position.cdm, 50, _cdmY),
+    FormationSlot(Position.cm, 66, _cmY),
+    FormationSlot(Position.rm, 90, _wbY),
+    FormationSlot(Position.st, 40, _stY),
+    FormationSlot(Position.st, 60, _stY),
+  ]),
+  Formation('3-4-3', '3-4-3', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.cb, 28, _cbY),
+    FormationSlot(Position.cb, 50, _cbMidY),
+    FormationSlot(Position.cb, 72, _cbY),
+    FormationSlot(Position.lm, 12, _wbY),
+    FormationSlot(Position.cm, 38, _cmY),
+    FormationSlot(Position.cm, 62, _cmY),
+    FormationSlot(Position.rm, 88, _wbY),
+    FormationSlot(Position.lw, 18, _lwY),
+    FormationSlot(Position.st, 50, _stY),
+    FormationSlot(Position.rw, 82, _lwY),
+  ]),
+  Formation('3-4-1-2', '3-4-1-2', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.cb, 28, _cbY),
+    FormationSlot(Position.cb, 50, _cbMidY),
+    FormationSlot(Position.cb, 72, _cbY),
+    FormationSlot(Position.lm, 12, _wbY),
+    FormationSlot(Position.cm, 38, _cmY),
+    FormationSlot(Position.cm, 62, _cmY),
+    FormationSlot(Position.rm, 88, _wbY),
+    FormationSlot(Position.cam, 50, _camY),
+    FormationSlot(Position.st, 40, _stY),
+    FormationSlot(Position.st, 60, _stY),
+  ]),
+
+  // --- back five, wing backs advanced (5-x-x family) ---
+  Formation('5-3-2', '5-3-2', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 10, _wb5Y),
+    FormationSlot(Position.cb, 30, _cbY),
+    FormationSlot(Position.cb, 50, _cbMidY),
+    FormationSlot(Position.cb, 70, _cbY),
+    FormationSlot(Position.rb, 90, _wb5Y),
+    FormationSlot(Position.cm, 32, _cmY),
+    FormationSlot(Position.cdm, 50, _cdmY),
+    FormationSlot(Position.cm, 68, _cmY),
+    FormationSlot(Position.st, 40, _stY),
+    FormationSlot(Position.st, 60, _stY),
+  ]),
+  Formation('5-4-1', '5-4-1', [
+    FormationSlot(Position.gk, 50, _gkY),
+    FormationSlot(Position.lb, 10, _wb5Y),
+    FormationSlot(Position.cb, 30, _cbY),
+    FormationSlot(Position.cb, 50, _cbMidY),
+    FormationSlot(Position.cb, 70, _cbY),
+    FormationSlot(Position.rb, 90, _wb5Y),
+    FormationSlot(Position.lm, 14, _lmY),
+    FormationSlot(Position.cm, 38, _cmY),
+    FormationSlot(Position.cm, 62, _cmY),
+    FormationSlot(Position.rm, 86, _lmY),
+    FormationSlot(Position.st, 50, _stY),
   ]),
 ];
 
