@@ -1,7 +1,9 @@
 /// FCM Rivals — cinematic pack opening (GDD 5.6).
 ///
 /// Sequence for each drawn player:
-///   1. Sealed foil pack floats; tap to open.
+///   1. Sealed foil pack floats — in the same tier metal as the store
+///      cell — then tears itself open automatically (tap skips the
+///      wait); no separate tap-to-open step.
 ///   2. Pack charges (shakes, cracks, glows in the card's rarity colour).
 ///   3. Flash + particle burst.
 ///   4. Walkout: nationality flag → position.
@@ -14,6 +16,7 @@
 /// [Interval]s, so skipping or replaying is just moving its value.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -58,11 +61,17 @@ class PackOpeningScreen extends StatefulWidget {
   const PackOpeningScreen({
     super.key,
     required this.players,
+    this.packTint,
     this.ownedIds = const [],
     this.onSell,
   });
 
   final List<BasePlayer> players;
+
+  /// The pack's tier metal — the exact colour the sealed pack wore in
+  /// the store cell. Null keeps the classic charcoal leather (previews
+  /// that are not a real store pack).
+  final Color? packTint;
 
   /// Owned-player row ids of the drawn players, index-aligned with
   /// [players] — SELL straight from the reveal sells through the caller.
@@ -130,7 +139,13 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         vsync: this, duration: const Duration(seconds: 30))
       ..repeat();
     _makeSparks();
+    // The pack tears itself open: a beat to admire the sealed foil,
+    // then the sequence starts on its own. A tap during the beat skips
+    // straight to the charge — there is no tap-to-open step to sit on.
+    _autoOpen = Timer(const Duration(milliseconds: 1100), _start);
   }
+
+  Timer? _autoOpen;
 
   void _makeSparks() {
     final r = math.Random(_player.playerId * 31 + _index);
@@ -139,6 +154,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   @override
   void dispose() {
+    _autoOpen?.cancel();
     _seq.dispose();
     _idle.dispose();
     _spin.dispose();
@@ -215,8 +231,10 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
     final raysStrength =
         Interval(0.22, 0.36).transform(t) * (0.55 + 0.25 * rarity.intensity);
-    final glowTint = Color.lerp(
-        FcmColors.goldSoft, rarity.accent, math.min(1.0, charge * 1.2))!;
+    // The charge glow starts from the pack's own tier metal and moves
+    // toward the drawn card's rarity colour as the pack heats up.
+    final glowTint = Color.lerp(widget.packTint ?? FcmColors.goldSoft,
+        rarity.accent, math.min(1.0, charge * 1.2))!;
 
     final burst =
         ((t - _T.burstStart) / (_T.burstEnd - _T.burstStart)).clamp(0.0, 1.0);
@@ -321,26 +339,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
 
-        // Tap hint.
-        if (!_started)
-          Align(
-            alignment: const Alignment(0, 0.72),
-            child: Opacity(
-              opacity: 0.55 + 0.45 * pulse(_idle.value),
-              child: const Text(
-                'TAP TO OPEN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                ),
-              ),
-            ),
-          ),
-
-        // Top bar: close while the pack is still sealed. The reveal
-        // itself is never skippable — the full sequence always plays.
+        // Top bar: close while the pack is still sealed (before the
+        // auto-open fires). The reveal itself is never skippable — the
+        // full sequence always plays.
         SafeArea(
           child: Align(
             alignment: Alignment.topRight,
@@ -441,6 +442,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                   shimmer: _idle.value,
                   charge: charge,
                   glowColor: glowTint,
+                  // The store cell's exact tier metal, so the pack the
+                  // player bought is the pack that tears open.
+                  tint: widget.packTint,
                 ),
               ),
             ),

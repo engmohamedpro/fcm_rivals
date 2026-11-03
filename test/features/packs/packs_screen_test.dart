@@ -133,12 +133,19 @@ void main() {
     // transition fully onstage.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    // The auto-open timer fires within the pump loop (runAsync blocks
+    // fake time, one long pump is not enough after real I/O).
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
 
-    // No purchase confirmation of any kind — straight to the sealed pack.
+    // No purchase confirmation of any kind — straight to the sealed
+    // pack, which tears itself open (no tap prompt anymore).
     expect(find.text('YES'), findsNothing);
     expect(find.text('NO'), findsNothing);
     expect(find.textContaining('Buy'), findsNothing);
-    expect(find.text('TAP TO OPEN'), findsOneWidget);
+    expect(find.byType(PackOpeningScreen), findsOneWidget);
+    expect(find.text('TAP TO OPEN'), findsNothing);
 
     // The claimed pack is consumed from the inventory.
     final packsAfter = await tester.runAsync(() => store.getAvailablePacks());
@@ -187,11 +194,14 @@ void main() {
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
 
     // YES falls straight into the reveal — no bought snackbar, no detour
-    // through the inventory.
+    // through the inventory. The pack tears itself open: no tap prompt.
     expect(find.text('Pack bought — open it from the grid'), findsNothing);
-    expect(find.text('TAP TO OPEN'), findsOneWidget);
+    expect(find.text('TAP TO OPEN'), findsNothing);
     expect(find.byType(PackOpeningScreen), findsOneWidget);
 
     // The purchase was real: coins charged at the rare price and the
@@ -343,6 +353,60 @@ void main() {
     expect(expected, greaterThan(50));
     // Rows show each player's nationality next to his name.
     expect(find.textContaining('Norway'), findsWidgets);
+  });
+
+  testWidgets(
+      'regression: after a BUY reveal closes, the store still opens packs',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester);
+
+    // --- Buy a pack and watch its reveal to the end. ---
+    await tester.tap(find.text('BUY').first);
+    await tester.pump();
+    await tester.tap(find.text('YES'));
+    await tester.pump();
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(PackOpeningScreen), findsOneWidget);
+
+    // Play the sequence out. The auto-open timer fires inside the
+    // pump loop (runAsync blocks fake time, so one long pump is not
+    // enough after real I/O), then the 8s sequence runs to done.
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+        tester
+            .widget<AnimatedOpacity>(
+                find.byKey(const ValueKey('keep-fade')))
+            .opacity,
+        1.0,
+        reason: 'the sequence must reach the done mark');
+
+    // KEEP pops the reveal; the fullscreen-dialog exit transition then
+    // needs its own pumps before the route is gone.
+    await tester.tap(find.text('KEEP PLAYER'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(PackOpeningScreen), findsNothing);
+
+    // The store must still be alive: _opening was reset in the finally
+    // block, so CLAIM opens another owned pack straight away — before
+    // the fix the whole store stayed dead until an app restart.
+    await tester.tap(find.text('CLAIM').first);
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(PackOpeningScreen), findsOneWidget,
+        reason: 'the store must keep opening packs after a purchase');
   });
 }
 

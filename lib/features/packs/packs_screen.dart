@@ -6,7 +6,8 @@ import '../../core/database/app_database.dart' show Pack;
 import '../../core/domain/players.dart' show Position;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
-import '../../features/collection/collection_store.dart' show StorePackOffer;
+import '../../features/collection/collection_store.dart'
+    show CollectionStore, PackOpenResult, StorePackOffer;
 import '../../features/packs/pack_engine.dart'
     show PackCategory, PackTier, PackTierColor;
 import 'pack_contents_screen.dart';
@@ -80,7 +81,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             offers: offers,
             coins: coins,
             opening: _opening,
-            onOpen: (packId) => _open(context, packId),
+            onOpen: (packId, tier) => _open(context, packId, tier),
             onBuy: (offer) => _buy(context, offer),
             // Opens the scope's contents list — same entry as the cells'
             // VIEW PLAYERS buttons.
@@ -91,7 +92,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     );
   }
 
-  Future<void> _open(BuildContext context, int packId) async {
+  Future<void> _open(BuildContext context, int packId, PackTier tier) async {
     if (_opening) return;
     setState(() => _opening = true);
     try {
@@ -101,23 +102,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ref.invalidate(availablePacksProvider);
       ref.invalidate(collectionProvider);
       if (!context.mounted) return;
-      // Captured before the push: the sell callback fires much later,
-      // inside the reveal, when this context may already be unmounted.
-      final messenger = ScaffoldMessenger.of(context);
-      final sellMessage = (int credit) => SnackBar(
-          content: Text('Sold for ${_groupDigits(credit)} coins'));
-      await Navigator.of(context).push(MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => PackOpeningScreen(
-          players: result.players,
-          ownedIds: result.ownedIds,
-          onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
-            ref.invalidate(clubProvider);
-            ref.invalidate(collectionProvider);
-            if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
-          }),
-        ),
-      ));
+      await _reveal(context, store, result, tier);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
@@ -126,6 +111,31 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     } finally {
       if (mounted) setState(() => _opening = false);
     }
+  }
+
+  /// The cinematic both paths end in: the bought or claimed pack tears
+  /// open wearing its own tier metal — the exact colour of the store
+  /// cell it came from.
+  Future<void> _reveal(BuildContext context, CollectionStore store,
+      PackOpenResult result, PackTier tier) async {
+    // Captured before the push: the sell callback fires much later,
+    // inside the reveal, when this context may already be unmounted.
+    final messenger = ScaffoldMessenger.of(context);
+    final sellMessage = (int credit) => SnackBar(
+        content: Text('Sold for ${_groupDigits(credit)} coins'));
+    await Navigator.of(context).push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => PackOpeningScreen(
+        players: result.players,
+        ownedIds: result.ownedIds,
+        packTint: tier.accent,
+        onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
+          ref.invalidate(clubProvider);
+          ref.invalidate(collectionProvider);
+          if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
+        }),
+      ),
+    ));
   }
 
   /// Shows the pack's obtainable players, highest rated first.
@@ -240,34 +250,23 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ref.invalidate(availablePacksProvider);
       ref.invalidate(clubProvider);
       if (!context.mounted) return;
-      // Captured before the push: the sell callback fires much later,
-      // inside the reveal, when this context may already be unmounted.
-      final messenger = ScaffoldMessenger.of(context);
-      final sellMessage = (int credit) => SnackBar(
-          content: Text('Sold for ${_groupDigits(credit)} coins'));
       final random = ref.read(randomProvider);
       final result = await store.openPack(packId: pack.id, random: random);
       ref.invalidate(availablePacksProvider);
       ref.invalidate(clubProvider);
       ref.invalidate(collectionProvider);
       if (!context.mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => PackOpeningScreen(
-          players: result.players,
-          ownedIds: result.ownedIds,
-          onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
-            ref.invalidate(clubProvider);
-            ref.invalidate(collectionProvider);
-            if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
-          }),
-        ),
-      ));
+      await _reveal(context, store, result, offer.tier);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('$e'.replaceFirst('CollectionException: ', ''))));
       }
+    } finally {
+      // Without this the store stayed dead after one purchase — the
+      // opening flag never cleared, so every later BUY/CLAIM tap
+      // returned early until the app was restarted.
+      if (mounted) setState(() => _opening = false);
     }
   }
 }
@@ -301,7 +300,7 @@ class _StoreGrid extends StatelessWidget {
   final List<StorePackOffer> offers;
   final int? coins;
   final bool opening;
-  final void Function(int packId) onOpen;
+  final void Function(int packId, PackTier tier) onOpen;
   final void Function(StorePackOffer offer) onBuy;
   final void Function(StorePackOffer offer) onInfo;
 
@@ -375,7 +374,7 @@ class _ScopeSection extends StatelessWidget {
   final Map<String, List<Pack>> owned;
   final int? coins;
   final bool opening;
-  final void Function(int packId) onOpen;
+  final void Function(int packId, PackTier tier) onOpen;
   final void Function(StorePackOffer offer) onBuy;
   final void Function(StorePackOffer offer) onInfo;
 
@@ -393,49 +392,66 @@ class _ScopeSection extends StatelessWidget {
     final scopeLabel =
         head.scopeValue == null ? 'Global Pack' : '${head.scopeValue} Pack';
 
+    // One visual group: title, VIEW PLAYERS entry and the tier cells
+    // share a single raised surface, so what belongs together reads as
+    // together at a glance — sections are separated by night gaps.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Shared title with the pool entry point at the end of the row:
-        // the contents list is per-scope (all three tiers draw from the
-        // same pool), so one compact button serves the whole section.
-        FcmSectionTitle(
-          scopeLabel,
-          trailing: _ViewPlayersButton(onPressed: () => onInfo(head)),
-        ),
-        SizedBox(
-          height: 260,
-          child: Row(
+        FcmPanel(
+          padding: const EdgeInsets.fromLTRB(10, 2, 10, 12),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (var i = 0; i < ordered.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: _StorePackCell(
-                    offer: ordered[i],
-                    ownedCount: owned[_scopeKey(ordered[i].category.name,
-                            ordered[i].scopeValue, ordered[i].tier.name)]
-                        ?.length ??
-                        0,
-                    coins: coins,
-                    onTap: () {
-                      final ownedHere = owned[_scopeKey(ordered[i].category.name,
-                              ordered[i].scopeValue, ordered[i].tier.name)] ??
-                          const <Pack>[];
-                      if (opening) return;
-                      if (ownedHere.isNotEmpty) {
-                        onOpen(ownedHere.first.id);
-                      } else {
-                        onBuy(ordered[i]);
-                      }
-                    },
-                  ),
+              // Shared title with the pool entry point at the end of
+              // the row: the contents list is per-scope (all three tiers
+              // draw from the same pool), so one compact button serves
+              // the whole section.
+              FcmSectionTitle(
+                scopeLabel,
+                trailing: _ViewPlayersButton(onPressed: () => onInfo(head)),
+              ),
+              const SizedBox(height: 2),
+              SizedBox(
+                height: 260,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < ordered.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 8),
+                      Expanded(
+                        child: _StorePackCell(
+                          offer: ordered[i],
+                          ownedCount: owned[_scopeKey(
+                                  ordered[i].category.name,
+                                  ordered[i].scopeValue,
+                                  ordered[i].tier.name)]
+                              ?.length ??
+                              0,
+                          coins: coins,
+                          onTap: () {
+                            final ownedHere = (owned[_scopeKey(
+                                    ordered[i].category.name,
+                                    ordered[i].scopeValue,
+                                    ordered[i].tier.name)] ??
+                                const <Pack>[]);
+                            if (opening) return;
+                            if (ownedHere.isNotEmpty) {
+                              onOpen(ownedHere.first.id, ordered[i].tier);
+                            } else {
+                              onBuy(ordered[i]);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 12),
       ],
     );
   }

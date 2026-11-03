@@ -1,6 +1,8 @@
-// Pack opening sequence (GDD 5.6): tap → charge → burst → nationality and
-// position walkout → card flip → stats count up → NAME reveal → SELL /
-// KEEP buttons. The player's name is hidden until the stats have appeared.
+// Pack opening sequence (GDD 5.6): the sealed pack tears itself open
+// automatically after a short beat (a tap skips the wait) → charge →
+// burst → nationality and position walkout → card flip → stats count up
+// → NAME reveal → SELL / KEEP buttons. The player's name is hidden until
+// the stats have appeared.
 // The reveal is never skippable — the SKIP control is gone and the full
 // timeline always plays; SELL sits left of KEEP, carries the player's coin
 // value, and sells him through the caller's callback.
@@ -27,30 +29,74 @@ BasePlayer _player({int overall = 87}) => BasePlayer(
           overall: overall, attack: 91, support: 72, defence: 40, goalkeeping: 0),
     );
 
-Future<void> _revealAll(WidgetTester tester) async {
-  await tester.tap(find.text('TAP TO OPEN'));
+/// Advances past the auto-open beat (1100ms) so the sequence runs on
+/// its own — the user never taps to start it.
+Future<void> _autoOpen(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 1100));
   await tester.pump();
+}
+
+Future<void> _revealAll(WidgetTester tester) async {
+  await _autoOpen(tester);
   // The full 8s sequence, then the button fade-in.
   await tester.pump(const Duration(seconds: 8));
   await tester.pump(const Duration(milliseconds: 400));
 }
 
 void main() {
+  testWidgets('the pack tears itself open automatically — no tap step',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: PackOpeningScreen(players: [_player()]),
+    ));
+    // During the sealed beat there is no prompt at all…
+    expect(find.text('TAP TO OPEN'), findsNothing);
+    // …the sequence has not started…
+    final idle = tester
+        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    expect(idle.opacity, 0);
+    // …and the timeline is still at zero.
+    expect(find.text(flagEmojiFor('Brazil')), findsNothing);
+
+    // A beat later the pack charges on its own — the walkout proves the
+    // timeline advanced without any tap.
+    await _autoOpen(tester);
+    await tester.pump(const Duration(milliseconds: 3300));
+    expect(find.text(flagEmojiFor('Brazil')), findsOneWidget);
+    expect(find.text('ST'), findsOneWidget);
+  });
+
+  testWidgets('the sealed pack wears the store cell tier metal',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: PackOpeningScreen(
+        players: [_player()],
+        packTint: const Color(0xFF8B5CF6), // rare amethyst
+      ),
+    ));
+    // Painting with a tint must not throw; before the auto-open fires
+    // the close control is still offered, after the beat it is gone.
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byIcon(Icons.close), findsOneWidget);
+    await _autoOpen(tester);
+    expect(find.byIcon(Icons.close), findsNothing);
+  });
+
   testWidgets('sequence runs from sealed pack to the revealed stat card',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: PackOpeningScreen(players: [_player()]),
     ));
 
-    // Sealed pack waits for a tap; the action row is not offered yet.
-    expect(find.text('TAP TO OPEN'), findsOneWidget);
+    // Sealed pack floats for a beat with no tap prompt; the action row
+    // is not offered yet.
+    expect(find.text('TAP TO OPEN'), findsNothing);
     final keepOpacity = tester
         .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
     expect(keepOpacity.opacity, 0);
 
-    await tester.tap(find.text('TAP TO OPEN'));
-    await tester.pump();
-    expect(find.text('TAP TO OPEN'), findsNothing);
+    // The beat passes and the pack tears itself open — no tap needed.
+    await _autoOpen(tester);
 
     // Walkout (timeline ~0.32–0.40 of 8s): flag, nationality, position —
     // but NOT the name: the identity is held back until the stats land.
@@ -96,8 +142,7 @@ void main() {
         onSell: (ownedId) async {},
       ),
     ));
-    await tester.tap(find.text('TAP TO OPEN'));
-    await tester.pump();
+    await _autoOpen(tester);
     // Halfway through the timeline there is still no way to skip.
     await tester.pump(const Duration(seconds: 4));
     expect(find.text('SKIP'), findsNothing);
@@ -165,15 +210,35 @@ void main() {
 
   testWidgets('no onSell callback — SELL is hidden, KEEP works alone',
       (tester) async {
+    // Pushed like the store does (a pop on MaterialApp's home route
+    // would be a no-op, so the reveal is always tested as a route).
     await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_player()]),
+      home: Builder(
+        builder: (context) => FilledButton(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                fullscreenDialog: true,
+                builder: (_) =>
+                    PackOpeningScreen(players: [_player()]),
+              )),
+          child: const Text('PUSH'),
+        ),
+      ),
     ));
+    await tester.tap(find.text('PUSH'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await _revealAll(tester);
     expect(find.textContaining('SELL'), findsNothing);
     expect(find.text('KEEP PLAYER'), findsOneWidget);
-    await tester.tap(find.text('KEEP PLAYER'));
+    await tester.tap(find.text('KEEP PLAYER'), warnIfMissed: false);
+    // The pop runs synchronously; the fullscreen-dialog exit
+    // transition then unwinds across the next frames.
     await tester.pump();
-    // The single player is kept and the screen pops.
-    expect(find.text('TAP TO OPEN'), findsNothing);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    // The single player is kept and the reveal pops back to the pusher.
+    expect(find.byType(PackOpeningScreen), findsNothing);
+    expect(find.text('PUSH'), findsOneWidget);
   });
 }
