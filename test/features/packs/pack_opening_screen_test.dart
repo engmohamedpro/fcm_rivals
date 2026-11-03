@@ -1,5 +1,6 @@
 // Pack opening sequence (GDD 5.6): the sealed pack tears itself open
-// automatically after a short beat (a tap skips the wait) → charge →
+// IMMEDIATELY (the timeline runs from the first frame — no wait, no
+// tap-to-open step, no close control) → charge →
 // burst → nationality and position walkout → card flip → stats count up
 // → NAME reveal → SELL / KEEP buttons. The player's name is hidden until
 // the stats have appeared.
@@ -29,10 +30,10 @@ BasePlayer _player({int overall = 75}) => BasePlayer(
           overall: overall, attack: 91, support: 72, defence: 40, goalkeeping: 0),
     );
 
-/// Advances past the auto-open beat (1100ms) so the sequence runs on
-/// its own — the user never taps to start it.
+/// One frame so the first-build controller kick renders — the sequence
+/// starts with it, so tests simply pump the time they need.
 Future<void> _autoOpen(WidgetTester tester) async {
-  await tester.pump(const Duration(milliseconds: 1100));
+  await tester.pump();
   await tester.pump();
 }
 
@@ -47,23 +48,24 @@ Future<void> _revealAll(WidgetTester tester) async {
 BasePlayer _legend() => _player(overall: 91);
 
 void main() {
-  testWidgets('the pack tears itself open automatically — no tap step',
+  testWidgets('the pack tears itself open immediately — no tap, no wait',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: PackOpeningScreen(players: [_player()]),
     ));
-    // During the sealed beat there is no prompt at all…
+    // The sequence starts with the first frame: no prompt, no close
+    // control, and the timeline is already moving (the walkout lands
+    // exactly on the schedule the timeline defines, with no 1100ms
+    // beat in front of it).
     expect(find.text('TAP TO OPEN'), findsNothing);
-    // …the sequence has not started…
+    expect(find.byIcon(Icons.close), findsNothing);
     final idle = tester
         .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
     expect(idle.opacity, 0);
-    // …and the timeline is still at zero.
     expect(find.text(flagEmojiFor('Brazil')), findsNothing);
 
-    // A beat later the pack charges on its own — the walkout proves the
-    // timeline advanced without any tap.
-    await _autoOpen(tester);
+    // 3.3s in — mid-walkout on the untampered 8s timeline — the flag
+    // and position have arrived without any tap.
     await tester.pump(const Duration(milliseconds: 3300));
     expect(find.text(flagEmojiFor('Brazil')), findsOneWidget);
     expect(find.text('ST'), findsOneWidget);
@@ -77,10 +79,10 @@ void main() {
         packTint: const Color(0xFF8B5CF6), // rare amethyst
       ),
     ));
-    // Painting with a tint must not throw; before the auto-open fires
-    // the close control is still offered, after the beat it is gone.
+    // Painting with a tint must not throw; the close control is gone
+    // throughout — there is no sealed-pause to escape anymore.
     await tester.pump(const Duration(milliseconds: 200));
-    expect(find.byIcon(Icons.close), findsOneWidget);
+    expect(find.byIcon(Icons.close), findsNothing);
     await _autoOpen(tester);
     expect(find.byIcon(Icons.close), findsNothing);
   });
@@ -91,14 +93,13 @@ void main() {
       home: PackOpeningScreen(players: [_player()]),
     ));
 
-    // Sealed pack floats for a beat with no tap prompt; the action row
-    // is not offered yet.
+    // The action row is never offered before the timeline's done mark.
     expect(find.text('TAP TO OPEN'), findsNothing);
     final keepOpacity = tester
         .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
     expect(keepOpacity.opacity, 0);
 
-    // The beat passes and the pack tears itself open — no tap needed.
+    // The sequence is underway from the first frame — no tap needed.
     await _autoOpen(tester);
 
     // Walkout (timeline ~0.32–0.40 of 8s): flag, nationality, position —

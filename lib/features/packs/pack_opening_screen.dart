@@ -2,8 +2,9 @@
 ///
 /// Sequence for each drawn player (rare and epic pulls, ~8s):
 ///   1. Sealed foil pack floats — in the same tier metal as the store
-///      cell — then tears itself open automatically (tap skips the
-///      wait); no separate tap-to-open step.
+///      cell — then tears itself open immediately (the first frame
+///      renders sealed, the charge starts the moment that frame lands);
+///      no separate tap-to-open step, no wait.
 ///   2. Pack charges (shakes, cracks, glows in the card's rarity colour).
 ///   3. Flash + particle burst.
 ///   4. Walkout: nationality flag → position.
@@ -32,7 +33,6 @@
 /// [Interval]s, so skipping or replaying is just moving its value.
 library;
 
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -247,7 +247,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   late final AnimationController _spin;
 
   int _index = 0;
-  bool _started = false;
   bool _selling = false;
   double _lastT = 0;
   late List<Spark> _sparks;
@@ -299,13 +298,12 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         vsync: this, duration: const Duration(seconds: 30))
       ..repeat();
     _makeSparks();
-    // The pack tears itself open: a beat to admire the sealed foil,
-    // then the sequence starts on its own. A tap during the beat skips
-    // straight to the charge — there is no tap-to-open step to sit on.
-    _autoOpen = Timer(const Duration(milliseconds: 1100), _start);
+    // The pack tears itself open immediately: the timeline runs from the
+    // first frame, so the sealed foil is on screen for exactly that one
+    // frame before the charge — no wait, no tap-to-open step.
+    _haptic(HapticFeedback.lightImpact);
+    _playFrom(0);
   }
-
-  Timer? _autoOpen;
 
   void _makeSparks() {
     final r = math.Random(_player.playerId * 31 + _index);
@@ -315,7 +313,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   @override
   void dispose() {
-    _autoOpen?.cancel();
     _seq.dispose();
     _idle.dispose();
     _spin.dispose();
@@ -347,13 +344,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     _seq.forward(from: from);
   }
 
-  void _start() {
-    if (_started) return;
-    setState(() => _started = true);
-    _haptic(HapticFeedback.lightImpact);
-    _playFrom(0);
-  }
-
   void _next() {
     if (_index < widget.players.length - 1) {
       setState(() {
@@ -371,13 +361,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final rarity = _rarity;
     return Scaffold(
       backgroundColor: FcmColors.night,
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _started ? null : _start,
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_seq, _idle, _spin]),
-          builder: (context, _) => _buildStage(context, rarity),
-        ),
+      body: AnimatedBuilder(
+        animation: Listenable.merge([_seq, _idle, _spin]),
+        builder: (context, _) => _buildStage(context, rarity),
       ),
     );
   }
@@ -632,24 +618,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
 
-        // Top bar: close while the pack is still sealed (before the
-        // auto-open fires). The reveal itself is never skippable — the
-        // full sequence always plays.
-        SafeArea(
-          child: Align(
-            alignment: Alignment.topRight,
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: !_started
-                  ? IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white70),
-                      onPressed: () => Navigator.of(context).pop(),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ),
-        ),
-
         // Sell / Keep once the stats have counted up: SELL first, then
         // KEEP — both always visible so the choice is one glance.
         SafeArea(
@@ -707,9 +675,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final legend = tl.isLegend;
     final packW = math.min(size.width * 0.52, 230.0);
     final packH = packW / kPackAspect;
-    // Idle float before tapping; violent shake while charging — harder
-    // and faster for a legendary heartbeat.
-    final bob = _started ? 0.0 : math.sin(_idle.value * 2 * math.pi) * 10;
+    // Violent shake while charging — harder and faster for a legendary
+    // heartbeat.
     final shake = math.sin(charge * (legend ? 150 : 90)) *
         (legend ? 13 : 9) *
         charge;
@@ -720,7 +687,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     return Opacity(
       opacity: fade.clamp(0.0, 1.0),
       child: Transform.translate(
-        offset: Offset(shake, bob),
+        offset: Offset(shake, 0),
         child: Transform.rotate(
           angle: tilt,
           child: Transform.scale(
