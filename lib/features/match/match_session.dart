@@ -409,6 +409,7 @@ class MatchSession {
       },
       homeTeamName: userAtHome ? club.name : _opponentName,
       awayTeamName: userAtHome ? _opponentName : club.name,
+      keyEventsOnly: true,
     );
 
     // Match rewards (GDD 17.6): base + per-goal for the USER's goals,

@@ -398,11 +398,17 @@ List<PlayerMatchRating> computePlayerRatings({
 ///
 /// Player names are resolved through [playerNames]; unknown ids fall back
 /// to role descriptions so commentary never contradicts events.
+///
+/// [keyEventsOnly] filters to the broadcast track: goals, penalties, red
+/// cards, saves, bookings, kick-off/half-time/full-time and tactical
+/// changes — the moments a real commentator raises his voice for. The
+/// default keeps every line (filler included) for the full record.
 List<CommentaryLine> generateCommentary(
   List<MatchEvent> events, {
   required Map<int, String> playerNames,
   required String homeTeamName,
   required String awayTeamName,
+  bool keyEventsOnly = false,
 }) {
   final lines = <CommentaryLine>[];
   String name(int? id) => id == null ? 'a player' : (playerNames[id] ?? 'an opponent');
@@ -556,6 +562,9 @@ List<CommentaryLine> generateCommentary(
             text: '${team(e)} are told to $action.',
             importance: 1));
     }
+  }
+  if (keyEventsOnly) {
+    return lines.where((l) => l.importance > 0).toList();
   }
   return lines;
 }

@@ -47,6 +47,7 @@ class TacticsSetupView extends StatelessWidget {
     this.onAutoPick,
     this.showStamina = true,
     this.showStats = true,
+    this.showReserves = true,
     this.onPlayerTap,
   });
 
@@ -83,6 +84,11 @@ class TacticsSetupView extends StatelessWidget {
   /// The pre-match phase shows it for match-day decisions; the Tactics
   /// tab hides it — the setup surface stays about shape, not attributes.
   final bool showStats;
+
+  /// Whether the reserves strip renders at all. The Team tab and the
+  /// pre-match phase show the full 23-man surface; the LIVE tactics
+  /// editor hides it — a match day squad has nobody beyond the bench.
+  final bool showReserves;
 
   /// Opens the player detail sheet; null makes the cards non-tappable.
   final void Function(PlayerCard card)? onPlayerTap;
@@ -136,14 +142,16 @@ class TacticsSetupView extends StatelessWidget {
             showStamina: showStamina,
             showStats: showStats,
             onPlayerTap: onPlayerTap),
-        FcmSectionTitle(
-            'Reserves (${reserves.length}/${Formation.reservesSize})'),
-        SquadCardRow(
-            cards: reserves,
-            emptySlots: Formation.reservesSize - reserves.length,
-            showStamina: showStamina,
-            showStats: showStats,
-            onPlayerTap: onPlayerTap),
+        if (showReserves) ...[
+          FcmSectionTitle(
+              'Reserves (${reserves.length}/${Formation.reservesSize})'),
+          SquadCardRow(
+              cards: reserves,
+              emptySlots: Formation.reservesSize - reserves.length,
+              showStamina: showStamina,
+              showStats: showStats,
+              onPlayerTap: onPlayerTap),
+        ],
       ],
     );
   }

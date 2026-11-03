@@ -230,6 +230,17 @@ class FacilityLevels extends Table {
   DateTimeColumn get upgradedAt => dateTime().nullable()();
 }
 
+/// App-level user preferences (single row, id = 1): the chosen match
+/// playback speed and other cross-session UI settings. Written by the
+/// live match screen the moment the user changes a value, read at the
+/// next kick-off — the choice sticks FOREVER, not just for one match.
+class UserSettings extends Table {
+  IntColumn get id => integer()();
+
+  /// Live match playback speed multiplier: 1, 2, 3 or 4 (GDD 26.2).
+  IntColumn get matchSpeed => integer().withDefault(const Constant(1))();
+}
+
 @DriftDatabase(tables: [
   Players,
   DatasetVersions,
@@ -244,12 +255,13 @@ class FacilityLevels extends Table {
   AiPlayers,
   AdUsages,
   FacilityLevels,
+  UserSettings,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -298,6 +310,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 7) {
             // Club campus facilities (GDD 3.5): the upgrade tab's state.
             await m.createTable(facilityLevels);
+          }
+          if (from < 8) {
+            // App-level preferences (match playback speed, GDD 26.2).
+            await m.createTable(userSettings);
           }
         },
       );

@@ -15,6 +15,7 @@ import '../core/database/app_database.dart';
 import '../features/ads/ad_store.dart';
 import '../features/collection/collection_store.dart';
 import '../features/facilities/facilities.dart';
+import '../features/settings/user_settings_store.dart';
 import '../features/season/season_engine.dart' show StandingEntry;
 import '../features/season/season_store.dart';
 import '../features/squad/formations.dart';
@@ -56,6 +57,13 @@ final collectionStoreProvider = FutureProvider<CollectionStore>((ref) async {
 
 /// Random source for pack draws and merges; seedable in tests.
 final randomProvider = Provider<math.Random>((ref) => math.Random());
+
+/// App-level user settings (match playback speed): the chosen speed
+/// persists across matches and app restarts (GDD 26.2).
+final userSettingsProvider = FutureProvider<UserSettingsStore>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  return UserSettingsStore(database: db);
+});
 
 /// The user club, null until created (FR-001).
 final clubProvider = FutureProvider<Club?>((ref) async {

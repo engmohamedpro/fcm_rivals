@@ -1,22 +1,25 @@
 /// FCM Rivals — live tactical changes screen (GDD 10.4/16).
 ///
-/// The tactics button in the live match header opens THIS: the full
-/// pitch editor — the same surface the user knows from before the
-/// match (pre-match tactics phase / Team tab): a live pitch with the
-/// current XI at formation coordinates, formation / playing style /
-/// mentality with their visible effects, the 10-minute live actions
-/// and the substitution picker. Every change queues for the next
-/// minute boundary; the match clock is held while the editor is open.
+/// The tactics button in the live match header opens THIS: the same
+/// tactics surface the user knows from the pre-match phase and the
+/// Team tab — control card with formation / playing style / mentality
+/// (with their visible effects), the pitch with the CURRENT XI at
+/// formation coordinates and live stamina bars, and the bench strip.
+/// No reserves here: a live match only has the XI and the bench.
+///
+/// Every change queues for the next minute boundary; the match clock
+/// is held while the editor is open. Substitutions run through the
+/// same engine-enforced five windows as before.
 library;
 
 import 'package:flutter/material.dart';
 
-import '../../core/domain/players.dart' show Position;
+import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
-import '../../core/ui/player_card.dart';
 import '../../core/ui/match_backdrop.dart';
-import '../squad/formations.dart';
+import '../squad/squad_engine.dart' show PlayerCard;
+import '../squad/squad_view.dart' show TacticsSetupView;
 import 'match_engine.dart';
 import 'match_session.dart';
 import 'tactics.dart';
@@ -56,11 +59,19 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
   Widget build(BuildContext context) {
     final engine = widget.session.engine;
     final formationCode = engine.formationOf(_side);
-    final formation = formationByCode(formationCode);
     final onPitch = engine.onPitchOf(_side);
+    final bench = engine.benchOf(_side);
     final style = engine.styleOf(_side);
     final mentality = engine.mentalityOf(_side);
     final nextMinute = widget.minuteQueuedFrom;
+
+    // The live XI as display cards: real overall, live stamina — what
+    // the user sees is the team that is actually on the pitch.
+    final xiCards = <int, PlayerCard>{
+      for (var slot = 0; slot < onPitch.length; slot++)
+        slot: _cardOf(onPitch[slot]),
+    };
+    final benchCards = [for (final p in bench) _cardOf(p)];
 
     return Scaffold(
       appBar: AppBar(
@@ -87,8 +98,8 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: FcmPanel(
                     accent: FcmColors.success,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
                     child: Row(
                       children: [
                         const Icon(Icons.schedule_rounded,
@@ -120,61 +131,36 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                     style: TextStyle(color: FcmColors.textDim, fontSize: 12),
                   ),
                 ),
-              _TacticsDropdownRow(
-                label: 'Formation',
-                child: FcmDropdown<String>(
-                  icon: Icons.grid_on_rounded,
-                  items: [
-                    for (final f in formations)
-                      FcmDropdownItem(value: f.code, label: f.name),
-                  ],
-                  selected: formationCode,
-                  onChanged: (code) => _queue(ChangeFormationCommand(
-                    atMinute: nextMinute,
-                    side: _side,
-                    formationCode: code,
-                  )),
-                ),
+              // The SAME surface as the pre-match tactics phase: control
+              // card + pitch + bench (no reserves — a live match has
+              // nobody beyond the bench).
+              TacticsSetupView(
+                formationCode: formationCode,
+                style: style,
+                mentality: mentality,
+                xi: xiCards,
+                bench: benchCards,
+                reserves: const [],
+                onFormation: (code) => _queue(ChangeFormationCommand(
+                  atMinute: nextMinute,
+                  side: _side,
+                  formationCode: code,
+                )),
+                onStyle: (s) => _queue(ChangeStyleCommand(
+                  atMinute: nextMinute,
+                  side: _side,
+                  style: s,
+                )),
+                onMentality: (m) => _queue(ChangeMentalityCommand(
+                  atMinute: nextMinute,
+                  side: _side,
+                  mentality: m,
+                )),
+                showStamina: true,
+                showStats: true,
+                showReserves: false,
+                onPlayerTap: _onPlayerTap,
               ),
-              const SizedBox(height: 10),
-              _TacticsDropdownRow(
-                label: 'Playing style',
-                child: FcmDropdown<PlayingStyle>(
-                  icon: Icons.directions_run_rounded,
-                  items: [
-                    for (final s in PlayingStyle.values)
-                      FcmDropdownItem(
-                          value: s, label: s.displayName, subtitle: s.effectSummary),
-                  ],
-                  selected: style,
-                  onChanged: (s) => _queue(ChangeStyleCommand(
-                    atMinute: nextMinute,
-                    side: _side,
-                    style: s,
-                  )),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _TacticsDropdownRow(
-                label: 'Mentality',
-                child: FcmDropdown<Mentality>(
-                  icon: Icons.psychology_rounded,
-                  items: [
-                    for (final m in Mentality.values)
-                      FcmDropdownItem(
-                          value: m, label: m.displayName, subtitle: m.effectSummary),
-                  ],
-                  selected: mentality,
-                  onChanged: (m) => _queue(ChangeMentalityCommand(
-                    atMinute: nextMinute,
-                    side: _side,
-                    mentality: m,
-                  )),
-                ),
-              ),
-              const SizedBox(height: 14),
-              FcmSectionTitle('Starting XI'),
-              _LivePitch(formation: formation, players: onPitch),
               const SizedBox(height: 14),
               FcmSectionTitle('Live action · 10 minutes'),
               Padding(
@@ -224,110 +210,67 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
       ),
     );
   }
-}
 
-class _TacticsDropdownRow extends StatelessWidget {
-  const _TacticsDropdownRow({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: FcmColors.textDim,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2)),
-        const SizedBox(height: 6),
-        child,
-      ],
-    );
-  }
-}
-
-/// The live pitch: engine players at formation coordinates — the same
-/// slot layout as the pre-match editor, with live stamina bars.
-class _LivePitch extends StatelessWidget {
-  const _LivePitch({required this.formation, required this.players});
-
-  final Formation formation;
-  final List<MatchPlayer> players;
-
-  @override
-  Widget build(BuildContext context) {
-    // onPitchOf returns players in slot order (0 = keeper).
-    final bySlot = <int, MatchPlayer>{
-      for (var i = 0; i < players.length; i++) i: players[i],
-    };
-    return AspectRatio(
-      aspectRatio: 1.05,
-      child: LayoutBuilder(builder: (context, c) {
-        final pw = c.maxWidth, ph = c.maxHeight;
-        const cardW = 52.0;
-        final slotW = cardW + 10;
-        final slotH = cardW / kPlayerCardAspect + 40;
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: Stack(
-              children: [
-                // Same mown-grass base as the squad pitch.
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFF41502F), Color(0xFF57683F)],
-                      ),
-                    ),
-                  ),
-                ),
-                for (var slot = 0; slot < formation.slots.length; slot++)
-                  () {
-                    final fs = formation.slots[slot];
-                    final p = bySlot[slot];
-                    return Positioned(
-                      key: ValueKey('live-slot-$slot'),
-                      left: 6 + (fs.x / 100) * (pw - slotW - 12),
-                      top: 6 + (1 - fs.y / 100) * (ph - slotH - 12),
-                      width: slotW,
-                      child: p == null
-                          ? const SizedBox.shrink()
-                          : FcmMiniCard(
-                              overall: _overallOf(p),
-                              position: p.position.code,
-                              name: p.name.split(' ').last,
-                              rarity: CardRarity.rare,
-                              width: cardW,
-                              warn: fs.position != p.position,
-                              stamina: p.stamina.round(),
-                            ),
-                    );
-                  }(),
-              ],
-            ),
-          ),
-        );
-      }),
-    );
+  /// Tapping an on-pitch or bench card starts a substitution: the tapped
+  /// player is the one coming off, the next tap on the bench confirms.
+  /// The engine still enforces the five windows; tapping a bench player
+  /// with nobody selected does nothing.
+  void _onPlayerTap(PlayerCard card) {
+    final engine = widget.session.engine;
+    final onPitch = engine.onPitchOf(_side);
+    final isOnPitch =
+        onPitch.any((p) => p.playerId == card.base.playerId);
+    if (isOnPitch) {
+      fcmTick();
+      setState(() => _subOut = onPitch
+          .firstWhere((p) => p.playerId == card.base.playerId));
+    } else if (_subOut != null) {
+      final bench = engine.benchOf(_side);
+      final sub = bench
+          .where((p) => p.playerId == card.base.playerId)
+          .firstOrNull;
+      if (sub != null) {
+        widget.session.queueCommand(SubstitutionCommand(
+          atMinute: engine.state.minute + 1,
+          side: _side,
+          outPlayerId: _subOut!.playerId,
+          inPlayerId: sub.playerId,
+        ));
+        fcmTick();
+        setState(() {
+          _subOut = null;
+          _queuedSomething = true;
+        });
+      }
+    }
   }
 
-  static int _overallOf(MatchPlayer p) {
+  /// Display card for a live engine player: overall from his best live
+  /// attributes, stamina from the engine's live value.
+  PlayerCard _cardOf(MatchPlayer p) {
     final gk = p.position == Position.gk;
-    final best = gk
-        ? [p.goalkeeping, p.defence, p.support]
-        : [p.attack, p.support, p.defence];
-    return best.reduce((a, b) => a > b ? a : b);
+    final overall = gk
+        ? [p.goalkeeping, p.defence, p.support].reduce((a, b) => a > b ? a : b)
+        : [p.attack, p.support, p.defence].reduce((a, b) => a > b ? a : b);
+    return PlayerCard(
+      ownedId: p.playerId,
+      upgradeLevel: 0,
+      staminaPercent: p.stamina.round(),
+      base: BasePlayer(
+        playerId: p.playerId,
+        name: p.name,
+        position: p.position,
+        nationality: '',
+        marketValueEur: 0,
+        baseStats: BaseStats(
+          overall: overall,
+          attack: p.attack,
+          support: p.support,
+          defence: p.defence,
+          goalkeeping: p.goalkeeping,
+        ),
+      ),
+    );
   }
 }
 

@@ -764,6 +764,8 @@ class TouchlinePepTalkCard extends StatelessWidget {
     required this.talks,
     required this.onChoose,
     required this.onSkip,
+    this.scoreHeader,
+    this.onEditTactics,
   });
 
   final String title;
@@ -771,6 +773,16 @@ class TouchlinePepTalkCard extends StatelessWidget {
   final List<MatchPepTalk> talks;
   final ValueChanged<MatchPepTalk> onChoose;
   final VoidCallback onSkip;
+
+  /// Optional half-time score banner: 'HOME 1 – 0 AWAY'. Present only on
+  /// the half-time card — it must be unmistakable that this is HALF TIME,
+  /// not a random pause.
+  final String? scoreHeader;
+
+  /// Opens the live tactics editor mid-break (half-time only): the same
+  /// 'Edit tactics' entry the live header offers, so the manager can
+  /// rethink the setup before the second half kicks off.
+  final VoidCallback? onEditTactics;
 
   @override
   Widget build(BuildContext context) {
@@ -808,6 +820,31 @@ class TouchlinePepTalkCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (scoreHeader != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: FcmColors.gold.withValues(alpha: 0.10),
+                      border: Border(
+                          top: BorderSide(
+                              color: FcmColors.gold.withValues(alpha: 0.5)),
+                          bottom: BorderSide(
+                              color: FcmColors.gold.withValues(alpha: 0.5))),
+                    ),
+                    child: Text(
+                      scoreHeader!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: FcmColors.gold,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
@@ -824,6 +861,16 @@ class TouchlinePepTalkCard extends StatelessWidget {
                     child: _PepTalkOption(
                       talk: talk,
                       onTap: () => onChoose(talk),
+                    ),
+                  ),
+                if (onEditTactics != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: FcmButton(
+                      compact: true,
+                      icon: Icons.tune_rounded,
+                      label: 'EDIT TACTICS',
+                      onPressed: onEditTactics,
                     ),
                   ),
                 TextButton(

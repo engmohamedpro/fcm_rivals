@@ -79,9 +79,10 @@ Future<void> _flush(
 Future<void> _playToFullTime(WidgetTester tester) async {
   for (var i = 0; i < 220; i++) {
     await tester.pump(const Duration(milliseconds: 200));
-    // The half-time touchline card holds the clock — 'say nothing'
-    // skips the talk and resumes play.
-    if (find.text('Half-time pep talk').evaluate().isNotEmpty) {
+    // The half-time touchline card holds the clock — its title is the
+    // unmistakable HALF TIME banner. 'Say nothing' skips the talk and
+    // resumes play.
+    if (find.text('HALF TIME').evaluate().isNotEmpty) {
       await tester.tap(find.text('Say nothing — back to the match'));
       await tester.pump(const Duration(milliseconds: 400));
     }

@@ -6679,6 +6679,215 @@ class FacilityLevelsCompanion extends UpdateCompanion<FacilityLevel> {
   }
 }
 
+class $UserSettingsTable extends UserSettings
+    with TableInfo<$UserSettingsTable, UserSetting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _matchSpeedMeta = const VerificationMeta(
+    'matchSpeed',
+  );
+  @override
+  late final GeneratedColumn<int> matchSpeed = GeneratedColumn<int>(
+    'match_speed',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, matchSpeed];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserSetting> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('match_speed')) {
+      context.handle(
+        _matchSpeedMeta,
+        matchSpeed.isAcceptableOrUnknown(data['match_speed']!, _matchSpeedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => const {};
+  @override
+  UserSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserSetting(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      matchSpeed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}match_speed'],
+      )!,
+    );
+  }
+
+  @override
+  $UserSettingsTable createAlias(String alias) {
+    return $UserSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class UserSetting extends DataClass implements Insertable<UserSetting> {
+  final int id;
+
+  /// Live match playback speed multiplier: 1, 2, 3 or 4 (GDD 26.2).
+  final int matchSpeed;
+  const UserSetting({required this.id, required this.matchSpeed});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['match_speed'] = Variable<int>(matchSpeed);
+    return map;
+  }
+
+  UserSettingsCompanion toCompanion(bool nullToAbsent) {
+    return UserSettingsCompanion(id: Value(id), matchSpeed: Value(matchSpeed));
+  }
+
+  factory UserSetting.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserSetting(
+      id: serializer.fromJson<int>(json['id']),
+      matchSpeed: serializer.fromJson<int>(json['matchSpeed']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'matchSpeed': serializer.toJson<int>(matchSpeed),
+    };
+  }
+
+  UserSetting copyWith({int? id, int? matchSpeed}) =>
+      UserSetting(id: id ?? this.id, matchSpeed: matchSpeed ?? this.matchSpeed);
+  UserSetting copyWithCompanion(UserSettingsCompanion data) {
+    return UserSetting(
+      id: data.id.present ? data.id.value : this.id,
+      matchSpeed: data.matchSpeed.present
+          ? data.matchSpeed.value
+          : this.matchSpeed,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSetting(')
+          ..write('id: $id, ')
+          ..write('matchSpeed: $matchSpeed')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, matchSpeed);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserSetting &&
+          other.id == this.id &&
+          other.matchSpeed == this.matchSpeed);
+}
+
+class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
+  final Value<int> id;
+  final Value<int> matchSpeed;
+  final Value<int> rowid;
+  const UserSettingsCompanion({
+    this.id = const Value.absent(),
+    this.matchSpeed = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UserSettingsCompanion.insert({
+    required int id,
+    this.matchSpeed = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id);
+  static Insertable<UserSetting> custom({
+    Expression<int>? id,
+    Expression<int>? matchSpeed,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (matchSpeed != null) 'match_speed': matchSpeed,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UserSettingsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? matchSpeed,
+    Value<int>? rowid,
+  }) {
+    return UserSettingsCompanion(
+      id: id ?? this.id,
+      matchSpeed: matchSpeed ?? this.matchSpeed,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (matchSpeed.present) {
+      map['match_speed'] = Variable<int>(matchSpeed.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSettingsCompanion(')
+          ..write('id: $id, ')
+          ..write('matchSpeed: $matchSpeed, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6699,6 +6908,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AiPlayersTable aiPlayers = $AiPlayersTable(this);
   late final $AdUsagesTable adUsages = $AdUsagesTable(this);
   late final $FacilityLevelsTable facilityLevels = $FacilityLevelsTable(this);
+  late final $UserSettingsTable userSettings = $UserSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6717,6 +6927,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     aiPlayers,
     adUsages,
     facilityLevels,
+    userSettings,
   ];
 }
 
@@ -10162,6 +10373,160 @@ typedef $$FacilityLevelsTableProcessedTableManager =
       FacilityLevel,
       PrefetchHooks Function()
     >;
+typedef $$UserSettingsTableCreateCompanionBuilder =
+    UserSettingsCompanion Function({
+      required int id,
+      Value<int> matchSpeed,
+      Value<int> rowid,
+    });
+typedef $$UserSettingsTableUpdateCompanionBuilder =
+    UserSettingsCompanion Function({
+      Value<int> id,
+      Value<int> matchSpeed,
+      Value<int> rowid,
+    });
+
+class $$UserSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $UserSettingsTable> {
+  $$UserSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get matchSpeed => $composableBuilder(
+    column: $table.matchSpeed,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UserSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $UserSettingsTable> {
+  $$UserSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get matchSpeed => $composableBuilder(
+    column: $table.matchSpeed,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UserSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UserSettingsTable> {
+  $$UserSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get matchSpeed => $composableBuilder(
+    column: $table.matchSpeed,
+    builder: (column) => column,
+  );
+}
+
+class $$UserSettingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UserSettingsTable,
+          UserSetting,
+          $$UserSettingsTableFilterComposer,
+          $$UserSettingsTableOrderingComposer,
+          $$UserSettingsTableAnnotationComposer,
+          $$UserSettingsTableCreateCompanionBuilder,
+          $$UserSettingsTableUpdateCompanionBuilder,
+          (
+            UserSetting,
+            BaseReferences<_$AppDatabase, $UserSettingsTable, UserSetting>,
+          ),
+          UserSetting,
+          PrefetchHooks Function()
+        > {
+  $$UserSettingsTableTableManager(_$AppDatabase db, $UserSettingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UserSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UserSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UserSettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> matchSpeed = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UserSettingsCompanion(
+                id: id,
+                matchSpeed: matchSpeed,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int id,
+                Value<int> matchSpeed = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UserSettingsCompanion.insert(
+                id: id,
+                matchSpeed: matchSpeed,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$UserSettingsTable, UserSetting>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UserSettingsTable,
+                    UserSetting
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UserSettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UserSettingsTable,
+      UserSetting,
+      $$UserSettingsTableFilterComposer,
+      $$UserSettingsTableOrderingComposer,
+      $$UserSettingsTableAnnotationComposer,
+      $$UserSettingsTableCreateCompanionBuilder,
+      $$UserSettingsTableUpdateCompanionBuilder,
+      (
+        UserSetting,
+        BaseReferences<_$AppDatabase, $UserSettingsTable, UserSetting>,
+      ),
+      UserSetting,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10192,4 +10557,6 @@ class $AppDatabaseManager {
       $$AdUsagesTableTableManager(_db, _db.adUsages);
   $$FacilityLevelsTableTableManager get facilityLevels =>
       $$FacilityLevelsTableTableManager(_db, _db.facilityLevels);
+  $$UserSettingsTableTableManager get userSettings =>
+      $$UserSettingsTableTableManager(_db, _db.userSettings);
 }

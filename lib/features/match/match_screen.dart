@@ -74,6 +74,13 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   bool _usedAdBoost = false;
   String? _error;
   bool _halfTimeOffered = false;
+
+  /// True while the half-time card is up OVER the frozen match (the
+  /// auto-play clock stops for it). Separate from [_sheetOpen], which
+  /// the tactics editor toggles: editing tactics at half time must NOT
+  /// dismiss the pep-talk choice — the card comes back when the editor
+  /// closes, until the manager talks or skips.
+  bool _halfTimeCardUp = false;
   bool _finishing = false;
 
   /// True while the post-match recovery card is up over the full-time
@@ -137,6 +144,22 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     // Kick-off: the ambience starts with the first half and runs until
     // full time (stopped there — the post-match report is silent).
     unawaited(_audio.start());
+    // The last chosen playback speed carries over — the preference
+    // sticks FOREVER, across matches and app restarts (GDD 26.2).
+    unawaited(_loadPersistedSpeed());
+  }
+
+  Future<void> _loadPersistedSpeed() async {
+    try {
+      final store = await ref.read(userSettingsProvider.future);
+      final speed = await store.matchSpeed();
+      if (speed != _speed && mounted && !_finished) {
+        setState(() => _speed = speed);
+      }
+    } catch (_) {
+      // Settings are decorative to the match itself — a storage hiccup
+      // just leaves this match at the default speed.
+    }
   }
 
   @override
@@ -188,6 +211,17 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     if (speed == _speed || _finished) return;
     fcmTick();
     setState(() => _speed = speed);
+    // Remember the choice for every future match (GDD 26.2).
+    unawaited(_persistSpeed(speed));
+  }
+
+  Future<void> _persistSpeed(int speed) async {
+    try {
+      final store = await ref.read(userSettingsProvider.future);
+      await store.setMatchSpeed(speed);
+    } catch (_) {
+      // Best-effort: the match itself never depends on the write.
+    }
   }
 
   void _togglePause() {
@@ -205,11 +239,15 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     if (session.isFinished) return;
     final events = session.advanceMinute();
     if (events.isNotEmpty) {
+      // Broadcast track only: the feed carries key moments, not every
+      // pass and tackle — a real commentator raises his voice for goals,
+      // saves, cards and penalties, not for a midfield throw-in.
       final lines = generateCommentary(
         events,
         playerNames: session.allPlayerNames,
         homeTeamName: session.homeTeamName,
         awayTeamName: session.awayTeamName,
+        keyEventsOnly: true,
       );
       // One rebuild per minute: rows, stats and score update together.
       setState(() {
@@ -260,12 +298,18 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// up, so the match waits for the decision; effects apply from the
   /// second-half kick-off, ad-free like every pep talk (FR-043).
   void _showHalfTimeTalk() {
-    setState(() => _sheetOpen = true);
+    setState(() {
+      _sheetOpen = true;
+      _halfTimeCardUp = true;
+    });
   }
 
   void _hideHalfTimeTalk({MatchPepTalk? talk}) {
     final session = widget.session;
-    setState(() => _sheetOpen = false);
+    setState(() {
+      _sheetOpen = false;
+      _halfTimeCardUp = false;
+    });
     if (talk != null && !session.isFinished) {
       session.queueHalfTimeTalk(talk);
     }
@@ -421,14 +465,20 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
 
   /// The half-time touchline card, shown over the frozen match.
   Widget _buildHalfTimeCard() {
+    final session = widget.session;
+    final state = session.engine.state;
     return TouchlinePepTalkCard(
-      title: 'Half-time pep talk',
+      title: 'HALF TIME',
+      scoreHeader:
+          '${session.homeTeamName} ${state.scoreHome} – ${state.scoreAway} '
+          '${session.awayTeamName}',
       subtitle:
-          'One choice for the second half — applies from kick-off of the '
-          'second half. The match waits.',
+          'Pep talk for the second half — applies from kick-off. The match '
+          'waits. You can also edit tactics before the restart.',
       talks: halfTimePepTalks,
       onChoose: (talk) => _hideHalfTimeTalk(talk: talk),
       onSkip: _hideHalfTimeTalk,
+      onEditTactics: () => _openLiveTactics(context),
     );
   }
 
@@ -555,7 +605,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                         ],
                       ),
                       // Half-time touchline card over the frozen match.
-                      if (!_finished && _sheetOpen && !_recoveryPending)
+                      if (!_finished && _halfTimeCardUp && !_recoveryPending)
                         _buildHalfTimeCard(),
                       // Post-match recovery card over the full-time
                       // scoreboard — same touchline design.
@@ -587,7 +637,13 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         ),
       ));
     } finally {
-      if (mounted) setState(() => _sheetOpen = false);
+      if (mounted) {
+        setState(() {
+          // Back from the editor: the clock stays held while the
+          // half-time card is still pending its decision.
+          _sheetOpen = _halfTimeCardUp;
+        });
+      }
     }
   }
 }
