@@ -2,7 +2,8 @@
 // level pips, LV number, ONE effect line (current → next value) and the
 // price button. The text-diet regression: no invested totals, no
 // "Not built yet." filler, no "Next:"/"for every player" long forms,
-// and the header is a single subtitle line.
+// and no in-page header — the list is the screen, with uniform 16px
+// gutters on every side and between cards.
 //
 // Runs real drift I/O over an in-memory database, so async flushes use
 // tester.runAsync (FakeAsync doesn't perform real I/O) — the same
@@ -96,10 +97,11 @@ void main() {
     expect(find.textContaining('k in'), findsNothing);
     expect(find.text('Maximum level reached.'), findsNothing);
 
-    // The compact header: title + one line, no essay.
-    expect(find.text('Club campus'), findsOneWidget);
+    // No header at all: the tab jumps straight into the facility list
+    // (the shell's masthead already names the game).
+    expect(find.text('Club campus'), findsNothing);
     expect(find.text('Permanent boosts — every level costs more.'),
-        findsOneWidget);
+        findsNothing);
     expect(find.textContaining('shopping spree'), findsNothing);
     expect(find.textContaining('across seasons'), findsNothing);
   });

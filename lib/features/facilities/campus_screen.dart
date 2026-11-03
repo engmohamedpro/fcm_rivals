@@ -58,41 +58,15 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
     final coins = club?.coins ?? 0;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      // Uniform gutters: the same 16 on every side and between cards.
+      padding: const EdgeInsets.all(16),
       children: [
-        FcmEntrance(
-          child: Column(
-            children: [
-              const SizedBox(height: 4),
-              const Text(
-                'Club campus',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Permanent boosts — every level costs more.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: FcmColors.textDim,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
         for (var i = 0; i < Facility.values.length; i++)
           FcmEntrance(
-            index: 1 + i,
+            index: i,
             child: Padding(
               padding: EdgeInsets.only(
-                  bottom: i == Facility.values.length - 1 ? 0 : 12),
+                  bottom: i == Facility.values.length - 1 ? 0 : 16),
               child: FacilityCard(
                 facility: Facility.values[i],
                 level: campus.levelOf(Facility.values[i]),
