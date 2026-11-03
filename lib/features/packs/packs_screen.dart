@@ -354,11 +354,11 @@ class _StoreGrid extends StatelessWidget {
   }
 }
 
-/// One scope group: shared title — 'Global Pack' or 'ST Pack' — and the
+/// One scope group: shared title — 'Global Pack' or 'ST Pack' — with a
+/// compact VIEW PLAYERS button at the end of the title row, and the
 /// row of the three tier cells side by side. The three rarities of one
-/// scope draw from the exact same pool; the contents list (reachable
-/// from each cell's VIEW PLAYERS button) is the single place that pool
-/// is shown.
+/// scope draw from the exact same pool; the contents list behind that
+/// one button is the single place that pool is shown.
 class _ScopeSection extends StatelessWidget {
   const _ScopeSection({
     super.key,
@@ -396,10 +396,15 @@ class _ScopeSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Shared title: what the section is about.
-        FcmSectionTitle(scopeLabel),
+        // Shared title with the pool entry point at the end of the row:
+        // the contents list is per-scope (all three tiers draw from the
+        // same pool), so one compact button serves the whole section.
+        FcmSectionTitle(
+          scopeLabel,
+          trailing: _ViewPlayersButton(onPressed: () => onInfo(head)),
+        ),
         SizedBox(
-          height: 296,
+          height: 260,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -424,7 +429,6 @@ class _ScopeSection extends StatelessWidget {
                         onBuy(ordered[i]);
                       }
                     },
-                    onInfo: () => onInfo(ordered[i]),
                   ),
                 ),
               ],
@@ -440,28 +444,25 @@ class _ScopeSection extends StatelessWidget {
 /// One tier cell of a scope section: the sealed foil pack exactly as it
 /// looks before opening (same [FoilPackPainter] as the reveal cinematic),
 /// painted in the tier's solid metal — bronze, silver or gold — with the
-/// tier name under it, a price slot and two action buttons. The scope
-/// title lives on the section, not the cell. Owned and buyable cells
-/// share the exact same layout: the slot shows the FREE ×N pill when the
-/// club owns packs of this type, the coin price otherwise; the primary
-/// button reads CLAIM — which opens the next owned pack straight into the
-/// reveal, no confirmation — or BUY, which opens the YES/NO purchase
-/// dialog. The ghost VIEW PLAYERS button under it opens the pack's
-/// contents list.
+/// tier name under it, a price slot and the action button. The scope
+/// title and its VIEW PLAYERS entry live on the section, not the cell.
+/// Owned and buyable cells share the exact same layout: the slot shows
+/// the FREE ×N pill when the club owns packs of this type, the coin
+/// price otherwise; the button reads CLAIM — which opens the next owned
+/// pack straight into the reveal, no confirmation — or BUY, which opens
+/// the YES/NO purchase dialog.
 class _StorePackCell extends StatelessWidget {
   const _StorePackCell({
     required this.offer,
     required this.ownedCount,
     required this.coins,
     required this.onTap,
-    required this.onInfo,
   });
 
   final StorePackOffer offer;
   final int ownedCount;
   final int? coins;
   final VoidCallback? onTap;
-  final VoidCallback onInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -533,33 +534,63 @@ class _StorePackCell extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           // CLAIM opens the next owned pack straight into the reveal —
-          // no confirmation dialog — in the success green with a gift
-          // icon, so a free pack reads instantly different from the
-          // gold BUY. BUY opens the YES/NO purchase dialog.
+          // no confirmation dialog — in the dark steel metal with a gift
+          // icon: instantly different from the gold BUY, and in the
+          // game's metal-on-black language rather than a flat green.
+          // BUY opens the YES/NO purchase dialog.
           SizedBox(
             width: double.infinity,
             child: FcmButton(
               compact: true,
-              style: isFree ? FcmButtonStyle.success : FcmButtonStyle.gold,
+              style: isFree ? FcmButtonStyle.steel : FcmButtonStyle.gold,
               icon: isFree ? Icons.card_giftcard_rounded : null,
               label: isFree ? 'CLAIM' : 'BUY',
               onPressed: onTap,
             ),
           ),
-          const SizedBox(height: 5),
-          // VIEW PLAYERS replaces the ⓘ badge and the section's player
-          // strip: the one entry point into the scope's contents list.
-          SizedBox(
-            width: double.infinity,
-            child: FcmButton(
-              compact: true,
-              style: FcmButtonStyle.ghost,
-              icon: Icons.people_outline_rounded,
-              label: 'VIEW PLAYERS',
-              onPressed: onInfo,
-            ),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact ghost pill that ends a scope section's title row: the one
+/// entry into that scope's contents list. Sized to sit inside the
+/// title row without inflating it.
+class _ViewPlayersButton extends StatelessWidget {
+  const _ViewPlayersButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPressable(
+      onTap: onPressed,
+      scale: 0.94,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.people_outline_rounded,
+                size: 14, color: Colors.white70),
+            SizedBox(width: 5),
+            Text(
+              'VIEW PLAYERS',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

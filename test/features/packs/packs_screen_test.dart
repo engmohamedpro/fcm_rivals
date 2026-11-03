@@ -86,8 +86,9 @@ void main() {
     final offers = await tester.runAsync(() => store.getStoreOffers());
     expect(offers!.firstWhere((o) => o.scopeValue == null).eligibleCount,
         greaterThan(0));
-    expect(find.textContaining('PLAYERS'), findsNWidgets(39),
-        reason: 'only the 39 VIEW PLAYERS buttons');
+    // One compact VIEW PLAYERS button per section title row (13), not
+    // per cell: the contents pool is per-scope.
+    expect(find.text('VIEW PLAYERS'), findsNWidgets(13));
     // Three rarity cells per section: 13 sections × 3.
     expect(find.text('RARE'), findsNWidgets(13));
     expect(find.text('EPIC'), findsNWidgets(13));
@@ -107,8 +108,9 @@ void main() {
     // ×1 stack under their bronze cells).
     expect(find.text('CLAIM'), findsNWidgets(12));
     expect(find.text('BUY'), findsNWidgets(27));
-    // Every cell carries a VIEW PLAYERS button into the shared pool.
-    expect(find.text('VIEW PLAYERS'), findsNWidgets(39));
+    // Every section title row carries a VIEW PLAYERS button into the
+    // scope's shared pool.
+    expect(find.text('VIEW PLAYERS'), findsNWidgets(13));
     // No player preview strip on the store itself.
     expect(find.byType(FcmMiniCard), findsNothing);
   });
@@ -257,7 +259,8 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // The VIEW PLAYERS button on the first cell opens the contents screen.
+    // The VIEW PLAYERS button on the section title row opens the
+    // contents screen for that scope.
     await tester.tap(find.text('VIEW PLAYERS').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
