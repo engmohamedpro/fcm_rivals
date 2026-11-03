@@ -20,8 +20,8 @@
 ///   2. A golden burst with shock rings, then the stage goes dark and a
 ///      MYSTERY silhouette of the card rises, breathing, with a "?" on it.
 ///   3. Clues land one at a time on the silhouette: the nationality flag,
-///      the position, then the overall rating rolling like a slot machine
-///      and locking in with a thud.
+///      then the position. The rating is NOT shown here — it appears only
+///      on the card itself, counting up after the flip.
 ///   4. The card flips slowly with a burst of light at the edge-on moment.
 ///   5. Attributes count up in slow motion while the camera pushes in and
 ///      the name slot sits redacted, pulsing.
@@ -95,8 +95,6 @@ class _Tl {
     required this.medium,
     required this.tick,
     this.mysteryIn,
-    this.ratingRoll,
-    this.ratingLock = 0,
     this.finale,
     this.bannerIn,
   });
@@ -142,8 +140,6 @@ class _Tl {
 
   // Legendary-only phases (null on the standard timeline).
   final Interval? mysteryIn;
-  final Interval? ratingRoll;
-  final double ratingLock;
   final Interval? finale;
   final Interval? bannerIn;
 
@@ -196,12 +192,10 @@ class _Tl {
     stats: Interval(0.73, 0.88, curve: Curves.easeOut),
     done: kLegendaryDone,
     nameIn: Interval(kLegendaryNameStart, 0.95),
-    heavy: [0.03, 0.07, 0.11, 0.145, 0.175, 0.54, 0.66, 0.89, 0.95],
-    medium: [0.30, 0.385, 0.52],
+    heavy: [0.03, 0.07, 0.11, 0.145, 0.175, 0.66, 0.89, 0.95],
+    medium: [0.30, 0.385, 0.60],
     tick: [0.74, 0.77, 0.80, 0.83, 0.86],
     mysteryIn: Interval(0.20, 0.29, curve: Curves.easeOutBack),
-    ratingRoll: Interval(0.47, 0.54),
-    ratingLock: 0.54,
     finale: Interval(0.95, 1.0),
     bannerIn: Interval(0.95, 0.985, curve: Curves.easeOutBack),
   );
@@ -531,7 +525,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             child: _buildMystery(t, cardWidth, rarity, tl),
           ),
 
-        // Walkout: flag → position (→ rating roll for legendary).
+        // Walkout: flag → position.
         if (t >= tl.walkoutStart && infoFade > 0)
           Opacity(
             opacity: infoFade.clamp(0.0, 1.0),
@@ -785,8 +779,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final p = _player;
     final flag = tl.flagIn.transform(t);
     final pos = tl.posIn.transform(t);
-    final roll = tl.ratingRoll;
-    final compact = roll != null;
 
     Widget pop(double v, Widget child, {double dy = 30}) => Opacity(
           opacity: v.clamp(0.0, 1.0),
@@ -796,14 +788,14 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
           ),
         );
 
-    // No name here: the identity lands with the stats (GDD 5.6
-    // suspense) — flag and position only (and, for a legend, the rating
-    // roll).
+    // No name and no rating here: the identity and the overall land on
+    // the card itself, after the flip (GDD 5.6 suspense) — the walkout
+    // gives flag and position only.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         pop(flag, Text(flagEmojiFor(p.nationality),
-            style: TextStyle(fontSize: compact ? 76 : 88))),
+            style: const TextStyle(fontSize: 88))),
         const SizedBox(height: 4),
         pop(
           flag,
@@ -817,14 +809,14 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
         ),
-        SizedBox(height: compact ? 12 : 18),
+        const SizedBox(height: 18),
         pop(
           pos,
           Text(
             p.position.code,
             style: TextStyle(
               color: rarity.accent,
-              fontSize: compact ? 54 : 64,
+              fontSize: 64,
               fontWeight: FontWeight.w900,
               fontStyle: FontStyle.italic,
               shadows: [
@@ -833,48 +825,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
         ),
-        if (roll != null) ...[
-          const SizedBox(height: 4),
-          // Visible almost at once so the numbers can spin for the whole
-          // roll, then lock.
-          pop(Interval(roll.begin, roll.begin + 0.015).transform(t),
-              _buildRatingRoll(t, rarity, tl)),
-        ],
         const SizedBox(height: 10),
       ],
-    );
-  }
-
-  /// The overall rating spinning through random numbers like a slot
-  /// machine, then locking onto the real one with a punch and a gold glow.
-  Widget _buildRatingRoll(double t, CardRarity rarity, _Tl tl) {
-    final locked = t >= tl.ratingLock;
-    final value = locked
-        ? _player.baseStats.overall
-        : 45 + ((t * 900).floor() * 37) % 54;
-    final punch = locked
-        ? 1 +
-            0.28 *
-                (1 -
-                    Interval(tl.ratingLock, tl.ratingLock + 0.03)
-                        .transform(t))
-        : 1.0;
-    return Transform.scale(
-      scale: punch,
-      child: Text(
-        '$value',
-        style: TextStyle(
-          color: locked ? rarity.accent : Colors.white70,
-          fontSize: 60,
-          fontWeight: FontWeight.w900,
-          shadows: [
-            Shadow(
-              color: rarity.accent.withValues(alpha: locked ? 0.9 : 0.4),
-              blurRadius: locked ? 28 : 10,
-            ),
-          ],
-        ),
-      ),
     );
   }
 

@@ -270,8 +270,8 @@ void main() {
   });
 
   testWidgets(
-      'legendary walkout lands clues one by one — flag, position, rating — '
-      'and the NAME comes last', (tester) async {
+      'legendary walkout lands flag then position — the RATING and the NAME '
+      'only appear on the card', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: PackOpeningScreen(players: [_legend()]),
     ));
@@ -286,12 +286,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1500));
     expect(find.text('ST'), findsOneWidget);
 
-    // Clue 3 (rolls 0.47–0.54, locks at 0.54 = 9.18s): the rating locks.
+    // Right up to the flip (0.60 = 10.2s) NO rating is on screen: the
+    // overall must not be spoiled before the card is revealed.
     await tester.pump(const Duration(milliseconds: 2500)); // ~9.6s
-    expect(find.text('91'), findsOneWidget);
+    expect(find.text('91'), findsNothing);
     expect(find.text('TEST STRIKER'), findsNothing);
 
-    // Card flipped, stats counting, the name still redacted
+    // Card flipped, stats counting up — the rating shows for the first
+    // time, on the card — and the name is still redacted
     // (name starts at 0.89 = 15.1s).
     await tester.pump(const Duration(milliseconds: 4900)); // ~14.5s
     expect(find.text('ATT'), findsOneWidget);
