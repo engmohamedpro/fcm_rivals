@@ -26,6 +26,7 @@ import '../../core/ui/player_card.dart';
 import '../collection/player_detail_sheet.dart' show rarityOf;
 import '../match/tactics.dart';
 import 'formations.dart';
+import 'pitch_layout.dart';
 import 'squad_drag.dart';
 import 'squad_engine.dart';
 import 'squad_swap.dart' show SquadDropTarget, SquadZone;
@@ -555,39 +556,21 @@ class SquadPitch extends StatelessWidget {
             final pw = constraints.maxWidth;
             final ph = constraints.maxHeight;
 
-            // Size the cards to the shape. Slots cluster into horizontal
-            // bands (slots within 10 pitch-percent of each other in y —
-            // e.g. a back four at y 18/24 is one band); the keeper is
-            // excluded because it never shares a band or a column.
-            final fieldSlots = formation.slots.skip(1).toList();
-            final ys = [...fieldSlots.map((s) => s.y)]..sort();
-            final bands = <double>[ys.first];
-            for (final y in ys.skip(1)) {
-              if (y - bands.last > 10) bands.add(y);
-            }
-            final gkY = formation.slots.first.y;
-            final maxAcross = fieldSlots.fold<int>(
-                0,
-                (a, s) => math.max(a,
-                    fieldSlots.where((o) => (o.y - s.y).abs() <= 10).length));
-
-            // The card must fit the widest band horizontally, the stacked
-            // bands vertically, and the tightest gap between adjacent
-            // bands (keeper band included) without its shield colliding.
-            final byWidth = (pw - 16) / maxAcross - 12;
-            final byHeight = ((ph - 24) / (bands.length + 1) - 46) *
-                kPlayerCardAspect;
-            final gaps = [
-              bands.first - gkY,
-              for (var i = 1; i < bands.length; i++)
-                bands[i] - bands[i - 1],
-            ];
-            final minGap = gaps.fold<double>(double.infinity, math.min);
-            final byGap = (minGap / 100) * (ph - 140) * kPlayerCardAspect * 1.3;
-            final cardW =
-                math.min(byWidth, math.min(byHeight, byGap)).clamp(38.0, 60.0);
-            final slotW = cardW + 12;
-            final slotH = cardW / kPlayerCardAspect + 46;
+            // The layout solver (pitch_layout.dart) sizes the cards as big
+            // as the pitch allows and places every slot by its role — keeper
+            // at the bottom, back line, midfield, attack at the top, each
+            // line in the formation's left-to-right order — with air
+            // between all cards and names, whatever the formation or the
+            // screen.
+            final layout = computePitchLayout(
+              formation: formation,
+              width: pw,
+              height: ph,
+              showStats: showStats,
+              showStamina: showStamina,
+            );
+            final cardW = layout.cardWidth;
+            final slotW = layout.slotWidth;
 
             return Stack(
               children: [
@@ -598,13 +581,14 @@ class SquadPitch extends StatelessWidget {
                   () {
                     final fs = formation.slots[slot];
                     final card = assignments[slot];
+                    final box = layout.boxes[slot];
                     return AnimatedPositioned(
                       key: ValueKey('slot-$slot'),
                       duration: const Duration(milliseconds: 650),
                       curve: Curves.easeOutCubic,
-                      left: 8 + (fs.x / 100) * (pw - slotW - 16),
-                      top: 8 + (1 - fs.y / 100) * (ph - slotH - 16),
-                      width: slotW,
+                      left: box.left,
+                      top: box.top,
+                      width: box.width,
                       // A held player can be dropped on any slot: onto a
                       // player (swap) or onto an empty slot (move).
                       child: SquadDropZone(
