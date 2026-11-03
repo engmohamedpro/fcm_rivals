@@ -136,7 +136,7 @@ class _GameShellBodyState extends State<_GameShellBody> {
         // below it, and the taller mark reads as the game's masthead.
         toolbarHeight: 44,
         title: const FcmWordmark(size: 44),
-        actions: const [_CoinBalance()],
+        actions: const [_TestCoinButton(), _CoinBalance()],
       ),
       body: FcmBackdrop(
         child: Stack(
@@ -195,6 +195,29 @@ class _CoinBalance extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 14),
       child: Center(child: FcmCoinChip(coins: club.coins)),
+    );
+  }
+}
+
+/// TEMPORARY DEV BUTTON — remove together with
+/// CollectionStore.grantTestCoins once testing is done. Sits before the
+/// coin balance in the app bar; each tap credits 1,000,000 test coins.
+class _TestCoinButton extends ConsumerWidget {
+  const _TestCoinButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final club = ref.watch(clubProvider).valueOrNull;
+    if (club == null) return const SizedBox.shrink();
+    return IconButton(
+      tooltip: 'Add 1M coins (test)',
+      visualDensity: VisualDensity.compact,
+      icon: const Icon(Icons.add_rounded),
+      onPressed: () async {
+        final store = await ref.read(collectionStoreProvider.future);
+        await store.grantTestCoins();
+        ref.invalidate(clubProvider);
+      },
     );
   }
 }

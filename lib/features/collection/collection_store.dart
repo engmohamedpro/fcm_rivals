@@ -295,6 +295,23 @@ class CollectionStore {
         ..where((c) => c.isUser.equals(true)))
       .getSingleOrNull();
 
+  /// TEMPORARY DEV HELPER — remove together with the app-bar "+"
+  /// button (main.dart) once testing is done. Credits the user club
+  /// with [amount] test coins through the same atomic transaction and
+  /// ledger row as every other coin movement (FR-016).
+  Future<void> grantTestCoins({int amount = 1_000_000}) async {
+    final club = await getClub();
+    if (club == null) {
+      throw const CollectionException('No club yet — cannot grant coins');
+    }
+    await db.transaction(() async {
+      await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
+          .write(ClubsCompanion(coins: Value(club.coins + amount)));
+      await db.coinLedger(club.id, amount,
+          reason: 'test_grant', detail: 'Dev test grant from app-bar + button');
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Dataset
   // ---------------------------------------------------------------------------
