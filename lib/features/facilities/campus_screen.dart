@@ -3,13 +3,12 @@
 ///
 /// Six buildings, ten levels each, geometrically escalating prices: the
 /// manager invests match rewards across seasons for small permanent
-/// boosts — training facilities add a few percent to a playing
-/// attribute for every player, the recovery centre speeds post-match
-/// healing, the medical centre cuts injury risk. One [FacilityCard]
-/// per building shows the live effect at the current level, the effect
-/// the NEXT level buys, the escalating price and the total invested so
-/// far — so the curve is always legible (GDD 15: effects must be
-/// visible) without a redundant summary card repeating them.
+/// boosts. One [FacilityCard] per building: icon, title, the ten level
+/// pips and the live LV number on top; below, ONE line — the current
+/// effect with a small gold "→ next value" delta — and the price button
+/// (or a MAX pill at level ten). No invested totals, no "not built yet"
+/// filler: the level-1 effect speaks for an unbuilt facility, and the
+/// escalating price button already shows the curve.
 library;
 
 import 'package:flutter/material.dart';
@@ -76,14 +75,12 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Permanent, always-on upgrades paid for with coins. '
-                    'Levels get pricier as the campus grows — a project '
-                    'you build across seasons, not a shopping spree.',
+                'Permanent boosts — every level costs more.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: FcmColors.textDim,
                   fontSize: 12,
-                  height: 1.4,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -94,7 +91,8 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
           FcmEntrance(
             index: 1 + i,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.only(
+                  bottom: i == Facility.values.length - 1 ? 0 : 12),
               child: FacilityCard(
                 facility: Facility.values[i],
                 level: campus.levelOf(Facility.values[i]),
@@ -110,10 +108,10 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
   }
 }
 
-/// One building: icon and title, the live level pips (ten segments),
-/// the CURRENT effect line, the NEXT-level effect line with its price
-/// and the upgrade button (or MAX). The total invested sits in the
-/// corner so the escalating curve stays visible.
+/// One building: icon and title with the ten level pips and the live LV
+/// number; below, the single effect line — current effect plus the gold
+/// next-level value — with the upgrade button (or MAX pill). A level-0
+/// facility shows the effect its first level buys, dimmed.
 class FacilityCard extends StatelessWidget {
   const FacilityCard({
     super.key,
@@ -137,6 +135,7 @@ class FacilityCard extends StatelessWidget {
     final maxed = level >= costs.maxLevel;
     final price = costs.upgradeCost(level);
     final affordable = coins >= price;
+    final built = level > 0;
 
     return FcmPanel(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -159,7 +158,7 @@ class FacilityCard extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 6),
                     // Level pips: one segment per level of ten.
                     Row(
                       children: [
@@ -185,69 +184,66 @@ class FacilityCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'LV $level',
-                    style: const TextStyle(
-                      color: FcmColors.gold,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    '${costs.investedAt(level)} in',
-                    style: const TextStyle(
-                      color: FcmColors.textDim,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+              Text(
+                'LV $level',
+                style: const TextStyle(
+                  color: FcmColors.gold,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          if (level > 0) ...[
-            _EffectLine(
-              icon: Icons.check_circle_rounded,
-              color: FcmColors.success,
-              text: facility.effect.describeAt(level),
-            ),
-            const SizedBox(height: 4),
-          ] else
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                'Not built yet.',
-                style: const TextStyle(
-                    color: FcmColors.textDim,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600),
-              ),
-            ),
           Row(
             children: [
               Expanded(
-                child: maxed
-                    ? const Text(
-                        'Maximum level reached.',
+                child: Row(
+                  children: [
+                    Icon(
+                      built
+                          ? Icons.check_circle_rounded
+                          : Icons.add_circle_outline_rounded,
+                      size: 14,
+                      color: built ? FcmColors.success : FcmColors.gold,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        facility.effect.describeAt(built ? level : 1),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          color: built ? Colors.white : FcmColors.textDim,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (built && !maxed) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 12,
+                        color: FcmColors.gold.withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        facility.effect.shortValueAt(level + 1),
+                        style: const TextStyle(
                           color: FcmColors.gold,
-                          fontSize: 12,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w800,
                         ),
-                      )
-                    : _EffectLine(
-                        icon: Icons.arrow_upward_rounded,
-                        color: FcmColors.gold,
-                        text:
-                            'Next: ${facility.effect.describeAt(level + 1)}',
                       ),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(width: 8),
-              if (!maxed)
+              if (maxed)
+                const FcmPill('MAX')
+              else ...[
+                const SizedBox(width: 8),
                 FcmButton(
                   compact: true,
                   coinValue: price,
@@ -258,46 +254,11 @@ class FacilityCard extends StatelessWidget {
                       : FcmButtonStyle.steel,
                   onPressed: busy ? null : onUpgrade,
                 ),
+              ],
             ],
           ),
         ],
       ),
-    );
-  }
-}
-
-/// One effect statement with its leading icon — the "visible effects"
-/// rule (GDD 15) made literal.
-class _EffectLine extends StatelessWidget {
-  const _EffectLine({
-    required this.icon,
-    required this.color,
-    required this.text,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              height: 1.3,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

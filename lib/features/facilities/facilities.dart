@@ -69,34 +69,32 @@ enum FacilityAttribute { attack, support, defence, goalkeeping }
 /// centre reduces injury risk.
 class FacilityEffect {
   const FacilityEffect.attribute({
-    required FacilityAttribute attribute,
+    required this.attribute,
     required double perLevelPercent,
-  })  : _attribute = attribute,
-        _attributePerLevelPercent = perLevelPercent,
+  })  : attributePerLevel = perLevelPercent,
         recoveryPerLevelPercent = 0,
         injuryRiskPerLevel = 0;
-
   const FacilityEffect.recovery(double perLevelPercent)
-      : _attribute = null,
-        _attributePerLevelPercent = 0,
+      : attribute = null,
+        attributePerLevel = 0,
         recoveryPerLevelPercent = perLevelPercent,
         injuryRiskPerLevel = 0;
 
   const FacilityEffect.medical(double perLevelRisk)
-      : _attribute = null,
-        _attributePerLevelPercent = 0,
+      : attribute = null,
+        attributePerLevel = 0,
         recoveryPerLevelPercent = 0,
         injuryRiskPerLevel = perLevelRisk;
 
-  final FacilityAttribute? _attribute;
-  final double _attributePerLevelPercent;
+  final FacilityAttribute? attribute;
+  final double attributePerLevel;
   final double recoveryPerLevelPercent;
   final double injuryRiskPerLevel;
 
   /// Fraction of a base attribute added at [level] (0 for non-training
   /// facilities), e.g. level 4 of the 0.9%/level academy = 0.036.
   double attributeFractionAt(int level) =>
-      _attribute == null ? 0 : _attributePerLevelPercent / 100 * level;
+      attribute == null ? 0 : attributePerLevel / 100 * level;
 
   /// Percentage points of natural recovery added at [level].
   double recoveryPercentAt(int level) => recoveryPerLevelPercent * level;
@@ -105,28 +103,45 @@ class FacilityEffect {
   double injuryRiskAt(int level) => injuryRiskPerLevel * level;
 
   /// One-line human description of the effect at [level] (GDD 15: the
-  /// effect must be visible).
+  /// effect must be visible) — compact by design: the campus card shows
+  /// it beside a price on one line, so it carries no filler words.
   String describeAt(int level) {
-    if (_attribute != null) {
-      final attr = switch (_attribute) {
+    final value = shortValueAt(level);
+    final attr = attribute;
+    if (attr != null) {
+      final label = switch (attr) {
         FacilityAttribute.attack => 'Attack',
         FacilityAttribute.support => 'Support',
         FacilityAttribute.defence => 'Defence',
         FacilityAttribute.goalkeeping => 'Goalkeeping',
       };
-      final pts = attributeFractionAt(level) * 100;
-      return '+${pts.toStringAsFixed(pts.truncateToDouble() == pts ? 0 : 1)}% '
-          '$attr for every player';
+      return '$value $label';
     }
-    if (recoveryPerLevelPercent > 0) {
-      return '+${recoveryPercentAt(level).toStringAsFixed(1)}% natural '
-          'recovery after matches';
+    if (recoveryPerLevelPercent > 0) return '$value recovery';
+    return '$value injury risk';
+  }
+
+  /// The compact signed value of the effect at [level], e.g. '+2.7%' —
+  /// the campus card's current-effect line and next-level delta chip
+  /// both read from this so the two never disagree.
+  String shortValueAt(int level) {
+    final double pts;
+    final String sign;
+    if (attribute != null) {
+      pts = attributeFractionAt(level) * 100;
+      sign = '+';
+    } else if (recoveryPerLevelPercent > 0) {
+      pts = recoveryPercentAt(level);
+      sign = '+';
+    } else {
+      pts = injuryRiskAt(level);
+      sign = '−';
     }
-    return '−${injuryRiskAt(level).toStringAsFixed(1)}% injury risk';
+    return '$sign${pts.toStringAsFixed(pts.truncateToDouble() == pts ? 0 : 1)}%';
   }
 
   /// Whether this facility's effect is live in the match input today.
-  bool get isMatchLive => _attribute != null;
+  bool get isMatchLive => attribute != null;
 }
 
 /// Cost curve (GDD 17.5-style escalation): level 1 costs [baseCost] and
@@ -217,7 +232,7 @@ class CampusLevels {
     for (final f in Facility.values) {
       final e = f.effect;
       final frac = e.attributeFractionAt(levelOf(f));
-      switch (e._attribute) {
+      switch (e.attribute) {
         case FacilityAttribute.attack:
           attack += frac;
         case FacilityAttribute.support:
