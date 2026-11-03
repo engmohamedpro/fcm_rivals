@@ -2,8 +2,9 @@
 //
 //  * the header fuses scoreboard, clock and controls into one panel —
 //    no separate controls block below it;
-//  * the LIVE STATS strip sits above the commentary feed and updates
-//    as minutes pass (possession/shots/etc. from the event timeline);
+//  * the MOMENTUM bar sits above the commentary feed — one vertical
+//    line per minute, home pressure above the baseline, away pressure
+//    below it (the broadcast stats rows are gone entirely);
 //  * the commentary feed is a plain forward list: the full history is
 //    scrollable upward, entries render in place — no per-row entrance
 //    animation (the jank source at 4x speed);
@@ -106,7 +107,7 @@ void main() {
   setUp(installAudioplayersMocks);
   tearDown(clearAudioplayersMocks);
 
-  testWidgets('compact header, live stats strip and scrollable commentary '
+  testWidgets('compact header, momentum bar and scrollable commentary '
       'history with no entrance animations', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
@@ -136,30 +137,26 @@ void main() {
     expect(find.text('4x'), findsNothing);
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
 
-    // The momentum tug-of-war bar rides inside the same header panel —
-    // the user's crest colour vs the opponent's white, dead level
-    // 50/50 until the match's pressure pushes the divide.
+    // The momentum bar rides where the old stats strip sat — between
+    // the header and the feed, with the team names at its two ends and
+    // the MOMENTUM label centred. The broadcast stats rows are gone.
     expect(find.byType(MomentumBar), findsOneWidget);
-
-    // The stats strip sits above the commentary feed with its labels —
-    // always visible (no hide/collapse toggle), seven broadcast-style
-    // rows: possession, shots, on target, xG, passes, fouls, corners.
-    expect(find.byType(LiveMatchStatsPanel), findsOneWidget);
-    expect(find.text('Possession'), findsOneWidget);
-    expect(find.text('Shots'), findsOneWidget);
-    expect(find.text('On target'), findsOneWidget);
-    expect(find.text('Expected goals'), findsOneWidget);
-    expect(find.text('Passes'), findsOneWidget);
-    expect(find.text('Fouls'), findsOneWidget);
-    expect(find.text('Corners'), findsOneWidget);
-    expect(find.text('Pass accuracy'), findsNothing);
-    expect(find.text('Hide stats'), findsNothing);
+    expect(find.text('MOMENTUM'), findsOneWidget);
+    expect(find.text('Possession'), findsNothing);
+    expect(find.text('Shots'), findsNothing);
+    expect(find.text('On target'), findsNothing);
+    expect(find.text('Expected goals'), findsNothing);
+    expect(find.text('Passes'), findsNothing);
+    expect(find.text('Fouls'), findsNothing);
+    expect(find.text('Corners'), findsNothing);
+    expect(find.text('Match stats'), findsNothing);
 
     // Commentary rows are plain in-place widgets — no entrance wrappers
     // (the old side-slide-in was the jank source at speed).
     expect(find.byType(CommentaryRow), findsWidgets);
 
-    // Play a few more minutes: the feed grows, stats update in place.
+    // Play a few more minutes: the feed grows, the bar repaints in
+    // place.
     final before = find.byType(CommentaryRow).evaluate().length;
     await _play(tester, frames: 80);
     expect(find.byType(CommentaryRow).evaluate().length, greaterThan(before));
@@ -226,8 +223,12 @@ void main() {
     // The report is up.
     expect(find.textContaining('Full time:'), findsOneWidget);
     expect(find.text('Continue'), findsOneWidget);
-    // Team statistics table: xG and pass accuracy are gone.
-    expect(find.text('Team statistics'), findsOneWidget);
+    // The team-statistics table is GONE — the full-match momentum graph
+    // replaces it under the 'Momentum' section title (the live bar's
+    // series at full time). xG and pass accuracy never appear.
+    expect(find.text('Team statistics'), findsNothing);
+    expect(find.text('Momentum'), findsOneWidget);
+    expect(find.byType(MomentumBar), findsOneWidget);
     expect(find.text('Expected goals'), findsNothing);
     expect(find.text('Pass accuracy'), findsNothing);
 

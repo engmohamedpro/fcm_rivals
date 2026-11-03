@@ -75,7 +75,7 @@ class FcmColors {
   /// Crest swatches the manager picks from at club creation: champagne,
   /// bronze, ember, olive, steel and oxblood — the brand's warm metals.
   /// Shared by the creation picker and everywhere the club's colour is
-  /// shown live (e.g. the match momentum bar's user half).
+  /// shown live (e.g. the match momentum bar's user side spikes).
   static const List<Color> crestPalette = [
     Color(0xFFD9B871), // champagne gold
     Color(0xFF8A6E42), // bronze

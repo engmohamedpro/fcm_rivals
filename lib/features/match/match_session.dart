@@ -3,7 +3,8 @@
 /// Bridges the pure Match Engine with the collection store: builds engine
 /// inputs from the persisted squad, applies live commands, and on full time
 /// persists stamina, credits match rewards and exposes the full report
-/// (commentary, statistics, ratings — all derived from the same events).
+/// (commentary, ratings — all derived from the same events; the momentum
+/// timeline for the bar is derived live in the match screen).
 library;
 
 
@@ -25,7 +26,6 @@ class MatchReportResult {
     required this.state,
     required this.homeRatings,
     required this.awayRatings,
-    required this.stats,
     required this.commentary,
     required this.rewardCoins,
   });
@@ -33,7 +33,6 @@ class MatchReportResult {
   final MatchState state;
   final List<PlayerMatchRating> homeRatings;
   final List<PlayerMatchRating> awayRatings;
-  final MatchStatsReport stats;
   final List<CommentaryLine> commentary;
   final int rewardCoins;
 
@@ -314,9 +313,10 @@ class MatchSession {
       };
 
   /// The engine team id of the home side — the user's club id when the
-  /// user is home, the opponent's id otherwise. Live statistics tag
-  /// events by these ids ([computeStats]); null for friendly previews
-  /// that run without a persisted club, where stats simply stay empty.
+  /// user is home, the opponent's id otherwise. The live momentum bar
+  /// attributes events by these ids ([computeMomentumSeries]); null for
+  /// friendly previews that run without a persisted club, where the bar
+  /// simply stays on its baseline.
   int? get homeTeamId =>
       userSide == MatchSide.home ? _club?.id : _opponentTeamId;
 
@@ -371,7 +371,7 @@ class MatchSession {
     final events = engine.events;
 
     // Side orientation: the user is NOT always home (away season
-    // fixtures) — stats, ratings, rewards and stamina persistence must
+    // fixtures) — ratings, rewards and stamina persistence must
     // follow the user's actual side.
     final userAtHome = userSide == MatchSide.home;
     final userGoals = userAtHome ? state.scoreHome : state.scoreAway;
@@ -379,11 +379,6 @@ class MatchSession {
     final homeTeamId = userAtHome ? club.id : _opponentTeamId;
     final awayTeamId = userAtHome ? _opponentTeamId : club.id;
 
-    final stats = computeStats(
-      events,
-      homeTeamId: homeTeamId,
-      awayTeamId: awayTeamId,
-    );
     final homeRatings = computePlayerRatings(
       events: events,
       players: engine.playersOf(MatchSide.home),
@@ -435,7 +430,6 @@ class MatchSession {
       state: state,
       homeRatings: homeRatings,
       awayRatings: awayRatings,
-      stats: stats,
       commentary: commentary,
       rewardCoins: reward,
     );

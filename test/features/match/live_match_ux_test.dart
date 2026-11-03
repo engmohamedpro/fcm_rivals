@@ -373,7 +373,7 @@ void main() {
     });
   });
 
-  group('live momentum (GDD 13.2 tug-of-war bar)', () {
+  group('live momentum (GDD 13.2)', () {
     // Minimal synthetic event over a chosen minute/team.
     MatchEvent ev(int minute, MatchEventType type, int teamId,
             {Map<String, dynamic> metadata = const {}}) =>
@@ -431,6 +431,38 @@ void main() {
       final share =
           computeMomentum(events, homeTeamId: 1, awayTeamId: 2);
       expect(share, lessThan(0.3));
+    });
+
+    test('the per-minute series ends on the scalar reading', () {
+      final events = [
+        ev(50, MatchEventType.goal, 1),
+        ev(80, MatchEventType.shot, 2),
+      ];
+      final series = computeMomentumSeries(
+        events,
+        homeTeamId: 1,
+        awayTeamId: 2,
+      );
+      // One entry per played minute (last event at minute 80).
+      expect(series, hasLength(80));
+      // Dead level until the goal's minute: nothing to weigh.
+      expect(series[0], 0.5);
+      // The goal's minute reads home-heavy…
+      expect(series[49], greaterThan(0.5));
+      // …and the final minute is the scalar trailing share, away-heavy
+      // now that the goal has aged out of the window.
+      expect(series.last, lessThan(0.3));
+      expect(
+        series.last,
+        computeMomentum(events, homeTeamId: 1, awayTeamId: 2),
+      );
+    });
+
+    test('empty timeline → empty series', () {
+      expect(
+        computeMomentumSeries(const [], homeTeamId: 1, awayTeamId: 2),
+        isEmpty,
+      );
     });
 
     test("a booked side's opponent gains: cards read as pressure", () {
@@ -594,46 +626,48 @@ void main() {
   });
 
   group('momentum bar widget', () {
-    testWidgets('renders the tug-of-war halves at dead level and pushed',
+    testWidgets('renders the spike bar: label row, played and empty series',
         (tester) async {
+      // A few played minutes with pushes both ways: the bar renders
+      // with its label row — team names at the ends, MOMENTUM centred.
       await tester.pumpWidget(MaterialApp(
         home: const Scaffold(
           body: MomentumBar(
-            homeShare: 0.5,
-            userIsHome: true,
-            userTeamColor: Color(0xFF7A3B36),
+            series: [0.5, 0.62, 0.38],
+            homeTeamName: 'FC Rivals',
+            awayTeamName: 'Al Ahly',
+            homeColor: Color(0xFF7A3B36),
           ),
         ),
       ));
-      await tester.pump(const Duration(milliseconds: 700));
-      // Dead level: both halves are present, the strip is one widget.
+      expect(find.byType(MomentumBar), findsOneWidget);
+      expect(find.text('MOMENTUM'), findsOneWidget);
+      expect(find.text('FC Rivals'), findsOneWidget);
+      expect(find.text('Al Ahly'), findsOneWidget);
+
+      // A full-match dead-level series (every minute 0.5): renders —
+      // the painter draws only the baseline.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: MomentumBar(
+            series: List<double>.filled(90, 0.5),
+            homeTeamName: 'FC Rivals',
+            awayTeamName: 'Al Ahly',
+          ),
+        ),
+      ));
       expect(find.byType(MomentumBar), findsOneWidget);
 
-      // Pushed hard home (user home): still renders — the divide slid.
+      // Pre-kick-off (empty series): still renders, baseline only.
       await tester.pumpWidget(MaterialApp(
         home: const Scaffold(
           body: MomentumBar(
-            homeShare: 0.85,
-            userIsHome: true,
-            userTeamColor: Color(0xFF7A3B36),
+            series: [],
+            homeTeamName: 'FC Rivals',
+            awayTeamName: 'Al Ahly',
           ),
         ),
       ));
-      await tester.pump(const Duration(milliseconds: 700));
-      expect(find.byType(MomentumBar), findsOneWidget);
-
-      // User away: the SAME home share flips to the opponent's side —
-      // the user's colour always fills the user's half.
-      await tester.pumpWidget(MaterialApp(
-        home: const Scaffold(
-          body: MomentumBar(
-            homeShare: 0.85,
-            userIsHome: false,
-            userTeamColor: Color(0xFF7A3B36),
-          ),
-        ),
-      ));
-      await tester.pump(const Duration(milliseconds: 700));
       expect(find.byType(MomentumBar), findsOneWidget);
     });
   });

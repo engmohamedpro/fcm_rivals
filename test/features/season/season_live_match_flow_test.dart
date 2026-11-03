@@ -272,10 +272,12 @@ void main() {
       await _flush(tester);
 
       // The report screen shows the result and reward, named for the real
-      // fixture (GDD 14 post-match screen).
+      // fixture (GDD 14 post-match screen). The full-match momentum graph
+      // replaced the team-statistics table.
       expect(find.textContaining('Full time: FC Rivals'), findsOneWidget);
       expect(find.textContaining('Reward:'), findsOneWidget);
-      expect(find.text('Team statistics'), findsOneWidget);
+      expect(find.text('Team statistics'), findsNothing);
+      expect(find.text('Momentum'), findsOneWidget);
 
       // The report ends with CONTINUE — the only exit (no back button
       // above); the route pops and the Season tab providers refresh.

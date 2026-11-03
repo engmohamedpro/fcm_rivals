@@ -23,8 +23,8 @@ import 'tactics.dart';
 typedef MatchFullTimeCallback = Future<void> Function(MatchReportResult report);
 
 /// Live match screen (GDD 13, GDD 16): minute-by-minute simulation with
-/// live stats, commentary feed, live tactical changes and the post-match
-/// report with the pep talk choice (GDD 11.6).
+/// the momentum bar, commentary feed, live tactical changes and the
+/// post-match report with the pep talk choice (GDD 11.6).
 ///
 /// The match plays itself: a ticker-driven clock advances one minute per
 /// [_minuteDuration] of elapsed time, multiplied by the selected speed
@@ -33,14 +33,15 @@ typedef MatchFullTimeCallback = Future<void> Function(MatchReportResult report);
 /// skip-to-end; every match is watched to its final minute.
 ///
 /// Layout: the compact [MatchHeader] (score + clock + controls fused
-/// into one panel), the live stats strip and the commentary feed —
-/// newest at the bottom, the whole history scrolls up above it.
+/// into one panel), the momentum bar (per-minute spikes — home above
+/// the baseline, away below) and the commentary feed — newest at the
+/// bottom, the whole history scrolls up above it.
 ///
 /// Performance: one setState per match minute (800ms at 1x, 267ms at
 /// 3x) — every row is a plain stateless widget, no per-row entrance
 /// animations or controllers (the old side-slide-in rows were the jank
-/// source at top speed), and the stats are recomputed incrementally from
-/// the minutes played so far, not the whole event list each time.
+/// source at top speed), and the momentum series is recomputed from the
+/// minutes played so far, not the whole event list each time.
 ///
 /// Pushed as a full-screen route over the caller (league fixtures are
 /// launched from the Season tab). The [session] arrives ready to play —
@@ -90,21 +91,15 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// The chosen post-match recovery (null until the card is answered).
   _RecoveryChoice? _postMatchChoice;
 
-  /// Live team statistics (GDD 13.2), shown above the commentary feed.
-  /// Rebuilt from the minutes played so far — [computeStats] is linear
-  /// in events and the event list for one match is small, so the plain
-  /// recompute stays far cheaper than any incremental bookkeeping.
-  MatchStatsReport _stats = MatchStatsReport(
-    home: TeamMatchStats.empty(),
-    away: TeamMatchStats.empty(),
-  );
+  /// Live momentum timeline (GDD 13.2): the HOME share per minute
+  /// (index 0 = minute 1) driving the momentum bar's spikes. Recomputed
+  /// from the minutes played so far — the pass over the event list is
+  /// linear and the list for one match is small, so the plain recompute
+  /// stays far cheaper than any incremental bookkeeping. Null for
+  /// matches without team ids; the bar then stays on its baseline.
+  List<double>? _momentumSeries;
 
-  /// Live momentum share of the HOME side (0..1). Null before any match
-  /// minute exists — the header's tug-of-war bar opens dead level at
-  /// 50/50, exactly as a match kicks off.
-  double? _momentum;
-
-  /// The user's crest colour (momentum bar user half). Null until the
+  /// The user's crest colour (momentum bar user spikes). Null until the
   /// club row loads; brand gold stands in for that blink.
   Color? _userTeamColor;
 
@@ -263,22 +258,19 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         awayTeamName: session.awayTeamName,
         keyEventsOnly: true,
       );
-      // One rebuild per minute: rows, stats and score update together.
+      // One rebuild per minute: rows and the momentum bar update
+      // together.
       setState(() {
         _lines.addAll(lines);
         // Friendly previews without a persisted club have no team ids —
-        // the strip stays empty rather than mis-attributing events.
+        // the bar stays on its baseline rather than mis-attributing
+        // events.
         final homeId = session.homeTeamId;
         final awayId = session.awayTeamId;
         if (homeId != null && awayId != null) {
-          _stats = computeStats(
-            session.engine.events,
-            homeTeamId: homeId,
-            awayTeamId: awayId,
-          );
-          // Momentum: trailing-window pressure share — the header bar's
-          // divide nudges toward whoever is on top right now.
-          _momentum = computeMomentum(
+          // Momentum: per-minute trailing-window pressure shares — the
+          // spikes rise for whoever is on top right now.
+          _momentumSeries = computeMomentumSeries(
             session.engine.events,
             homeTeamId: homeId,
             awayTeamId: awayId,
@@ -507,6 +499,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   Widget build(BuildContext context) {
     final session = widget.session;
     final state = session.engine.state;
+    final userIsHome = session.userSide == MatchSide.home;
+    final userColor = _userTeamColor ?? FcmColors.gold;
 
     return PopScope(
       // The match plays to its final minute — no backing out of the
@@ -562,20 +556,35 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                   session.userSide == MatchSide.home,
                               paused: _paused,
                               speed: _speed,
-                              momentum: _momentum,
-                              userTeamColor:
-                                  _userTeamColor ?? FcmColors.gold,
                               onTogglePause: _togglePause,
                               onSetSpeed: _setSpeed,
                               onTactics: () => _openLiveTactics(context),
                             ),
-                            // Live stats strip above the commentary feed
-                            // (GDD 13.2) — every value recomputed each
-                            // minute.
-                            LiveMatchStatsPanel(
-                              stats: _stats,
-                              homeTeamName: session.homeTeamName,
-                              awayTeamName: session.awayTeamName,
+                            // Momentum bar where the old live stats
+                            // strip sat: per-minute spikes — the home
+                            // side's pressure rises ABOVE the baseline,
+                            // the away side's hangs BELOW it — so who
+                            // is on top reads at a glance. The user's
+                            // crest colour tints their side's spikes.
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(12, 2, 12, 6),
+                              child: FcmPanel(
+                                padding: const EdgeInsets.fromLTRB(
+                                    12, 10, 12, 8),
+                                accent: FcmColors.bronze,
+                                child: MomentumBar(
+                                  series: _momentumSeries ?? const [],
+                                  homeTeamName: session.homeTeamName,
+                                  awayTeamName: session.awayTeamName,
+                                  homeColor: userIsHome
+                                      ? userColor
+                                      : opponentMomentumColor,
+                                  awayColor: userIsHome
+                                      ? opponentMomentumColor
+                                      : userColor,
+                                ),
+                              ),
                             ),
                           ],
                           // Commentary feed / report: newest at the
@@ -594,6 +603,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                     pepTalk: _pepTalk,
                                     adBoostedRecovery: _usedAdBoost,
                                     userSide: session.userSide,
+                                    momentumSeries: _momentumSeries,
+                                    userTeamColor: userColor,
                                     onContinue: () =>
                                         Navigator.of(context).pop(),
                                   )
@@ -732,11 +743,13 @@ class _RecoveryOption extends StatelessWidget {
 }
 
 /// Post-match report (GDD 14 post-match screen): result, reward, Man
-/// of the Match, team statistics and both squads' player ratings in
-/// ONE tabbed panel — the user's XI opens first, the opponent one tap
-/// away. The pep-talk choice is gone from here (it happens on the
-/// full-time touchline card); the screen ends with a CONTINUE button
-/// that closes the match flow.
+/// of the Match, the full-match momentum flow and both squads' player
+/// ratings in ONE tabbed panel — the user's XI opens first, the
+/// opponent one tap away. The team-statistics table is gone — the
+/// momentum graph (the same one the live match shows) tells how the
+/// game flowed. The pep-talk choice is gone from here (it happens on
+/// the full-time touchline card); the screen ends with a CONTINUE
+/// button that closes the match flow.
 class MatchReportView extends StatefulWidget {
   const MatchReportView({
     super.key,
@@ -746,6 +759,8 @@ class MatchReportView extends StatefulWidget {
     required this.pepTalk,
     this.adBoostedRecovery = false,
     this.userSide,
+    this.momentumSeries,
+    this.userTeamColor = FcmColors.gold,
     required this.onContinue,
   });
 
@@ -763,6 +778,14 @@ class MatchReportView extends StatefulWidget {
   /// Which side the player managed; drives the VICTORY / DEFEAT banner
   /// and which ratings tab opens first.
   final MatchSide? userSide;
+
+  /// The full-match momentum timeline (per-minute HOME shares) — the
+  /// live bar's series at full time. Null when the match carried no
+  /// team ids; the section then stays off.
+  final List<double>? momentumSeries;
+
+  /// The user's crest colour, tinting their side's spikes.
+  final Color userTeamColor;
 
   /// Ends the match flow — the ONLY exit (no back button above).
   final VoidCallback onContinue;
@@ -786,7 +809,6 @@ class _MatchReportViewState extends State<MatchReportView> {
   @override
   Widget build(BuildContext context) {
     final report = widget.report;
-    final stats = report.stats;
     final home = report.state.scoreHome;
     final away = report.state.scoreAway;
     String? verdict;
@@ -816,6 +838,18 @@ class _MatchReportViewState extends State<MatchReportView> {
         _initialTab == 0 ? report.homeRatings : report.awayRatings;
     final opponentRatings =
         _initialTab == 0 ? report.awayRatings : report.homeRatings;
+    // Spike colours: the user's crest colour tints their side, the
+    // opponent's stays dimmed white (brand gold when no user side).
+    Color homeColor = FcmColors.gold;
+    Color awayColor = opponentMomentumColor;
+    if (widget.userSide != null) {
+      homeColor = widget.userSide == MatchSide.home
+          ? widget.userTeamColor
+          : opponentMomentumColor;
+      awayColor = widget.userSide == MatchSide.home
+          ? opponentMomentumColor
+          : widget.userTeamColor;
+    }
     return Column(
       children: [
         Expanded(
@@ -966,8 +1000,26 @@ class _MatchReportViewState extends State<MatchReportView> {
                   ),
                 ),
               ],
-              const FcmSectionTitle('Team statistics'),
-              FcmEntrance(index: 2, child: _StatsTable(stats: stats)),
+              // The full-match momentum flow where the team-statistics
+              // table used to be: the same spike bar the live match
+              // shows, now over the whole 90 minutes.
+              if (widget.momentumSeries != null &&
+                  widget.momentumSeries!.isNotEmpty) ...[
+                const FcmSectionTitle('Momentum'),
+                FcmEntrance(
+                  index: 2,
+                  child: FcmPanel(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                    child: MomentumBar(
+                      series: widget.momentumSeries!,
+                      homeTeamName: widget.homeTeamName,
+                      awayTeamName: widget.awayTeamName,
+                      homeColor: homeColor,
+                      awayColor: awayColor,
+                    ),
+                  ),
+                ),
+              ],
               // Both squads' ratings in ONE tabbed panel: the user's
               // team is the first tab and opens first.
               const FcmSectionTitle('Player ratings'),
@@ -1151,148 +1203,6 @@ class _RatingsPanel extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Comparative team statistics with a home/away share bar per row.
-class _StatsTable extends StatelessWidget {
-  const _StatsTable({required this.stats});
-
-  final MatchStatsReport stats;
-
-  static const _rows = [
-    ('Possession', 'possess'),
-    ('Shots', 'shots'),
-    ('Shots on target', 'onTarget'),
-    ('Big chances', 'bigChances'),
-    ('Corners', 'corners'),
-    ('Fouls', 'fouls'),
-    ('Yellow cards', 'yellow'),
-    ('Saves', 'saves'),
-  ];
-
-  /// Numeric value (for the bar) and display text for one side.
-  (double, String) _side(TeamMatchStats s, String key) {
-    switch (key) {
-      case 'possess':
-        final v = stats.possessionPercent(s).toDouble();
-        return (v, '${v.round()}%');
-      case 'shots':
-        return (s.shots.toDouble(), '${s.shots}');
-      case 'onTarget':
-        return (s.shotsOnTarget.toDouble(), '${s.shotsOnTarget}');
-      case 'bigChances':
-        return (s.bigChances.toDouble(), '${s.bigChances}');
-      case 'corners':
-        return (s.corners.toDouble(), '${s.corners}');
-      case 'fouls':
-        return (s.fouls.toDouble(), '${s.fouls}');
-      case 'yellow':
-        return (s.yellowCards.toDouble(), '${s.yellowCards}');
-      case 'saves':
-        return (s.saves.toDouble(), '${s.saves}');
-    }
-    return (0.0, '—');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FcmPanel(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Column(
-        children: [
-          for (final (label, key) in _rows)
-            Builder(
-              builder: (context) {
-                final (hv, hs) = _side(stats.home, key);
-                final (av, aw) = _side(stats.away, key);
-                final total = hv + av;
-                final share = total <= 0 ? 0.5 : (hv / total).clamp(0.0, 1.0);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FitText(
-                              hs,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: FitText(
-                              label,
-                              align: Alignment.center,
-                              style: const TextStyle(
-                                color: FcmColors.textDim,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: FitText(
-                              aw,
-                              align: Alignment.centerRight,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.5, end: share),
-                        duration: const Duration(milliseconds: 800),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, f, _) {
-                          final left = (f * 1000).round().clamp(1, 999);
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: SizedBox(
-                              height: 6,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    flex: left,
-                                    child: const DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        gradient: FcmColors.goldGradient,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Expanded(
-                                    flex: 1000 - left,
-                                    child: const DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        gradient: FcmColors.steelGradient,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              },
             ),
         ],
       ),

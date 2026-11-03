@@ -1,5 +1,5 @@
 /// FCM Rivals — live match widgets (GDD 13): compact scoreboard header,
-/// the live stats strip and the commentary feed.
+/// the momentum bar and the commentary feed.
 ///
 /// Kept separate from [MatchScreen]'s flow logic so every widget here is
 /// a plain stateless row: the screen rebuilds once per match minute and
@@ -20,6 +20,10 @@ import 'tactics.dart';
 /// 1x–3x speed + tactics controls in the last row — roughly half the
 /// vertical space of the old stack (scoreboard panel, then a separate
 /// controls row), which is vertical budget the commentary feed now owns.
+///
+/// Momentum lives in its own bar between this header and the feed —
+/// [MomentumBar] — not inside the header: the up/down spike reading
+/// needs more height than a compact scoreboard can spare.
 class MatchHeader extends StatelessWidget {
   const MatchHeader({
     super.key,
@@ -35,8 +39,6 @@ class MatchHeader extends StatelessWidget {
     required this.onTogglePause,
     required this.onSetSpeed,
     required this.onTactics,
-    this.momentum,
-    this.userTeamColor = FcmColors.gold,
   });
 
   final String home;
@@ -51,14 +53,6 @@ class MatchHeader extends StatelessWidget {
   final VoidCallback onTogglePause;
   final ValueChanged<int> onSetSpeed;
   final VoidCallback onTactics;
-
-  /// Live momentum share of the HOME side, 0..1 (null before kick-off —
-  /// the bar opens at the dead-level 50/50 split).
-  final double? momentum;
-
-  /// The user's crest colour — fills the user's half of the momentum
-  /// bar (the opponent's half stays white). Defaults to brand gold.
-  final Color userTeamColor;
 
   @override
   Widget build(BuildContext context) {
@@ -162,16 +156,6 @@ class MatchHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            // Momentum bar (GDD 13.2 live feel): the tug-of-war strip —
-            // the user's crest colour vs white, dead level 50/50 at
-            // kick-off and pushed by whoever is on top in the last
-            // minutes.
-            MomentumBar(
-              homeShare: momentum ?? 0.5,
-              userIsHome: userIsHome,
-              userTeamColor: userTeamColor,
-            ),
-            const SizedBox(height: 8),
             // Controls fused into the same panel: play/pause, 1x–3x
             // speed, tactics. One compact row instead of a second
             // floating block below the scoreboard.
@@ -261,81 +245,161 @@ class _TeamChip extends StatelessWidget {
   }
 }
 
-/// The live momentum tug-of-war bar: the user's half of the strip fills
-/// with their crest colour, the opponent's half stays white, and the
-/// divide slides toward whoever is on top. Dead level (50/50) at
-/// kick-off — the split only moves once the match has events.
+/// The spike colour of the side the user does NOT manage: dimmed white,
+/// so the user's crest colour always owns the reading at first glance.
+const Color opponentMomentumColor = Color(0xD9FFFFFF);
+
+/// The live momentum bar (GDD 13.2 live feel): a horizontal baseline
+/// with one vertical line per minute played — home pressure rises ABOVE
+/// the line, away pressure hangs BELOW it, and the taller side is the
+/// team on top. Each minute's reading is the same trailing-window share
+/// [computeMomentumSeries] gives, so the bar can never contradict the
+/// events (GDD 13.1). Dead level at kick-off: no spikes, just the line.
 ///
-/// The fill re-tweens over 600ms so each match minute nudges the divide
-/// smoothly instead of snapping; a neutral tick mark pins the centre so
-/// "who has the momentum" reads at a glance against dead level.
+/// The team names sit at the two ends of the label row so the sides are
+/// unmistakable, painted as ONE CustomPainter — the match screen
+/// rebuilds once per minute and the whole history repaints in a single
+/// pass, no per-minute widgets and no animation controllers (the
+/// repaint-per-minute philosophy that keeps the live screen jank-free).
 class MomentumBar extends StatelessWidget {
   const MomentumBar({
     super.key,
-    required this.homeShare,
-    required this.userIsHome,
-    this.userTeamColor = FcmColors.gold,
+    required this.series,
+    required this.homeTeamName,
+    required this.awayTeamName,
+    this.homeColor = FcmColors.gold,
+    this.awayColor = opponentMomentumColor,
+    this.graphHeight = 56,
   });
 
-  /// Momentum share of the HOME side, 0..1 (0.5 = dead level).
-  final double homeShare;
+  /// Per-minute HOME momentum share (0..1, 0.5 = dead level), index 0 =
+  /// minute 1 — [computeMomentumSeries] output. Empty before kick-off.
+  final List<double> series;
 
-  /// Which half belongs to the user: their crest colour fills it, the
-  /// opponent's half is white.
-  final bool userIsHome;
+  final String homeTeamName;
+  final String awayTeamName;
 
-  /// The user's crest colour (brand gold by default).
-  final Color userTeamColor;
+  /// Spike colour of the home side above the baseline (the user's crest
+  /// colour when they manage it).
+  final Color homeColor;
+
+  /// Spike colour of the away side below the baseline.
+  final Color awayColor;
+
+  /// Height of the spike area itself (the label row adds ~16dp).
+  final double graphHeight;
 
   @override
   Widget build(BuildContext context) {
-    final clamped = homeShare.clamp(0.0, 1.0);
-    final userShare = userIsHome ? clamped : 1 - clamped;
-    final userColor = userTeamColor;
-    // The opponent's white is dimmed a touch so it reads as a strip,
-    // not a searchlight, against the dark panel.
-    final opponentColor = Colors.white.withValues(alpha: 0.85);
-
-    return SizedBox(
-      height: 8,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Stack(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            // Full-width opponent white: the user's colour slides over
-            // it from the left (or right when the user is away), so the
-            // divide IS the momentum reading.
-            ColoredBox(color: opponentColor),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.5, end: userShare),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.easeOut,
-              builder: (context, f, _) => Align(
-                alignment: userIsHome
-                    ? Alignment.centerLeft
-                    : Alignment.centerRight,
-                child: FractionallySizedBox(
-                  widthFactor: f,
-                  child: ColoredBox(color: userColor),
+            Expanded(
+              child: FitText(
+                homeTeamName,
+                align: Alignment.centerLeft,
+                style: TextStyle(
+                  color: homeColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
                 ),
               ),
             ),
-            // Centre tick: the dead-level mark the divide fights over.
-            const Align(
-              alignment: Alignment.center,
-              child: Center(
-                child: VerticalDivider(
-                  width: 2,
-                  thickness: 2,
-                  color: Colors.black26,
+            const Text(
+              'MOMENTUM',
+              style: TextStyle(
+                color: FcmColors.textDim,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+              ),
+            ),
+            Expanded(
+              child: FitText(
+                awayTeamName,
+                align: Alignment.centerRight,
+                style: TextStyle(
+                  color: awayColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
                 ),
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          height: graphHeight,
+          child: CustomPaint(
+            painter: _MomentumPainter(
+              series: series,
+              homeColor: homeColor,
+              awayColor: awayColor,
+            ),
+          ),
+        ),
+      ],
     );
   }
+}
+
+/// Paints the baseline plus one vertical line per played minute: up
+/// (home colour) when the home share is past dead level, down (away
+/// colour) when under it, the length proportional to the pressure.
+class _MomentumPainter extends CustomPainter {
+  const _MomentumPainter({
+    required this.series,
+    required this.homeColor,
+    required this.awayColor,
+  });
+
+  final List<double> series;
+  final Color homeColor;
+  final Color awayColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final mid = size.height / 2;
+    canvas.drawLine(
+      Offset(0, mid),
+      Offset(size.width, mid),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.16)
+        ..strokeWidth = 1,
+    );
+
+    final n = series.length;
+    if (n == 0) return;
+    final step = size.width / n;
+    final line = Paint()
+      ..strokeWidth = (step * 0.55).clamp(1.2, 3.0).toDouble()
+      ..strokeCap = StrokeCap.round;
+    // A little breathing room either side of the baseline.
+    final half = mid - 3;
+    for (var i = 0; i < n; i++) {
+      final d = (series[i].clamp(0.0, 1.0) - 0.5) * 2; // -1..1, + = home
+      if (d.abs() < 0.04) continue; // dead-level minute: no spike
+      final x = step * (i + 0.5);
+      final len = d.abs() * half;
+      line.color = d > 0 ? homeColor : awayColor;
+      canvas.drawLine(
+        Offset(x, mid),
+        Offset(x, d > 0 ? mid - len : mid + len),
+        line,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MomentumPainter old) =>
+      old.series != series ||
+      old.homeColor != homeColor ||
+      old.awayColor != awayColor;
 }
 
 /// Pulsing red "live" indicator — the one animated widget in the
@@ -473,259 +537,6 @@ class _HeaderIconButton extends StatelessWidget {
             color: gold ? FcmColors.ink : FcmColors.goldSoft,
             size: 24,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// One live statistic row: home value — label — away value with a share
-/// bar between them. Plain stateless; numbers update in place (no
-/// tweening per minute — the bar animating on every one of 90 rebuilds
-/// was pure churn).
-class _LiveStatsRow extends StatelessWidget {
-  const _LiveStatsRow({
-    required this.label,
-    required this.homeText,
-    required this.awayText,
-    required this.homeShare,
-  });
-
-  final String label;
-  final String homeText;
-  final String awayText;
-  final double homeShare;
-
-  @override
-  Widget build(BuildContext context) {
-    final left = (homeShare * 1000).round().clamp(1, 999);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: FitText(
-                  homeText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: FitText(
-                  label,
-                  align: Alignment.center,
-                  style: const TextStyle(
-                    color: FcmColors.textDim,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: FitText(
-                  awayText,
-                  align: Alignment.centerRight,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 3),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: SizedBox(
-              height: 5,
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: left,
-                    child: const DecoratedBox(
-                      decoration:
-                          BoxDecoration(gradient: FcmColors.goldGradient),
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    flex: 1000 - left,
-                    child: const DecoratedBox(
-                      decoration:
-                          BoxDecoration(gradient: FcmColors.steelGradient),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Live match statistics strip (GDD 13.2): seven glance rows recomputed
-/// from the event timeline every match minute — possession, shots, shots
-/// on target, expected goals, passes, fouls and corners. Always visible
-/// above the commentary feed — the numbers the manager glances at
-/// between key moments, never a tap away. Seven rows stay scannable
-/// because each keeps the same value — label — value rhythm with its
-/// share bar; the count matches the real broadcast graphic (the
-/// half-time and full-time report can go deeper than this).
-class LiveMatchStatsPanel extends StatelessWidget {
-  const LiveMatchStatsPanel({
-    super.key,
-    required this.stats,
-    required this.homeTeamName,
-    required this.awayTeamName,
-  });
-
-  final MatchStatsReport stats;
-  final String homeTeamName;
-  final String awayTeamName;
-
-  static String _pct(double v) => '${(100 * v).round()}%';
-
-  static String _xg(double v) =>
-      v >= 10 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
-
-  @override
-  Widget build(BuildContext context) {
-    final h = stats.home;
-    final a = stats.away;
-    final totalPossession = h.possessionMinutes + a.possessionMinutes;
-    final possH = totalPossession == 0
-        ? 0.5
-        : h.possessionMinutes / totalPossession;
-    final possTextH =
-        totalPossession == 0 ? '—' : _pct(possH);
-    final possTextA =
-        totalPossession == 0 ? '—' : _pct(1 - possH);
-    final totalShots = h.shots + a.shots;
-    final totalOnTarget = h.shotsOnTarget + a.shotsOnTarget;
-    final totalXg = h.xg + a.xg;
-    final totalPasses = h.passesCompleted + a.passesCompleted;
-    final totalFouls = h.fouls + a.fouls;
-    final totalCorners = h.corners + a.corners;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-      child: FcmPanel(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-        accent: FcmColors.bronze,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.query_stats_rounded,
-                  size: 16,
-                  color: FcmColors.gold,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: FitText(
-                    homeTeamName,
-                    style: const TextStyle(
-                      color: FcmColors.gold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-                const Text(
-                  'Match stats',
-                  style: TextStyle(
-                    color: FcmColors.textDim,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Icon(
-                  Icons.query_stats_rounded,
-                  size: 16,
-                  color: FcmColors.gold,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: FitText(
-                    awayTeamName,
-                    align: Alignment.centerRight,
-                    style: const TextStyle(
-                      color: FcmColors.gold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            _LiveStatsRow(
-              label: 'Possession',
-              homeText: possTextH,
-              awayText: possTextA,
-              homeShare: possH,
-            ),
-            _LiveStatsRow(
-              label: 'Shots',
-              homeText: '${h.shots}',
-              awayText: '${a.shots}',
-              homeShare: totalShots == 0
-                  ? 0.5
-                  : h.shots / totalShots,
-            ),
-            _LiveStatsRow(
-              label: 'On target',
-              homeText: '${h.shotsOnTarget}',
-              awayText: '${a.shotsOnTarget}',
-              homeShare: totalOnTarget == 0
-                  ? 0.5
-                  : h.shotsOnTarget / totalOnTarget,
-            ),
-            _LiveStatsRow(
-              label: 'Expected goals',
-              homeText: _xg(h.xg),
-              awayText: _xg(a.xg),
-              homeShare: totalXg <= 0 ? 0.5 : h.xg / totalXg,
-            ),
-            _LiveStatsRow(
-              label: 'Passes',
-              homeText: '${h.passesCompleted}',
-              awayText: '${a.passesCompleted}',
-              homeShare: totalPasses == 0
-                  ? 0.5
-                  : h.passesCompleted / totalPasses,
-            ),
-            _LiveStatsRow(
-              label: 'Fouls',
-              homeText: '${h.fouls}',
-              awayText: '${a.fouls}',
-              homeShare:
-                  totalFouls == 0 ? 0.5 : h.fouls / totalFouls,
-            ),
-            _LiveStatsRow(
-              label: 'Corners',
-              homeText: '${h.corners}',
-              awayText: '${a.corners}',
-              homeShare: totalCorners == 0
-                  ? 0.5
-                  : h.corners / totalCorners,
-            ),
-          ],
         ),
       ),
     );

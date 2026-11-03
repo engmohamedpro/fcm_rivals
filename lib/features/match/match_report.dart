@@ -66,13 +66,14 @@ class CommentaryLine {
   final String? detail;
 }
 
-/// Per-team live statistics (GDD 13.2), accumulated from events.
+/// Per-team match statistics (GDD 13.2), accumulated from events.
+///
+/// BALANCE-HARNESS ONLY: the momentum bar replaced the stats UI (the
+/// live strip and the post-match team-statistics table are gone), so
+/// nothing in the app surfaces these numbers any more — [computeStats]
+/// stays for the GDD 30–33 simulation & balance harness and its tests.
 class TeamMatchStats {
   TeamMatchStats();
-
-  /// All-zero stats for the pre-kick-off strip (and club-less friendly
-  /// previews): every number reads as an empty dash until play starts.
-  TeamMatchStats.empty();
 
   int possessionMinutes = 0;
   int passesAttempted = 0;
@@ -102,25 +103,20 @@ class TeamMatchStats {
   double get averageXg => shots == 0 ? 0 : xg / shots;
 }
 
-/// Live momentum share 0..1 for the HOME side over the trailing
-/// [window] minutes of pressure (default ~15 minutes — the "who is on
-/// top RIGHT NOW" reading a pundit gives, not a whole-match average).
+/// Per-minute weighted pressure totals for both sides (index 0 = minute
+/// 1), shared by [computeMomentum] and [computeMomentumSeries] so the
+/// scalar reading and the timeline can never diverge (GDD 13.1).
 ///
 /// Inputs are the events themselves, weighted by how loudly each one
 /// says "this team is doing the pushing": a shot is worth more than a
 /// corner, a big chance or a goal weighs heaviest, plain possession
 /// minutes carry a small share so the bar keeps breathing in quiet
 /// spells, and winning the ball back counts a little too — pressing is
-/// momentum. Events age out of the window, so a red-hot start fades if
-/// the other side takes over.
-///
-/// Before any events the match is dead level: exactly 0.5, the bar's
-/// kick-off 50/50 split.
-double computeMomentum(
+/// momentum.
+({List<double> home, List<double> away, int lastMinute}) _momentumPressure(
   List<MatchEvent> events, {
   required int homeTeamId,
   required int awayTeamId,
-  int window = 15,
 }) {
   // Weights: how strongly each event shouts "we are on top".
   const shotW = 4.0;
@@ -136,65 +132,56 @@ double computeMomentum(
   for (final e in events) {
     if (e.minute > lastMinute) lastMinute = e.minute;
   }
-  final fromMinute = lastMinute - window + 1;
+  final home = List<double>.filled(lastMinute, 0);
+  final away = List<double>.filled(lastMinute, 0);
 
-  var home = 0.0;
-  var away = 0.0;
+  void credit(MatchEvent e, double w) {
+    if (w <= 0 || lastMinute == 0) return;
+    final i = e.minute.clamp(1, lastMinute) - 1;
+    if (e.teamId == homeTeamId) {
+      home[i] += w;
+    } else {
+      away[i] += w;
+    }
+  }
+
+  // Credits [w] to the OPPONENT of the event's side — the press that
+  // won the ball, the foul drawn, the booking the pressure forced.
+  void creditOpponent(MatchEvent e, double w) {
+    if (w <= 0 || lastMinute == 0) return;
+    final i = e.minute.clamp(1, lastMinute) - 1;
+    if (e.teamId == homeTeamId) {
+      away[i] += w;
+    } else {
+      home[i] += w;
+    }
+  }
+
   for (final e in events) {
-    if (e.minute < fromMinute) continue;
-    final isHome = e.teamId == homeTeamId;
     switch (e.type) {
       // Possession and passes are one share per minute held.
       case MatchEventType.possession:
       case MatchEventType.passMove:
-        if (isHome) {
-          home += possW;
-        } else {
-          away += possW;
-        }
+        credit(e, possW);
       // Dispossessed: e.teamId is the side that LOST the ball — the
       // other side's press gets the credit.
       case MatchEventType.dispossessed:
-        if (isHome) {
-          away += pressW;
-        } else {
-          home += pressW;
-        }
+        creditOpponent(e, pressW);
       case MatchEventType.corner:
-        if (isHome) {
-          home += cornerW;
-        } else {
-          away += cornerW;
-        }
+        credit(e, cornerW);
       // Foul: e.teamId is the fouler — the fouled side gets the share.
       case MatchEventType.foul:
-        if (isHome) {
-          away += foulWonW;
-        } else {
-          home += foulWonW;
-        }
+        creditOpponent(e, foulWonW);
       case MatchEventType.penaltyAwarded:
       case MatchEventType.shot:
         var w = e.type == MatchEventType.penaltyAwarded ? bigW : shotW;
         if (e.metadata['isBigChance'] == true) w = bigW;
-        if (isHome) {
-          home += w;
-        } else {
-          away += w;
-        }
+        credit(e, w);
       case MatchEventType.goal:
-        if (isHome) {
-          home += goalW;
-        } else {
-          away += goalW;
-        }
+        credit(e, goalW);
       // A card is usually shown to the side under the cosh.
       case MatchEventType.card:
-        if (isHome) {
-          away += cardAgainstW;
-        } else {
-          home += cardAgainstW;
-        }
+        creditOpponent(e, cardAgainstW);
       // Structural moments carry no momentum signal.
       case MatchEventType.kickoff:
       case MatchEventType.halfTime:
@@ -206,8 +193,70 @@ double computeMomentum(
         break;
     }
   }
+  return (home: home, away: away, lastMinute: lastMinute);
+}
+
+/// Live momentum share 0..1 for the HOME side over the trailing
+/// [window] minutes of pressure (default ~15 minutes — the "who is on
+/// top RIGHT NOW" reading a pundit gives, not a whole-match average).
+///
+/// Events age out of the window, so a red-hot start fades if the other
+/// side takes over. Before any weighted events the match is dead level:
+/// exactly 0.5, the bar's kick-off 50/50 split.
+double computeMomentum(
+  List<MatchEvent> events, {
+  required int homeTeamId,
+  required int awayTeamId,
+  int window = 15,
+}) {
+  final pressure =
+      _momentumPressure(events, homeTeamId: homeTeamId, awayTeamId: awayTeamId);
+  if (pressure.lastMinute == 0) return 0.5;
+  final start = pressure.lastMinute - window < 0
+      ? 0
+      : pressure.lastMinute - window;
+  var home = 0.0;
+  var away = 0.0;
+  for (var i = start; i < pressure.lastMinute; i++) {
+    home += pressure.home[i];
+    away += pressure.away[i];
+  }
   if (home + away <= 0) return 0.5;
   return home / (home + away);
+}
+
+/// Momentum timeline for the live match (GDD 13.2): one HOME momentum
+/// share (0..1, 0.5 = dead level) per minute played, index 0 = minute 1.
+/// Each minute carries the same trailing-[window] reading
+/// [computeMomentum] gives, ending at that minute — the momentum bar
+/// draws a vertical line per entry, rising ABOVE the baseline for home
+/// pressure and hanging BELOW it for away pressure, so the match flow
+/// and the team on top read at a glance. Empty list before any minute
+/// has been played.
+List<double> computeMomentumSeries(
+  List<MatchEvent> events, {
+  required int homeTeamId,
+  required int awayTeamId,
+  int window = 15,
+}) {
+  final pressure =
+      _momentumPressure(events, homeTeamId: homeTeamId, awayTeamId: awayTeamId);
+  if (pressure.lastMinute == 0) return const [];
+  final series = List<double>.filled(pressure.lastMinute, 0.5);
+  var home = 0.0;
+  var away = 0.0;
+  for (var m = 0; m < pressure.lastMinute; m++) {
+    home += pressure.home[m];
+    away += pressure.away[m];
+    final drop = m - window;
+    if (drop >= 0) {
+      home -= pressure.home[drop];
+      away -= pressure.away[drop];
+    }
+    final total = home + away;
+    series[m] = total <= 0 ? 0.5 : home / total;
+  }
+  return series;
 }
 
 /// Derives per-team statistics from the event timeline (FR-032).
