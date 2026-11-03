@@ -134,7 +134,16 @@ class _GameShellBodyState extends State<_GameShellBody> {
         centerTitle: false,
         // The toolbar hugs the wordmark art: no dead space above or
         // below it, and the taller mark reads as the game's masthead.
-        toolbarHeight: 44,
+        toolbarHeight: 52,
+        // Soft elevation shadow under the chrome — the bar floats above
+        // the page while its gold seam marks the lit edge.
+        elevation: 8,
+        shadowColor: Colors.black.withValues(alpha: 0.45),
+        flexibleSpace: const _AppBarChrome(),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(5),
+          child: FcmGoldSeam(),
+        ),
         title: const FcmWordmark(size: 44),
         actions: const [_TestCoinButton(), _CoinBalance()],
       ),
@@ -156,6 +165,47 @@ class _GameShellBodyState extends State<_GameShellBody> {
           _index = i;
           _visited.add(i);
         }),
+      ),
+    );
+  }
+}
+
+/// The AppBar's chrome backdrop: a deep vertical gradient that darkens
+/// toward the gold seam, a faint warm sheen behind the wordmark and a
+/// 1px top bevel — the bar reads as brushed metal under stage light
+/// instead of a flat dark strip.
+class _AppBarChrome extends StatelessWidget {
+  const _AppBarChrome();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: [0, 0.55, 1],
+          colors: [
+            FcmColors.surfaceHigh,
+            FcmColors.surface,
+            FcmColors.night,
+          ],
+        ),
+        border: const Border(
+          top: BorderSide(color: Color(0x0FFFFFFF)),
+        ),
+        // A faint warm sheen behind the wordmark, painted over the
+        // gradient (full-bleed via foregroundDecoration).
+        foregroundDecoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(-0.7, -1.2),
+            radius: 1.4,
+            colors: [
+              Color(0x14D9B871),
+              Colors.transparent,
+            ],
+          ),
+        ),
       ),
     );
   }

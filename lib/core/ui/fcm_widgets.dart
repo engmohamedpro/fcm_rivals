@@ -947,45 +947,47 @@ class FcmCoinChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(6, 5, 12, 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        color: Colors.black.withValues(alpha: 0.35),
-        border: Border.all(color: FcmColors.gold.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(color: FcmColors.gold.withValues(alpha: 0.18), blurRadius: 12),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: FcmColors.goldGradient,
-            ),
-            child: const Text('C',
-                style: TextStyle(
-                    color: FcmColors.ink,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13)),
+    // Naked HUD readout: the glowing coin and the count float free — no
+    // pill, no border, nothing that reads as a tappable control. The
+    // coin carries its own soft light; the digits sit in the bright
+    // goldSoft metal with a faint bloom for legibility on any chrome.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: FcmColors.goldGradient,
+            boxShadow: [
+              BoxShadow(
+                color: FcmColors.gold.withValues(alpha: 0.45),
+                blurRadius: 10,
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          FcmCountUp(
-            value: coins,
-            format: compact,
-            style: const TextStyle(
-              color: FcmColors.gold,
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
-            ),
+          child: const Text('C',
+              style: TextStyle(
+                  color: FcmColors.ink,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
+        FcmCountUp(
+          value: coins,
+          format: compact,
+          style: const TextStyle(
+            color: FcmColors.goldSoft,
+            fontWeight: FontWeight.w900,
+            fontSize: 15,
+            shadows: [
+              Shadow(color: Color(0x59D9B871), blurRadius: 12),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1200,6 +1202,57 @@ class _SheetTile extends StatelessWidget {
 // Navigation
 // -----------------------------------------------------------------------------
 
+/// The brand's light seam: a hairline of gradient gold with a soft bloom
+/// falling to one side. The AppBar caps itself with the bloom rising
+/// into the bar, the bottom nav mirrors it with the bloom falling into
+/// the nav — the two chrome edges read as one lit system.
+class FcmGoldSeam extends StatelessWidget {
+  const FcmGoldSeam({super.key, this.bloomBelow = false, this.bloomHeight = 3.8});
+
+  /// When true the line sits on top and the bloom falls below it (bottom
+  /// nav); otherwise the bloom rises above the line (AppBar bottom edge).
+  final bool bloomBelow;
+
+  final double bloomHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final line = Container(
+      height: 1.2,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [
+          Color(0x3D6E5426),
+          FcmColors.goldSoft,
+          FcmColors.gold,
+          Color(0x3D6E5426),
+        ]),
+      ),
+    );
+    final bloom = Container(
+      height: bloomHeight,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: bloomBelow
+              ? [
+                  FcmColors.gold.withValues(alpha: 0.22),
+                  Colors.transparent,
+                ]
+              : [
+                  Colors.transparent,
+                  FcmColors.gold.withValues(alpha: 0.22),
+                ],
+        ),
+      ),
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: bloomBelow ? [line, bloom] : [bloom, line],
+    );
+  }
+}
+
 class FcmNavItem {
   const FcmNavItem(this.label, this.icon, {this.badge});
 
@@ -1227,10 +1280,15 @@ class FcmBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
+      // Same chrome language as the AppBar: a deep vertical gradient
+      // capped by the gold light seam — line on the top edge, bloom
+      // falling into the nav.
       decoration: BoxDecoration(
-        color: const Color(0xEE121014),
-        border: Border(
-            top: BorderSide(color: Colors.white.withValues(alpha: 0.10))),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0B0A0E), Color(0xFF141319)],
+        ),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.5),
@@ -1238,23 +1296,29 @@ class FcmBottomNav extends StatelessWidget {
               offset: const Offset(0, -6)),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-          child: Row(
-            children: [
-              for (var i = 0; i < items.length; i++)
-                Expanded(
-                  child: _NavButton(
-                    item: items[i],
-                    selected: i == index,
-                    onTap: () => onChanged(i),
-                  ),
-                ),
-            ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const FcmGoldSeam(bloomBelow: true),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              child: Row(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    Expanded(
+                      child: _NavButton(
+                        item: items[i],
+                        selected: i == index,
+                        onTap: () => onChanged(i),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1283,14 +1347,28 @@ class _NavButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: selected
-              ? FcmColors.gold.withValues(alpha: 0.14)
-              : Colors.transparent,
-          border: Border.all(
-            color: selected
-                ? FcmColors.gold.withValues(alpha: 0.45)
-                : Colors.transparent,
-          ),
+          // Borderless: the selected tab is lit, not boxed — a soft gold
+          // wash falling from above plus a glow under it, no stroke that
+          // would read as a button outline.
+          gradient: selected
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    FcmColors.gold.withValues(alpha: 0.16),
+                    FcmColors.gold.withValues(alpha: 0.04),
+                  ],
+                )
+              : null,
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: FcmColors.gold.withValues(alpha: 0.20),
+                    blurRadius: 14,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
