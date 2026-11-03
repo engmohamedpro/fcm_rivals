@@ -5,6 +5,16 @@
 /// creation → shot selection → accuracy → goalkeeper reaction → outcome.
 /// Goals emerge from these events only.
 ///
+/// v2 — calibrated against real football distributions (see
+/// test/features/match/engine_calibration_test.dart): ~2.6 goals/match
+/// at even strength with the real share of 0-0s and 1-0s, 11-13 shots
+/// per team, ~20 fouls, and a SATURATING strength response — chance
+/// creation follows a logistic curve in attack-minus-defence (a
+/// 17-point class gap is a ~80% favourite, not a 9-1) and shot
+/// conversion moves only a few points per edge, so blowouts stay as
+/// rare as they are in real leagues. A speculative-shot layer puts
+/// real-world shot volume under the tactical chance layer.
+///
 /// Pure Dart, widget-independent (GDD development rule 4) and shaped for a
 /// future authoritative server port (GDD 29): inputs are plain values, the
 /// PRNG is a seeded single stream (GDD 12.5) and user commands are applied
@@ -20,7 +30,7 @@ import 'stamina.dart';
 import 'tactics.dart';
 
 /// Engine identity for deterministic replay records (GDD 12.5).
-const int matchEngineVersion = 1;
+const int matchEngineVersion = 2;
 
 /// Which side an event belongs to.
 enum MatchSide { home, away }
@@ -175,7 +185,11 @@ class MatchTeamInput {
   final bool aiControlled;
 }
 
-/// Tunable engine parameters — pre-balance placeholders (GDD rule 14).
+/// Tunable engine parameters — calibrated against real football
+/// distributions (§31 simulation): ~2.6 goals/match at even strength,
+/// a favourite's edge that SATURATES instead of exploding, ~22 fouls
+/// and ~4 yellows a match, shots 9–14 per team (GDD rule 14 keeps all
+/// of them configurable in this one place).
 class MatchEngineConfig {
   const MatchEngineConfig({
     this.homeAdvantage = 1.07,
@@ -183,22 +197,26 @@ class MatchEngineConfig {
     this.segmentWeights = const [0.18, 0.55, 0.27],
     this.buildUpBase = 0.28,
     this.buildUpScale = 0.62,
-    this.chanceBase = 0.14,
-    this.chanceScale = 0.42,
-    this.chanceMax = 0.65,
+    this.chanceBase = 0.01,
+    this.chanceScale = 0.39,
+    this.chanceMax = 0.45,
+    this.chanceSigmoidMid = 4.0,
+    this.chanceSigmoidSteepness = 0.085,
     this.shotFromChance = 0.82,
-    this.blockChance = 0.20,
-    this.onTargetBase = 0.16,
+    this.speculativeShotChance = 0.12,
+    this.blockChance = 0.28,
+    this.onTargetBase = 0.22,
     this.onTargetScale = 0.30,
-    this.goalBase = 0.10,
-    this.goalScale = 0.60,
-    this.foulOnTurnover = 0.18,
-    this.yellowCardChance = 0.22,
-    this.straightRedChance = 0.008,
-    this.offsideChance = 0.06,
-    this.cornerFromBlock = 0.60,
-    this.cornerFromCross = 0.18,
-    this.headerFromCorner = 0.30,
+    this.goalBase = 0.19,
+    this.goalScale = 0.13,
+    this.goalDiffScale = 0.26,
+    this.foulOnTurnover = 0.50,
+    this.yellowCardChance = 0.10,
+    this.straightRedChance = 0.004,
+    this.offsideChance = 0.10,
+    this.cornerFromBlock = 0.55,
+    this.cornerFromCross = 0.16,
+    this.headerFromCorner = 0.28,
     this.assistChance = 0.70,
     this.aiMinMinutesBetweenChanges = 10,
     this.aiMaxChanges = 2,
@@ -221,11 +239,32 @@ class MatchEngineConfig {
   final double chanceScale;
   final double chanceMax;
   final double shotFromChance;
+
+  /// P(a possession that didn't create a clear chance still ends in a
+  /// low-quality shot) — the volume layer that puts real-world 11-13
+  /// shots per team under the tactical chance layer.
+  final double speculativeShotChance;
   final double blockChance;
   final double onTargetBase;
   final double onTargetScale;
   final double goalBase;
   final double goalScale;
+
+  /// Sigmoid centre: the attack-minus-defence point where chance
+  /// creation sits at its neutral rate. In engine points (~60+), so a
+  /// +12 edge is roughly 'clear favourite', +20 'title winner vs
+  /// relegation fodder'.
+  final double chanceSigmoidMid;
+
+  /// Sigmoid steepness per engine point of attack-minus-defence. Small
+  /// (0.075): a full 20-point edge saturates near ~80% of the cap, it
+  /// never reaches certainty.
+  final double chanceSigmoidSteepness;
+
+  /// Goal-rate sensitivity per point of shooter-minus-keeper edge —
+  /// bounded linear, so a superstar facing a weak keeper converts maybe
+  /// ten points higher, never 'scores every time'.
+  final double goalDiffScale;
 
   final double foulOnTurnover;
   final double yellowCardChance;
@@ -568,10 +607,16 @@ class MatchEngine {
     final produced = <MatchEvent>[];
 
     // 1. Possession (GDD 12.3 step 1): support-based, biased by style.
+    //    A POWER competition, not a ratio: weaker support loses the ball
+    //    disproportionately more, but the exponent (1.6) bounds it — a
+    //    20-support-point gap swings possession ~62/38, never 90/10,
+    //    mirroring how real mismatches dominate without absurdity.
     final homeTotals = totalsOf(MatchSide.home);
     final awayTotals = totalsOf(MatchSide.away);
-    final homePoss = homeTotals.support * _home.style.modifiers.possession;
-    final awayPoss = awayTotals.support * _away.style.modifiers.possession;
+    final homePoss = math.pow(
+        homeTotals.support * _home.style.modifiers.possession, 1.6);
+    final awayPoss = math.pow(
+        awayTotals.support * _away.style.modifiers.possession, 1.6);
     final attackerSide =
         _random.chance(homePoss / (homePoss + awayPoss)) ? MatchSide.home : MatchSide.away;
     final att = _runtimeOf(attackerSide);
@@ -580,7 +625,7 @@ class MatchEngine {
     final defTotals = attackerSide == MatchSide.home ? awayTotals : homeTotals;
 
     // Possession event carries pass volume for the statistics module.
-    final passesAttempted = 2 + _random.nextInt(6);
+    final passesAttempted = 3 + _random.nextInt(8);
     produced.add(_emit(
         minute: minute,
         type: MatchEventType.possession,
@@ -611,15 +656,37 @@ class MatchEngine {
     }
 
     // 4-5. Chance creation (score/time context: urgency, GDD 12.4).
-    final attackRatio =
-        attTotals.attack / (attTotals.attack + defTotals.defence);
+    //    SATURATING strength response: the attack-minus-defence edge
+    //    drives a logistic curve, not a ratio. Real football's
+    //    favourite still only creates chances at ~1.6x the rate of the
+    //    underdog's own, because defenders congest space and convert
+    //    superiority into half-chances, not penalties. The mid/steepness
+    //    pair sets where the curve bends: ±10 engine points ≈ the
+    //    crossing region, +20 is near-saturation.
+    final attackEdge =
+        attTotals.attack - defTotals.defence;
     final urgency = _urgencyBoost(attackerSide, minute);
-    final chanceP = ((config.chanceBase + config.chanceScale * attackRatio) *
-            att.style.modifiers.chance *
-            urgency)
+    final edgeFactor = 1 /
+        (1 +
+            math.exp(-config.chanceSigmoidSteepness *
+                (attackEdge - config.chanceSigmoidMid)));
+    final chanceP = (config.chanceBase +
+            config.chanceScale * edgeFactor *
+                att.style.modifiers.chance *
+                urgency)
         .clamp(0.05, config.chanceMax);
     if (!_random.chance(chanceP)) {
       // Retained possession: completed passes, maybe a cross or dribble.
+      // A share of these pockets end in a LOW-QUALITY shot — a snatched
+      // long-range effort, a cross shanked goalwards — which is how real
+      // matches reach 11-13 shots per team while clear chances stay
+      // rare. Quality stays 'normal' so conversion treats them as
+      // half-chances.
+      if (_random.chance(config.speculativeShotChance)) {
+        produced.addAll(
+            _shoot(minute, attackerSide, att, def, ChanceQuality.normal));
+        return produced;
+      }
       final passAccuracy = (attTotals.support / 100) *
           att.style.modifiers.passAccuracy *
           0.85;
@@ -808,7 +875,12 @@ class MatchEngine {
             qualityOnTargetBonus)
         .clamp(0.10, 0.95);
 
-    // Goalkeeper reaction (GDD 12.3 step 8).
+    // Goalkeeper reaction (GDD 12.3 step 8) — BOUNDED conversion: the
+    // shooter-minus-keeper edge moves the goal rate by at most a few
+    // points per side (goalDiffScale), so a superstar against a weak
+    // keeper converts ~+10..15 points, never 'scores every time'. This
+    // is what keeps even huge power gaps producing real scorelines:
+    // more chances for the favourite, not certain goals.
     final qualityGoalFactor = switch (quality) {
       ChanceQuality.bigChance => 1.25,
       ChanceQuality.header => 0.72,
@@ -817,9 +889,9 @@ class MatchEngine {
       ChanceQuality.normal => 1.0,
     };
     final goalPGivenOnTarget = (config.goalBase +
-            config.goalScale *
-                (shooterEff / (shooterEff + gkEff * 1.5)) *
-                qualityGoalFactor)
+            config.goalScale * qualityGoalFactor +
+            config.goalDiffScale *
+                ((shooterEff - gkEff) / 100))
         .clamp(0.04, 0.88);
 
     // xG (GDD 13.2): P(on target) × P(goal | on target).
@@ -1174,7 +1246,7 @@ class MatchRandom {
     return _random.nextInt(max);
   }
 
-  bool chance(double p) => nextDouble() < p;
+  bool chance(num p) => nextDouble() < p;
 }
 
 /// Per-team mutable match runtime.
