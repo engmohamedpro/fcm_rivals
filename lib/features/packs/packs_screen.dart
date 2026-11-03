@@ -104,11 +104,24 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     try {
       final store = await ref.read(collectionStoreProvider.future);
       final random = ref.read(randomProvider);
+      // The chain identity must come from the row BEFORE the open
+      // consumes it — after this the slot is only described by the
+      // offers list.
+      final packs =
+          ref.read(availablePacksProvider).valueOrNull ?? const <Pack>[];
+      Pack? row;
+      for (final p in packs) {
+        if (p.id == packId) {
+          row = p;
+          break;
+        }
+      }
       final result = await store.openPack(packId: packId, random: random);
       ref.invalidate(availablePacksProvider);
       ref.invalidate(collectionProvider);
       if (!context.mounted) return;
-      await _reveal(context, store, result, tier);
+      await _reveal(context, store, result, tier,
+          chain: row == null ? null : _chainTargetForPack(row));
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
@@ -121,21 +134,27 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
 
   /// The cinematic both paths end in: the bought or claimed pack tears
   /// open wearing its own tier metal — the exact colour of the store
-  /// cell it came from.
+  /// cell it came from. When [chain] is set the reveal offers OPEN
+  /// ANOTHER: popping with `true` acquires the next pack of the same
+  /// shelf slot — free if one is owned, otherwise bought outright with
+  /// no YES/NO — and loops straight into the next reveal.
   Future<void> _reveal(BuildContext context, CollectionStore store,
-      PackOpenResult result, PackTier tier) async {
+      PackOpenResult result, PackTier tier,
+      {_ChainTarget? chain}) async {
     // Captured before the push: the sell callback fires much later,
     // inside the reveal, when this context may already be unmounted.
     final messenger = ScaffoldMessenger.of(context);
     final sellMessage = (int credit) => SnackBar(
         content: Text('Sold for ${_groupDigits(credit)} coins'));
-    await Navigator.of(context).push(MaterialPageRoute(
+    final chained = await Navigator.of(context).push<bool>(MaterialPageRoute(
       fullscreenDialog: true,
       builder: (_) => PackOpeningScreen(
         players: result.players,
         ownedIds: result.ownedIds,
         packTint: tier.accent,
         packStars: tier.stars,
+        chainInfo: chain == null ? null : _chainInfoFor(chain),
+        queryBalance: () => ref.read(clubProvider).valueOrNull?.coins,
         onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
           ref.invalidate(clubProvider);
           ref.invalidate(collectionProvider);
@@ -143,6 +162,125 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         }),
       ),
     ));
+    if (chained != true || chain == null || !context.mounted) return;
+    final next = await _openAnotherInChain(context, store, chain);
+    if (next != null && context.mounted) {
+      await _reveal(context, store, next.result, next.tier, chain: chain);
+    }
+  }
+
+  /// One chain hop: open another owned pack of the same slot for free,
+  /// or buy one outright — the reveal's OPEN ANOTHER tap IS the decision
+  /// (the capsule is only tappable when the balance covers the price),
+  /// so there is no YES/NO here; the store still validates atomically.
+  Future<_ChainReveal?> _openAnotherInChain(BuildContext context,
+      CollectionStore store, _ChainTarget target) async {
+    try {
+      final random = ref.read(randomProvider);
+      final packs =
+          ref.read(availablePacksProvider).valueOrNull ?? const <Pack>[];
+      Pack? owned;
+      for (final p in packs) {
+        if (_sameSlot(p, target)) {
+          owned = p;
+          break;
+        }
+      }
+      final Pack pack;
+      if (owned != null) {
+        pack = owned;
+      } else {
+        final offer = _offerFor(target);
+        if (offer == null) return null;
+        final coins = ref.read(clubProvider).valueOrNull?.coins ?? 0;
+        if (coins < offer.price) {
+          // A race the capsule can't see (balance changed mid-reveal).
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Not enough coins for another pack')));
+          return null;
+        }
+        pack = await store.buyPack(
+          category: target.category,
+          tier: target.tier,
+          nationality: target.category == PackCategory.nationality
+              ? target.scopeValue
+              : null,
+          position: target.category == PackCategory.position
+              ? Position.fromCode(target.scopeValue!)
+              : null,
+        );
+        ref.invalidate(clubProvider);
+      }
+      final result = await store.openPack(packId: pack.id, random: random);
+      ref.invalidate(availablePacksProvider);
+      ref.invalidate(collectionProvider);
+      return _ChainReveal(result: result, tier: target.tier);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('$e'.replaceFirst('CollectionException: ', ''))));
+      }
+      return null;
+    }
+  }
+
+  /// The shelf slot the current pack came from — the same product the
+  /// OPEN ANOTHER chains into. Titles come from the matching offer when
+  /// one exists (reward packs beyond the shelves fall back to a derived
+  /// name).
+  _ChainTarget? _chainTargetForPack(Pack pack) {
+    final probe = _ChainTarget(
+      category: pack.category,
+      scopeValue: pack.scopeValue,
+      tier: pack.tier,
+    );
+    final match = _offerFor(probe);
+    final title = match?.title ??
+        (pack.category == PackCategory.position
+            ? '${pack.scopeValue} ${pack.tier.label} Pack'
+            : '${pack.tier.label} ${pack.category.label}');
+    return _ChainTarget(
+      category: pack.category,
+      scopeValue: pack.scopeValue,
+      tier: pack.tier,
+      title: title,
+    );
+  }
+
+  /// What the OPEN ANOTHER capsule shows: the same slot's price, the
+  /// club balance and the owned (free) pack count. Null when the slot
+  /// cannot repeat at all — no offer and nothing owned.
+  PackChainInfo? _chainInfoFor(_ChainTarget target) {
+    final packs =
+        ref.read(availablePacksProvider).valueOrNull ?? const <Pack>[];
+    final ownedCount =
+        packs.where((p) => _sameSlot(p, target)).length;
+    final offer = _offerFor(target);
+    if (offer == null && ownedCount == 0) return null;
+    return PackChainInfo(
+      price: offer?.price ?? 0,
+      balance: ref.read(clubProvider).valueOrNull?.coins ?? 0,
+      ownedCount: ownedCount,
+      title: target.title,
+    );
+  }
+
+  bool _sameSlot(Pack pack, _ChainTarget target) =>
+      pack.category == target.category &&
+      pack.scopeValue == target.scopeValue &&
+      pack.tier == target.tier;
+
+  StorePackOffer? _offerFor(_ChainTarget target) {
+    final offers =
+        ref.read(storeOffersProvider).valueOrNull ?? const <StorePackOffer>[];
+    for (final o in offers) {
+      if (o.category == target.category &&
+          o.scopeValue == target.scopeValue &&
+          o.tier == target.tier) {
+        return o;
+      }
+    }
+    return null;
   }
 
   /// Shows the pack's obtainable players, highest rated first.
@@ -264,7 +402,13 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ref.invalidate(clubProvider);
       ref.invalidate(collectionProvider);
       if (!context.mounted) return;
-      await _reveal(context, store, result, offer.tier);
+      await _reveal(context, store, result, offer.tier,
+          chain: _ChainTarget(
+            category: offer.category,
+            scopeValue: offer.scopeValue,
+            tier: offer.tier,
+            title: offer.title,
+          ));
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -283,6 +427,32 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
 String _groupDigits(int value) => value
     .toString()
     .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
+
+/// What OPEN ANOTHER chains into: the exact shelf slot — category, scope
+/// and tier — of the pack just opened, so the next foil is the same
+/// product the player chose. [title] names it on the reveal's handoff
+/// line.
+class _ChainTarget {
+  const _ChainTarget({
+    required this.category,
+    required this.scopeValue,
+    required this.tier,
+    this.title = '',
+  });
+
+  final PackCategory category;
+  final String? scopeValue;
+  final PackTier tier;
+  final String title;
+}
+
+/// The next link of the chain: a freshly opened pack of the same slot.
+class _ChainReveal {
+  const _ChainReveal({required this.result, required this.tier});
+
+  final PackOpenResult result;
+  final PackTier tier;
+}
 
 /// Scope key shared by owned packs and store offers, e.g.
 /// 'global:bronze' or 'position:ST:gold' — the join between inventory

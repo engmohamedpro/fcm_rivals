@@ -201,6 +201,46 @@ class _Tl {
   );
 }
 
+/// Everything the reveal needs to offer OPEN ANOTHER straight from the
+/// card: the same shelf slot's next price, the club's balance and how
+/// many owned (free) packs of that slot remain. The caller computes it
+/// before the push; the reveal only renders it and pops with `true`
+/// when the player wants to chain. Null hides the action.
+class PackChainInfo {
+  const PackChainInfo({
+    required this.price,
+    required this.balance,
+    required this.ownedCount,
+    this.title,
+  });
+
+  /// Coin price of the next pack of the same shelf slot. Unused while
+  /// [ownedCount] packs remain — those open for free.
+  final int price;
+
+  /// The club's balance at push time. After a mid-reveal sale the reveal
+  /// re-asks the caller for a fresh value through its `queryBalance`
+  /// callback, so the capsule never shows a stale figure.
+  final int balance;
+
+  /// Owned unopened packs of the same shelf slot — the next of these
+  /// opens without touching the balance.
+  final int ownedCount;
+
+  /// Display name of the next pack, e.g. 'Rare Global Pack'.
+  final String? title;
+
+  /// Free when the club still owns packs of this slot.
+  bool get isFree => ownedCount > 0;
+
+  /// The chain action is offered only when the next pack is within reach:
+  /// an owned pack, or a balance that covers the price.
+  bool get affordable => isFree || balance >= price;
+
+  /// Coins missing for the next purchase (0 when affordable).
+  int get shortfall => isFree ? 0 : price - balance;
+}
+
 class PackOpeningScreen extends StatefulWidget {
   const PackOpeningScreen({
     super.key,
@@ -209,6 +249,8 @@ class PackOpeningScreen extends StatefulWidget {
     this.packStars = 3,
     this.ownedIds = const [],
     this.onSell,
+    this.chainInfo,
+    this.queryBalance,
   });
 
   final List<BasePlayer> players;
@@ -230,6 +272,16 @@ class PackOpeningScreen extends StatefulWidget {
   /// owned id) hides the SELL button — e.g. key-man previews.
   final Future<void> Function(int ownedId)? onSell;
 
+  /// Quick-chain data for OPEN ANOTHER on the last revealed card: open
+  /// the next pack of the same shelf slot with no purchase dialog. Null
+  /// hides the action — previews, and slots that cannot repeat.
+  final PackChainInfo? chainInfo;
+
+  /// Live balance source so the chain capsule re-checks affordability
+  /// after a sale credits coins mid-reveal. Null keeps the snapshot
+  /// balance from [chainInfo].
+  final int? Function()? queryBalance;
+
   @override
   State<PackOpeningScreen> createState() => _PackOpeningScreenState();
 }
@@ -242,6 +294,11 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   int _index = 0;
   bool _selling = false;
+  bool _chaining = false;
+
+  /// Balance re-read from the caller after a mid-reveal sale — the
+  /// snapshot in [PackChainInfo] predates any SELL credit.
+  int? _liveBalance;
   double _lastT = 0;
   late List<Spark> _sparks;
   late List<Spark> _finaleSparks;
@@ -265,6 +322,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     _haptic(HapticFeedback.lightImpact);
     try {
       await widget.onSell!(widget.ownedIds[_index]);
+      // The sale just credited coins: re-read the balance so the chain
+      // capsule judges affordability on the fresh figure.
+      _liveBalance = widget.queryBalance?.call();
     } catch (_) {
       // Selling failed upstream (e.g. player somehow in the squad): stay
       // on the card so the player sees the error and can KEEP instead.
@@ -273,6 +333,36 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     }
     if (!mounted) return;
     _next();
+  }
+
+  /// OPEN ANOTHER on the last card: the card is kept (it is already
+  /// owned — keeping needs no store call), the action bar morphs into a
+  /// handoff line, then the screen pops with `true` and the caller
+  /// acquires and reveals the next pack of the same shelf slot — no
+  /// YES/NO in between.
+  Future<void> _chain() async {
+    if (_chaining || _selling) return;
+    _haptic(HapticFeedback.mediumImpact);
+    setState(() => _chaining = true);
+    await Future.delayed(const Duration(milliseconds: 520));
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
+  }
+
+  /// The chain capsule lives on the last card only: earlier cards of a
+  /// multi-draw must be resolved (sold or kept) first.
+  bool get _showChain =>
+      widget.chainInfo != null && _index == widget.players.length - 1;
+
+  /// Balance the capsule shows and judges: the fresh figure after a sale,
+  /// the push-time snapshot otherwise.
+  int get _chainBalance =>
+      _liveBalance ?? widget.chainInfo?.balance ?? 0;
+
+  bool get _chainAffordable {
+    final info = widget.chainInfo;
+    if (info == null) return false;
+    return info.isFree || _chainBalance >= info.price;
   }
 
   /// Same rating → rarity rule as the collection and squad, so a card looks
@@ -612,8 +702,10 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
 
-        // Sell / Keep once the stats have counted up: SELL first, then
-        // KEEP — both always visible so the choice is one glance.
+        // The action bar once the stats have counted up: SELL and KEEP
+        // resolve the card, and on the last card OPEN ANOTHER chains
+        // straight into the next pack of the same shelf slot — no
+        // purchase dialog between foils.
         SafeArea(
           child: Align(
             alignment: Alignment.bottomCenter,
@@ -625,35 +717,62 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                 opacity: done ? 1 : 0,
                 child: IgnorePointer(
                   ignoring: !done,
-                  child: Row(
-                    children: [
-                      if (_canSell)
-                        Expanded(
-                          child: FcmButton(
-                            style: FcmButtonStyle.steel,
-                            // The coin value the caller pays for THIS
-                            // player — a fresh pack draw is unupgraded —
-                            // shown with the same C coin as the top bar.
-                            label: 'SELL',
-                            coinValue:
-                                EconomyEngine().sellPriceOf(_player),
-                            loading: _selling,
-                            onPressed: _selling ? null : _sell,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 240),
+                    child: _chaining
+                        ? _ChainHandoffLine(
+                            key: const ValueKey('chain-handoff'),
+                            title: widget.chainInfo?.title,
+                          )
+                        : Column(
+                            key: const ValueKey('reveal-actions'),
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  if (_canSell)
+                                    Expanded(
+                                      child: FcmButton(
+                                        style: FcmButtonStyle.steel,
+                                        // The coin value the caller pays for THIS
+                                        // player — a fresh pack draw is unupgraded —
+                                        // shown with the same C coin as the top bar.
+                                        label: 'SELL',
+                                        coinValue:
+                                            EconomyEngine().sellPriceOf(_player),
+                                        loading: _selling,
+                                        onPressed: _selling ? null : _sell,
+                                      ),
+                                    ),
+                                  if (_canSell) const SizedBox(width: 10),
+                                  Expanded(
+                                    child: FcmButton(
+                                      onPressed: _next,
+                                      icon: _index < widget.players.length - 1
+                                          ? Icons.arrow_forward_rounded
+                                          : Icons.check_rounded,
+                                      label: _index < widget.players.length - 1
+                                          ? 'NEXT PLAYER  ${_index + 1}/${widget.players.length}'
+                                          : 'KEEP PLAYER',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_showChain) ...[
+                                const SizedBox(height: 10),
+                                _ChainButton(
+                                  affordable: _chainAffordable,
+                                  isFree: widget.chainInfo!.isFree,
+                                  ownedCount: widget.chainInfo!.ownedCount,
+                                  price: widget.chainInfo!.price,
+                                  shortfall: widget.chainInfo!.shortfall,
+                                  balance: _chainBalance,
+                                  accent: widget.packTint,
+                                  onPressed: _chain,
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
-                      if (_canSell) const SizedBox(width: 10),
-                      Expanded(
-                        child: FcmButton(
-                          onPressed: _next,
-                          icon: _index < widget.players.length - 1
-                              ? Icons.arrow_forward_rounded
-                              : Icons.check_rounded,
-                          label: _index < widget.players.length - 1
-                              ? 'NEXT PLAYER  ${_index + 1}/${widget.players.length}'
-                              : 'KEEP PLAYER',
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -935,4 +1054,179 @@ class _MysteryPainter extends CustomPainter {
   @override
   bool shouldRepaint(_MysteryPainter old) =>
       old.breath != breath || old.accent != accent;
+}
+
+/// Thousands separator for the chain capsule, e.g. 12500 → 12,500.
+String _groupPrice(int value) => value
+    .toString()
+    .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
+
+/// The OPEN ANOTHER capsule under the revealed card: a tier-metal glow
+/// pill that keeps the streak going — bolt mark, price (or the success
+/// green FREE ×N when the club owns packs of this slot), then the live
+/// balance behind a hairline. When the balance falls short the pill dims
+/// into a 'NEED X MORE' state instead of vanishing, so the player always
+/// sees why the chain stopped.
+class _ChainButton extends StatelessWidget {
+  const _ChainButton({
+    required this.affordable,
+    required this.isFree,
+    required this.ownedCount,
+    required this.price,
+    required this.shortfall,
+    required this.balance,
+    required this.onPressed,
+    this.accent,
+  });
+
+  final bool affordable;
+  final bool isFree;
+  final int ownedCount;
+  final int price;
+  final int shortfall;
+  final int balance;
+  final VoidCallback? onPressed;
+
+  /// The next pack's tier metal — the foil the chain tears open next.
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final metal = accent ?? FcmColors.goldSoft;
+    return Opacity(
+      opacity: affordable ? 1 : 0.55,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(100),
+          onTap: affordable ? onPressed : null,
+          child: Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                Colors.black.withValues(alpha: 0.55),
+                metal.withValues(alpha: affordable ? 0.16 : 0.07),
+                Colors.black.withValues(alpha: 0.55),
+              ]),
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(
+                  color: metal.withValues(alpha: affordable ? 0.65 : 0.25)),
+              boxShadow: [
+                BoxShadow(
+                  color: metal.withValues(alpha: affordable ? 0.28 : 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.bolt_rounded, color: metal, size: 20),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    'OPEN ANOTHER',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ),
+                if (isFree)
+                  // Same success-green metal the store's claim plates wear.
+                  Text(
+                    'FREE ×$ownedCount',
+                    style: const TextStyle(
+                      color: FcmColors.success,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.6,
+                    ),
+                  )
+                else if (affordable) ...[
+                  const FcmCoinGlyph(size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    _groupPrice(price),
+                    style: const TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ] else
+                  Text(
+                    'NEED ${_groupPrice(shortfall)} MORE',
+                    style: const TextStyle(
+                      color: FcmColors.danger,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                const SizedBox(width: 10),
+                Container(
+                    width: 1,
+                    height: 18,
+                    color: Colors.white.withValues(alpha: 0.18)),
+                const SizedBox(width: 10),
+                Text(
+                  FcmCoinChip.compact(balance),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The chain's morph target: the moment OPEN ANOTHER lands, the action
+/// bar collapses into one quiet line — card kept, next foil tearing
+/// open — and the screen hands off to the next reveal.
+class _ChainHandoffLine extends StatelessWidget {
+  const _ChainHandoffLine({super.key, this.title});
+
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+              strokeWidth: 2, color: FcmColors.gold),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            title == null
+                ? 'Kept — tearing open the next foil…'
+                : 'Kept — tearing open another $title…',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
