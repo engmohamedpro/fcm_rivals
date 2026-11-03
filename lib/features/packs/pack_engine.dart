@@ -53,16 +53,16 @@ enum PackTier {
       };
 }
 
-/// Pack-rarity accent colours — the same palette as the player-card
-/// rarities ([CardRarity.accent]): rare → warm bronze, epic → cool
-/// silver, legendary → champion gold. Cells, badges and foils draw from
-/// these so a pack's rarity reads at a glance and matches the cards it
-/// draws.
+/// Pack-rarity accent colours — the same jewel palette as the player-card
+/// rarities ([CardRarity.accent]): rare → royal amethyst, epic → royal
+/// sapphire, legendary → radiant champion gold. Cells, badges and foils
+/// draw from these so a pack's rarity reads at a glance and matches the
+/// cards it draws.
 extension PackTierColor on PackTier {
   Color get accent => switch (this) {
-        PackTier.rare => const Color(0xFFC89A5B),
-        PackTier.epic => const Color(0xFFD9D9E2),
-        PackTier.legendary => const Color(0xFFF2D488),
+        PackTier.rare => const Color(0xFF8B5CF6),
+        PackTier.epic => const Color(0xFF3B82F6),
+        PackTier.legendary => const Color(0xFFF7C948),
       };
 }
 

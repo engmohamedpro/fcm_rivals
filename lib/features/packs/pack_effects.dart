@@ -260,7 +260,7 @@ class FoilPackPainter extends CustomPainter {
 
   /// Metallic ramp of a tier colour: [light, base, dark, deep]. Derived
   /// by shifting lightness only, so hue and saturation survive at full
-  /// strength — bronze looks like bronze, silver like silver.
+  /// strength — amethyst reads as amethyst, sapphire as sapphire.
   static List<Color> _foilShades(Color base) {
     final hsl = HSLColor.fromColor(base);
     final l = hsl.lightness;

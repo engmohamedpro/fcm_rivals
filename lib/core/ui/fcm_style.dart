@@ -76,7 +76,7 @@ class FcmColors {
 /// Card rarity. Derived from a player's rating so the same player looks the
 /// same in the pack reveal, the collection and the squad: rare, epic and
 /// legendary — one rarity language shared with the store's pack tiers,
-/// each carrying the metal accent of its pack. Higher rarity gets bigger
+/// each carrying the gem accent of its pack. Higher rarity gets bigger
 /// reveal effects (GDD 5.6).
 enum CardRarity {
   rare,
@@ -103,28 +103,32 @@ enum CardRarity {
         CardRarity.legendary => 'LEGENDARY',
       };
 
-  /// Main accent colour (glow, rays, particles).
+  /// Main accent colour (glow, rays, particles): a jewel ladder — royal
+  /// amethyst, royal sapphire, radiant champion gold. Saturated enough
+  /// to read at a glance on the charcoal night, three clearly distinct
+  /// hues, and legendary still crowns the brand's own gold.
   Color get accent => switch (this) {
-        CardRarity.rare => const Color(0xFFC89A5B),
-        CardRarity.epic => const Color(0xFFD9D9E2),
-        CardRarity.legendary => const Color(0xFFF2D488),
+        CardRarity.rare => const Color(0xFF8B5CF6),
+        CardRarity.epic => const Color(0xFF3B82F6),
+        CardRarity.legendary => const Color(0xFFF7C948),
       };
 
-  /// Card face gradient, top-left → bottom-right.
+  /// Card face gradient, top-left → bottom-right: each gem cast as a
+  /// metal — light jewel sheen into the royal tone into its deep shade.
   List<Color> get faceGradient => switch (this) {
         CardRarity.rare => const [
-            Color(0xFFEBD3A4),
-            Color(0xFFA57C3F),
-            Color(0xFF523A18),
+            Color(0xFFCDB8FA),
+            Color(0xFF8B5CF6),
+            Color(0xFF36206B),
           ],
         CardRarity.epic => const [
-            Color(0xFFF4F4F8),
-            Color(0xFFADAFBC),
-            Color(0xFF4E505A),
+            Color(0xFFBFD6FD),
+            Color(0xFF3B82F6),
+            Color(0xFF14315E),
           ],
         CardRarity.legendary => const [
             Color(0xFFFFF3C4),
-            Color(0xFFE0B968),
+            Color(0xFFE9B93F),
             Color(0xFF7A4E00),
           ],
       };
@@ -132,8 +136,8 @@ enum CardRarity {
   /// Text colour that stays readable on [faceGradient].
   Color get ink => switch (this) {
         CardRarity.legendary => const Color(0xFF2B1B00),
-        CardRarity.epic => const Color(0xFF17181C),
-        CardRarity.rare => const Color(0xFF2B1D08),
+        CardRarity.epic => const Color(0xFF0D1B36),
+        CardRarity.rare => const Color(0xFF1F0F45),
       };
 
   /// 1.0 for rare, up to 2.0 for legendary — scales particles, ray length

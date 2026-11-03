@@ -443,8 +443,9 @@ class _ScopeSection extends StatelessWidget {
 
 /// One tier cell of a scope section: the sealed foil pack exactly as it
 /// looks before opening (same [FoilPackPainter] as the reveal cinematic),
-/// painted in the tier's solid metal — bronze, silver or gold — with the
-/// tier name under it, a price slot and the action button. The scope
+/// painted in the tier's solid jewel metal — amethyst, sapphire or
+/// champion gold — with the tier name under it, a price slot and the
+/// action button. The scope
 /// title and its VIEW PLAYERS entry live on the section, not the cell.
 /// Owned and buyable cells share the exact same layout: the slot shows
 /// the FREE ×N pill when the club owns packs of this type, the coin
