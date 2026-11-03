@@ -370,6 +370,7 @@ class FcmButton extends StatelessWidget {
     this.loading = false,
     this.style = FcmButtonStyle.gold,
     this.compact = false,
+    this.coinValue,
   });
 
   final String label;
@@ -378,6 +379,12 @@ class FcmButton extends StatelessWidget {
   final bool loading;
   final FcmButtonStyle style;
   final bool compact;
+
+  /// When set, renders the gold coin glyph followed by this amount
+  /// (compact format) after the label — the same C coin as the top-bar
+  /// balance, e.g. SELL with the player's sale price. Takes over from
+  /// [icon], which stays null on coin buttons.
+  final int? coinValue;
 
   @override
   Widget build(BuildContext context) {
@@ -435,6 +442,24 @@ class FcmButton extends StatelessWidget {
                       maxLines: 1, softWrap: false, style: textStyle),
                 ),
               ),
+              if (coinValue != null) ...[
+                const SizedBox(width: 6),
+                // The coin glyph + amount: the C coin exactly as the
+                // top bar shows it, marking the number as currency.
+                FcmCoinGlyph(size: compact ? 14 : 16),
+                const SizedBox(width: 3),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      FcmCoinChip.compact(coinValue!),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: textStyle,
+                    ),
+                  ),
+                ),
+              ],
             ],
           );
     return Semantics(
@@ -870,6 +895,35 @@ class FcmStatBar extends StatelessWidget {
   }
 }
 
+/// The app's currency glyph: the gold-gradient coin with the 'C' mark,
+/// exactly as it appears in the top bar's balance chip. Reusable
+/// wherever a coin amount is shown — e.g. the SELL price of a revealed
+/// player.
+class FcmCoinGlyph extends StatelessWidget {
+  const FcmCoinGlyph({super.key, this.size = 16});
+
+  /// The coin's diameter; the 'C' scales with it.
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: FcmColors.goldGradient,
+      ),
+      child: Text('C',
+          style: TextStyle(
+              color: FcmColors.ink,
+              fontWeight: FontWeight.w900,
+              fontSize: size * 0.54)),
+    );
+  }
+}
+
 /// Gold coin chip with a rolling balance, used in the top bar.
 class FcmCoinChip extends StatelessWidget {
   const FcmCoinChip({super.key, required this.coins});
@@ -1181,7 +1235,7 @@ class FcmBottomNav extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           child: Row(
             children: [
               for (var i = 0; i < items.length; i++)
@@ -1220,7 +1274,7 @@ class _NavButton extends StatelessWidget {
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
         margin: const EdgeInsets.symmetric(horizontal: 3),
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: selected
@@ -1244,7 +1298,7 @@ class _NavButton extends StatelessWidget {
                   curve: Curves.easeOutBack,
                   child: Icon(
                     item.icon,
-                    size: 24,
+                    size: 20,
                     color: selected ? FcmColors.gold : Colors.white60,
                   ),
                 ),
@@ -1276,14 +1330,14 @@ class _NavButton extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: FitText(
                 item.label,
                 align: Alignment.center,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.4,
                   color: selected ? FcmColors.gold : Colors.white60,

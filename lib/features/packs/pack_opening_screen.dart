@@ -375,11 +375,12 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                         Expanded(
                           child: FcmButton(
                             style: FcmButtonStyle.steel,
-                            icon: Icons.sell_rounded,
                             // The coin value the caller pays for THIS
-                            // player — a fresh pack draw is unupgraded.
-                            label:
-                                'SELL · ${formatCoins(EconomyEngine().sellPriceOf(_player))}',
+                            // player — a fresh pack draw is unupgraded —
+                            // shown with the same C coin as the top bar.
+                            label: 'SELL',
+                            coinValue:
+                                EconomyEngine().sellPriceOf(_player),
                             loading: _selling,
                             onPressed: _selling ? null : _sell,
                           ),

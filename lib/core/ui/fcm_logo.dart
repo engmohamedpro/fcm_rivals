@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 
 import 'fcm_style.dart';
 
-/// Asset path of the brand art.
-const String kFcmLogoAsset = 'assets/images/fcm_rivals_logo.jpg';
+/// Asset path of the transparent brand wordmark art ('FCM 27 Rivals').
+const String kFcmWordmarkAsset = 'assets/images/logo.webp';
 
-/// The full brand art, fading and scaling in once. Used as the loading
-/// screen. [cacheWidth] keeps the 2.8 MB source PNG cheap to decode.
+/// The transparent brand wordmark, fading and scaling in once. Used as
+/// the loading screen: the art floats directly on the night background —
+/// it has no backdrop of its own. [cacheWidth] keeps the source cheap
+/// to decode.
 class FcmLogoLoading extends StatelessWidget {
   const FcmLogoLoading({super.key});
 
@@ -26,27 +28,44 @@ class FcmLogoLoading extends StatelessWidget {
           opacity: v,
           child: Transform.scale(scale: 0.9 + 0.1 * v, child: child),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: Image.asset(
-            kFcmLogoAsset,
-            width: 300,
-            height: 300,
-            cacheWidth: 600,
-            fit: BoxFit.cover,
-            // Never let a missing/undecodable asset break startup.
-            errorBuilder: (_, __, ___) => const FcmWordmark(size: 40),
-          ),
+        child: Image.asset(
+          kFcmWordmarkAsset,
+          width: 300,
+          cacheWidth: 600,
+          fit: BoxFit.contain,
+          // Never let a missing/undecodable asset break startup.
+          errorBuilder: (_, __, ___) => const FcmWordmark(size: 40),
         ),
       ),
     );
   }
 }
 
-/// Compact text wordmark for app bars: silver "FCM" + champagne "RIVALS",
-/// matching the logo's metal-on-black signature.
+/// The brand wordmark: the transparent logo art, used wherever 'FCM
+/// Rivals' titles a surface — the app bar, the loading screen, club
+/// creation. [size] is the mark's height; the width follows the art's
+/// own aspect. If the art cannot be decoded the metal text wordmark
+/// stands in, so a broken asset never blanks a title.
 class FcmWordmark extends StatelessWidget {
-  const FcmWordmark({super.key, this.size = 22});
+  const FcmWordmark({super.key, this.size = 28});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      kFcmWordmarkAsset,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => _FcmTextWordmark(size: size),
+    );
+  }
+}
+
+/// Text fallback for [FcmWordmark]: silver "FCM" + champagne "RIVALS",
+/// matching the logo's metal-on-black signature.
+class _FcmTextWordmark extends StatelessWidget {
+  const _FcmTextWordmark({required this.size});
 
   final double size;
 

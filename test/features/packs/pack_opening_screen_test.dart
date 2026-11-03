@@ -12,6 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/core/ui/country_flag.dart';
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
+    show FcmCoinChip, FcmCoinGlyph;
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 
@@ -108,10 +110,13 @@ void main() {
     expect(find.text('RARE'), findsOneWidget);
     expect(find.text('KEEP PLAYER'), findsOneWidget);
     // SELL carries the player's coin value (overall 55 → the economy's
-    // sell price of a 90M-market-value player).
+    // sell price of a 90M-market-value player) behind the same C coin
+    // glyph as the top-bar balance.
     final sellValue =
         const EconomyEngine().sellPriceOf(_player(overall: 55));
-    expect(find.text('SELL · ${formatCoins(sellValue)}'), findsOneWidget);
+    expect(find.text('SELL'), findsOneWidget);
+    expect(find.text(FcmCoinChip.compact(sellValue)), findsOneWidget);
+    expect(find.byType(FcmCoinGlyph), findsOneWidget);
     final done = tester
         .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
     expect(done.opacity, 1);

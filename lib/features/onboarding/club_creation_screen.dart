@@ -83,16 +83,13 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                     FcmEntrance(
                       child: Center(
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 220),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: Image.asset(
-                              kFcmLogoAsset,
-                              cacheWidth: 500,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  const FcmWordmark(size: 36),
-                            ),
+                          constraints: const BoxConstraints(maxWidth: 260),
+                          child: Image.asset(
+                            kFcmWordmarkAsset,
+                            cacheWidth: 500,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) =>
+                                const FcmWordmark(size: 36),
                           ),
                         ),
                       ),
