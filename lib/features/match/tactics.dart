@@ -7,16 +7,27 @@
 library;
 
 /// Ten supported playing styles (GDD 10.2).
+///
+/// Balance-tuned by the §34 deep-balance simulation (see
+/// test/balance/match_engine_balance_test.dart): every style vs an
+/// identical balanced opponent lands in the 36-52% win-rate band with a
+/// real spread between strongest and weakest. The possession multipliers
+/// stay close to 1.0 because the engine's possession competition raises
+/// support totals to the power 1.6 — a +6% multiplier compounds into a
+/// big possession share, so 1.20/1.28 made Possession/Tiki-Taka win
+/// 64-67% of matches outright (a free dominant strategy). Gegenpressing
+/// and High Press sit below 50% by design: their 1.30/1.22 stamina
+/// multipliers are the real cost.
 enum PlayingStyle {
-  possession('Possession', StyleModifiers(attack: 1.00, defence: 1.00, possession: 1.20, chance: 0.95, stamina: 1.00, passAccuracy: 1.06)),
-  tikiTaka('Tiki-Taka', StyleModifiers(attack: 0.95, defence: 1.02, possession: 1.28, chance: 0.92, stamina: 0.95, passAccuracy: 1.10)),
-  directPlay('Direct Play', StyleModifiers(attack: 1.08, defence: 0.96, possession: 0.88, chance: 1.08, stamina: 1.02, passAccuracy: 0.92)),
-  counterAttack('Counter Attack', StyleModifiers(attack: 1.12, defence: 1.05, possession: 0.82, chance: 1.15, stamina: 0.92, passAccuracy: 0.90)),
-  gegenpressing('Gegenpressing', StyleModifiers(attack: 1.10, defence: 0.94, possession: 1.05, chance: 1.10, stamina: 1.30, passAccuracy: 0.94)),
-  highPress('High Press', StyleModifiers(attack: 1.06, defence: 0.92, possession: 1.05, chance: 1.06, stamina: 1.22, passAccuracy: 0.94)),
+  possession('Possession', StyleModifiers(attack: 1.00, defence: 1.00, possession: 1.06, chance: 0.95, stamina: 1.00, passAccuracy: 1.06)),
+  tikiTaka('Tiki-Taka', StyleModifiers(attack: 0.95, defence: 1.02, possession: 1.08, chance: 0.92, stamina: 0.95, passAccuracy: 1.10)),
+  directPlay('Direct Play', StyleModifiers(attack: 1.08, defence: 0.96, possession: 0.94, chance: 1.08, stamina: 1.02, passAccuracy: 0.92)),
+  counterAttack('Counter Attack', StyleModifiers(attack: 1.12, defence: 1.05, possession: 0.88, chance: 1.15, stamina: 0.92, passAccuracy: 0.90)),
+  gegenpressing('Gegenpressing', StyleModifiers(attack: 1.10, defence: 0.94, possession: 1.03, chance: 1.10, stamina: 1.30, passAccuracy: 0.94)),
+  highPress('High Press', StyleModifiers(attack: 1.06, defence: 0.92, possession: 1.03, chance: 1.06, stamina: 1.22, passAccuracy: 0.94)),
   wingPlay('Wing Play', StyleModifiers(attack: 1.06, defence: 1.00, possession: 0.98, chance: 1.05, stamina: 1.05, passAccuracy: 0.98)),
-  longBall('Long Ball', StyleModifiers(attack: 1.02, defence: 1.03, possession: 0.85, chance: 1.02, stamina: 0.94, passAccuracy: 0.84)),
-  lowBlock('Low Block', StyleModifiers(attack: 0.88, defence: 1.14, possession: 0.80, chance: 0.88, stamina: 0.85, passAccuracy: 0.92)),
+  longBall('Long Ball', StyleModifiers(attack: 1.02, defence: 1.03, possession: 0.90, chance: 1.02, stamina: 0.94, passAccuracy: 0.84)),
+  lowBlock('Low Block', StyleModifiers(attack: 0.88, defence: 1.14, possession: 0.88, chance: 0.88, stamina: 0.85, passAccuracy: 0.92)),
   balanced('Balanced', StyleModifiers(attack: 1.00, defence: 1.00, possession: 1.00, chance: 1.00, stamina: 1.00, passAccuracy: 1.00));
 
   const PlayingStyle(this.displayName, this.modifiers);
@@ -79,14 +90,23 @@ class StyleModifiers {
 
 /// Seven mentalities (GDD 10.3): percentage changes to the team's Attack
 /// and Defence balance.
+///
+/// Balance-tuned by the §34 deep-balance simulation: the engine's chance
+/// creation saturates through a logistic curve while defence losses are
+/// near-linear, so symmetric pairs (+X% attack, −X% defence) lose more
+/// than they win — the pre-tune ladder slid monotonically from 51% (very
+/// defensive) to 40% (very attacking), punishing players for using the
+/// game's core aggressive mechanic. The tuned pairs pay for attack with
+/// proportionally smaller defence drops, so every step lands in the
+/// 44-47% band: each extreme trades draws for its own flavour of risk.
 enum Mentality {
-  veryDefensive('Very Defensive', 0.80, 1.20, 0.90),
-  defensive('Defensive', 0.90, 1.10, 0.95),
-  cautious('Cautious', 0.95, 1.06, 0.98),
+  veryDefensive('Very Defensive', 0.82, 1.05, 0.90),
+  defensive('Defensive', 0.90, 1.06, 0.95),
+  cautious('Cautious', 0.95, 1.05, 0.98),
   balanced('Balanced', 1.00, 1.00, 1.00),
-  positive('Positive', 1.06, 0.95, 1.03),
-  attacking('Attacking', 1.12, 0.90, 1.08),
-  veryAttacking('Very Attacking', 1.20, 0.82, 1.15);
+  positive('Positive', 1.05, 0.97, 1.03),
+  attacking('Attacking', 1.10, 0.95, 1.08),
+  veryAttacking('Very Attacking', 1.18, 0.93, 1.15);
 
   const Mentality(this.displayName, this.attackMod, this.defenceMod, this.staminaMod);
 

@@ -53,7 +53,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ListView(children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: FcmPanel(
               accent: FcmColors.danger,
               onTap: () => ref.invalidate(storeOffersProvider),
@@ -72,7 +72,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ListView(children: [
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               child: FcmPanel(
                 accent: FcmColors.danger,
                 onTap: () => ref.invalidate(availablePacksProvider),

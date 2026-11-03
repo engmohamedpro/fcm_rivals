@@ -142,13 +142,16 @@ void main() {
     expect(find.byType(MomentumBar), findsOneWidget);
 
     // The stats strip sits above the commentary feed with its labels —
-    // always visible (no hide/collapse toggle) and trimmed to the
-    // numbers a glance needs: xG and pass accuracy are out.
+    // always visible (no hide/collapse toggle), seven broadcast-style
+    // rows: possession, shots, on target, xG, passes, fouls, corners.
     expect(find.byType(LiveMatchStatsPanel), findsOneWidget);
     expect(find.text('Possession'), findsOneWidget);
     expect(find.text('Shots'), findsOneWidget);
     expect(find.text('On target'), findsOneWidget);
-    expect(find.text('Expected goals'), findsNothing);
+    expect(find.text('Expected goals'), findsOneWidget);
+    expect(find.text('Passes'), findsOneWidget);
+    expect(find.text('Fouls'), findsOneWidget);
+    expect(find.text('Corners'), findsOneWidget);
     expect(find.text('Pass accuracy'), findsNothing);
     expect(find.text('Hide stats'), findsNothing);
 

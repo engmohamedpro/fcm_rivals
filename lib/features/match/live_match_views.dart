@@ -572,10 +572,14 @@ class _LiveStatsRow extends StatelessWidget {
   }
 }
 
-/// Live match statistics strip (GDD 13.2): possession, shots and shots
-/// on target, recomputed from the event timeline every match minute.
-/// Always visible above the commentary feed — the numbers the manager
-/// glances at between key moments, never a tap away.
+/// Live match statistics strip (GDD 13.2): seven glance rows recomputed
+/// from the event timeline every match minute — possession, shots, shots
+/// on target, expected goals, passes, fouls and corners. Always visible
+/// above the commentary feed — the numbers the manager glances at
+/// between key moments, never a tap away. Seven rows stay scannable
+/// because each keeps the same value — label — value rhythm with its
+/// share bar; the count matches the real broadcast graphic (the
+/// half-time and full-time report can go deeper than this).
 class LiveMatchStatsPanel extends StatelessWidget {
   const LiveMatchStatsPanel({
     super.key,
@@ -589,6 +593,9 @@ class LiveMatchStatsPanel extends StatelessWidget {
   final String awayTeamName;
 
   static String _pct(double v) => '${(100 * v).round()}%';
+
+  static String _xg(double v) =>
+      v >= 10 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 
   @override
   Widget build(BuildContext context) {
@@ -604,6 +611,10 @@ class LiveMatchStatsPanel extends StatelessWidget {
         totalPossession == 0 ? '—' : _pct(1 - possH);
     final totalShots = h.shots + a.shots;
     final totalOnTarget = h.shotsOnTarget + a.shotsOnTarget;
+    final totalXg = h.xg + a.xg;
+    final totalPasses = h.passesCompleted + a.passesCompleted;
+    final totalFouls = h.fouls + a.fouls;
+    final totalCorners = h.corners + a.corners;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
@@ -684,6 +695,35 @@ class LiveMatchStatsPanel extends StatelessWidget {
               homeShare: totalOnTarget == 0
                   ? 0.5
                   : h.shotsOnTarget / totalOnTarget,
+            ),
+            _LiveStatsRow(
+              label: 'Expected goals',
+              homeText: _xg(h.xg),
+              awayText: _xg(a.xg),
+              homeShare: totalXg <= 0 ? 0.5 : h.xg / totalXg,
+            ),
+            _LiveStatsRow(
+              label: 'Passes',
+              homeText: '${h.passesCompleted}',
+              awayText: '${a.passesCompleted}',
+              homeShare: totalPasses == 0
+                  ? 0.5
+                  : h.passesCompleted / totalPasses,
+            ),
+            _LiveStatsRow(
+              label: 'Fouls',
+              homeText: '${h.fouls}',
+              awayText: '${a.fouls}',
+              homeShare:
+                  totalFouls == 0 ? 0.5 : h.fouls / totalFouls,
+            ),
+            _LiveStatsRow(
+              label: 'Corners',
+              homeText: '${h.corners}',
+              awayText: '${a.corners}',
+              homeShare: totalCorners == 0
+                  ? 0.5
+                  : h.corners / totalCorners,
             ),
           ],
         ),
