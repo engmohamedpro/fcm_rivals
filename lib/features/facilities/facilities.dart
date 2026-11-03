@@ -133,21 +133,47 @@ class FacilityEffect {
 /// every following level multiplies by [growth] — so late levels feel
 /// like the big-money project they are, while the first two or three
 /// upgrades stay affordable early in a club's life.
+///
+/// Rebalance Ch.8: the final levels now TAPER. Compounding 1.55x all the
+/// way made a full building ~575k and the six-building campus ~3.45M —
+/// at ~90k net season income a 38-season project no manager could ever
+/// finish. Beyond [taperFromLevel] the growth rate drops to [taper]
+/// (1.22 instead of 1.55), landing a full building at ~400k and the
+/// campus at ~2.4M: still the deepest sink in the game — a 20+ season
+/// project — but a finishable one. Levels up to [taperFromLevel] keep
+/// the original curve, so early-game affordability is untouched.
 class FacilitiesCosts {
   const FacilitiesCosts({
     this.baseCost = 4_000,
     this.growth = 1.55,
+    this.taper = 1.22,
+    this.taperFromLevel = 6,
     this.maxLevel = 10,
   });
 
   final int baseCost;
   final double growth;
+
+  /// Growth rate for levels beyond [taperFromLevel] (rebalance Ch.8).
+  final double taper;
+
+  /// Last level priced with the full [growth] rate; costs to reach
+  /// levels beyond it compound at [taper] instead.
+  final int taperFromLevel;
+
   final int maxLevel;
 
   /// Coin price to go from [currentLevel] to currentLevel + 1.
   int upgradeCost(int currentLevel) {
     if (currentLevel >= maxLevel) return 0;
-    final cost = baseCost * math.pow(growth, currentLevel);
+    final double factor;
+    if (currentLevel <= taperFromLevel) {
+      factor = math.pow(growth, currentLevel).toDouble();
+    } else {
+      factor = math.pow(growth, taperFromLevel).toDouble() *
+          math.pow(taper, currentLevel - taperFromLevel).toDouble();
+    }
+    final cost = baseCost * factor;
     return (cost / 100).round() * 100;
   }
 
@@ -164,8 +190,8 @@ class FacilitiesCosts {
 }
 
 /// Default campus economy: level 1 at 4k coins (a couple of match
-/// rewards), level 10 at ~150k — a full season-plus project per
-/// building, ~2M for the whole campus.
+/// rewards), the final levels tapering to ~100k — a full building runs
+/// ~400k coins, ~2.4M for the whole campus (rebalance Ch.8).
 const FacilitiesCosts defaultFacilitiesCosts = FacilitiesCosts();
 
 /// Immutable campus snapshot: level per facility, straight from the

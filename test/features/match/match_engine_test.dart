@@ -619,7 +619,7 @@ void main() {
       for (final g in events.where((e) => e.type == MatchEventType.goal)) {
         final line = lines.firstWhere((l) =>
             l.text.startsWith('GOAL!') && l.minute == g.minute);
-        expect(line.text, contains(names[g.primaryPlayerId!]!));
+        expect(line.text, contains(names[g.primaryPlayerId!]));
       }
     });
   });

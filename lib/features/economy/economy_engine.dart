@@ -31,6 +31,12 @@ class EconomyConfig {
     this.upgradeValueMultiplier = 0.35,
     this.upgradeLevelGrowth = 1.5,
     this.packMarginMultiplier = 1.25,
+    // Rebalance Ch.8: at the flat 1.25x margin a Legendary pack was the
+    // cheapest power-per-coin purchase in the store (~4.2 matches per
+    // elite pull vs 7+ for Rare/Epic), so the elite tier pays its own
+    // premium. 1.40x lands it at ~4.7 matches — still the best deal per
+    // pull, but no longer a dominant strategy.
+    this.legendaryPackMarginMultiplier = 1.40,
     this.packOddsSmoothing = 0.55,
     this.baseMatchReward = 1_500,
     this.matchRewardPerGoal = 250,
@@ -63,6 +69,11 @@ class EconomyConfig {
 
   /// Pack price = expected economic value of contents * margin (GDD 5.5).
   final double packMarginMultiplier;
+
+  /// Premium margin for Legendary-tier packs specifically (rebalance
+  /// Ch.8). Rare and Epic pay [packMarginMultiplier]; Legendary pays this
+  /// higher margin so elite power scales in price faster than in odds.
+  final double legendaryPackMarginMultiplier;
 
   /// Odds smoothing exponent: 0 = uniform within a tier, higher = steeper
   /// value penalty. Used by the Pack Engine's draw weighting.

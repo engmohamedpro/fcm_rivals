@@ -87,8 +87,8 @@ MatchEngine _engine(
       ),
     );
 
-class _Batch {
-  _Batch(this.matches, this.homeWins, this.draws, this.awayWins, this.goals,
+class Batch {
+  Batch(this.matches, this.homeWins, this.draws, this.awayWins, this.goals,
       this.homeGoals, this.shots, this.staminaEnd);
 
   final int matches;
@@ -108,7 +108,7 @@ class _Batch {
   double get avgShotsPerTeam => shots / (matches * 2);
 }
 
-_Batch runBatch(
+Batch runBatch(
   int matches,
   int seedBase, {
   required int homeOverall,
@@ -153,7 +153,7 @@ _Batch runBatch(
       }
     }
   }
-  return _Batch(matches, hw, d, aw, goals, homeGoals, shots,
+  return Batch(matches, hw, d, aw, goals, homeGoals, shots,
       staminaN == 0 ? 0 : staminaSum / staminaN);
 }
 
@@ -163,7 +163,7 @@ void main() {
   group('strength-gap ladder (the core difficulty curve)', () {
     // 800 matches per rung: win-rate CI ≈ ±1.7%.
     const n = 800;
-    final results = <int, _Batch>{};
+    final results = <int, Batch>{};
     setUpAll(() {
       for (final gap in [0, 4, 8, 12, 16, 20]) {
         results[gap] = runBatch(n, 1000 + gap * 10,
@@ -329,7 +329,7 @@ void main() {
             reason: '${Mentality.values[i].name} → ${rates[i]}');
       }
       expect((rates.first - rates.last).abs(), lessThan(0.05),
-          reason: 'ladder ${rates}');
+          reason: 'ladder $rates');
     });
   });
 

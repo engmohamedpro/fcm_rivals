@@ -193,6 +193,13 @@ class AdEngine {
   /// the natural-recovery result only, so no ad bonus can double up with
   /// a normal pep talk on the same transaction (GDD 19.4 last rule —
   /// enforced by the store picking either path, and here by the flat cap).
+  ///
+  /// The result is a whole stamina point: the raw sum can land on a
+  /// half-point (70.0 + 14.5 = 84.5) and stamina is displayed as whole
+  /// points, so the value is rounded before capping — the ad then
+  /// delivers exactly the 100 the UI promises instead of stopping one
+  /// half-point short (99.5 capped to 99.5 → displayed 100 but never
+  /// banked; rebalance Ch.8).
   double boostedRecovery({
     required double staminaAfterNaturalRecovery,
     required double naturalRecovery,
@@ -200,7 +207,7 @@ class AdEngine {
     if (naturalRecovery <= 0) return staminaAfterNaturalRecovery;
     final boosted =
         staminaAfterNaturalRecovery + naturalRecovery * config.boostedRecoveryBonus;
-    return boosted.clamp(0, config.boostedRecoveryCap.toDouble());
+    return boosted.round().clamp(0, config.boostedRecoveryCap).toDouble();
   }
 
   /// Discounted upgrade price (GDD 19.3 'Upgrade cost discount'): the

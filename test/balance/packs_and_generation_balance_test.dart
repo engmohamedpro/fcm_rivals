@@ -267,11 +267,16 @@ void main() {
   group('pack pricing & sell-back economics (full real pool)', () {
     test('price == margin × expected contents EV for every store tier', () {
       final engine = PackEngine(random: math.Random(0), economy: economy);
+      // Legendary pays its own premium margin (rebalance Ch.8); the
+      // other tiers pay the standard one.
+      double marginFor(PackTier tier) => tier == PackTier.legendary
+          ? economy.config.legendaryPackMarginMultiplier
+          : economy.config.packMarginMultiplier;
       for (final tier in PackTier.values) {
         final scope = PackScope(category: PackCategory.global, tier: tier);
         final price = engine.packPriceFor(scope, pool);
         final ev = engine.expectedPackValue(scope, pool);
-        expect(price, (ev * economy.config.packMarginMultiplier).round());
+        expect(price, (ev * marginFor(tier)).round());
         expect(price, greaterThan(0));
       }
       final prices = [
@@ -281,6 +286,31 @@ void main() {
       ];
       expect(prices[0], lessThan(prices[1]));
       expect(prices[1], lessThan(prices[2]));
+    });
+
+    test('regression lock: legendary premium margin, standard elsewhere',
+        () {
+      // Rebalance Ch.8: legendary packs were the cheapest power-per-coin
+      // purchase at the flat 1.25x margin (~4.2 matches per elite pull),
+      // so the tier now pays a 1.35-1.4x premium while Rare/Epic keep
+      // the standard margin. Failing this test means the store's elite
+      // pricing regressed to the flat margin.
+      expect(economy.config.packMarginMultiplier, 1.25);
+      expect(economy.config.legendaryPackMarginMultiplier,
+          inInclusiveRange(1.35, 1.4));
+      final engine = PackEngine(random: math.Random(0), economy: economy);
+      for (final tier in PackTier.values) {
+        final scope = PackScope(category: PackCategory.global, tier: tier);
+        final ev = engine.expectedPackValue(scope, pool);
+        // Price actually applies the tier's margin over the same EV.
+        expect(engine.packPriceFor(scope, pool) / ev,
+            closeTo(
+                tier == PackTier.legendary
+                    ? economy.config.legendaryPackMarginMultiplier
+                    : economy.config.packMarginMultiplier,
+                0.01),
+            reason: '$tier margin not applied');
+      }
     });
 
     test('a legendary pack costs ~10x a rare pack (no degenerate pricing)',

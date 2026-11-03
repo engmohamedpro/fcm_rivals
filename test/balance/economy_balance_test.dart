@@ -10,7 +10,8 @@
 ///  * ad economy: every ad surface's coin value per watch
 ///
 /// Expectations are calibrated to MEASURED values (§34 harness, real
-/// pool): rare ≈ 1,046 / epic ≈ 3,905 / legendary ≈ 10,141 coins.
+/// pool): rare ≈ 1,046 / epic ≈ 3,905 / legendary ≈ 11,358 coins (the
+/// legendary tier prices at its 1.4x premium margin, rebalance Ch.8).
 library;
 
 import 'dart:io';
@@ -129,9 +130,10 @@ void main() {
     });
 
     test('rare packs are pocket change; legendary is ~2-8 matches', () {
-      // Measured: rare ~1,046 (~0.4 matches), legendary ~10,141
-      // (~4.2 matches at 2.4k/match). Rare pulls median OVR ~40, so the
-      // cheap price is honest filler pricing, not a giveaway.
+      // Measured after the legendary-margin rebalance (Ch.8): rare
+      // ~1,046 (~0.4 matches), legendary ~11,358 (~4.7 matches at
+      // 2.4k/match; was 10,141/4.2 at the flat 1.25x margin). Rare pulls
+      // median OVR ~40, so the cheap price is honest filler pricing.
       const perMatch = 2400;
       final rare = offers
           .firstWhere((o) =>
@@ -217,14 +219,15 @@ void main() {
       final level1 = costs.upgradeCost(0);
       final level10 = costs.upgradeCost(9);
       expect(level1, 4_000); // ~2 match rewards
-      expect(level10, greaterThan(100_000));
+      expect(level10, greaterThan(80_000));
       final full = costs.investedAt(10);
-      // Measured: one building's full 10 levels ≈ 575k, so the whole
-      // 6-building campus ≈ 3.45M — at ~90k net season income that's a
-      // 30+ season project. Deep sink by design; the balance report
-      // flags it as possibly TOO deep to ever complete.
-      expect(full, inInclusiveRange(400_000, 800_000));
-      expect(full * 6, inInclusiveRange(2_400_000, 4_600_000));
+      // Rebalanced (Ch.8): the final three levels taper (1.22 instead of
+      // 1.55), so one building's full 10 levels ≈ 400k and the whole
+      // 6-building campus ≈ 2.4M — at ~90k net season income that's a
+      // 20+ season project: still the deepest sink in the game, but a
+      // finishable one. Was ~575k/3.45M (~38 seasons) before the taper.
+      expect(full, inInclusiveRange(380_000, 440_000));
+      expect(full * 6, inInclusiveRange(2_280_000, 2_640_000));
     });
 
     test('facility payoff is slight by design: level 5 ≈ +4.5% attribute',
@@ -232,6 +235,19 @@ void main() {
       const costs = defaultFacilitiesCosts;
       final invested5 = costs.investedAt(5);
       expect(invested5, inInclusiveRange(15_000, 60_000));
+    });
+
+    test('regression lock: campus stays a deep but finishable sink', () {
+      // The Ch.8 rebalance bands, as hard numbers: a full building
+      // within ±10% of 400k, the campus within ±10% of 2.4M. Failing
+      // this means the facility curve regressed to the unreachable
+      // ~575k-per-building (or collapsed to a shallow sink).
+      const costs = defaultFacilitiesCosts;
+      expect(costs.investedAt(10), inInclusiveRange(360_000, 440_000));
+      expect(costs.investedAt(10) * 6, inInclusiveRange(2_160_000, 2_640_000));
+      // Levels 1-7 unchanged from the original curve.
+      expect(costs.upgradeCost(0), 4_000);
+      expect(costs.upgradeCost(6), 55_500);
     });
   });
 
@@ -278,13 +294,16 @@ void main() {
       expect(ads.sellingBonus(1000), 1200);
     });
 
-    test('boosted recovery: +15% of natural recovery, capped at 100', () {
+    test('boosted recovery: +15% of natural recovery, whole points, capped',
+        () {
       final boosted = ads.boostedRecovery(
           staminaAfterNaturalRecovery: 80, naturalRecovery: 30);
-      expect(boosted, closeTo(84.5, 0.01));
+      expect(boosted, 85); // 84.5 rounds to a whole stamina point
       final capped = ads.boostedRecovery(
           staminaAfterNaturalRecovery: 95, naturalRecovery: 30);
-      expect(capped, closeTo(100, 1)); // float sum lands at 99.5, capped
+      // The raw sum lands at 99.5; the result is rounded so the ad
+      // delivers exactly the 100 the UI promises.
+      expect(capped, 100);
     });
 
     test('ad caps keep daily grind bounded (8 ads/day max)', () {

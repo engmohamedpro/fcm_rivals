@@ -35,8 +35,6 @@ enum PackTier {
   legendary('Legendary', [0.05, 0.45, 1.0]);
 
   const PackTier(this.label, this.weights);
-
-  /// Display label used in pack titles and badges.
   final String label;
 
   /// Relative chance of the low / mid / high Market Value tier, aligned
@@ -105,6 +103,19 @@ class PackScope {
         return position != null && p.position == position;
     }
   }
+
+  /// Scopes are value objects: two scopes describing the same filter hit
+  /// the same per-pool draw-cache entry.
+  @override
+  bool operator ==(Object other) =>
+      other is PackScope &&
+      other.category == category &&
+      other.nationality == nationality &&
+      other.position == position &&
+      other.tier == tier;
+
+  @override
+  int get hashCode => Object.hash(category, nationality, position, tier);
 }
 
 /// One drawn player with the tier he came from.
@@ -115,6 +126,60 @@ class PackDraw {
 
   /// 0 = low, 1 = medium, 2 = high Market Value tier.
   final int tier;
+}
+
+/// Cached per-pool draw structures: for one (pool, scope, smoothing)
+/// combination, the value-sorted eligible players split into tiers with
+/// their draw weights, weight totals and cumulative distributions. Built
+/// once, then reused by [PackEngine.open], [PackEngine.oddsFor] and
+/// [PackEngine.expectedPackValue] — the store shelf, odds sheet and a
+/// streak of opens over the same pool no longer re-filter, re-sort,
+/// re-tier and re-weight thousands of players per call.
+class _PoolDrawInfo {
+  _PoolDrawInfo({
+    required this.tiers,
+    required this.weights,
+    required this.totals,
+    required this.cumulative,
+  });
+
+  /// The three value tiers over the eligible pool (value-sorted within
+  /// each tier).
+  final List<List<BasePlayer>> tiers;
+
+  /// Per-tier value weights (1 / economicValue^smoothing), same order as
+  /// the tier lists.
+  final List<List<double>> weights;
+
+  /// Per-tier weight sums.
+  final List<double> totals;
+
+  /// Per-tier cumulative weight sums; `cumulative[t][i]` is the summed
+  /// weight of tier `t`'s players up to and including index `i`. Used by
+  /// the binary-search draw below.
+  final List<List<double>> cumulative;
+}
+
+/// Cache key: the pool instance (identity), the scope (value equality)
+/// and the odds smoothing that produced a [_PoolDrawInfo]. The engine
+/// instance owns the cache, so constructor configuration (tier
+/// boundaries, tier weights, economy) is fixed per key.
+class _CacheKey {
+  const _CacheKey(this.pool, this.scope, this.smoothing);
+
+  final List<BasePlayer> pool;
+  final PackScope scope;
+  final double smoothing;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _CacheKey &&
+      identical(other.pool, pool) &&
+      other.scope == scope &&
+      other.smoothing == smoothing;
+
+  @override
+  int get hashCode => Object.hash(identityHashCode(pool), scope, smoothing);
 }
 
 /// Draws packs from an eligible pool with value-weighted odds.
@@ -150,20 +215,72 @@ class PackEngine {
 
   final EconomyEngine economy;
 
-  /// Splits [pool] into low/mid/high tiers on the log-value scale.
-  List<List<BasePlayer>> tiersOf(List<BasePlayer> pool) {
-    if (pool.isEmpty) return [[], [], []];
-    final values = pool.map((p) => p.marketValueEur).toList();
+  /// Cached per-pool draw structures, keyed by pool identity + scope +
+  /// smoothing. Pools in this game are loaded once and handed around as
+  /// the same instance, so identity is the right key; the cached weights
+  /// depend only on immutable player values, so they never go stale. The
+  /// map is cleared once it exceeds [_maxCachedEntries] distinct
+  /// (pool, scope, smoothing) combinations, keeping memory bounded — the
+  /// store shelf's few dozen scopes rebuild in microseconds anyway.
+  static const _maxCachedEntries = 32;
+
+  final Map<_CacheKey, _PoolDrawInfo> _poolCache = {};
+
+  /// Returns the draw info for [scope] over [pool] at [smoothing],
+  /// building and caching it on first use.
+  _PoolDrawInfo _drawInfoFor(
+      PackScope scope, List<BasePlayer> pool, double smoothing) {
+    if (_poolCache.length >= _maxCachedEntries) _poolCache.clear();
+    return _poolCache.putIfAbsent(
+      _CacheKey(pool, scope, smoothing),
+      () => _buildDrawInfo(scope, pool, smoothing),
+    );
+  }
+
+  /// Computes the uncached draw info: filter by scope, sort by value,
+  /// split into tiers, then weight each tier's players.
+  _PoolDrawInfo _buildDrawInfo(
+      PackScope scope, List<BasePlayer> pool, double smoothing) {
+    final eligible = pool.where(scope.matches).toList()..sort(_byValue);
+    final tiers = _splitIntoTiers(eligible);
+    final weights = <List<double>>[];
+    final totals = <double>[];
+    final cumulative = <List<double>>[];
+    for (final tier in tiers) {
+      final w = tier
+          .map((p) => 1.0 /
+              math.pow(
+                  economy.economicValueOf(p.marketValueEur).toDouble(), smoothing))
+          .toList();
+      weights.add(w);
+      var sum = 0.0;
+      final cum = <double>[];
+      for (final value in w) {
+        sum += value;
+        cum.add(sum);
+      }
+      totals.add(sum);
+      cumulative.add(cum);
+    }
+    return _PoolDrawInfo(
+        tiers: tiers, weights: weights, totals: totals, cumulative: cumulative);
+  }
+
+  /// Splits a value-sorted eligible pool into low/mid/high tiers on the
+  /// log-value scale.
+  List<List<BasePlayer>> _splitIntoTiers(List<BasePlayer> sorted) {
+    if (sorted.isEmpty) return const [[], [], []];
+    final values = sorted.map((p) => p.marketValueEur).toList();
     final minV = values.reduce(math.min).toDouble();
     final maxV = values.reduce(math.max).toDouble();
     if (minV <= 0 || maxV <= minV) {
       // Degenerate pool: everything is one tier.
-      return [pool, <BasePlayer>[], <BasePlayer>[]];
+      return [sorted, <BasePlayer>[], <BasePlayer>[]];
     }
     final logMin = math.log(minV);
     final logMax = math.log(maxV);
     final low = <BasePlayer>[], mid = <BasePlayer>[], high = <BasePlayer>[];
-    for (final p in pool) {
+    for (final p in sorted) {
       final t = (math.log(p.marketValueEur.toDouble()) - logMin) /
           (logMax - logMin);
       if (t < tierBoundaries[0]) {
@@ -177,49 +294,68 @@ class PackEngine {
     return [low, mid, high];
   }
 
-  /// Weighted draw of a single player from [tier].
+  /// Splits [pool] into low/mid/high tiers on the log-value scale.
   ///
-  /// Weight = 1 / economicValue^smoothing, so higher value ⇒ lower odds
-  /// (GDD 5.4) while remaining strictly positive — elite players are rare,
-  /// never impossible.
-  BasePlayer? _drawFromTier(List<BasePlayer> tier, double smoothing) {
-    if (tier.isEmpty) return null;
-    if (tier.length == 1) return tier.single;
-    final weights = tier
-        .map((p) => 1.0 /
-            math.pow(economy.economicValueOf(p.marketValueEur).toDouble(), smoothing))
-        .toList();
-    final total = weights.fold<double>(0, (a, b) => a + b);
-    var roll = random.nextDouble() * total;
-    for (var i = 0; i < tier.length; i++) {
-      roll -= weights[i];
-      if (roll <= 0) return tier[i];
-    }
-    return tier.last;
+  /// Public for tests and the odds display; the engine internally uses
+  /// the cached per-(pool, scope) structures instead.
+  List<List<BasePlayer>> tiersOf(List<BasePlayer> pool) {
+    if (pool.isEmpty) return [[], [], []];
+    return _splitIntoTiers(pool.toList()..sort(_byValue));
   }
 
-  /// Falls back to the nearest non-empty tier when a tier is exhausted.
-  List<BasePlayer> _fallbackTier(List<List<BasePlayer>> tiers, int index) {
-    if (tiers[index].isNotEmpty) return tiers[index];
+  /// Index of the nearest non-empty tier when [index] is exhausted, or
+  /// -1 when every tier is empty.
+  int _fallbackIndex(List<List<BasePlayer>> tiers, int index) {
+    if (tiers[index].isNotEmpty) return index;
     for (final delta in const [1, -1, 2, -2]) {
       final i = index + delta;
-      if (i >= 0 && i < tiers.length && tiers[i].isNotEmpty) return tiers[i];
+      if (i >= 0 && i < tiers.length && tiers[i].isNotEmpty) return i;
     }
-    return const [];
+    return -1;
+  }
+
+  /// Weighted draw of a single player from tier `tierIndex` of [info],
+  /// using the cached cumulative distribution and a binary search.
+  ///
+  /// The search returns the smallest index whose cumulative weight is at
+  /// least the roll — exactly the player the original linear
+  /// `roll -= weights[i]; if (roll <= 0) return tier[i]` scan selected,
+  /// including at ties, but in O(log n) instead of O(n). Single-player
+  /// tiers return their player without consuming RNG, matching the
+  /// original scan.
+  BasePlayer? _drawFromTier(_PoolDrawInfo info, int tierIndex) {
+    final tier = info.tiers[tierIndex];
+    if (tier.isEmpty) return null;
+    if (tier.length == 1) return tier.single;
+    final cum = info.cumulative[tierIndex];
+    final roll = random.nextDouble() * info.totals[tierIndex];
+    var lo = 0, hi = cum.length - 1;
+    while (lo < hi) {
+      final mid = lo + (hi - lo) ~/ 2;
+      if (cum[mid] < roll) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return tier[lo];
   }
 
   /// Opens a pack: exactly one player. A tier (low/mid/high) is rolled —
   /// with the scope's store tier weights when it has one — then one
   /// player is drawn from it with value-weighted odds. Empty pool returns
-  /// an empty draw list.
-  List<PackDraw> open(PackScope scope, List<BasePlayer> pool, {double? oddsSmoothing}) {
-    final eligible = pool.where(scope.matches).toList()..sort(_byValue);
-    if (eligible.isEmpty) return const [];
-    final tiers = tiersOf(eligible);
-    final smoothing =
-        oddsSmoothing ?? economy.config.packOddsSmoothing;
+  /// an empty draw list. The reported tier is the ROLLED tier, matching
+  /// the odds display, which also books fallback-tier players under the
+  /// rolled tier's probability share.
+  List<PackDraw> open(PackScope scope, List<BasePlayer> pool,
+      {double? oddsSmoothing}) {
+    final smoothing = oddsSmoothing ?? economy.config.packOddsSmoothing;
+    final info = _drawInfoFor(scope, pool, smoothing);
+    if (info.tiers.every((tier) => tier.isEmpty)) return const [];
     final tierIndex = _rollTier(scope.rollWeights(this));
-    final player = _drawFromTier(_fallbackTier(tiers, tierIndex), smoothing);
+    final drawIndex = _fallbackIndex(info.tiers, tierIndex);
+    if (drawIndex < 0) return const [];
+    final player = _drawFromTier(info, drawIndex);
     if (player == null) return const [];
     return [PackDraw(player: player, tier: tierIndex)];
   }
@@ -243,29 +379,25 @@ class PackEngine {
     List<BasePlayer> pool, {
     double? oddsSmoothing,
   }) {
-    final eligible = pool.where(scope.matches).toList();
-    final tiers = tiersOf(eligible);
     final smoothing = oddsSmoothing ?? economy.config.packOddsSmoothing;
+    final info = _drawInfoFor(scope, pool, smoothing);
     final rollWeights = scope.rollWeights(this);
     final rollTotal = rollWeights.fold<double>(0, (a, b) => a + b);
     final result = <int, Map<int, double>>{};
     for (var t = 0; t < 3; t++) {
-      final tier = _fallbackTier(tiers, t);
-      if (tier.isEmpty || rollTotal <= 0 || rollWeights[t] <= 0) {
+      final tierIndex = _fallbackIndex(info.tiers, t);
+      if (tierIndex < 0 || rollTotal <= 0 || rollWeights[t] <= 0) {
         result[t] = const {};
         continue;
       }
-      final weights = tier
-          .map((p) => 1.0 /
-              math.pow(economy.economicValueOf(p.marketValueEur).toDouble(), smoothing))
-          .toList();
-      final total = weights.fold<double>(0, (a, b) => a + b);
+      final tier = info.tiers[tierIndex];
+      final total = info.totals[tierIndex];
       // Per-player probability = P(tier roll) × P(player | tier).
       final tierShare = rollWeights[t] / rollTotal;
       final probs = <int, double>{};
       for (var i = 0; i < tier.length; i++) {
         probs[tier[i].playerId] =
-            total > 0 ? tierShare * weights[i] / total : 0;
+            total > 0 ? tierShare * info.weights[tierIndex][i] / total : 0;
       }
       result[t] = probs;
     }
@@ -275,20 +407,19 @@ class PackEngine {
   /// Expected economic value of one pack's single player under the actual
   /// draw odds (GDD 5.5): the tier-weighted average of each tier's
   /// odds-weighted expected economic value. The scope's store tier weights
-  /// drive the roll, so a Gold pack's expectation — and therefore its
-  /// price — sits well above a Bronze pack's over the same pool.
+  /// drive the roll, so a Legendary pack's expectation — and therefore its
+  /// price — sits well above a Rare pack's over the same pool.
   int expectedPackValue(PackScope scope, List<BasePlayer> pool) {
-    final eligible = pool.where(scope.matches).toList();
-    if (eligible.isEmpty) return 0;
-    final tiers = tiersOf(eligible);
-    final smoothing = economy.config.packOddsSmoothing;
+    final info = _drawInfoFor(scope, pool, economy.config.packOddsSmoothing);
     final rollWeights = scope.rollWeights(this);
     final weightTotal = rollWeights.fold<double>(0, (a, b) => a + b);
     var total = 0.0;
     for (var t = 0; t < 3; t++) {
       final tierShare = rollWeights[t] / weightTotal;
       if (tierShare == 0) continue;
-      final tier = _fallbackTier(tiers, t);
+      final tierIndex = _fallbackIndex(info.tiers, t);
+      if (tierIndex < 0) continue;
+      final tier = info.tiers[tierIndex];
       if (tier.length <= 1) {
         // Single (or empty) tier: value is deterministic.
         if (tier.isNotEmpty) {
@@ -297,16 +428,12 @@ class PackEngine {
         }
         continue;
       }
-      final weights = tier
-          .map((p) => 1.0 /
-              math.pow(economy.economicValueOf(p.marketValueEur).toDouble(), smoothing))
-          .toList();
-      final wSum = weights.fold<double>(0, (a, b) => a + b);
+      final wSum = info.totals[tierIndex];
       if (wSum <= 0) continue;
       var tierEv = 0.0;
       for (var i = 0; i < tier.length; i++) {
-        tierEv +=
-            economy.economicValueOf(tier[i].marketValueEur) * (weights[i] / wSum);
+        tierEv += economy.economicValueOf(tier[i].marketValueEur) *
+            (info.weights[tierIndex][i] / wSum);
       }
       total += tierShare * tierEv;
     }
@@ -314,10 +441,16 @@ class PackEngine {
   }
 
   /// Pack price (GDD 5.5): expected contents value plus the configured
-  /// margin, driven by the Economy Engine's parameters.
-  int packPriceFor(PackScope scope, List<BasePlayer> pool) =>
-      (expectedPackValue(scope, pool) * economy.config.packMarginMultiplier)
-          .round();
+  /// margin, driven by the Economy Engine's parameters. Legendary packs
+  /// pay their own premium margin (rebalance Ch.8): at the flat margin
+  /// they were the cheapest power-per-coin purchase in the store, so the
+  /// elite tier now costs proportionally more than Rare/Epic.
+  int packPriceFor(PackScope scope, List<BasePlayer> pool) {
+    final margin = scope.tier == PackTier.legendary
+        ? economy.config.legendaryPackMarginMultiplier
+        : economy.config.packMarginMultiplier;
+    return (expectedPackValue(scope, pool) * margin).round();
+  }
 
   static int _byValue(BasePlayer a, BasePlayer b) =>
       a.marketValueEur.compareTo(b.marketValueEur);
