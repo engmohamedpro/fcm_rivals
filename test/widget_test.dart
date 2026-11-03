@@ -90,15 +90,16 @@ void main() {
 
     // Switch to the Store tab (last in the nav) and check the
     // sectioned store: one section per scope — global first, then every
-    // position — each with a shared title, its three rarity cells and
-    // the shared player strip; the free starting packs stack as FREE ×N
-    // under their rare cells.
+    // position — each with a shared title, its three rarity cells; the
+    // free starting packs stack as FREE ×N plates under their rare cells.
     await tester.tap(find.text('Store'));
     await _settle(tester);
     expect(find.text('Global Pack'), findsOneWidget);
-    expect(find.text('RARE'), findsNWidgets(13));
-    expect(find.text('EPIC'), findsNWidgets(13));
-    expect(find.text('LEGENDARY'), findsNWidgets(13));
+    // The tier names are stamped on the foil's plate (painted, not Text
+    // widgets), so no tier labels render as text under the cells.
+    expect(find.text('RARE'), findsNothing);
+    expect(find.text('EPIC'), findsNothing);
+    expect(find.text('LEGENDARY'), findsNothing);
     // The 22-pack starter system: two per 4-3-3 slot — ×2 badges on
     // the single-slot positions, ×4 on the doubled CB/CM cells.
     expect(find.text('FREE ×2'), findsNWidgets(7));

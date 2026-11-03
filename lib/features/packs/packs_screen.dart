@@ -420,45 +420,46 @@ class _ScopeSection extends StatelessWidget {
             trailing: _ViewPlayersButton(onPressed: () => onInfo(head)),
           ),
           const SizedBox(height: 2),
-          SizedBox(
-            height: 260,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < ordered.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  Expanded(
-                    child: _StorePackCell(
-                      key: ValueKey('store-pack-'
-                          '${ordered[i].category.name}'
-                          '-${ordered[i].scopeValue ?? 'ANY'}'
-                          '-${ordered[i].tier.name}'),
-                      offer: ordered[i],
-                      ownedCount: owned[_scopeKey(
+          // The cells size the row themselves: the pack fills its cell's
+          // full width by aspect ratio and the price plate hugs its foot,
+          // so there is no fixed height to centre inside — no dead air
+          // above the pack or between the pack and its price.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < ordered.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _StorePackCell(
+                    key: ValueKey('store-pack-'
+                        '${ordered[i].category.name}'
+                        '-${ordered[i].scopeValue ?? 'ANY'}'
+                        '-${ordered[i].tier.name}'),
+                    offer: ordered[i],
+                    ownedCount: owned[_scopeKey(
+                            ordered[i].category.name,
+                            ordered[i].scopeValue,
+                            ordered[i].tier.name)]
+                        ?.length ??
+                        0,
+                    coins: coins,
+                    onTap: () {
+                      final ownedHere = (owned[_scopeKey(
                               ordered[i].category.name,
                               ordered[i].scopeValue,
-                              ordered[i].tier.name)]
-                          ?.length ??
-                          0,
-                      coins: coins,
-                      onTap: () {
-                        final ownedHere = (owned[_scopeKey(
-                                ordered[i].category.name,
-                                ordered[i].scopeValue,
-                                ordered[i].tier.name)] ??
-                            const <Pack>[]);
-                        if (opening) return;
-                        if (ownedHere.isNotEmpty) {
-                          onOpen(ownedHere.first.id, ordered[i].tier);
-                        } else {
-                          onBuy(ordered[i]);
-                        }
-                      },
-                    ),
+                              ordered[i].tier.name)] ??
+                          const <Pack>[]);
+                      if (opening) return;
+                      if (ownedHere.isNotEmpty) {
+                        onOpen(ownedHere.first.id, ordered[i].tier);
+                      } else {
+                        onBuy(ordered[i]);
+                      }
+                    },
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         ],
       ),
@@ -470,17 +471,18 @@ class _ScopeSection extends StatelessWidget {
 /// looks before opening (same [FoilPackPainter] as the reveal cinematic),
 /// painted in the tier's solid jewel metal — amethyst, sapphire or
 /// champion gold — with the tier name stamped on the foil's plate and a
-/// price slot under it. The scope title and its players icon entry live
-/// on the section, not the
+/// premium price plate hugging its foot. The scope title and its
+/// players icon entry live on the section, not the
 /// cell. There is no CLAIM/BUY button: tapping the cell IS the action —
 /// an owned pack opens straight into the reveal, a buyable one opens
 /// the YES/NO purchase dialog.
 ///
-/// Owned and buyable cells share the exact same layout: the slot shows
-/// the FREE ×N pill when the club owns packs of this type, the coin
-/// price otherwise. A cell with free packs shakes its pack art in a
-/// slow heartbeat loop — shake, rest, shake — so unclaimed packs call
-/// out from the shelf without turning the whole grid into noise.
+/// Owned and buyable cells share the exact same layout: the plate shows
+/// the success-green FREE ×N metal when the club owns packs of this
+/// type, the dark gold-rimmed coin chip otherwise. A cell with free
+/// packs shakes its pack art in a slow heartbeat loop — shake, rest,
+/// shake — so unclaimed packs call out from the shelf without turning
+/// the whole grid into noise.
 class _StorePackCell extends StatefulWidget {
   const _StorePackCell({
     super.key,
@@ -527,56 +529,47 @@ class _StorePackCellState extends State<_StorePackCell>
       scale: 0.93,
       child: Column(
         children: [
-          Expanded(
-            child: Center(
-              child: DecoratedBox(
-                // Ambient light in the tier's colour spilling from behind
-                // the pack, like a lit display case.
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: tierColor.withValues(alpha: 0.26),
-                      blurRadius: 22,
-                      spreadRadius: -8,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+          // The foil sizes the cell — it fills the cell's width by aspect
+          // ratio and the plate sits a breath below, so nothing floats in
+          // dead air.
+          DecoratedBox(
+            // Ambient light in the tier's colour spilling from behind
+            // the pack, like a lit display case.
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: tierColor.withValues(alpha: 0.26),
+                  blurRadius: 22,
+                  spreadRadius: -8,
+                  offset: const Offset(0, 8),
                 ),
-                child: AspectRatio(
-                aspectRatio: kPackAspect,
-                child: isFree
-                    ? AnimatedBuilder(
-                        animation: _nudge,
-                        builder: (context, child) {
-                          // t in 0..1 across the full cycle; the shake
-                          // occupies the first quarter (~0.55s) only.
-                          final t = _nudge.value;
-                          final shakeT =
-                              (t / 0.25).clamp(0.0, 1.0).toDouble();
-                          final wobble =
-                              math.sin(shakeT * math.pi * 5) *
-                                  (1 - shakeT) *
-                                  0.034;
-                          return Transform.rotate(
-                            angle: wobble,
-                            child: Transform.translate(
-                              offset: Offset(
-                                  wobble * 34, -wobble.abs() * 10),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: CustomPaint(
-                          painter: FoilPackPainter(
-                            shimmer: 0.42,
-                            charge: 0,
-                            glowColor: tierColor,
-                            tint: tierColor,
-                            stars: offer.tier.stars,
+              ],
+            ),
+            child: AspectRatio(
+              aspectRatio: kPackAspect,
+              child: isFree
+                  ? AnimatedBuilder(
+                      animation: _nudge,
+                      builder: (context, child) {
+                        // t in 0..1 across the full cycle; the shake
+                        // occupies the first quarter (~0.55s) only.
+                        final t = _nudge.value;
+                        final shakeT =
+                            (t / 0.25).clamp(0.0, 1.0).toDouble();
+                        final wobble =
+                            math.sin(shakeT * math.pi * 5) *
+                                (1 - shakeT) *
+                                0.034;
+                        return Transform.rotate(
+                          angle: wobble,
+                          child: Transform.translate(
+                            offset: Offset(
+                                wobble * 34, -wobble.abs() * 10),
+                            child: child,
                           ),
-                        ),
-                      )
-                    : CustomPaint(
+                        );
+                      },
+                      child: CustomPaint(
                         painter: FoilPackPainter(
                           shimmer: 0.42,
                           charge: 0,
@@ -585,42 +578,110 @@ class _StorePackCellState extends State<_StorePackCell>
                           stars: offer.tier.stars,
                         ),
                       ),
-              ),
+                    )
+                  : CustomPaint(
+                      painter: FoilPackPainter(
+                        shimmer: 0.42,
+                        charge: 0,
+                        glowColor: tierColor,
+                        tint: tierColor,
+                        stars: offer.tier.stars,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Fixed plate slot: the FREE and coin plates differ by a
+          // pixel or two of natural height, so the slot pins one shared
+          // cell height and the three packs in a row stay flush.
+          SizedBox(
+            height: 24,
+            child: Center(
+              child: _PricePlate(
+                isFree: isFree,
+                ownedCount: widget.ownedCount,
+                price: offer.price,
+                affordable: affordable,
               ),
             ),
           ),
-          const SizedBox(height: 6),
-          // Price slot: FREE ×N pill for owned packs, coin price otherwise
-          // — fixed height so both variants keep one identical layout.
-          // The tier itself is stamped on the foil's plate, so the cell
-          // carries no tier label of its own.
-          SizedBox(
-            height: 20,
-            child: Center(
-              child: isFree
-                  ? FcmPill('FREE ×${widget.ownedCount}')
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FcmCoinGlyph(
-                          size: 12,
-                          color: affordable
-                              ? null
-                              : FcmColors.danger,
-                        ),
-                        const SizedBox(width: 3),
-                        FitText(
-                          _formatCoins(offer.price),
-                          style: TextStyle(
-                            color: affordable
-                                ? FcmColors.gold
-                                : FcmColors.danger,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The price plate under the pack: one premium silhouette shared by the
+/// coin price and the FREE ×N claim. The coin price is the top bar's
+/// balance chip in miniature — dark chip, gold rim, soft gold glow and
+/// the same C coin — so the currency reads as one language everywhere;
+/// red metal replaces the gold when the price is out of reach. Owned
+/// stacks swap the gold for the success-green "costs nothing" metal of
+/// the claim actions, keeping the identical plate shape.
+class _PricePlate extends StatelessWidget {
+  const _PricePlate({
+    required this.isFree,
+    required this.ownedCount,
+    required this.price,
+    required this.affordable,
+  });
+
+  final bool isFree;
+  final int ownedCount;
+  final int price;
+  final bool affordable;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isFree) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          gradient: FcmColors.successGradient,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: FcmColors.success.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+                color: FcmColors.success.withValues(alpha: 0.25),
+                blurRadius: 10),
+          ],
+        ),
+        child: Text(
+          'FREE ×$ownedCount',
+          maxLines: 1,
+          softWrap: false,
+          style: const TextStyle(
+            color: FcmColors.ink,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.6,
+          ),
+        ),
+      );
+    }
+    final metal = affordable ? FcmColors.gold : FcmColors.danger;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: metal.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(color: metal.withValues(alpha: 0.16), blurRadius: 10),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FcmCoinGlyph(size: 13, color: affordable ? null : metal),
+          const SizedBox(width: 4),
+          FitText(
+            _formatCoins(price),
+            style: TextStyle(
+              color: metal,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.3,
             ),
           ),
         ],

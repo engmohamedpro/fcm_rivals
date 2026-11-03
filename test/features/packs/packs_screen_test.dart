@@ -126,6 +126,42 @@ void main() {
     expect(find.byType(FcmMiniCard), findsNothing);
   });
 
+  testWidgets('pack art hugs its price plate — no dead air in the cell',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester);
+
+    // The rare global cell is priced (starter packs are position-scoped),
+    // so it shows the coin plate.
+    final cell =
+        find.byKey(const ValueKey('store-pack-global-ANY-rare')).first;
+    final pack = find
+        .descendant(of: cell, matching: find.byType(CustomPaint))
+        .first;
+    final price =
+        find.descendant(of: cell, matching: find.byType(FcmCoinGlyph)).first;
+    await tester.ensureVisible(cell);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The plate hugs the pack's foot: the only space is the 4px breath
+    // plus the plate slot's centring slack. Before the fix the pack sat
+    // centred in a fixed-height row with ~30px of dead air above and
+    // below it.
+    final packBottom = tester.getBottomRight(pack).dy;
+    final priceTop = tester.getTopLeft(price).dy;
+    expect(priceTop - packBottom, lessThan(16),
+        reason: 'price plate must sit close under the pack');
+
+    // The pack fills its cell's width by aspect ratio — sizing the cell
+    // itself instead of floating centred inside a fixed-height row.
+    final cellWidth = tester.getRect(cell).width;
+    final packWidth = tester.getRect(pack).width;
+    expect(packWidth, greaterThan(cellWidth - 2),
+        reason: 'pack art must fill the cell width');
+  });
+
   testWidgets('CLAIM opens the owned pack straight into the reveal — no dialog',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(2400, 3600);
