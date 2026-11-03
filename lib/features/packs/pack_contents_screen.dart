@@ -1,6 +1,6 @@
 /// FCM Rivals — pack contents screen.
 ///
-/// The store cells' VIEW PLAYERS button shows every player that pack can
+/// The store's players icon button shows every player that pack can
 /// draw, as one mini card per player (no rank numbers) — sorted from the
 /// highest rated down so the odds ladder reads at a glance. A search
 /// field filters by name and a nationality dropdown narrows the pool, so

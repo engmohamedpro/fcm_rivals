@@ -1,7 +1,7 @@
 // Store tab behaviour (GDD 5.5): one section per scope — global first,
 // then every position — grouping its three rarity varieties under a
 // shared title, plus the BUY confirmation flow and the contents list
-// behind each cell's VIEW PLAYERS button.
+// behind each cell's players icon button.
 //
 // The store runs real drift I/O over an in-memory database, so async
 // flushes use tester.runAsync (FakeAsync doesn't perform real I/O).
@@ -83,17 +83,21 @@ void main() {
     expect(find.text('LW Pack'), findsOneWidget);
     expect(find.text('FREE ×3'), findsNothing);
     // No pool sizes or player strips on the store anymore: the contents
-    // list behind VIEW PLAYERS is the one place the pool is shown.
+    // list behind the players icon button is the one place the pool is
+    // shown.
     final offers = await tester.runAsync(() => store.getStoreOffers());
     expect(offers!.firstWhere((o) => o.scopeValue == null).eligibleCount,
         greaterThan(0));
-    // One compact VIEW PLAYERS button per section title row (13), not
-    // per cell: the contents pool is per-scope.
-    expect(find.text('VIEW PLAYERS'), findsNWidgets(13));
-    // Three rarity cells per section: 13 sections × 3.
-    expect(find.text('RARE'), findsNWidgets(13));
-    expect(find.text('EPIC'), findsNWidgets(13));
-    expect(find.text('LEGENDARY'), findsNWidgets(13));
+    // One compact players icon button per section title row (13), not
+    // per cell: the contents pool is per-scope. The text label is gone —
+    // the icon (with its tooltip) is the whole button.
+    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(13));
+    expect(find.text('VIEW PLAYERS'), findsNothing);
+    // The tier name is stamped on the foil's plate (painted, not a
+    // Text widget), so no tier labels render under the cells anymore.
+    expect(find.text('RARE'), findsNothing);
+    expect(find.text('EPIC'), findsNothing);
+    expect(find.text('LEGENDARY'), findsNothing);
     // No rewarded-ad offer anywhere.
     expect(find.text('Free pack — watch an ad'), findsNothing);
 
@@ -115,9 +119,9 @@ void main() {
     // cells open the purchase dialog.
     expect(find.text('CLAIM'), findsNothing);
     expect(find.text('BUY'), findsNothing);
-    // Every section title row carries a VIEW PLAYERS button into the
+    // Every section title row carries a players icon button into the
     // scope's shared pool.
-    expect(find.text('VIEW PLAYERS'), findsNWidgets(13));
+    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(13));
     // No player preview strip on the store itself.
     expect(find.byType(FcmMiniCard), findsNothing);
   });
@@ -301,16 +305,16 @@ void main() {
     expect(find.textContaining('after'), findsNothing);
   });
 
-  testWidgets('VIEW PLAYERS opens the pack contents as cards, best rated first',
+  testWidgets('players icon opens the pack contents as cards, best rated first',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // The VIEW PLAYERS button on the section title row opens the
+    // The players icon button on the section title row opens the
     // contents screen for that scope.
-    await tester.tap(find.text('VIEW PLAYERS').first);
+    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -344,7 +348,7 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    await tester.tap(find.text('VIEW PLAYERS').first);
+    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
     await tester.pump();
     await tester
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
@@ -375,7 +379,7 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    await tester.tap(find.text('VIEW PLAYERS').first);
+    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
     await tester.pump();
     await tester
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));

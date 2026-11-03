@@ -23,7 +23,7 @@ import 'pack_opening_screen.dart';
 /// FREE ×N pill in place of the price; otherwise the cell shows the coin
 /// price. There is no per-cell button: tapping the pack itself opens it —
 /// an owned pack straight into the reveal, a buyable one into the YES/NO
-/// purchase confirmation. Each section's ghost VIEW PLAYERS button opens
+/// purchase confirmation. Each section's ghost players icon button opens
 /// the scope's full contents list (searchable, filterable by
 /// nationality).
 class PacksScreen extends ConsumerStatefulWidget {
@@ -87,8 +87,8 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             opening: _opening,
             onOpen: (packId, tier) => _open(context, packId, tier),
             onBuy: (offer) => _buy(context, offer),
-            // Opens the scope's contents list — same entry as the cells'
-            // VIEW PLAYERS buttons.
+          // Opens the scope's contents list — same entry as the cells'
+          // players icon buttons.
             onInfo: (offer) => _showContents(context, offer),
           ),
         ),
@@ -364,7 +364,7 @@ class _StoreGrid extends StatelessWidget {
 }
 
 /// One scope group: shared title — 'Global Pack' or 'ST Pack' — with a
-/// compact VIEW PLAYERS button at the end of the title row, and the
+/// compact players icon button at the end of the title row, and the
 /// row of the three tier cells side by side. The three rarities of one
 /// scope draw from the exact same pool; the contents list behind that
 /// one button is the single place that pool is shown.
@@ -402,7 +402,7 @@ class _ScopeSection extends StatelessWidget {
     final scopeLabel =
         head.scopeValue == null ? 'Global Pack' : '${head.scopeValue} Pack';
 
-    // One visual group: title, VIEW PLAYERS entry and the tier cells
+          // One visual group: title, players icon entry and the tier cells
     // share a single raised surface, so what belongs together reads as
     // together at a glance — sections are separated by the grid's even
     // 14px rhythm, not by a gap of their own.
@@ -469,8 +469,9 @@ class _ScopeSection extends StatelessWidget {
 /// One tier cell of a scope section: the sealed foil pack exactly as it
 /// looks before opening (same [FoilPackPainter] as the reveal cinematic),
 /// painted in the tier's solid jewel metal — amethyst, sapphire or
-/// champion gold — with the tier name under it and a price slot. The
-/// scope title and its VIEW PLAYERS entry live on the section, not the
+/// champion gold — with the tier name stamped on the foil's plate and a
+/// price slot under it. The scope title and its players icon entry live
+/// on the section, not the
 /// cell. There is no CLAIM/BUY button: tapping the cell IS the action —
 /// an owned pack opens straight into the reveal, a buyable one opens
 /// the YES/NO purchase dialog.
@@ -589,18 +590,10 @@ class _StorePackCellState extends State<_StorePackCell>
             ),
           ),
           const SizedBox(height: 6),
-          FitText(
-            offer.tier.label.toUpperCase(),
-            style: TextStyle(
-              color: tierColor,
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 3),
           // Price slot: FREE ×N pill for owned packs, coin price otherwise
           // — fixed height so both variants keep one identical layout.
+          // The tier itself is stamped on the foil's plate, so the cell
+          // carries no tier label of its own.
           SizedBox(
             height: 20,
             child: Center(
@@ -637,8 +630,9 @@ class _StorePackCellState extends State<_StorePackCell>
 }
 
 /// Compact ghost pill that ends a scope section's title row: the one
-/// entry into that scope's contents list. Sized to sit inside the
-/// title row without inflating it.
+/// entry into that scope's contents list. Icon-only — the tooltip
+/// carries the label. Sized to sit inside the title row without
+/// inflating it.
 class _ViewPlayersButton extends StatelessWidget {
   const _ViewPlayersButton({required this.onPressed});
 
@@ -646,32 +640,20 @@ class _ViewPlayersButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FcmPressable(
-      onTap: onPressed,
-      scale: 0.94,
-      child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.people_outline_rounded,
-                size: 14, color: Colors.white70),
-            SizedBox(width: 5),
-            Text(
-              'VIEW PLAYERS',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
+    return Tooltip(
+      message: 'View players',
+      child: FcmPressable(
+        onTap: onPressed,
+        scale: 0.94,
+        child: Container(
+          height: 30,
+          width: 30,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+          ),
+          child: const Icon(Icons.people_outline_rounded,
+              size: 16, color: Colors.white70),
         ),
       ),
     );

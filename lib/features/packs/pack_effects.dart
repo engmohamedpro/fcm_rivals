@@ -91,7 +91,7 @@ Path _chamfered(Rect r, double c) => Path()
 /// The sealed booster: a trading-card foil pack. Brushed tier-metal foil
 /// with a diamond lattice, crimped ridged seals, a chamfered print frame
 /// holding a fan of three player cards over a sunburst, the brand
-/// wordmark on a dark glass band, rarity stars, a PLAYER PACK plate and a
+/// wordmark on a dark glass band, rarity stars, a tier-name plate and a
 /// prismatic holographic sheen that sweeps across the wrapper.
 class FoilPackPainter extends CustomPainter {
   FoilPackPainter({
@@ -368,11 +368,17 @@ class FoilPackPainter extends CustomPainter {
           italic: true, spacing: 3);
     }
 
-    // 'PLAYER PACK' on a deep plate with a tier-metal hairline: the
-    // plate guarantees contrast on every metal.
+    // The tier's name on a deep plate with a tier-metal hairline: the
+    // plate guarantees contrast on every metal, and the pack's grade
+    // reads at a glance without a label under the cell.
+    final plateText = switch (stars) {
+      4 => 'EPIC',
+      >= 5 => 'LEGENDARY',
+      _ => 'RARE',
+    };
     final plateFont = w * 0.082;
     final plateTp =
-        _layoutText('PLAYER PACK', plateFont, starFill, spacing: 2.5);
+        _layoutText(plateText, plateFont, starFill, spacing: 2.5);
     final plateCenter = Offset(w / 2, h * 0.805);
     final plate = RRect.fromRectAndRadius(
       Rect.fromCenter(
