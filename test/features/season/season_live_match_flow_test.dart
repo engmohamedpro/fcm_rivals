@@ -71,13 +71,13 @@ Future<void> _flush(
   }
 }
 
-/// Pumps the auto-play ticker until the match reaches full time (at 4x:
-/// 200ms pumped time per match minute), dismissing the half-time pep-talk
+/// Pumps the auto-play ticker until the match reaches full time (at 3x:
+/// 267ms pumped time per match minute), dismissing the half-time pep-talk
 /// sheet with the default 'no talk' choice when it appears so the clock
-/// resumes. Bounded to ~120 match minutes of pumping so a broken ticker
+/// resumes. Bounded to ~150 match minutes of pumping so a broken ticker
 /// fails fast instead of hanging.
 Future<void> _playToFullTime(WidgetTester tester) async {
-  for (var i = 0; i < 220; i++) {
+  for (var i = 0; i < 300; i++) {
     await tester.pump(const Duration(milliseconds: 200));
     // The half-time touchline card holds the clock — its title is the
     // unmistakable HALF TIME banner. 'Say nothing' skips the talk and
@@ -245,20 +245,21 @@ void main() {
       await _flush(tester, wait: const Duration(milliseconds: 900));
 
       // The live match screen is pushed over the shell: real club names on
-      // the scoreboard, the auto-play controls (pause + 1x–4x speed; no
+      // the scoreboard, the auto-play controls (pause + 1x–3x speed; no
       // skip-to-end exists anywhere) and the tactics entry point.
       expect(find.text('League · Round 1'), findsOneWidget);
       expect(find.text('FC Rivals'), findsWidgets);
       expect(find.text(opponent.opponentName), findsWidgets);
       expect(find.text('1x'), findsOneWidget);
-      expect(find.text('4x'), findsOneWidget);
+      expect(find.text('3x'), findsOneWidget);
+      expect(find.text('4x'), findsNothing);
       expect(find.text('Next minute'), findsNothing);
       expect(find.text('Sim to end'), findsNothing);
 
       // The match plays itself: pump real time and the ticker advances
-      // match minutes. Flip to 4x first (200ms per match minute), handle
+      // match minutes. Flip to 3x first (267ms per match minute), handle
       // the half-time talk when the clock holds, then play to full time.
-      await tester.tap(find.text('4x'));
+      await tester.tap(find.text('3x'));
       await tester.pump(const Duration(milliseconds: 50));
       await _playToFullTime(tester);
 

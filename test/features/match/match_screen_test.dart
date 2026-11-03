@@ -16,14 +16,18 @@ import 'dart:math' as math;
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/match/live_match_views.dart';
 import 'package:fcm_rivals/features/match/match_screen.dart';
 import 'package:fcm_rivals/features/match/match_session.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+
+import '../../helpers/audioplayers_mocks.dart';
 
 AppDatabase memoryDb() => AppDatabase(NativeDatabase.memory());
 
@@ -96,6 +100,12 @@ Future<void> _play(WidgetTester tester, {int frames = 30}) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // The live match screen plays stadium ambience through audioplayers:
+  // quiet the plugin's channels so widget tests don't drown in
+  // MissingPluginException noise.
+  setUp(installAudioplayersMocks);
+  tearDown(clearAudioplayersMocks);
+
   testWidgets('compact header, live stats strip and scrollable commentary '
       'history with no entrance animations', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1600);
@@ -120,16 +130,22 @@ void main() {
     expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
     expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
     expect(find.text('1x'), findsOneWidget);
-    expect(find.text('4x'), findsOneWidget);
+    expect(find.text('2x'), findsOneWidget);
+    expect(find.text('3x'), findsOneWidget);
+    // 4x is gone — the ladder stops at 3x.
+    expect(find.text('4x'), findsNothing);
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
 
-    // The stats strip sits above the commentary feed with its labels.
+    // The stats strip sits above the commentary feed with its labels —
+    // always visible (no hide/collapse toggle) and trimmed to the
+    // numbers a glance needs: xG and pass accuracy are out.
     expect(find.byType(LiveMatchStatsPanel), findsOneWidget);
     expect(find.text('Possession'), findsOneWidget);
     expect(find.text('Shots'), findsOneWidget);
     expect(find.text('On target'), findsOneWidget);
-    expect(find.text('Expected goals'), findsOneWidget);
-    expect(find.text('Pass accuracy'), findsOneWidget);
+    expect(find.text('Expected goals'), findsNothing);
+    expect(find.text('Pass accuracy'), findsNothing);
+    expect(find.text('Hide stats'), findsNothing);
 
     // Commentary rows are plain in-place widgets — no entrance wrappers
     // (the old side-slide-in was the jank source at speed).
@@ -140,21 +156,116 @@ void main() {
     await _play(tester, frames: 80);
     expect(find.byType(CommentaryRow).evaluate().length, greaterThan(before));
 
-    // The stats strip collapses to its summary line and back — the
-    // feed can own the screen when commentary matters more.
-    await tester.tap(find.text('Hide stats'));
-    await tester.pump();
-    expect(find.text('Possession'), findsNothing);
-    expect(find.text('Match stats'), findsOneWidget);
-    await tester.tap(find.text('Match stats'));
-    await tester.pump();
-    expect(find.text('Possession'), findsOneWidget);
-
     // The full history scrolls up: dragging the feed up keeps earlier
     // rows alive — a forward list, not a bottom-pinned window.
     await tester.drag(
         find.byType(CommentaryRow).last, const Offset(0, 300));
     await tester.pump();
     expect(find.byType(CommentaryRow), findsWidgets);
+  });
+
+  testWidgets('full-time report: user team ratings tab opens first, '
+      'opponent one tap away; xG and pass accuracy absent',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // Flushes pending real async I/O (drift persistence) + bounded frames.
+    Future<void> flush({Duration wait = const Duration(milliseconds: 300)}) async {
+      await tester.runAsync(() => Future<void>.delayed(wait));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    final store = await seededSquadStore(db);
+    final session = await _session(store);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        collectionStoreProvider.overrideWith((ref) => store),
+      ],
+      child: MaterialApp(
+        home: MatchScreen(session: session, title: 'League · Round 1'),
+      ),
+    ));
+    await tester.pump();
+
+    // Race to full time at 3x (267ms per match minute).
+    await tester.tap(find.text('3x'));
+    await tester.pump(const Duration(milliseconds: 50));
+    for (var i = 0; i < 400; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+      if (find.text('HALF TIME').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Say nothing — back to the match'));
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      if (find.text('Post-match recovery').evaluate().isNotEmpty) break;
+    }
+    // The full-time touchline card: skip the talk, then let the match
+    // session persist stamina/rewards and produce the report.
+    await tester.tap(find.text('No pep talk — default recovery'));
+    await flush();
+    for (var i = 0; i < 5; i++) {
+      if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
+      await flush();
+    }
+
+    // The report is up.
+    expect(find.textContaining('Full time:'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
+    // Team statistics table: xG and pass accuracy are gone.
+    expect(find.text('Team statistics'), findsOneWidget);
+    expect(find.text('Expected goals'), findsNothing);
+    expect(find.text('Pass accuracy'), findsNothing);
+
+    // ONE tabbed ratings panel: the user's club ('FC Rivals') is the
+    // active tab and its squad is the list shown — the opponent's
+    // players are one tap away, not stacked below.
+    expect(find.text('Player ratings'), findsOneWidget);
+    final clubTab = find.text('FC Rivals');
+    expect(clubTab, findsWidgets);
+    final opponentTab = find.text('Al Ahly');
+    expect(opponentTab, findsWidgets);
+
+    // FC Rivals players are listed under the open tab.
+    int ratingRows() => find
+        .byType(Padding)
+        .evaluate()
+        .where((e) =>
+            e.widget is Padding && (e.widget as Padding).child is Row)
+        .length;
+    final shownForClub = ratingRows();
+    expect(find.textContaining('Player ').evaluate().length,
+        greaterThan(0));
+
+    // Switch to the opponent tab: a different set of rows appears
+    // (opponent players are generated, not the 'Player N' dataset).
+    await tester.tap(opponentTab.first);
+    await tester.pump(const Duration(milliseconds: 300));
+    // The opponent squad is listed now — every 'Player N' name has been
+    // swapped for 'Al Ahly XX' rows ('Player ratings' section header is
+    // the only 'Player ' text left).
+    // 'Player ratings' (section header) and the Man of the Match panel
+    // (a user player) are the only 'Player ' texts left on the screen —
+    // the ratings list itself has swapped to opponent rows.
+    final remaining = find.textContaining('Player ').evaluate()
+        .map((e) => (e.widget as Text).data ?? '')
+        .where((t) => t.startsWith('Player '))
+        .toList();
+    expect(remaining.length, 2);
+    expect(remaining, containsAll(['Player ratings', 'Player 35']));
+    expect(find.text('Al Ahly ST'), findsWidgets);
+
+    // And back — the user's squad returns.
+    await tester.tap(clubTab.first);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('Player ').evaluate().length,
+        greaterThan(0));
+    expect(ratingRows(), shownForClub);
   });
 }

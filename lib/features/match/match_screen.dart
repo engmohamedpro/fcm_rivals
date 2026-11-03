@@ -28,7 +28,7 @@ typedef MatchFullTimeCallback = Future<void> Function(MatchReportResult report);
 ///
 /// The match plays itself: a ticker-driven clock advances one minute per
 /// [_minuteDuration] of elapsed time, multiplied by the selected speed
-/// (1x–4x). The clock pauses while the half-time talk or the tactics
+/// (1x–3x). The clock pauses while the half-time talk or the tactics
 /// sheet is open, and the user can pause/resume at any time — there is no
 /// skip-to-end; every match is watched to its final minute.
 ///
@@ -36,11 +36,11 @@ typedef MatchFullTimeCallback = Future<void> Function(MatchReportResult report);
 /// into one panel), the live stats strip and the commentary feed —
 /// newest at the bottom, the whole history scrolls up above it.
 ///
-/// Performance: one setState per match minute (800ms at 1x, 200ms at
-/// 4x) — every row is a plain stateless widget, no per-row entrance
+/// Performance: one setState per match minute (800ms at 1x, 267ms at
+/// 3x) — every row is a plain stateless widget, no per-row entrance
 /// animations or controllers (the old side-slide-in rows were the jank
-/// source at 4x), and the stats are recomputed incrementally from the
-/// minutes played so far, not the whole event list each time.
+/// source at top speed), and the stats are recomputed incrementally from
+/// the minutes played so far, not the whole event list each time.
 ///
 /// Pushed as a full-screen route over the caller (league fixtures are
 /// launched from the Season tab). The [session] arrives ready to play —
@@ -98,10 +98,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     home: TeamMatchStats.empty(),
     away: TeamMatchStats.empty(),
   );
-
-  /// Folded state of the live stats strip — one tap collapses five rows
-  /// into a single summary line when the commentary matters more.
-  bool _statsCollapsed = false;
 
   /// Auto-scroll: whether the feed should keep the newest line in view.
   /// Turns off the moment the user scrolls up to read history and back
@@ -227,11 +223,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   void _togglePause() {
     fcmTick();
     setState(() => _paused = !_paused);
-  }
-
-  void _toggleStats() {
-    fcmTick();
-    setState(() => _statsCollapsed = !_statsCollapsed);
   }
 
   void _advance() {
@@ -552,8 +543,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               stats: _stats,
                               homeTeamName: session.homeTeamName,
                               awayTeamName: session.awayTeamName,
-                              collapsed: _statsCollapsed,
-                              onToggle: _toggleStats,
                             ),
                           ],
                           // Commentary feed / report: newest at the
@@ -710,11 +699,12 @@ class _RecoveryOption extends StatelessWidget {
 }
 
 /// Post-match report (GDD 14 post-match screen): result, reward, Man
-/// of the Match, team statistics and BOTH squads' player ratings — the
-/// user's XI and the opponent's listed separately. The pep-talk choice
-/// is gone from here (it happens on the full-time touchline card);
-/// the screen ends with a CONTINUE button that closes the match flow.
-class MatchReportView extends StatelessWidget {
+/// of the Match, team statistics and both squads' player ratings in
+/// ONE tabbed panel — the user's XI opens first, the opponent one tap
+/// away. The pep-talk choice is gone from here (it happens on the
+/// full-time touchline card); the screen ends with a CONTINUE button
+/// that closes the match flow.
+class MatchReportView extends StatefulWidget {
   const MatchReportView({
     super.key,
     required this.report,
@@ -737,22 +727,42 @@ class MatchReportView extends StatelessWidget {
   /// Whether the ad-supported boosted recovery was applied (GDD 19.3).
   final bool adBoostedRecovery;
 
-  /// Which side the player managed; drives the VICTORY / DEFEAT banner.
+  /// Which side the player managed; drives the VICTORY / DEFEAT banner
+  /// and which ratings tab opens first.
   final MatchSide? userSide;
 
   /// Ends the match flow — the ONLY exit (no back button above).
   final VoidCallback onContinue;
 
   @override
+  State<MatchReportView> createState() => _MatchReportViewState();
+}
+
+class _MatchReportViewState extends State<MatchReportView> {
+  /// Which squad's ratings are shown: the user's team opens first —
+  /// after the final whistle you read your own players before the
+  /// opponent's.
+  late int _ratingsTab = _initialTab;
+
+  int get _initialTab {
+    final side = widget.userSide;
+    if (side == null) return 0;
+    return side == MatchSide.home ? 0 : 1;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final report = widget.report;
     final stats = report.stats;
     final home = report.state.scoreHome;
     final away = report.state.scoreAway;
     String? verdict;
     var verdictColor = FcmColors.gold;
-    if (userSide != null) {
-      final mine = userSide == MatchSide.home ? home : away;
-      final theirs = userSide == MatchSide.home ? away : home;
+    if (widget.userSide != null) {
+      final mine =
+          widget.userSide == MatchSide.home ? home : away;
+      final theirs =
+          widget.userSide == MatchSide.home ? away : home;
       if (mine > theirs) {
         verdict = 'VICTORY';
         verdictColor = FcmColors.success;
@@ -763,6 +773,16 @@ class MatchReportView extends StatelessWidget {
         verdict = 'DRAW';
       }
     }
+    final userTeamName = _initialTab == 0
+        ? widget.homeTeamName
+        : widget.awayTeamName;
+    final opponentTeamName = _initialTab == 0
+        ? widget.awayTeamName
+        : widget.homeTeamName;
+    final userRatings =
+        _initialTab == 0 ? report.homeRatings : report.awayRatings;
+    final opponentRatings =
+        _initialTab == 0 ? report.awayRatings : report.homeRatings;
     return Column(
       children: [
         Expanded(
@@ -793,7 +813,8 @@ class MatchReportView extends StatelessWidget {
                               letterSpacing: 5,
                               shadows: [
                                 Shadow(
-                                  color: verdictColor.withValues(alpha: 0.6),
+                                  color: verdictColor
+                                      .withValues(alpha: 0.6),
                                   blurRadius: 22,
                                 ),
                               ],
@@ -803,7 +824,8 @@ class MatchReportView extends StatelessWidget {
                         const SizedBox(height: 8),
                       ],
                       Text(
-                        'Full time: $homeTeamName $home - $away $awayTeamName',
+                        'Full time: ${widget.homeTeamName} $home - $away '
+                        '${widget.awayTeamName}',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
@@ -834,11 +856,12 @@ class MatchReportView extends StatelessWidget {
                       const SizedBox(height: 8),
                       // The recovery decision made on the full-time
                       // touchline card, restated as a status line.
-                      if (adBoostedRecovery)
+                      if (widget.adBoostedRecovery)
                         const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.movie, size: 14, color: FcmColors.gold),
+                            Icon(Icons.movie,
+                                size: 14, color: FcmColors.gold),
                             SizedBox(width: 5),
                             Text(
                               'Ad-boosted recovery applied (+15% natural '
@@ -848,7 +871,7 @@ class MatchReportView extends StatelessWidget {
                             ),
                           ],
                         )
-                      else if (pepTalk != null)
+                      else if (widget.pepTalk != null)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -857,11 +880,12 @@ class MatchReportView extends StatelessWidget {
                             const SizedBox(width: 5),
                             Flexible(
                               child: Text(
-                                '${pepTalk!.displayName} '
-                                '(+${(pepTalk!.recoveryBonus * 100).round()}% '
+                                '${widget.pepTalk!.displayName} '
+                                '(+${(widget.pepTalk!.recoveryBonus * 100).round()}% '
                                 'recovery)',
                                 style: const TextStyle(
-                                    color: FcmColors.success, fontSize: 11),
+                                    color: FcmColors.success,
+                                    fontSize: 11),
                               ),
                             ),
                           ],
@@ -913,18 +937,20 @@ class MatchReportView extends StatelessWidget {
               ],
               const FcmSectionTitle('Team statistics'),
               FcmEntrance(index: 2, child: _StatsTable(stats: stats)),
-              // BOTH squads' ratings, separately: the user's club first,
-              // the opponent below — same row layout, colour-coded pills.
-              FcmSectionTitle('$homeTeamName ratings'),
+              // Both squads' ratings in ONE tabbed panel: the user's
+              // team is the first tab and opens first.
+              const FcmSectionTitle('Player ratings'),
               FcmEntrance(
                 index: 3,
-                child: _RatingsPanel(ratings: report.homeRatings),
-              ),
-              const SizedBox(height: 12),
-              FcmSectionTitle('$awayTeamName ratings'),
-              FcmEntrance(
-                index: 4,
-                child: _RatingsPanel(ratings: report.awayRatings),
+                child: _RatingsTabs(
+                  firstLabel: userTeamName,
+                  secondLabel: opponentTeamName,
+                  firstRatings: userRatings,
+                  secondRatings: opponentRatings,
+                  current: _ratingsTab,
+                  onChanged: (tab) =>
+                      setState(() => _ratingsTab = tab),
+                ),
               ),
               const SizedBox(height: 12),
             ],
@@ -937,9 +963,80 @@ class MatchReportView extends StatelessWidget {
           child: FcmButton(
             label: 'Continue',
             icon: Icons.arrow_forward_rounded,
-            onPressed: onContinue,
+            onPressed: widget.onContinue,
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Tab pair for the two squads' player ratings: gold segment for the
+/// active squad, steel for the idle one. One tap switches lists.
+class _RatingsTabs extends StatelessWidget {
+  const _RatingsTabs({
+    required this.firstLabel,
+    required this.secondLabel,
+    required this.firstRatings,
+    required this.secondRatings,
+    required this.current,
+    required this.onChanged,
+  });
+
+  final String firstLabel;
+  final String secondLabel;
+  final List<PlayerMatchRating> firstRatings;
+  final List<PlayerMatchRating> secondRatings;
+  final int current;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          height: 40,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            gradient: FcmColors.steelGradient,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: FcmColors.bronze.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              for (final (i, label) in [firstLabel, secondLabel].indexed)
+                Expanded(
+                  child: FcmPressable(
+                    onTap: () => onChanged(i),
+                    scale: 0.98,
+                    child: Container(
+                      height: double.infinity,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient:
+                            i == current ? FcmColors.goldGradient : null,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: FitText(
+                        label,
+                        style: TextStyle(
+                          color:
+                              i == current ? FcmColors.ink : FcmColors.textDim,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        _RatingsPanel(
+            ratings: current == 0 ? firstRatings : secondRatings),
       ],
     );
   }
@@ -1040,9 +1137,7 @@ class _StatsTable extends StatelessWidget {
     ('Possession', 'possess'),
     ('Shots', 'shots'),
     ('Shots on target', 'onTarget'),
-    ('Expected goals', 'xg'),
     ('Big chances', 'bigChances'),
-    ('Pass accuracy', 'passAccuracy'),
     ('Corners', 'corners'),
     ('Fouls', 'fouls'),
     ('Yellow cards', 'yellow'),
@@ -1059,17 +1154,8 @@ class _StatsTable extends StatelessWidget {
         return (s.shots.toDouble(), '${s.shots}');
       case 'onTarget':
         return (s.shotsOnTarget.toDouble(), '${s.shotsOnTarget}');
-      case 'xg':
-        return (s.xg.toDouble(), s.xg.toStringAsFixed(1));
       case 'bigChances':
         return (s.bigChances.toDouble(), '${s.bigChances}');
-      case 'passAccuracy':
-        return s.passesAttempted == 0
-            ? (0.0, '—')
-            : (
-                100 * s.passAccuracy.toDouble(),
-                '${(100 * s.passAccuracy).round()}%',
-              );
       case 'corners':
         return (s.corners.toDouble(), '${s.corners}');
       case 'fouls':

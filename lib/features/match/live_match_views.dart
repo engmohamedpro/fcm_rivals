@@ -4,7 +4,7 @@
 /// Kept separate from [MatchScreen]'s flow logic so every widget here is
 /// a plain stateless row: the screen rebuilds once per match minute and
 /// none of these own animation controllers — the old per-row entrance
-/// animations were the jank source at 4x speed, not the simulation.
+/// animations were the jank source at top speed, not the simulation.
 library;
 
 import 'package:flutter/material.dart';
@@ -17,7 +17,7 @@ import 'tactics.dart';
 /// Compact live header: one tight panel fusing scoreboard, clock and
 /// controls. Team crest chips and score on the first row, the 90-minute
 /// progress bar with the live minute under it, and the play/pause +
-/// 1x–4x speed + tactics controls in the last row — roughly half the
+/// 1x–3x speed + tactics controls in the last row — roughly half the
 /// vertical space of the old stack (scoreboard panel, then a separate
 /// controls row), which is vertical budget the commentary feed now owns.
 class MatchHeader extends StatelessWidget {
@@ -152,7 +152,7 @@ class MatchHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            // Controls fused into the same panel: play/pause, 1x–4x
+            // Controls fused into the same panel: play/pause, 1x–3x
             // speed, tactics. One compact row instead of a second
             // floating block below the scoreboard.
             Row(
@@ -286,12 +286,12 @@ class _LiveDotState extends State<_LiveDot>
   }
 }
 
-/// Segmented 1x / 2x / 3x / 4x speed selector, compressed to sit inside
+/// Segmented 1x / 2x / 3x speed selector, compressed to sit inside
 /// the header panel. The selected segment is gold with ink text.
 class _SpeedSelector extends StatelessWidget {
   const _SpeedSelector({required this.speed, required this.onSelect});
 
-  static const speeds = [1, 2, 3, 4];
+  static const speeds = [1, 2, 3];
 
   final int speed;
   final ValueChanged<int> onSelect;
@@ -476,26 +476,21 @@ class _LiveStatsRow extends StatelessWidget {
   }
 }
 
-/// Live match statistics strip (GDD 13.2): possession, shots, shots on
-/// target, xG and pass accuracy, recomputed from the event timeline
-/// every match minute. Collapsible — the strip leads the commentary
-/// feed, and one tap folds it to a single summary line so the feed can
-/// own the screen on tall commentary stretches.
+/// Live match statistics strip (GDD 13.2): possession, shots and shots
+/// on target, recomputed from the event timeline every match minute.
+/// Always visible above the commentary feed — the numbers the manager
+/// glances at between key moments, never a tap away.
 class LiveMatchStatsPanel extends StatelessWidget {
   const LiveMatchStatsPanel({
     super.key,
     required this.stats,
     required this.homeTeamName,
     required this.awayTeamName,
-    required this.collapsed,
-    required this.onToggle,
   });
 
   final MatchStatsReport stats;
   final String homeTeamName;
   final String awayTeamName;
-  final bool collapsed;
-  final VoidCallback onToggle;
 
   static String _pct(double v) => '${(100 * v).round()}%';
 
@@ -513,19 +508,12 @@ class LiveMatchStatsPanel extends StatelessWidget {
         totalPossession == 0 ? '—' : _pct(1 - possH);
     final totalShots = h.shots + a.shots;
     final totalOnTarget = h.shotsOnTarget + a.shotsOnTarget;
-    final passH = h.passesAttempted == 0
-        ? (0.0, '—')
-        : (h.passAccuracy, _pct(h.passAccuracy));
-    final passA = a.passesAttempted == 0
-        ? (0.0, '—')
-        : (a.passAccuracy, _pct(a.passAccuracy));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
       child: FcmPanel(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
         accent: FcmColors.bronze,
-        onTap: onToggle,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -548,23 +536,22 @@ class LiveMatchStatsPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                FitText(
-                  collapsed ? 'Match stats' : 'Hide stats',
-                  style: const TextStyle(
+                const Text(
+                  'Match stats',
+                  style: TextStyle(
                     color: FcmColors.textDim,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1,
                   ),
                 ),
-                Icon(
-                  collapsed
-                      ? Icons.keyboard_arrow_down_rounded
-                      : Icons.keyboard_arrow_up_rounded,
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.query_stats_rounded,
                   size: 16,
-                  color: FcmColors.textDim,
+                  color: FcmColors.gold,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: FitText(
                     awayTeamName,
@@ -579,64 +566,29 @@ class LiveMatchStatsPanel extends StatelessWidget {
                 ),
               ],
             ),
-            if (!collapsed) ...[
-              const SizedBox(height: 6),
-              _LiveStatsRow(
-                label: 'Possession',
-                homeText: possTextH,
-                awayText: possTextA,
-                homeShare: possH,
-              ),
-              _LiveStatsRow(
-                label: 'Shots',
-                homeText: '${h.shots}',
-                awayText: '${a.shots}',
-                homeShare: totalShots == 0
-                    ? 0.5
-                    : h.shots / totalShots,
-              ),
-              _LiveStatsRow(
-                label: 'On target',
-                homeText: '${h.shotsOnTarget}',
-                awayText: '${a.shotsOnTarget}',
-                homeShare: totalOnTarget == 0
-                    ? 0.5
-                    : h.shotsOnTarget / totalOnTarget,
-              ),
-              _LiveStatsRow(
-                label: 'Expected goals',
-                homeText: h.shots == 0 ? '—' : h.xg.toStringAsFixed(1),
-                awayText: a.shots == 0 ? '—' : a.xg.toStringAsFixed(1),
-                homeShare: (h.xg + a.xg) <= 0
-                    ? 0.5
-                    : (h.xg / (h.xg + a.xg)).clamp(0.0, 1.0),
-              ),
-              _LiveStatsRow(
-                label: 'Pass accuracy',
-                homeText: passH.$2,
-                awayText: passA.$2,
-                homeShare: (passH.$1 + passA.$1) <= 0
-                    ? 0.5
-                    : passH.$1 / (passH.$1 + passA.$1),
-              ),
-            ] else
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${possTextH == '—' ? '50%' : possTextH} possession · '
-                      '${h.shots}–${a.shots} shots',
-                      style: const TextStyle(
-                        color: FcmColors.textDim,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(height: 6),
+            _LiveStatsRow(
+              label: 'Possession',
+              homeText: possTextH,
+              awayText: possTextA,
+              homeShare: possH,
+            ),
+            _LiveStatsRow(
+              label: 'Shots',
+              homeText: '${h.shots}',
+              awayText: '${a.shots}',
+              homeShare: totalShots == 0
+                  ? 0.5
+                  : h.shots / totalShots,
+            ),
+            _LiveStatsRow(
+              label: 'On target',
+              homeText: '${h.shotsOnTarget}',
+              awayText: '${a.shotsOnTarget}',
+              homeShare: totalOnTarget == 0
+                  ? 0.5
+                  : h.shotsOnTarget / totalOnTarget,
+            ),
           ],
         ),
       ),
@@ -644,9 +596,104 @@ class LiveMatchStatsPanel extends StatelessWidget {
   }
 }
 
-/// One commentary line; key moments (importance 2) glow gold. Plain
-/// stateless row — no entrance animation: entries appear in place, and
-/// the full history scrolls up naturally.
+/// Visual identity for one commentary kind: the icon it is badged with
+/// and its accent colour. Goals and penalties burn gold, cards carry
+/// their colour, saves cool green — the feed reads at a glance.
+_KindStyle _styleOf(CommentaryKind kind) => switch (kind) {
+      CommentaryKind.goal => _KindStyle(
+          icon: Icons.sports_soccer_rounded,
+          color: FcmColors.gold,
+          label: 'GOAL',
+          big: true,
+        ),
+      CommentaryKind.penalty => _KindStyle(
+          icon: Icons.adjust_rounded,
+          color: FcmColors.gold,
+          label: 'PENALTY',
+          big: true,
+        ),
+      CommentaryKind.redCard => _KindStyle(
+          icon: Icons.style_rounded,
+          color: FcmColors.danger,
+          label: 'RED CARD',
+          big: true,
+        ),
+      CommentaryKind.yellowCard => _KindStyle(
+          icon: Icons.style_rounded,
+          color: FcmColors.goldSoft,
+        ),
+      CommentaryKind.save => _KindStyle(
+          icon: Icons.sports_handball_rounded,
+          color: FcmColors.success,
+        ),
+      CommentaryKind.substitution => _KindStyle(
+          icon: Icons.swap_horiz_rounded,
+          color: FcmColors.silver,
+        ),
+      CommentaryKind.tactical => _KindStyle(
+          icon: Icons.tune_rounded,
+          color: FcmColors.silver,
+        ),
+      CommentaryKind.order => _KindStyle(
+          icon: Icons.campaign_rounded,
+          color: FcmColors.gold,
+        ),
+      CommentaryKind.kickoff => _KindStyle(
+          icon: Icons.sports_rounded,
+          color: FcmColors.silver,
+        ),
+      CommentaryKind.halfTime => _KindStyle(
+          icon: Icons.sports_rounded,
+          color: FcmColors.gold,
+        ),
+      CommentaryKind.fullTime => _KindStyle(
+          icon: Icons.flag_rounded,
+          color: FcmColors.gold,
+        ),
+      CommentaryKind.foul => _KindStyle(
+          icon: Icons.sports_rounded,
+          color: FcmColors.textDim,
+        ),
+      CommentaryKind.offside => _KindStyle(
+          icon: Icons.flag_rounded,
+          color: FcmColors.textDim,
+        ),
+      CommentaryKind.corner => _KindStyle(
+          icon: Icons.sports_soccer_rounded,
+          color: FcmColors.textDim,
+        ),
+      CommentaryKind.none => _KindStyle(
+          icon: Icons.circle_rounded,
+          color: FcmColors.textDim,
+        ),
+    };
+
+class _KindStyle {
+  const _KindStyle({
+    required this.icon,
+    required this.color,
+    this.label,
+    this.big = false,
+  });
+
+  final IconData icon;
+
+  /// Accent colour for the chip, the border and the header.
+  final Color color;
+
+  /// Header label on big cards ('GOAL', 'RED CARD'); null on chips.
+  final String? label;
+
+  /// Whether this kind earns the full-width key-moment card.
+  final bool big;
+}
+
+/// One commentary line in the broadcast feed. Every key moment is
+/// badged with its own icon and accent colour — a goal is a gold card
+/// with the scoreline under it, a red card burns danger-red, a booking
+/// shows the yellow — so the feed feels like a match broadcast, not a
+/// text log. Plain stateless row: no entrance animation, entries
+/// render in place and the history scrolls up naturally.
 class CommentaryRow extends StatelessWidget {
   const CommentaryRow({super.key, required this.line});
 
@@ -654,44 +701,236 @@ class CommentaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final big = line.importance == 2;
-    final color = switch (line.importance) {
-      2 => FcmColors.gold,
-      1 => Colors.white,
-      _ => FcmColors.textDim,
-    };
+    final style = _styleOf(line.kind);
+    if (style.big) return _KeyMomentCard(line: line, style: style);
+    if (line.importance == 0) return _FillerRow(line: line);
+    return _EventRow(line: line, style: style);
+  }
+}
+
+/// The full-width card for the moments that stop the match: gold
+/// gradient wash, glowing border, icon badge, the running scoreline
+/// under a goal.
+class _KeyMomentCard extends StatelessWidget {
+  const _KeyMomentCard({required this.line, required this.style});
+
+  final CommentaryLine line;
+  final _KindStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = style.color;
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: big ? FcmColors.gold.withValues(alpha: 0.12) : null,
-        border: big
-            ? Border(left: BorderSide(color: FcmColors.gold, width: 3))
-            : null,
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.26),
+            FcmColors.surface,
+            FcmColors.surface,
+          ],
+          stops: const [0, 0.45, 1],
+        ),
+        border: Border.all(color: accent.withValues(alpha: 0.85), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.25),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: accent == FcmColors.gold
+                  ? FcmColors.goldGradient
+                  : null,
+              color: accent == FcmColors.gold ? null : accent,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25), width: 1),
+            ),
+            child: Icon(
+              style.icon,
+              color: accent == FcmColors.gold ? FcmColors.ink : Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        style.label ?? '',
+                        style: TextStyle(
+                          color: accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      "${line.minute}'",
+                      style: TextStyle(
+                        color: accent.withValues(alpha: 0.9),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  line.text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    height: 1.3,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (line.detail != null) ...[
+                  const SizedBox(height: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border(
+                        left: BorderSide(color: accent, width: 2.5),
+                      ),
+                    ),
+                    child: Text(
+                      line.detail!,
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One notable event line: solid panel so it reads clearly over the
+/// stadium backdrop, coloured icon chip at its left, minute at right.
+class _EventRow extends StatelessWidget {
+  const _EventRow({required this.line, required this.style});
+
+  final CommentaryLine line;
+  final _KindStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = style.color;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.fromLTRB(8, 7, 10, 7),
+      decoration: BoxDecoration(
+        color: FcmColors.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: accent.withValues(alpha: 0.45), width: 1),
+            ),
+            child: Icon(style.icon, color: accent, size: 17),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              line.text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12.5,
+                height: 1.3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 30,
+            child: Text(
+              "${line.minute}'",
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: FcmColors.textDim,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Filler narration (full record only): a quiet dim line, no chrome.
+class _FillerRow extends StatelessWidget {
+  const _FillerRow({required this.line});
+
+  final CommentaryLine line;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 38,
-            child: FitText(
+            width: 30,
+            child: Text(
               "${line.minute}'",
-              style: TextStyle(
-                color: big ? FcmColors.gold : FcmColors.textDim,
+              style: const TextStyle(
+                color: FcmColors.textDim,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
-                fontSize: 12,
               ),
             ),
           ),
           Expanded(
             child: Text(
               line.text,
-              style: TextStyle(
-                color: color,
-                fontSize: big ? 14 : 13,
+              style: const TextStyle(
+                color: FcmColors.textDim,
+                fontSize: 12,
                 height: 1.3,
-                fontWeight: big ? FontWeight.w800 : FontWeight.w500,
               ),
             ),
           ),
@@ -948,6 +1187,7 @@ class _PepTalkOption extends StatelessWidget {
 /// Option row used by the pep-talk and recovery sheets.
 class SheetOption extends StatelessWidget {
   const SheetOption({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.icon,

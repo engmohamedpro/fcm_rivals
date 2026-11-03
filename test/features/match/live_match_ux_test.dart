@@ -136,6 +136,51 @@ void main() {
       expect(totalKey / matches, lessThan(60));
       expect(totalFull / matches, greaterThan(totalKey / matches));
     });
+
+    test('every key moment knows its kind and goals carry the scoreline',
+        () {
+      final engine = buildEngine(11);
+      final events = engine.simulateToEnd();
+      final names = {
+        for (final p in [
+          ...engine.playersOf(MatchSide.home),
+          ...engine.playersOf(MatchSide.away),
+        ])
+          p.playerId: p.name,
+      };
+      final feed = generateCommentary(events,
+          playerNames: names,
+          homeTeamName: 'Home',
+          awayTeamName: 'Away',
+          keyEventsOnly: true);
+
+      // The feed's key moments are TYPED: goals, cards, saves and
+      // penalties carry their broadcast identity, not just importance.
+      expect(feed.where((l) => l.kind == CommentaryKind.goal).length,
+          events.where((e) => e.type == MatchEventType.goal).length);
+      expect(feed.any((l) => l.kind == CommentaryKind.yellowCard), isTrue);
+      expect(feed.any((l) => l.kind == CommentaryKind.save), isTrue);
+      expect(feed.first.kind, CommentaryKind.kickoff);
+      expect(feed.last.kind, CommentaryKind.fullTime);
+
+      // Every goal line tells the running score after the goal.
+      final goals = feed.where((l) => l.kind == CommentaryKind.goal);
+      for (final g in goals) {
+        expect(g.detail, isNotNull);
+        expect(g.detail, contains('Home'));
+        expect(g.detail, contains('Away'));
+        expect(RegExp(r'Home \d+ - \d+ Away').hasMatch(g.detail!),
+            isTrue,
+            reason: 'detail must be a running scoreline: ${g.detail}');
+      }
+      // And the last goal's detail matches the final score.
+      if (goals.isNotEmpty) {
+        final last = goals.last;
+        final match = RegExp(r'Home (\d+) - (\d+) Away').firstMatch(last.detail!)!;
+        expect(int.parse(match.group(1)!), engine.state.scoreHome);
+        expect(int.parse(match.group(2)!), engine.state.scoreAway);
+      }
+    });
   });
 
   group('match speed persists forever (GDD 26.2)', () {
@@ -160,14 +205,17 @@ void main() {
     test('updating the speed overwrites the row (not duplicated)', () async {
       final store = UserSettingsStore(database: db);
       await store.setMatchSpeed(2);
-      await store.setMatchSpeed(4);
-      expect(await store.matchSpeed(), 4);
+      await store.setMatchSpeed(3);
+      expect(await store.matchSpeed(), 3);
       final rows = await db.select(db.userSettings).get();
       expect(rows.length, 1);
     });
 
     test('out-of-range speeds are ignored, corrupt rows fall back', () async {
       final store = UserSettingsStore(database: db);
+      // 4x no longer exists — the ladder stops at 3x.
+      await store.setMatchSpeed(4);
+      expect(await store.matchSpeed(), 1);
       await store.setMatchSpeed(9);
       expect(await store.matchSpeed(), 1);
       await db.into(db.userSettings).insert(
@@ -258,6 +306,66 @@ void main() {
       expect(find.text('TWO'), findsOneWidget);
       // ...and the reserves section is NOT part of the live editor.
       expect(find.textContaining('Reserves'), findsNothing);
+    });
+  });
+
+  group('broadcast commentary design', () {
+    testWidgets('a goal renders as an elevated GOAL card with the '
+        'scoreline badge; cards and saves get icon chips', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: ListView(
+            children: const [
+              CommentaryRow(
+                  line: CommentaryLine(
+                      minute: 1,
+                      second: 0,
+                      text: 'Kick-off! Home vs Away.',
+                      importance: 1,
+                      kind: CommentaryKind.kickoff)),
+              CommentaryRow(
+                  line: CommentaryLine(
+                      minute: 23,
+                      second: 10,
+                      text: 'GOAL! P 9 scores for Home! Assist: P 7.',
+                      importance: 2,
+                      kind: CommentaryKind.goal,
+                      detail: 'Home 1 - 0 Away')),
+              CommentaryRow(
+                  line: CommentaryLine(
+                      minute: 61,
+                      second: 5,
+                      text: 'P 4 is booked.',
+                      importance: 1,
+                      kind: CommentaryKind.yellowCard)),
+              CommentaryRow(
+                  line: CommentaryLine(
+                      minute: 72,
+                      second: 30,
+                      text: 'Save! P 10 forces a stop from P 0.',
+                      importance: 1,
+                      kind: CommentaryKind.save)),
+              CommentaryRow(
+                  line: CommentaryLine(
+                      minute: 90,
+                      second: 0,
+                      text: 'Full time! The referee blows the final whistle.',
+                      importance: 1,
+                      kind: CommentaryKind.fullTime)),
+            ],
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      // The goal is a full card: GOAL header, gold football badge and
+      // the running score under the line.
+      expect(find.text('GOAL'), findsOneWidget);
+      expect(find.text('Home 1 - 0 Away'), findsOneWidget);
+      expect(find.byIcon(Icons.sports_soccer_rounded), findsOneWidget);
+      // Yellow card + save rows carry their icon chips.
+      expect(find.byIcon(Icons.style_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.sports_handball_rounded), findsOneWidget);
     });
   });
 
