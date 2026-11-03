@@ -129,6 +129,11 @@ class SeasonStore {
   /// Starts a new season in [division] for the user club (FR-035/FR-036):
   /// creates the season row, 19 AI clubs with persisted squads (FR-039),
   /// league team rows and the 38-round fixture list.
+  ///
+  /// AI squads are drawn from the REAL imported player database (GDD 9.4),
+  /// banded around the division's difficulty target and never reusing a
+  /// player the user owns or one already signed to another club in this
+  /// division (each real player appears in at most one squad per season).
   Future<int> startSeason({
     required int division,
     int? aiCount,
@@ -144,11 +149,15 @@ class SeasonStore {
     final count = aiCount ?? engine.config.clubsPerDivision - 1;
     final carriedCount =
         carriedClubIds.isEmpty ? 0 : carriedClubIds.length.clamp(0, 6);
+    final pool = await _realPlayerPool();
+    final ownedIds = await _userOwnedPlayerIds();
     final definitions = engine.generateAiClubs(
       division,
       random: _random,
       count: count - carriedCount,
       excludeNames: {club.name},
+      pool: pool,
+      excludePlayerIds: ownedIds,
     );
 
     final now = DateTime.now();
@@ -170,8 +179,9 @@ class SeasonStore {
       final clubIds = [club.id];
       final names = [club.name];
 
-      // Carried-over clubs first (GDD 9.5): re-sign the retained squad
-      // into the new division, retuned for its difficulty target.
+      // Carried-over clubs first (GDD 9.5): a club that moved divisions
+      // WITH the user re-signs into the new division with its squad kept
+      // — same real players, same identity, fresh condition.
       if (carriedCount > 0) {
         final carried = await (db.select(db.clubs)
               ..where((c) => c.id.isIn(carriedClubIds.toList())))
@@ -184,7 +194,6 @@ class SeasonStore {
                 clubId: c.id,
                 carriedOver: const Value(true),
               ));
-          await _retuneCarriedSquad(c.id, division: division);
         }
       }
 
@@ -206,7 +215,8 @@ class SeasonStore {
               seasonId: seasonId,
               clubId: aiClubId,
             ));
-        // Persist the AI squad (GDD 9.4): XI in slot order, bench after.
+        // Persist the AI squad (GDD 9.4): XI in slot order, bench after —
+        // real dataset players carry their playerId.
         for (final p in def.players) {
           await db.into(db.aiPlayers).insert(AiPlayersCompanion.insert(
                 clubId: aiClubId,
@@ -216,6 +226,7 @@ class SeasonStore {
                 support: p.support,
                 defence: p.defence,
                 goalkeeping: p.goalkeeping,
+                realPlayerId: Value(p.realPlayerId),
               ));
         }
       }
@@ -304,7 +315,13 @@ class SeasonStore {
     );
   }
 
-  /// Loads the AI opponent squad for a fixture (GDD 9.4 persisted squads).
+  /// Loads the AI opponent squad for a fixture (GDD 9.4 persisted squads):
+  /// the club's FULL persisted squad at current condition, then the AI's
+  /// rotation decision — the engine picks the starting XI and bench from
+  /// everyone available, resting tired legs where a close-quality backup
+  /// exists (GDD 11 symmetry: the AI manages its squad like the user).
+  /// The persisted row order is no longer the XI: [AiOpponentSquad] is
+  /// whatever the AI actually fields today.
   Future<AiOpponentSquad> loadOpponent(int clubId) async {
     final club = await (db.select(db.clubs)..where((c) => c.id.equals(clubId)))
         .getSingle();
@@ -314,45 +331,91 @@ class SeasonStore {
     if (rows.isEmpty) {
       throw const SeasonException('AI club has no squad');
     }
-    List<MatchPlayer> toPlayers(Iterable<AiPlayer> rs) => [
-          for (final r in rs)
-            MatchPlayer(
-              playerId: -10_000 - r.id,
-              name: r.playerName,
-              position: Position.fromCode(r.position),
-              attack: r.attack,
-              support: r.support,
-              defence: r.defence,
-              goalkeeping: r.goalkeeping,
-              stamina: r.staminaPercent.toDouble(),
-            ),
-        ];
-    final starters = toPlayers(rows.take(11));
-    final bench = toPlayers(rows.skip(11));
-    return AiOpponentSquad(club: club, starters: starters, bench: bench);
+    final squad = [
+      for (final r in rows)
+        AiSquadPlayer(
+          realPlayerId: r.realPlayerId,
+          name: r.playerName,
+          position: Position.fromCode(r.position),
+          attack: r.attack,
+          support: r.support,
+          defence: r.defence,
+          goalkeeping: r.goalkeeping,
+          stamina: r.staminaPercent.toDouble(),
+        ),
+    ];
+    final lineup = engine.pickAiLineup(squad, club.formationCode);
+    return AiOpponentSquad(
+      club: club,
+      starters: [
+        for (final p in lineup.starters)
+          MatchPlayer(
+            playerId: -10_000 - _rowIdOf(rows, p),
+            name: p.name,
+            position: p.position,
+            attack: p.attack,
+            support: p.support,
+            defence: p.defence,
+            goalkeeping: p.goalkeeping,
+            stamina: p.stamina,
+          ),
+      ],
+      bench: [
+        for (final p in lineup.bench)
+          MatchPlayer(
+            playerId: -10_000 - _rowIdOf(rows, p),
+            name: p.name,
+            position: p.position,
+            attack: p.attack,
+            support: p.support,
+            defence: p.defence,
+            goalkeeping: p.goalkeeping,
+            stamina: p.stamina,
+          ),
+      ],
+    );
+  }
+
+  /// Row id for an [AiSquadPlayer] picked by [engine.pickAiLineup] —
+  /// matched on identity: real players by their dataset id, synthetic
+  /// ones by name+position (unique within a club's squad).
+  int _rowIdOf(List<AiPlayer> rows, AiSquadPlayer p) {
+    if (p.realPlayerId != null) {
+      for (final r in rows) {
+        if (r.realPlayerId == p.realPlayerId) return r.id;
+      }
+    }
+    return rows
+        .firstWhere((r) => r.playerName == p.name && r.position == p.position.code)
+        .id;
   }
 
   /// Persists an AI club's post-match stamina (GDD 11 applies to every
   /// club, not just the user): match-end stamina plus the same natural
-  /// recovery the user's squad gets, so AI squads tire and heal across a
-  /// season symmetrically with the player. Until now AI clubs kept 100%
-  /// stamina forever — a large hidden difficulty asymmetry found by the
-  /// §30 simulation harness.
+  /// recovery the user's squad gets, for EVERY squad member — players who
+  /// missed the match recover their rest too (they used to be frozen at
+  /// whatever condition they had, which quietly stacked AI squads at 100%
+  /// forever after a season reset). AI squads tire and heal across a
+  /// season symmetrically with the player.
   Future<void> _persistAiStamina({
     required int aiClubId,
     required Iterable<MatchPlayer> players,
     required int restDays,
   }) async {
-    for (final p in players) {
-      if (p.minutesPlayed == 0) continue;
-      final row = await (db.select(db.aiPlayers)
-            ..where((a) => a.id.equals(-(p.playerId + 10_000))))
-          .getSingleOrNull();
-      if (row == null) continue;
+    final byEngineId = {
+      for (final p in players) p.playerId: p,
+    };
+    final rows = await (db.select(db.aiPlayers)
+          ..where((a) => a.clubId.equals(aiClubId)))
+        .get();
+    for (final row in rows) {
+      final match = byEngineId[-10_000 - row.id];
+      final currentStamina = match?.stamina ?? row.staminaPercent.toDouble();
+      final minutes = match?.minutesPlayed ?? 0;
       final recovered = recoverStamina(
         config: const StaminaConfig(),
-        currentStamina: p.stamina,
-        minutesPlayed: p.minutesPlayed,
+        currentStamina: currentStamina,
+        minutesPlayed: minutes,
         restDays: restDays,
       );
       await (db.update(db.aiPlayers)..where((a) => a.id.equals(row.id)))
@@ -856,33 +919,40 @@ class SeasonStore {
         outcome: Value(outcome.name),
       ));
 
-      // Retire AI squads (GDD 9.5) — EXCEPT carried-over clubs: the three
-      // promoted and three relegated clubs keep their squads for the
-      // next season in their new division. Everyone else regenerates;
-      // historical RESULTS always stay (FR-038), only squads go.
+      // Retire AI squads (GDD 9.5) — EXCEPT clubs that move divisions WITH
+      // the user: when the user is promoted, the other promoted clubs of
+      // this division follow and keep their squads (same real players,
+      // fresh condition); when relegated, the fellow relegated clubs
+      // follow them down. Every other club regenerates with a fresh squad
+      // for its division; historical RESULTS always stay (FR-038), only
+      // squads go. The carried band shrinks to make room for the user's
+      // own promotion/relegation slot.
       final teams = await (db.select(db.leagueTeams)
             ..where((t) => t.seasonId.equals(season.id) & t.isUser.equals(false)))
           .get();
-      // Promoted = top 3, relegated = bottom 3 of the final table
-      // (GDD 9.3); the user may occupy one of those spots.
       final sorted = teams.toList()
         ..sort((a, b) => (a.finalPosition ?? 99).compareTo(b.finalPosition ?? 99));
-      // Retain the promoted (top 3) and relegated (bottom 3) AI clubs
-      // (GDD 9.5). The user's own spot is excluded because the user club
-      // always continues — it is not part of this table.
+      // Carried clubs travel with the user's own outcome (GDD 9.5):
+      // promoted → the other top clubs go up with him, relegated → the
+      // other bottom clubs go down. Staying means a fresh division.
       final carryIds = <int>{};
-      if (sorted.length >= 6) {
-        for (final t in sorted.take(3)) {
-          carryIds.add(t.clubId);
-        }
-        for (final t in sorted.skip(sorted.length - 3)) {
-          carryIds.add(t.clubId);
+      if (outcome != SeasonOutcome.stayed && sorted.length >= 6) {
+        final slots = engine.config.promotionSlots;
+        final userPos = userEntry.position;
+        if (outcome == SeasonOutcome.promoted) {
+          for (final t in sorted.take(slots)) {
+            if (t.finalPosition != userPos) carryIds.add(t.clubId);
+          }
+        } else {
+          for (final t in sorted.skip(sorted.length - slots)) {
+            if (t.finalPosition != userPos) carryIds.add(t.clubId);
+          }
         }
       }
       for (final t in teams) {
         if (carryIds.contains(t.clubId)) {
-          // Carried over: flag the league row and reset the squad to full
-          // freshness for the new campaign.
+          // Carried over: flag the league row and rest the squad to full
+          // freshness for the new campaign — SAME players, no retuning.
           await (db.update(db.leagueTeams)
                 ..where((l) => l.id.equals(t.id)))
               .write(const LeagueTeamsCompanion(carriedOver: Value(true)));
@@ -941,10 +1011,12 @@ class SeasonStore {
     );
   }
 
-  /// Starts the next season in [division] after completion (GDD 9.5:
-  /// fresh opponents are generated; carried-over promoted/relegated clubs
-  /// are a future refinement — v1 generates a fresh division each season,
-  /// which the GDD's 17-new-clubs rule permits).
+  /// Starts the next season in [division] after completion (GDD 9.5):
+  /// the division's fresh opponents are generated from the real player
+  /// database; the AI clubs that moved divisions WITH the user keep
+  /// their squads — same real players, new division. Clubs whose squads
+  /// were retired at completion (everyone else) are deleted along with
+  /// their rows so the club table only ever grows by one season's worth.
   Future<int> startNextSeason(CollectionStore store) async {
     final summary = await getSeasonSummary();
     if (summary == null) {
@@ -960,10 +1032,11 @@ class SeasonStore {
             orElse: () => SeasonOutcome.stayed);
     final division = engine.nextDivisionFor(summary.division, outcome);
 
-    // Carried-over clubs (GDD 9.5): the promoted (top 3) and relegated
-    // (bottom 3) AI clubs of the completed season re-sign. Derived from
-    // final positions — NOT from the carriedOver flag, which marks how a
-    // club entered this season and would double-count on re-sign rows.
+    // Carried-over clubs (GDD 9.5): the AI clubs that moved divisions
+    // WITH the user (other promoted clubs when he went up, other
+    // relegated clubs when he went down). Derived from final positions
+    // minus the user's own slot — NOT from the carriedOver flag, which
+    // marks how a club entered this season and would double-count.
     final seasonId = summary.seasonId;
     final teams = await (db.select(db.leagueTeams)
           ..where((t) => t.seasonId.equals(seasonId) & t.isUser.equals(false)))
@@ -972,49 +1045,59 @@ class SeasonStore {
       ..sort((a, b) =>
           (a.finalPosition ?? 99).compareTo(b.finalPosition ?? 99));
     final carriedIds = <int>{};
-    if (sorted.length >= 6) {
-      for (final t in sorted.take(3)) {
-        carriedIds.add(t.clubId);
+    if (outcome != SeasonOutcome.stayed && sorted.length >= 6) {
+      final slots = engine.config.promotionSlots;
+      final userPos = summary.finalPosition ?? 0;
+      if (outcome == SeasonOutcome.promoted) {
+        for (final t in sorted.take(slots)) {
+          if (t.finalPosition != userPos) carriedIds.add(t.clubId);
+        }
+      } else {
+        for (final t in sorted.skip(sorted.length - slots)) {
+          if (t.finalPosition != userPos) carriedIds.add(t.clubId);
+        }
       }
-      for (final t in sorted.skip(sorted.length - 3)) {
-        carriedIds.add(t.clubId);
-      }
+    }
+
+    // Retire the club rows of squads that were deleted at completion:
+    // their league rows are history, but an empty club would otherwise
+    // linger forever in the clubs table.
+    final retiredClubs = teams.map((t) => t.clubId).where((id) => !carriedIds.contains(id)).toList();
+    if (retiredClubs.isNotEmpty) {
+      await (db.delete(db.clubs)..where((c) => c.id.isIn(retiredClubs)))
+          .go();
     }
 
     return startSeason(division: division, carriedClubIds: carriedIds);
   }
 
-  /// Re-tunes a carried-over squad for its new division (GDD 9.6): the
-  /// club keeps identity, formation and players, but each attribute is
-  /// shifted by the division difficulty delta so the squad tracks the
-  /// new target average overall. Values stay within the generator's
-  /// 35–94 band.
-  Future<void> _retuneCarriedSquad(int clubId, {required int division}) async {
-    final rows = await (db.select(db.aiPlayers)
-          ..where((p) => p.clubId.equals(clubId)))
+  /// The real-player pool for AI squad generation (GDD 9.4): every
+  /// imported dataset player as an [AiPoolPlayer]. Empty when no dataset
+  /// is loaded yet — generation then falls back to synthetic players.
+  Future<List<AiPoolPlayer>> _realPlayerPool() async {
+    final rows = await db.select(db.players).get();
+    return [
+      for (final r in rows)
+        AiPoolPlayer(
+          playerId: r.playerId,
+          name: r.name,
+          position: Position.fromCode(r.position),
+          overall: r.overall,
+          attack: r.attack,
+          support: r.support,
+          defence: r.defence,
+          goalkeeping: r.goalkeeping,
+        ),
+    ];
+  }
+
+  /// Dataset player ids the user already owns — AI squads never sign a
+  /// player the user's collection holds (one identity per club, GDD 9.4).
+  Future<Set<int>> _userOwnedPlayerIds() async {
+    final rows = await (db.select(db.ownedPlayers)
+          ..where((o) => o.status.equals('owned')))
         .get();
-    final target = engine.config.targetAverageOverall(division);
-    // Estimate the squad's current average overall from its attributes.
-    final current = rows.isEmpty
-        ? target
-        : rows
-                .map((p) => (p.attack + p.support + p.defence + p.goalkeeping) /
-                    4)
-                .reduce((a, b) => a + b) /
-            rows.length;
-    final delta = (target - current).round();
-    if (delta == 0) return;
-    for (final p in rows) {
-      int shift(int value) => (value + delta).clamp(35, 94).toInt();
-      await (db.update(db.aiPlayers)..where((a) => a.id.equals(p.id)))
-          .write(AiPlayersCompanion(
-        attack: Value(shift(p.attack)),
-        support: Value(shift(p.support)),
-        defence: Value(shift(p.defence)),
-        goalkeeping: Value(shift(p.goalkeeping)),
-        staminaPercent: const Value(100),
-      ));
-    }
+    return {for (final r in rows) r.playerId};
   }
 
   Future<Club> _userClub() async {

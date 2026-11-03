@@ -5,7 +5,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/season/season_engine.dart';
 
+
+/// A realistic pool for real-player generation tests: every position
+/// stocked across the overall ladder (mirrors the shipped dataset's
+/// shape — thousands of players from ~40 OVR to ~94).
+List<AiPoolPlayer> buildPool() {
+  final pool = <AiPoolPlayer>[];
+  var id = 1;
+  for (final position in Position.values) {
+    for (var overall = 36; overall <= 94; overall++) {
+      for (var copy = 0; copy < 6; copy++) {
+        pool.add(AiPoolPlayer(
+          playerId: id,
+          name: '${position.code.toUpperCase()} ${overall.toString().padLeft(2, '0')} $copy',
+          position: position,
+          overall: overall,
+          attack: overall,
+          support: overall,
+          defence: overall,
+          goalkeeping: overall,
+        ));
+        id++;
+      }
+    }
+  }
+  return pool;
+}
+
+math.Random _rand(int seed) => math.Random(seed);
+
 void main() {
+
   group('Round-robin fixtures (FR-036, GDD 9.2)', () {
     test('20 teams produce 38 rounds of 10 matches = 380 fixtures', () {
       const engine = SeasonEngine();
@@ -253,7 +283,184 @@ void main() {
       expect(gk.goalkeeping, greaterThan(gk.defence));
     });
   });
-}
 
-/// Deterministic random for stable generation tests.
-math.Random _rand(int seed) => math.Random(seed);
+  group('Real-player AI squads (GDD 9.4/9.6)', () {
+    const engine = SeasonEngine();
+
+    test('squads draw REAL players from the provided pool', () {
+      final pool = buildPool();
+      final clubs = engine.generateAiClubs(2, random: _rand(21), pool: pool);
+      final poolById = {for (final p in pool) p.playerId: p};
+      for (final club in clubs) {
+        for (final p in club.players) {
+          expect(p.realPlayerId, isNotNull,
+              reason: '${club.name} has a synthetic player');
+          final real = poolById[p.realPlayerId]!;
+          expect(p.name, real.name);
+          expect(p.position, real.position);
+        }
+      }
+    });
+
+    test('a real player joins at most ONE club per division', () {
+      final pool = buildPool();
+      final clubs = engine.generateAiClubs(1, random: _rand(5), pool: pool);
+      final seen = <int>{};
+      for (final club in clubs) {
+        for (final p in club.players) {
+          expect(seen.contains(p.realPlayerId), isFalse,
+              reason: 'player ${p.realPlayerId} signed twice');
+          seen.add(p.realPlayerId!);
+        }
+      }
+    });
+
+    test('players the user owns are never signed', () {
+      final pool = buildPool();
+      final owned = {for (final p in pool.take(50)) p.playerId};
+      final clubs = engine.generateAiClubs(3,
+          random: _rand(9), pool: pool, excludePlayerIds: owned);
+      for (final club in clubs) {
+        for (final p in club.players) {
+          expect(owned.contains(p.realPlayerId), isFalse);
+        }
+      }
+    });
+
+    test('Division 1 is the easiest, later divisions field stronger squads',
+        () {
+      final pool = buildPool();
+      double meanOverall(int division) {
+        final clubs =
+            engine.generateAiClubs(division, random: _rand(31), pool: pool);
+        final ratings = [
+          for (final c in clubs)
+            for (final p in c.players)
+              (p.attack + p.support + p.defence) / 3
+        ];
+        return ratings.reduce((a, b) => a + b) / ratings.length;
+      }
+
+      final d1 = meanOverall(1);
+      final d3 = meanOverall(3);
+      final d5 = meanOverall(5);
+      // Division 1 sits near the new-user difficulty (~54), not the old 66.
+      expect(d1, inInclusiveRange(50, 58));
+      expect(d3, greaterThan(d1 + 3));
+      expect(d5, greaterThan(d3 + 3));
+    });
+
+    test('thin pools fall back to synthetic squads (graceful degradation)',
+        () {
+      // A pool with only a handful of players cannot fill 19×18 squads:
+      // clubs must still be produced, with synthetic players.
+      final tinyPool = buildPool().take(30).toList();
+      final clubs =
+          engine.generateAiClubs(1, random: _rand(3), pool: tinyPool);
+      expect(clubs.length, 19);
+      for (final c in clubs) {
+        expect(c.players.length, 18);
+      }
+      final synthetic = [
+        for (final c in clubs)
+          for (final p in c.players)
+            if (p.realPlayerId == null) p
+      ];
+      expect(synthetic, isNotEmpty);
+    });
+  });
+
+  group('AI lineup rotation (GDD 11)', () {
+    const engine = SeasonEngine();
+
+    AiSquadPlayer mk(Position position, int rating, double stamina,
+            {String name = 'P'}) =>
+        AiSquadPlayer(
+          realPlayerId: position.index * 100 + rating,
+          name: '$name $rating ${position.code}',
+          position: position,
+          attack: position == Position.gk ? 20 : rating,
+          support: rating,
+          defence: position == Position.gk ? 20 : rating,
+          goalkeeping: position == Position.gk ? rating : 20,
+          stamina: stamina,
+        );
+
+    test('fresh starters keep their place at full stamina', () {
+      final squad = [
+        mk(Position.gk, 70, 100),
+        for (final p in [Position.cb, Position.cb, Position.lb, Position.rb])
+          mk(p, 70, 100),
+        for (final p in [Position.cdm, Position.cm, Position.cam])
+          mk(p, 70, 100),
+        for (final p in [Position.lw, Position.rw, Position.st])
+          mk(p, 70, 100),
+        for (var i = 0; i < 7; i++) mk(Position.cb, 40, 100, name: 'B$i'),
+      ];
+      final lineup = engine.pickAiLineup(squad, '4-3-3');
+      expect(lineup.starters.length, 11);
+      expect(lineup.bench.length, 7);
+      // Every full-fitness first-teamer starts over the 40-rated bench.
+      for (final s in lineup.starters) {
+        expect(s.support, greaterThan(50));
+      }
+    });
+
+    test('a genuinely tired starter is rested for a close backup', () {
+      final squad = [
+        mk(Position.gk, 70, 100),
+        mk(Position.cb, 70, 30), // exhausted starter
+        mk(Position.cb, 70, 100),
+        mk(Position.lb, 70, 100),
+        mk(Position.rb, 70, 100),
+        for (final p in [Position.cdm, Position.cm, Position.cam])
+          mk(p, 70, 100),
+        for (final p in [Position.lw, Position.rw, Position.st])
+          mk(p, 70, 100),
+        mk(Position.cb, 68, 100, name: 'Backup'), // near-quality cover
+        for (var i = 0; i < 6; i++) mk(Position.cm, 40, 100, name: 'B$i'),
+      ];
+      final lineup = engine.pickAiLineup(squad, '4-3-3');
+      final tired = squad[1];
+      expect(lineup.starters.contains(tired), isFalse,
+          reason: '30-stamina starter must be rotated out');
+      expect(lineup.bench.contains(tired), isTrue);
+    });
+
+    test('a tired STAR still starts over a weak backup (quality wins)',
+        () {
+      final squad = [
+        mk(Position.gk, 70, 100),
+        mk(Position.st, 85, 35), // tired but a superstar
+        for (final p in [Position.cb, Position.cb, Position.lb, Position.rb])
+          mk(p, 70, 100),
+        for (final p in [Position.cdm, Position.cm, Position.cam])
+          mk(p, 70, 100),
+        mk(Position.lw, 70, 100),
+        mk(Position.rw, 70, 100),
+        mk(Position.st, 50, 100, name: 'Backup'), // weak cover
+        for (var i = 0; i < 6; i++) mk(Position.cm, 40, 100, name: 'B$i'),
+      ];
+      final lineup = engine.pickAiLineup(squad, '4-3-3');
+      final star = squad[1];
+      expect(lineup.starters.contains(star), isTrue,
+          reason: '85-rated at 35 stamina beats a 50-rated fresh backup');
+    });
+
+    test('lineup returns XI in formation slot order and a bench', () {
+      final squad = [
+        mk(Position.gk, 70, 100),
+        for (final p in [
+          Position.lb, Position.cb, Position.cb, Position.rb,
+          Position.cam, Position.cm, Position.cm,
+          Position.lw, Position.st, Position.rw,
+        ])
+          mk(p, 70, 100),
+        for (var i = 0; i < 7; i++) mk(Position.cm, 50, 100, name: 'B$i'),
+      ];
+      final lineup = engine.pickAiLineup(squad, '4-3-3');
+      expect(lineup.starters.first.position, Position.gk);
+      expect(lineup.starters.length + lineup.bench.length, squad.length);
+    });
+  });
+}

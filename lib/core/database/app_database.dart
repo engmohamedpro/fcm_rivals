@@ -197,6 +197,12 @@ class AiPlayers extends Table {
   IntColumn get defence => integer()();
   IntColumn get goalkeeping => integer()();
   IntColumn get staminaPercent => integer().withDefault(const Constant(100))();
+
+  /// The real dataset player behind this squad entry, or null for
+  /// synthetic fallback players (tiny test pools). AI squads are built
+  /// from the imported player database, and a promoted/relegated club
+  /// keeps its squad — the identity survives across seasons.
+  IntColumn get realPlayerId => integer().nullable()();
 }
 
 /// Rewarded-ad usage ledger (SRS 25: AdUsage; GDD 19.4, FR-040..FR-042).
@@ -261,7 +267,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -314,6 +320,12 @@ class AppDatabase extends _$AppDatabase {
           if (from < 8) {
             // App-level preferences (match playback speed, GDD 26.2).
             await m.createTable(userSettings);
+          }
+          if (from < 9) {
+            // AI squads drawn from the real player database: each squad
+            // entry carries the dataset player it represents. Existing
+            // rows predate real-player generation and stay null.
+            await m.addColumn(aiPlayers, aiPlayers.realPlayerId);
           }
         },
       );

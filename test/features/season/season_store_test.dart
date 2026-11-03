@@ -246,33 +246,33 @@ void main() {
       final results = await db.select(db.matchResults).get();
       expect(results.length, 380);
 
-      // AI squads retired EXCEPT the carried-over clubs (GDD 9.5): the
-      // top three (promoted) and bottom three (relegated) AI clubs keep
-      // their squads — minus any spot the user itself occupies.
+      // AI squads retired EXCEPT the clubs moving divisions WITH the user
+      // (GDD 9.5): promotion carries the OTHER top clubs up, relegation
+      // carries the OTHER bottom clubs down, staying means a fresh
+      // division. The user's own slot never occupies a carry spot.
       final aiSquads = await db.select(db.aiPlayers).get();
       final teamsWithSquads =
           aiSquads.map((p) => p.clubId).toSet();
       final leagueTeams = await (db.select(db.leagueTeams)
             ..where((t) => t.seasonId.equals(completion.seasonId)))
           .get();
-      final expectedCarry = leagueTeams
+      final sortedAi = leagueTeams
           .where((t) => !t.isUser)
           .map((t) => (t.clubId, t.finalPosition!))
           .toList()
         ..sort((a, b) => a.$2.compareTo(b.$2));
-      // Drop the user's own slot from the promoted/relegated ranges.
-      final user = leagueTeams.firstWhere((t) => t.isUser);
       final expectedCarryIds = <int>{};
-      if (expectedCarry.length >= 6) {
-        for (final e in expectedCarry.take(3)) {
+      if (completion.outcome == 'promoted' && sortedAi.length >= 3) {
+        for (final e in sortedAi.take(3)) {
           expectedCarryIds.add(e.$1);
         }
-        for (final e in expectedCarry.skip(expectedCarry.length - 3)) {
+      } else if (completion.outcome == 'relegated' && sortedAi.length >= 3) {
+        for (final e in sortedAi.skip(sortedAi.length - 3)) {
           expectedCarryIds.add(e.$1);
         }
-        expectedCarryIds.remove(user.clubId);
       }
-      expect(teamsWithSquads, expectedCarryIds);
+      expect(teamsWithSquads, expectedCarryIds,
+          reason: 'outcome ${completion.outcome}');
       // Carried clubs are flagged on their league row.
       final flagged = leagueTeams
           .where((t) => t.carriedOver)

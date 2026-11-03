@@ -16,12 +16,15 @@ class StaminaConfig {
     this.eventActivityDrain = 0.10,
     this.minStamina = 0,
     this.maxStamina = 100,
-    this.baseRecovery = 18,
-    // Calibrated by the §30/§31 simulation harness: a 38-match season
-    // (GDD 9.2) plays roughly every 3–4 days, and a full match drains
-    // ~45 points. Recovery must exceed that or squads spiral from 100
-    // down to ~20 within five fixtures (18 + 3×14 = 60 ≥ 45).
-    this.recoveryPerRestDay = 14,
+    // Recalibrated so rotation MATTERS (GDD 11.5 realism): a full match
+    // drains ~45 points and a standard 3-day break now recovers only
+    // 8 + 3×9 = 35 — a manager who fields the same XI every week grinds
+    // starters down ~10 points a match, while substituted and rotated
+    // players hold near 90-100. The previous 18 + 3×14 = 60 restored
+    // every full-match starter to ~92 within one break, making squad
+    // rotation pointless.
+    this.baseRecovery = 8,
+    this.recoveryPerRestDay = 9,
     this.minutesPlayedPenalty = 12,
     this.substituteRecoveryBonus = 6,
     this.exhaustedThreshold = 60,
@@ -111,10 +114,12 @@ double recoverStamina({
     recovery += config.substituteRecoveryBonus;
   }
   final next = currentStamina + recovery;
-  // Players close to full heal to full; drained players stay below 100
-  // unless the rest interval was long.
+  // A long rest heals completely; a short one leaves the last few points
+  // on the table (nobody is 100% three days after a match). The penalty
+  // is waived when the rest interval was genuinely long (≥ 6 days) —
+  // players close to full then top out at full condition.
   if (next > config.maxStamina) {
-    final overflowPenalty = (restDays >= 6 && currentStamina > 70) ? 0.0 : 8.0;
+    final overflowPenalty = restDays >= 6 ? 0.0 : 8.0;
     return (config.maxStamina - overflowPenalty).clamp(0, config.maxStamina);
   }
   return next.clamp(0, config.maxStamina);

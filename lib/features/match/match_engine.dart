@@ -1119,10 +1119,19 @@ class MatchEngine {
   List<MatchEvent> _maybeAdaptAi(MatchSide side, int minute) {
     final rt = _runtimeOf(side);
     if (!rt.aiControlled) return const [];
-    if (rt.aiChanges >= config.aiMaxChanges) return const [];
-    if (minute < 55) return const [];
+    final produced = <MatchEvent>[];
+
+    // Substitutions first (GDD 10.5): an AI side refreshes tired legs
+    // from its bench — the same rotation pressure the user's squad has.
+    // Only genuinely tired starters (< 40 stamina after minute 55, or <
+    // 30 after 70) come off, and the best compatible bench body comes
+    // on, so AI clubs rotate when fitness demands it, not every match.
+    produced.addAll(_maybeAiSubstitutions(side, rt, minute));
+
+    if (rt.aiChanges >= config.aiMaxChanges) return produced;
+    if (minute < 55) return produced;
     if (minute - rt.lastAiChangeMinute < config.aiMinMinutesBetweenChanges) {
-      return const [];
+      return produced;
     }
     final diff = side == MatchSide.home ? _scoreHome - _scoreAway : _scoreAway - _scoreHome;
     final index = rt.mentality.index;
@@ -1139,7 +1148,7 @@ class MatchEngine {
       reason = 'protecting a lead';
       next = rt.mentality.moreDefensive();
     }
-    if (next == null || next == rt.mentality) return const [];
+    if (next == null || next == rt.mentality) return produced;
     rt.mentality = next;
     rt.aiChanges++;
     rt.lastAiChangeMinute = minute;
@@ -1149,7 +1158,61 @@ class MatchEngine {
         side: side,
         metadata: {'change': 'mentality', 'value': next.name, 'ai': true, 'reason': reason});
     _events.add(event);
-    return [event];
+    produced.add(event);
+    return produced;
+  }
+
+  /// AI substitutions for tired starters (GDD 10.5/11): the outgoing
+  /// player stops draining stamina the moment he is off (bench never
+  /// drains), the substitute drains only from his entrance — the engine
+  /// runtime already models this; here the AI just decides WHEN.
+  List<MatchEvent> _maybeAiSubstitutions(
+      MatchSide side, _TeamRuntime rt, int minute) {
+    if (rt.substitutionsUsed >= config.maxSubstitutions) return const [];
+    if (rt.bench.isEmpty) return const [];
+    if (minute < 55) return const [];
+    final produced = <MatchEvent>[];
+
+    // Tired threshold sinks as the match ages: 40 after 55', 30 after 70'.
+    final threshold = minute >= 70 ? 30 : 40;
+    final onPitch = rt.onPitch.whereType<MatchPlayer>().toList()
+      ..sort((a, b) => a.stamina.compareTo(b.stamina));
+    for (final tired in onPitch) {
+      if (rt.substitutionsUsed >= config.maxSubstitutions) break;
+      if (tired.stamina >= threshold) break; // sorted ascending: nobody left is tired
+      // Best compatible remaining bench player for the outgoing slot.
+      final slotIndex = rt.onPitch.indexWhere((p) => p?.playerId == tired.playerId);
+      if (slotIndex == -1) continue;
+      final slotPosition = slotIndex < rt.formation.slots.length
+          ? rt.formation.slots[slotIndex].position
+          : tired.position;
+      MatchPlayer? bestIn;
+      var bestScore = -1.0;
+      for (final candidate in rt.bench) {
+        final compat = const SquadEngine()
+            .compatibilityOf(candidate.position, slotPosition);
+        if (compat <= 0.1) continue;
+        final score = compat *
+            (candidate.attack + candidate.support + candidate.defence) *
+            (0.75 + 0.25 * (candidate.stamina / 100));
+        if (score > bestScore) {
+          bestScore = score;
+          bestIn = candidate;
+        }
+      }
+      if (bestIn == null) continue;
+      rt.substitute(tired.playerId, bestIn.playerId, config.maxSubstitutions);
+      final event = _event(
+          minute: minute,
+          type: MatchEventType.substitution,
+          side: side,
+          primaryPlayerId: tired.playerId,
+          secondaryPlayerId: bestIn.playerId,
+          metadata: {'ai': true, 'reason': 'tired'});
+      _events.add(event);
+      produced.add(event);
+    }
+    return produced;
   }
 
   ActionModifiers _activeActionModifiersOf(MatchSide side) {

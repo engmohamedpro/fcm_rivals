@@ -12,6 +12,7 @@ import '../../core/domain/base_stats_generator.dart';
 import '../../core/domain/players.dart';
 import '../match/tactics.dart';
 import '../squad/formations.dart';
+import '../squad/squad_engine.dart';
 
 /// Tunable season parameters — pre-balance placeholders (GDD rule 14).
 class SeasonConfig {
@@ -19,8 +20,16 @@ class SeasonConfig {
     this.clubsPerDivision = 20,
     this.promotionSlots = 3,
     this.relegationSlots = 3,
-    this.division1TargetAverageOverall = 66,
-    this.overallPerDivision = 2,
+    // Division 1 is the LOWEST league and must be winnable by a fresh
+    // club (the starting squad sits around 52 OVR), so its AI squads
+    // target ~54 — a gentle first season, not a wall. The previous 66
+    // made every Division 1 side fourteen points stronger than the
+    // player's first team.
+    this.division1TargetAverageOverall = 54,
+    // Three points per division: promotion steps up the ladder by
+    // roughly one season of pack-driven squad growth, so divisions get
+    // visibly harder but never hop more than a good transfer window.
+    this.overallPerDivision = 3,
     this.aiManagerNames = defaultAiManagerNames,
     this.aiNamePrefixes = defaultAiNamePrefixes,
     this.aiNameSuffixes = defaultAiNameSuffixes,
@@ -80,6 +89,35 @@ class SeasonConfig {
 
 const SeasonConfig defaultSeasonConfig = SeasonConfig();
 
+/// A real player from the imported dataset, offered to the AI-club
+/// generator as a squad candidate (GDD 9.4: AI squads are built from the
+/// same player database the user collects — real names, real positions,
+/// real attributes). Built by the SeasonStore from the persisted Players
+/// rows; the engine stays pure Dart.
+class AiPoolPlayer {
+  const AiPoolPlayer({
+    required this.playerId,
+    required this.name,
+    required this.position,
+    required this.overall,
+    required this.attack,
+    required this.support,
+    required this.defence,
+    required this.goalkeeping,
+  });
+
+  final int playerId;
+  final String name;
+  final Position position;
+
+  /// Base-stats overall rating (drives division banding).
+  final int overall;
+  final int attack;
+  final int support;
+  final int defence;
+  final int goalkeeping;
+}
+
 /// A generated AI club definition (GDD 9.4): identity, tactics and squad
 /// for one division, before persistence.
 class AiClubDefinition {
@@ -101,17 +139,21 @@ class AiClubDefinition {
   final PlayingStyle style;
   final Mentality mentality;
 
-  /// 18 synthetic players: starting XI in formation slot order plus 7
-  /// bench players (a smaller squad than the user's 23 — AI clubs don't
-  /// open packs).
+  /// 18 players: starting XI in formation slot order plus 7 bench players
+  /// (a smaller squad than the user's 23 — AI clubs don't open packs).
+  /// With a real-player pool available these are REAL dataset players
+  /// ([AiPlayerDefinition.realPlayerId] set); tiny test pools fall back
+  /// to synthetic generation through the same attribute curve.
   final List<AiPlayerDefinition> players;
 
   final int targetAverageOverall;
 }
 
-/// One synthetic AI player (GDD 9.4: squads are generated through the same
-/// BaseStatsGenerator curve as real players — inverted from the target
-/// overall — so AI teams have exact attribute parity with user squads).
+/// One AI squad player (GDD 9.4): a real dataset player when
+/// [realPlayerId] is set, otherwise a synthetic player generated through
+/// the same BaseStatsGenerator curve as real players — inverted from the
+/// target overall — so AI teams always have attribute parity with user
+/// squads.
 class AiPlayerDefinition {
   const AiPlayerDefinition({
     required this.name,
@@ -120,6 +162,7 @@ class AiPlayerDefinition {
     required this.support,
     required this.defence,
     required this.goalkeeping,
+    this.realPlayerId,
   });
 
   final String name;
@@ -128,6 +171,38 @@ class AiPlayerDefinition {
   final int support;
   final int defence;
   final int goalkeeping;
+
+  /// The real dataset player this squad entry represents, or null for the
+  /// synthetic fallback. Persisted on AiPlayers so promoted/relegated
+  /// clubs keep their identity across seasons.
+  final int? realPlayerId;
+}
+
+/// One persisted AI squad player with live condition, as needed for
+/// between-match rotation decisions (the store maps database rows to
+/// this; the engine picks the lineup).
+class AiSquadPlayer {
+  const AiSquadPlayer({
+    required this.realPlayerId,
+    required this.name,
+    required this.position,
+    required this.attack,
+    required this.support,
+    required this.defence,
+    required this.goalkeeping,
+    required this.stamina,
+  });
+
+  final int? realPlayerId;
+  final String name;
+  final Position position;
+  final int attack;
+  final int support;
+  final int defence;
+  final int goalkeeping;
+
+  /// Current condition 0..100.
+  final double stamina;
 }
 
 /// Fixture scheduling result for one round.
@@ -189,11 +264,21 @@ class SeasonEngine {
   final BaseStatsGenerator statsGenerator;
 
   /// Generates 19 AI clubs (GDD 9.2) for a division, with unique names.
+  ///
+  /// When [pool] carries the imported real-player database, every squad is
+  /// drawn from REAL players banded around the division's target overall
+  /// (GDD 9.6 difficulty ladder — Division 1 is the easiest), each player
+  /// usable by at most one club per division and never one the user owns
+  /// ([excludePlayerIds]). A club whose positions cannot be filled from
+  /// the pool (tiny test datasets) falls back to synthetic generation
+  /// through the same attribute curve, so behavior degrades gracefully.
   List<AiClubDefinition> generateAiClubs(
     int division, {
     required math.Random random,
     int count = 19,
     Set<String>? excludeNames,
+    List<AiPoolPlayer>? pool,
+    Set<int> excludePlayerIds = const {},
   }) {
     final target = config.targetAverageOverall(division);
     final names = <String>{...(excludeNames ?? const {})};
@@ -201,6 +286,9 @@ class SeasonEngine {
     var prefixCursor = random.nextInt(config.aiNamePrefixes.length);
     var suffixCursor = random.nextInt(config.aiNameSuffixes.length);
     var managerCursor = random.nextInt(config.aiManagerNames.length);
+    final tracker = pool == null
+        ? null
+        : _PoolTracker(pool: pool, exclude: excludePlayerIds, random: random);
 
     for (var i = 0; i < count; i++) {
       String name;
@@ -214,6 +302,8 @@ class SeasonEngine {
       names.add(name);
 
       final formation = _pickFormation(random);
+      final realSquad =
+          tracker == null ? null : _generateRealSquad(formation, target, tracker);
       clubs.add(AiClubDefinition(
         name: name,
         managerName:
@@ -222,11 +312,40 @@ class SeasonEngine {
         formationCode: formation.code,
         style: PlayingStyle.values[random.nextInt(PlayingStyle.values.length)],
         mentality: _pickMentality(random),
-        players: _generateSquad(target, formation, random),
+        players: realSquad ?? _generateSquad(target, formation, random),
         targetAverageOverall: target,
       ));
     }
     return clubs;
+  }
+
+  /// Draws a full 18-man squad of REAL pool players banded around
+  /// [targetOverall]: the starting XI by formation slot positions plus
+  /// seven bench players covering the common positions (GDD 10.5:
+  /// substitutions need bodies). Returns null when any needed position
+  /// has no candidate left in the pool — the caller then generates a
+  /// synthetic squad instead.
+  List<AiPlayerDefinition>? _generateRealSquad(
+      Formation formation, int targetOverall, _PoolTracker tracker) {
+    final positions = [
+      ...formation.slots.map((s) => s.position),
+      ..._benchPositions,
+    ];
+    final squad = <AiPlayerDefinition>[];
+    for (final position in positions) {
+      final p = tracker.take(position, targetOverall);
+      if (p == null) return null;
+      squad.add(AiPlayerDefinition(
+        name: p.name,
+        position: p.position,
+        attack: p.attack,
+        support: p.support,
+        defence: p.defence,
+        goalkeeping: p.goalkeeping,
+        realPlayerId: p.playerId,
+      ));
+    }
+    return squad;
   }
 
   /// An AI squad: exact XI by formation slot + 7 bench players covering
@@ -234,19 +353,105 @@ class SeasonEngine {
   List<AiPlayerDefinition> _generateSquad(
       int targetOverall, Formation formation, math.Random random) {
     final slots = formation.slots.map((s) => s.position).toList();
-    final benchPositions = [
-      Position.gk,
-      Position.cb, Position.cb,
-      Position.lb, Position.rb,
-      Position.cm,
-      Position.st,
-    ];
-    final all = [...slots, ...benchPositions];
+    final all = [...slots, ..._benchPositions];
     return [
       for (final position in all)
         _generatePlayer(position, targetOverall, random),
     ];
   }
+
+  static const List<Position> _benchPositions = [
+    Position.gk,
+    Position.cb, Position.cb,
+    Position.lb, Position.rb,
+    Position.cm,
+    Position.st,
+  ];
+
+  /// Picks the AI club's starting XI and bench from its full squad at
+  /// CURRENT condition (GDD 11 rotation, GDD 9.4 persisted squads):
+  /// every formation slot takes the best unassigned player by
+  /// compatibility × slot-role rating × fitness, where fitness discounts
+  /// tired bodies — so a fresh backup displaces a tired starter only
+  /// when the quality gap is small, and a clearly better player still
+  /// starts unless he is genuinely exhausted. AI clubs rotate when
+  /// fitness demands it, not every match. Starters return in formation
+  /// slot order; the remaining players form the bench (GDD 10.5).
+  ({List<AiSquadPlayer> starters, List<AiSquadPlayer> bench}) pickAiLineup(
+      List<AiSquadPlayer> squad, String formationCode) {
+    final formation = formationByCode(formationCode);
+    final available = [...squad];
+    final assigned = List<AiSquadPlayer?>.filled(formation.slots.length, null);
+
+    // Rarest slot first (GK, then fewest natural fits) for stable picks.
+    final slotOrder = List.generate(formation.slots.length, (i) => i)
+      ..sort((a, b) {
+        final pa = _naturalFits(formation.slots[a].position, available);
+        final pb = _naturalFits(formation.slots[b].position, available);
+        return pa != pb ? pa.compareTo(pb) : a.compareTo(b);
+      });
+
+    for (final slotIndex in slotOrder) {
+      final slotPosition = formation.slots[slotIndex].position;
+      AiSquadPlayer? best;
+      var bestScore = -1.0;
+      for (final p in available) {
+        final score = _aiSlotScore(p, slotPosition);
+        if (score > bestScore) {
+          bestScore = score;
+          best = p;
+        }
+      }
+      if (best == null) continue;
+      assigned[slotIndex] = best;
+      available.remove(best);
+    }
+
+    // Defensive fill: a squad too small or too lopsided for the formation
+    // still fields eleven bodies (mirrors the engine's own fallback).
+    for (var slotIndex = 0; slotIndex < assigned.length; slotIndex++) {
+      if (assigned[slotIndex] == null && available.isNotEmpty) {
+        assigned[slotIndex] = available.removeAt(0);
+      }
+    }
+
+    final starters = [for (final p in assigned) p!];
+    final bench = [...available]
+      ..sort((a, b) => _aiOverallOf(b).compareTo(_aiOverallOf(a)));
+    return (starters: starters, bench: bench);
+  }
+
+  /// Slot-role score of one squad player: compatibility × position-weighted
+  /// attributes × condition. The fitness factor runs 1.0 at full stamina
+  /// down to 0.65 at zero, which is what makes the AI rest tired legs
+  /// when the backup is close enough in quality.
+  double _aiSlotScore(AiSquadPlayer p, Position slotPosition) {
+    final compat = const SquadEngine().compatibilityOf(p.position, slotPosition);
+    if (compat <= 0.1) return 0;
+    final weights = positionWeights[slotPosition]!;
+    var base = 0.0;
+    for (final e in weights.entries) {
+      base += switch (e.key) {
+        PlayerAttribute.attack => p.attack,
+        PlayerAttribute.support => p.support,
+        PlayerAttribute.defence => p.defence,
+        PlayerAttribute.goalkeeping => p.goalkeeping,
+      } *
+          e.value;
+    }
+    final fitness = 0.65 + 0.35 * (p.stamina.clamp(0, 100) / 100);
+    return compat * base * fitness;
+  }
+
+  static int _aiOverallOf(AiSquadPlayer p) =>
+      ((p.attack + p.support + p.defence) / 3).round();
+
+  int _naturalFits(Position slotPosition, List<AiSquadPlayer> players) =>
+      players
+          .where((p) =>
+              const SquadEngine().compatibilityOf(p.position, slotPosition) >
+              0.5)
+          .length;
 
   /// Inverts the BaseStatsGenerator value curve to the market value that
   /// yields [overall], then generates through the same position weights —
@@ -459,5 +664,63 @@ class SeasonEngine {
       SeasonOutcome.stayed => (1.0 - (position - 4) * 0.03).clamp(0.6, 1.0),
     };
     return (base * multiplier).round();
+  }
+}
+
+/// Draw tracker over the real-player pool for one division: hands out
+/// each player at most once across the division's clubs (a player cannot
+/// appear in two AI squads of the same league) and never hands out a
+/// player the user owns. Candidates for a position are drawn from an
+/// overall band around the division target that widens when the band
+/// runs dry, so a deep dataset is used precisely while a thin one still
+/// fills every slot. Selection inside the band is a reservoir-style
+/// random pick — squads feel scouted, not sorted.
+class _PoolTracker {
+  _PoolTracker({
+    required List<AiPoolPlayer> pool,
+    required Set<int> exclude,
+    required this.random,
+  }) : _byPosition = {
+          for (final position in Position.values)
+            position: [
+              ...pool
+                  .where((p) =>
+                      p.position == position && !exclude.contains(p.playerId))
+                  .toList()
+                ..sort((a, b) => a.overall.compareTo(b.overall)),
+            ],
+        };
+
+  final Map<Position, List<AiPoolPlayer>> _byPosition;
+  final math.Random random;
+  final Set<int> _used = {};
+
+  /// Takes one unused pool player for [position] near [targetOverall],
+  /// or null when the position is exhausted. Banding starts at ±3 and
+  /// widens by 3 until a candidate is found or the whole position is
+  /// used up — Div 1 (easiest) and the top divisions (elite bands) both
+  /// stay populated even where the dataset is thin.
+  AiPoolPlayer? take(Position position, int targetOverall) {
+    final candidates = _byPosition[position] ?? const <AiPoolPlayer>[];
+    final unused = candidates.where((p) => !_used.contains(p.playerId)).toList();
+    if (unused.isEmpty) return null;
+    var halfWidth = 3;
+    while (true) {
+      final inBand = unused
+          .where((p) => (p.overall - targetOverall).abs() <= halfWidth)
+          .toList();
+      if (inBand.isNotEmpty) {
+        final picked = inBand[random.nextInt(inBand.length)];
+        _used.add(picked.playerId);
+        return picked;
+      }
+      if (halfWidth >= 100) {
+        // Band covers everything: take any unused candidate.
+        final picked = unused[random.nextInt(unused.length)];
+        _used.add(picked.playerId);
+        return picked;
+      }
+      halfWidth += 3;
+    }
   }
 }

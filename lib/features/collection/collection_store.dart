@@ -1125,8 +1125,20 @@ class CollectionStore {
           } else {
             next = afterNatural;
           }
+        } else {
+          // Players who missed the match still REST: the same natural
+          // recovery minus the workload, applied to their current
+          // condition. They used to be frozen at their old stamina
+          // forever — benched and reserve players never healed between
+          // fixtures, which made the squad's condition one-way ratchet.
+          next = recoverStamina(
+            config: staminaConfig,
+            currentStamina: next,
+            minutesPlayed: 0,
+            restDays: restDays,
+            campusRecoveryBonus: campusRecoveryBonus,
+          );
         }
-        // Players who didn't feature keep their current stamina.
         await (db.update(db.ownedPlayers)
               ..where((o) => o.id.equals(p.ownedId)))
             .write(OwnedPlayersCompanion(

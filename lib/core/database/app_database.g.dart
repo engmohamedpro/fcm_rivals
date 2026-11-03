@@ -5513,6 +5513,17 @@ class $AiPlayersTable extends AiPlayers
     requiredDuringInsert: false,
     defaultValue: const Constant(100),
   );
+  static const VerificationMeta _realPlayerIdMeta = const VerificationMeta(
+    'realPlayerId',
+  );
+  @override
+  late final GeneratedColumn<int> realPlayerId = GeneratedColumn<int>(
+    'real_player_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5524,6 +5535,7 @@ class $AiPlayersTable extends AiPlayers
     defence,
     goalkeeping,
     staminaPercent,
+    realPlayerId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5608,6 +5620,15 @@ class $AiPlayersTable extends AiPlayers
         ),
       );
     }
+    if (data.containsKey('real_player_id')) {
+      context.handle(
+        _realPlayerIdMeta,
+        realPlayerId.isAcceptableOrUnknown(
+          data['real_player_id']!,
+          _realPlayerIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5653,6 +5674,10 @@ class $AiPlayersTable extends AiPlayers
         DriftSqlType.int,
         data['${effectivePrefix}stamina_percent'],
       )!,
+      realPlayerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}real_player_id'],
+      ),
     );
   }
 
@@ -5672,6 +5697,12 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
   final int defence;
   final int goalkeeping;
   final int staminaPercent;
+
+  /// The real dataset player behind this squad entry, or null for
+  /// synthetic fallback players (tiny test pools). AI squads are built
+  /// from the imported player database, and a promoted/relegated club
+  /// keeps its squad — the identity survives across seasons.
+  final int? realPlayerId;
   const AiPlayer({
     required this.id,
     required this.clubId,
@@ -5682,6 +5713,7 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     required this.defence,
     required this.goalkeeping,
     required this.staminaPercent,
+    this.realPlayerId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5695,6 +5727,9 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     map['defence'] = Variable<int>(defence);
     map['goalkeeping'] = Variable<int>(goalkeeping);
     map['stamina_percent'] = Variable<int>(staminaPercent);
+    if (!nullToAbsent || realPlayerId != null) {
+      map['real_player_id'] = Variable<int>(realPlayerId);
+    }
     return map;
   }
 
@@ -5709,6 +5744,9 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
       defence: Value(defence),
       goalkeeping: Value(goalkeeping),
       staminaPercent: Value(staminaPercent),
+      realPlayerId: realPlayerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(realPlayerId),
     );
   }
 
@@ -5727,6 +5765,7 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
       defence: serializer.fromJson<int>(json['defence']),
       goalkeeping: serializer.fromJson<int>(json['goalkeeping']),
       staminaPercent: serializer.fromJson<int>(json['staminaPercent']),
+      realPlayerId: serializer.fromJson<int?>(json['realPlayerId']),
     );
   }
   @override
@@ -5742,6 +5781,7 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
       'defence': serializer.toJson<int>(defence),
       'goalkeeping': serializer.toJson<int>(goalkeeping),
       'staminaPercent': serializer.toJson<int>(staminaPercent),
+      'realPlayerId': serializer.toJson<int?>(realPlayerId),
     };
   }
 
@@ -5755,6 +5795,7 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     int? defence,
     int? goalkeeping,
     int? staminaPercent,
+    Value<int?> realPlayerId = const Value.absent(),
   }) => AiPlayer(
     id: id ?? this.id,
     clubId: clubId ?? this.clubId,
@@ -5765,6 +5806,7 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     defence: defence ?? this.defence,
     goalkeeping: goalkeeping ?? this.goalkeeping,
     staminaPercent: staminaPercent ?? this.staminaPercent,
+    realPlayerId: realPlayerId.present ? realPlayerId.value : this.realPlayerId,
   );
   AiPlayer copyWithCompanion(AiPlayersCompanion data) {
     return AiPlayer(
@@ -5783,6 +5825,9 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
       staminaPercent: data.staminaPercent.present
           ? data.staminaPercent.value
           : this.staminaPercent,
+      realPlayerId: data.realPlayerId.present
+          ? data.realPlayerId.value
+          : this.realPlayerId,
     );
   }
 
@@ -5797,7 +5842,8 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
           ..write('support: $support, ')
           ..write('defence: $defence, ')
           ..write('goalkeeping: $goalkeeping, ')
-          ..write('staminaPercent: $staminaPercent')
+          ..write('staminaPercent: $staminaPercent, ')
+          ..write('realPlayerId: $realPlayerId')
           ..write(')'))
         .toString();
   }
@@ -5813,6 +5859,7 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     defence,
     goalkeeping,
     staminaPercent,
+    realPlayerId,
   );
   @override
   bool operator ==(Object other) =>
@@ -5826,7 +5873,8 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
           other.support == this.support &&
           other.defence == this.defence &&
           other.goalkeeping == this.goalkeeping &&
-          other.staminaPercent == this.staminaPercent);
+          other.staminaPercent == this.staminaPercent &&
+          other.realPlayerId == this.realPlayerId);
 }
 
 class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
@@ -5839,6 +5887,7 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
   final Value<int> defence;
   final Value<int> goalkeeping;
   final Value<int> staminaPercent;
+  final Value<int?> realPlayerId;
   const AiPlayersCompanion({
     this.id = const Value.absent(),
     this.clubId = const Value.absent(),
@@ -5849,6 +5898,7 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     this.defence = const Value.absent(),
     this.goalkeeping = const Value.absent(),
     this.staminaPercent = const Value.absent(),
+    this.realPlayerId = const Value.absent(),
   });
   AiPlayersCompanion.insert({
     this.id = const Value.absent(),
@@ -5860,6 +5910,7 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     required int defence,
     required int goalkeeping,
     this.staminaPercent = const Value.absent(),
+    this.realPlayerId = const Value.absent(),
   }) : clubId = Value(clubId),
        playerName = Value(playerName),
        position = Value(position),
@@ -5877,6 +5928,7 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     Expression<int>? defence,
     Expression<int>? goalkeeping,
     Expression<int>? staminaPercent,
+    Expression<int>? realPlayerId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5888,6 +5940,7 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
       if (defence != null) 'defence': defence,
       if (goalkeeping != null) 'goalkeeping': goalkeeping,
       if (staminaPercent != null) 'stamina_percent': staminaPercent,
+      if (realPlayerId != null) 'real_player_id': realPlayerId,
     });
   }
 
@@ -5901,6 +5954,7 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     Value<int>? defence,
     Value<int>? goalkeeping,
     Value<int>? staminaPercent,
+    Value<int?>? realPlayerId,
   }) {
     return AiPlayersCompanion(
       id: id ?? this.id,
@@ -5912,6 +5966,7 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
       defence: defence ?? this.defence,
       goalkeeping: goalkeeping ?? this.goalkeeping,
       staminaPercent: staminaPercent ?? this.staminaPercent,
+      realPlayerId: realPlayerId ?? this.realPlayerId,
     );
   }
 
@@ -5945,6 +6000,9 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     if (staminaPercent.present) {
       map['stamina_percent'] = Variable<int>(staminaPercent.value);
     }
+    if (realPlayerId.present) {
+      map['real_player_id'] = Variable<int>(realPlayerId.value);
+    }
     return map;
   }
 
@@ -5959,7 +6017,8 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
           ..write('support: $support, ')
           ..write('defence: $defence, ')
           ..write('goalkeeping: $goalkeeping, ')
-          ..write('staminaPercent: $staminaPercent')
+          ..write('staminaPercent: $staminaPercent, ')
+          ..write('realPlayerId: $realPlayerId')
           ..write(')'))
         .toString();
   }
@@ -9700,6 +9759,7 @@ typedef $$AiPlayersTableCreateCompanionBuilder = AiPlayersCompanion Function({
   required int defence,
   required int goalkeeping,
   Value<int> staminaPercent,
+  Value<int?> realPlayerId,
 });
 typedef $$AiPlayersTableUpdateCompanionBuilder = AiPlayersCompanion Function({
   Value<int> id,
@@ -9711,6 +9771,7 @@ typedef $$AiPlayersTableUpdateCompanionBuilder = AiPlayersCompanion Function({
   Value<int> defence,
   Value<int> goalkeeping,
   Value<int> staminaPercent,
+  Value<int?> realPlayerId,
 });
 
 class $$AiPlayersTableFilterComposer
@@ -9764,6 +9825,11 @@ class $$AiPlayersTableFilterComposer
 
   ColumnFilters<int> get staminaPercent => $composableBuilder(
     column: $table.staminaPercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get realPlayerId => $composableBuilder(
+    column: $table.realPlayerId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9821,6 +9887,11 @@ class $$AiPlayersTableOrderingComposer
     column: $table.staminaPercent,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get realPlayerId => $composableBuilder(
+    column: $table.realPlayerId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AiPlayersTableAnnotationComposer
@@ -9864,6 +9935,11 @@ class $$AiPlayersTableAnnotationComposer
     column: $table.staminaPercent,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get realPlayerId => $composableBuilder(
+    column: $table.realPlayerId,
+    builder: (column) => column,
+  );
 }
 
 class $$AiPlayersTableTableManager
@@ -9903,6 +9979,7 @@ class $$AiPlayersTableTableManager
                 Value<int> defence = const Value.absent(),
                 Value<int> goalkeeping = const Value.absent(),
                 Value<int> staminaPercent = const Value.absent(),
+                Value<int?> realPlayerId = const Value.absent(),
               }) => AiPlayersCompanion(
                 id: id,
                 clubId: clubId,
@@ -9913,6 +9990,7 @@ class $$AiPlayersTableTableManager
                 defence: defence,
                 goalkeeping: goalkeeping,
                 staminaPercent: staminaPercent,
+                realPlayerId: realPlayerId,
               ),
           createCompanionCallback:
               ({
@@ -9925,6 +10003,7 @@ class $$AiPlayersTableTableManager
                 required int defence,
                 required int goalkeeping,
                 Value<int> staminaPercent = const Value.absent(),
+                Value<int?> realPlayerId = const Value.absent(),
               }) => AiPlayersCompanion.insert(
                 id: id,
                 clubId: clubId,
@@ -9935,6 +10014,7 @@ class $$AiPlayersTableTableManager
                 defence: defence,
                 goalkeeping: goalkeeping,
                 staminaPercent: staminaPercent,
+                realPlayerId: realPlayerId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
