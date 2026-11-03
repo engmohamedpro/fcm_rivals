@@ -125,6 +125,21 @@ enum Mentality {
   }
 }
 
+/// The mentality as a 0–100 scale (GDD 10.3): 0 is Very Defensive, 100
+/// Very Attacking and 50 — dead centre — Balanced. The seven mentalities
+/// are the scale's named steps, so a slid position maps to the step it
+/// lands in.
+Mentality mentalityFromScale(int value) {
+  final steps = Mentality.values.length - 1;
+  final i = (value.clamp(0, 100) * steps / 100).round();
+  return Mentality.values[i];
+}
+
+/// A mentality's canonical scale position: 0, 17, 33, 50, 67, 83, 100 —
+/// where the slider's marker rests when a saved mentality is restored.
+int mentalityToScale(Mentality mentality) =>
+    (mentality.index * 100 / (Mentality.values.length - 1)).round();
+
 /// Live Match Actions (GDD 16): temporary in-match boosts with explicit
 /// percentage modifiers. One active per team at a time; a new action
 /// replaces the previous one.

@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmDropdown;
 import 'package:fcm_rivals/features/match/live_match_views.dart';
 import 'package:fcm_rivals/features/match/live_tactics_screen.dart';
 import 'package:fcm_rivals/features/match/match_engine.dart';
@@ -296,8 +297,11 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      // The pre-match surface pieces are all there.
-      expect(find.text('FORMATION'), findsOneWidget);
+      // The pre-match surface pieces are all there: the setup row
+      // (STYLE / MENTALITY + team rating) and the formation dropdown
+      // DIRECTLY on the control card, showing the user side's shape.
+      expect(find.byType(FcmDropdown<String>), findsOneWidget);
+      expect(find.text('4-3-3'), findsOneWidget);
       expect(find.text('STYLE'), findsOneWidget);
       expect(find.text('MENTALITY'), findsOneWidget);
       expect(find.text('Bench (2/${Formation.benchSize})'), findsOneWidget);

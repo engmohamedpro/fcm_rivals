@@ -9,9 +9,10 @@
 ///    the saved setup is never touched.
 ///
 /// The screen itself is dominated by the pitch: a single compact control
-/// card at the top carries the team rating and opens the tactic options
-/// (formation / playing style / mentality dropdowns) in a bottom sheet,
-/// so no option walls eat screen space.
+/// card at the top carries the team rating, the formation dropdown
+/// DIRECTLY on it (one tap switches shape — no detour into a sheet) and
+/// opens the tactic options (playing style dropdown, mentality scale
+/// slider) in a bottom sheet, so no option walls eat screen space.
 library;
 
 import 'dart:math' as math;
@@ -109,13 +110,12 @@ class TacticsSetupView extends StatelessWidget {
             formationCode: formationCode,
             style: style,
             mentality: mentality,
+            onFormation: onFormation,
             onAutoPick: onAutoPick,
             onTactics: () => showTacticsOptionsSheet(
               context,
-              formationCode: formationCode,
               style: style,
               mentality: mentality,
-              onFormation: onFormation,
               onStyle: onStyle,
               onMentality: onMentality,
             ),
@@ -157,17 +157,20 @@ class TacticsSetupView extends StatelessWidget {
   }
 }
 
-/// The single control card of the tactics screen. Its top row carries the
-/// whole setup as labelled values — formation, playing style, mentality —
-/// and closes with the team rating on the right; every block shrinks to
-/// fit, so the row never overflows. The Auto Pick (when the surface owns
-/// squad persistence) and TACTICS buttons sit on a full-width row below.
+/// The single control card of the tactics screen. Its top row carries
+/// the setup summary — playing style, mentality — and closes with the
+/// team rating on the right; every block shrinks to fit, so the row
+/// never overflows. Under it the formation dropdown sits DIRECTLY on the
+/// card (one tap switches shape; the pitch below re-picks its slots),
+/// and the Auto Pick (when the surface owns squad persistence) and
+/// TACTICS buttons close the card on a full-width row.
 class _ControlCard extends StatelessWidget {
   const _ControlCard({
     required this.teamRating,
     required this.formationCode,
     required this.style,
     required this.mentality,
+    required this.onFormation,
     required this.onTactics,
     this.onAutoPick,
   });
@@ -176,6 +179,7 @@ class _ControlCard extends StatelessWidget {
   final String formationCode;
   final PlayingStyle style;
   final Mentality mentality;
+  final ValueChanged<String> onFormation;
   final VoidCallback onTactics;
   final VoidCallback? onAutoPick;
 
@@ -190,14 +194,25 @@ class _ControlCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Flexible(child: _info('FORMATION', formation.name)),
-              const SizedBox(width: 12),
               Flexible(child: _info('STYLE', style.displayName)),
               const SizedBox(width: 12),
               Flexible(child: _info('MENTALITY', mentality.displayName)),
               const Spacer(),
               _rating(),
             ],
+          ),
+          const SizedBox(height: 8),
+          // The formation picker, directly on the setup card: the closed
+          // field shows the live shape ('4-3-3'), tapping lists every
+          // formation — no detour into the tactic options sheet.
+          FcmDropdown<String>(
+            icon: Icons.grid_on_rounded,
+            items: [
+              for (final f in formations)
+                FcmDropdownItem(value: f.code, label: f.name),
+            ],
+            selected: formation.code,
+            onChanged: onFormation,
           ),
           const SizedBox(height: 8),
           Row(
@@ -277,16 +292,15 @@ class _ControlCard extends StatelessWidget {
       );
 }
 
-/// Opens the tactic options sheet (GDD 10): the three dropdowns —
-/// formation, playing style and mentality — each listing every option
-/// with its visible percentage effects. Selections apply immediately
-/// through the owner's callbacks; DONE closes the sheet.
+/// Opens the tactic options sheet (GDD 10): the playing style dropdown
+/// and the mentality scale slider — every option listing its visible
+/// percentage effects. The formation lives directly on the control
+/// card, not here. Selections apply immediately through the owner's
+/// callbacks (mentality commits on drag release); DONE closes the sheet.
 Future<void> showTacticsOptionsSheet(
   BuildContext context, {
-  required String formationCode,
   required PlayingStyle style,
   required Mentality mentality,
-  required ValueChanged<String> onFormation,
   required ValueChanged<PlayingStyle> onStyle,
   required ValueChanged<Mentality> onMentality,
 }) {
@@ -298,10 +312,8 @@ Future<void> showTacticsOptionsSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (_) => _TacticsOptionsSheet(
-      initialFormationCode: formationCode,
       initialStyle: style,
       initialMentality: mentality,
-      onFormation: onFormation,
       onStyle: onStyle,
       onMentality: onMentality,
     ),
@@ -310,18 +322,14 @@ Future<void> showTacticsOptionsSheet(
 
 class _TacticsOptionsSheet extends StatefulWidget {
   const _TacticsOptionsSheet({
-    required this.initialFormationCode,
     required this.initialStyle,
     required this.initialMentality,
-    required this.onFormation,
     required this.onStyle,
     required this.onMentality,
   });
 
-  final String initialFormationCode;
   final PlayingStyle initialStyle;
   final Mentality initialMentality;
-  final ValueChanged<String> onFormation;
   final ValueChanged<PlayingStyle> onStyle;
   final ValueChanged<Mentality> onMentality;
 
@@ -330,12 +338,32 @@ class _TacticsOptionsSheet extends StatefulWidget {
 }
 
 class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
-  late String _formationCode = widget.initialFormationCode;
   late PlayingStyle _style = widget.initialStyle;
-  late Mentality _mentality = widget.initialMentality;
+  late int _mentalityScale = mentalityToScale(widget.initialMentality);
+
+  /// The last mentality handed to the owner — drags that land back on
+  /// the same step never re-commit it. Mutable: it moves with every
+  /// committed drag.
+  late Mentality _committed;
+
+  @override
+  void initState() {
+    super.initState();
+    _committed = widget.initialMentality;
+  }
+
+  /// A released drag commits the step it landed on — one callback per
+  /// gesture, never per intermediate tick.
+  void _commitMentality(int scale) {
+    final m = mentalityFromScale(scale);
+    if (m == _committed) return;
+    _committed = m;
+    widget.onMentality(m);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final mentality = mentalityFromScale(_mentalityScale);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
@@ -362,23 +390,7 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
                     fontWeight: FontWeight.w900,
                     letterSpacing: 2)),
             const SizedBox(height: 14),
-            _dropdownRow(
-              label: 'FORMATION',
-              child: FcmDropdown<String>(
-                icon: Icons.grid_on_rounded,
-                items: [
-                  for (final f in formations)
-                    FcmDropdownItem(value: f.code, label: f.name),
-                ],
-                selected: _formationCode,
-                onChanged: (v) => setState(() {
-                  _formationCode = v;
-                  widget.onFormation(v);
-                }),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _dropdownRow(
+            _labeledRow(
               label: 'PLAYING STYLE',
               child: FcmDropdown<PlayingStyle>(
                 icon: Icons.directions_run_rounded,
@@ -397,22 +409,35 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            _dropdownRow(
+            // Mentality as a 0–100 scale: Very Defensive at 0, Very
+            // Attacking at 100, Balanced dead centre — the marker's
+            // label names the step it rides on, and the effect summary
+            // under the track updates as steps are crossed (GDD 10.3:
+            // effects must be visible).
+            _labeledRow(
               label: 'MENTALITY',
-              child: FcmDropdown<Mentality>(
-                icon: Icons.psychology_rounded,
-                items: [
-                  for (final m in Mentality.values)
-                    FcmDropdownItem(
-                        value: m,
-                        label: m.displayName,
-                        subtitle: m.effectSummary),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FcmScaleSlider(
+                    value: _mentalityScale,
+                    valueLabel: (v) => mentalityFromScale(v).displayName,
+                    minLabel: Mentality.veryDefensive.displayName,
+                    maxLabel: Mentality.veryAttacking.displayName,
+                    semanticsLabel: 'Mentality',
+                    onChanged: (v) => setState(() => _mentalityScale = v),
+                    onChangeEnd: _commitMentality,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    mentality.effectSummary,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: FcmColors.gold,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700),
+                  ),
                 ],
-                selected: _mentality,
-                onChanged: (v) => setState(() {
-                  _mentality = v;
-                  widget.onMentality(v);
-                }),
               ),
             ),
             const SizedBox(height: 16),
@@ -427,7 +452,7 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
     );
   }
 
-  Widget _dropdownRow({required String label, required Widget child}) {
+  Widget _labeledRow({required String label, required Widget child}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

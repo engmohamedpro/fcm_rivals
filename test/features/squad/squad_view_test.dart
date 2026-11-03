@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
+    show FcmButton, FcmDropdown, FcmScaleSlider;
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
@@ -74,6 +76,25 @@ int _staminaTracks() {
 }
 
 void main() {
+  test('mentality scale mapping is exact at every named step', () {
+    // Round-trip: each mentality's scale position maps back to itself.
+    for (final m in Mentality.values) {
+      expect(mentalityFromScale(mentalityToScale(m)), m,
+          reason: '${m.displayName} round-trips');
+    }
+    // The poles and the centre.
+    expect(mentalityFromScale(0), Mentality.veryDefensive);
+    expect(mentalityFromScale(100), Mentality.veryAttacking);
+    expect(mentalityFromScale(50), Mentality.balanced);
+    expect(mentalityToScale(Mentality.balanced), 50);
+    // Off-scale values clamp, and in-between positions land in the
+    // nearest step's band.
+    expect(mentalityFromScale(-5), Mentality.veryDefensive);
+    expect(mentalityFromScale(105), Mentality.veryAttacking);
+    expect(mentalityFromScale(41), Mentality.cautious);
+    expect(mentalityFromScale(59), Mentality.positive);
+  });
+
   testWidgets('setup row closes with the team rating, actions below',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(340, 900);
@@ -85,23 +106,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TEAM RATING'), findsOneWidget);
-    expect(find.text('FORMATION'), findsOneWidget);
+    // The formation picker sits DIRECTLY on the control card as a
+    // dropdown showing the live shape — no 'FORMATION' info label
+    // anymore, and no formation inside the tactic options sheet.
+    expect(find.byType(FcmDropdown<String>), findsOneWidget);
+    expect(find.text('4-3-3'), findsOneWidget);
+    expect(find.text('FORMATION'), findsNothing);
     expect(find.text('STYLE'), findsOneWidget);
     expect(find.text('MENTALITY'), findsOneWidget);
     expect(find.text('Auto Pick'), findsOneWidget);
     expect(find.text('TACTICS'), findsOneWidget);
 
-    // The rating ends the setup row: right of FORMATION, on its line.
-    final formation = tester.getTopLeft(find.text('FORMATION'));
+    // The rating ends the setup row: right of STYLE, on its line.
+    final style = tester.getTopLeft(find.text('STYLE'));
     final rating = tester.getTopLeft(find.text('TEAM RATING'));
-    expect(rating.dx, greaterThan(formation.dx));
-    expect((rating.dy - formation.dy).abs(), lessThan(4));
+    expect(rating.dx, greaterThan(style.dx));
+    expect((rating.dy - style.dy).abs(), lessThan(4));
 
-    // The action buttons sit on the full-width row under the setup row.
+    // The formation dropdown sits under the setup row, and the action
+    // buttons on the full-width row under it.
     final ratingBottom = tester.getBottomLeft(find.text('TEAM RATING'));
+    final formation = tester.getTopLeft(find.text('4-3-3'));
     final autoPick = tester.getTopLeft(find.text('Auto Pick'));
     final tactics = tester.getTopLeft(find.text('TACTICS'));
-    expect(autoPick.dy, greaterThan(ratingBottom.dy));
+    expect(formation.dy, greaterThan(ratingBottom.dy));
+    expect(autoPick.dy, greaterThan(formation.dy));
     expect((tactics.dy - autoPick.dy).abs(), lessThan(8));
   });
 
@@ -169,5 +198,118 @@ void main() {
     expect(find.text('ATT'), findsNothing);
     expect(find.text('SUP'), findsNothing);
     expect(find.text('DEF'), findsNothing);
+  });
+
+  testWidgets('tactic options sheet: formation absent, mentality is the '
+      '0-100 scale slider with a floating step label',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        body: Builder(builder: (context) {
+          return Center(
+            child: FcmButton(
+              compact: true,
+              label: 'TACTICS',
+              onPressed: () => showTacticsOptionsSheet(
+                context,
+                style: PlayingStyle.balanced,
+                mentality: Mentality.balanced,
+                onStyle: (_) {},
+                onMentality: (_) {},
+              ),
+            ),
+          );
+        }),
+      ),
+    ));
+    await tester.pump();
+    await tester.tap(find.text('TACTICS'));
+    await tester.pumpAndSettle();
+
+    // The sheet holds the style dropdown and the mentality SCALE —
+    // the formation is not here (it lives on the control card).
+    expect(find.text('TACTIC OPTIONS'), findsOneWidget);
+    expect(find.text('PLAYING STYLE'), findsOneWidget);
+    expect(find.text('MENTALITY'), findsOneWidget);
+    expect(find.byType(FcmScaleSlider), findsOneWidget);
+    expect(find.byType(FcmDropdown<PlayingStyle>), findsOneWidget);
+    expect(find.textContaining('FORMATION'), findsNothing);
+
+    // Dead centre default: the marker's floating label reads Balanced
+    // (also the style dropdown's selected label — one each), the
+    // scale's ends are named Very Defensive / Very Attacking.
+    expect(find.text('Balanced'), findsNWidgets(2));
+    expect(find.text('Very Defensive'), findsOneWidget);
+    expect(find.text('Very Attacking'), findsOneWidget);
+    // The centre default carries no modifiers.
+    expect(find.text('No modifiers'), findsOneWidget);
+
+    await tester.tap(find.text('DONE'));
+    await tester.pumpAndSettle();
+    expect(find.text('TACTIC OPTIONS'), findsNothing);
+  });
+
+  testWidgets('sliding the mentality scale commits the landed-on step '
+      'once per gesture', (WidgetTester tester) async {
+    // The committed steps, in drag order.
+    final committed = <Mentality>[];
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        body: Builder(builder: (context) {
+          return Center(
+            child: FcmButton(
+              compact: true,
+              label: 'TACTICS',
+              onPressed: () => showTacticsOptionsSheet(
+                context,
+                style: PlayingStyle.balanced,
+                mentality: Mentality.balanced,
+                onStyle: (_) {},
+                onMentality: committed.add,
+              ),
+            ),
+          );
+        }),
+      ),
+    ));
+    await tester.pump();
+    await tester.tap(find.text('TACTICS'));
+    await tester.pumpAndSettle();
+
+    final slider = find.byType(FcmScaleSlider);
+    expect(slider, findsOneWidget);
+    final track = tester.getRect(slider);
+
+    // Drag from centre to ~100 (Very Attacking): ONE commit at the end
+    // of the gesture, never per intermediate tick. The drag path
+    // crosses other steps on the way.
+    final center = Offset(track.left + track.width / 2,
+        track.top + track.height / 2);
+    await tester.dragFrom(center, Offset(track.width / 2 - 8, 0));
+    await tester.pumpAndSettle();
+    expect(committed, [Mentality.veryAttacking]);
+    // The floating label followed the marker: the pill rides above the
+    // track, 'Very Attacking' also captions the scale's right end.
+    expect(find.text('Very Attacking'), findsNWidgets(2));
+    // No mentality pill still reads Balanced (the STYLE dropdown's
+    // 'Balanced' label is unrelated and stays).
+    expect(
+        find.descendant(of: slider, matching: find.text('Balanced')),
+        findsNothing);
+
+    // A drag that lands back on the same step never re-commits it.
+    final right = Offset(
+        track.right - 12, track.top + track.height / 2);
+    await tester.dragFrom(right, const Offset(6, 0));
+    await tester.pumpAndSettle();
+    expect(committed, [Mentality.veryAttacking]);
+
+    // Drag to the far left (0): Very Defensive commits.
+    await tester.dragFrom(right, Offset(-(track.width - 24), 0));
+    await tester.pumpAndSettle();
+    expect(committed,
+        [Mentality.veryAttacking, Mentality.veryDefensive]);
   });
 }
