@@ -302,7 +302,8 @@ class AppDatabase extends _$AppDatabase {
             final rows = await select(players).get();
             for (final row in rows) {
               final stats = generator.generate(
-                  Position.fromCode(row.position), row.marketValueEur);
+                  Position.fromCode(row.position), row.marketValueEur,
+                  seed: row.playerId);
               await (update(players)
                     ..where((p) => p.playerId.equals(row.playerId)))
                   .write(PlayersCompanion(

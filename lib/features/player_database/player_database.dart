@@ -176,7 +176,12 @@ class PlayerDatabase {
 
     for (final row in dataset.rows) {
       final existing = _players[row.playerId];
-      final stats = generator.generate(row.position, row.marketValueEur);
+      // Seeded with the player id: the probabilistic layer gives each
+      // player his own stat shape while regeneration stays stable across
+      // dataset updates (GDD 4.6 — same value + position rebuilds the
+      // same stats).
+      final stats = generator.generate(row.position, row.marketValueEur,
+          seed: row.playerId);
       if (existing == null) {
         final player = _toPlayer(row, stats);
         _players[row.playerId] = player;

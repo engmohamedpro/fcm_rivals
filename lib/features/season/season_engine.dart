@@ -463,7 +463,11 @@ class SeasonEngine {
     final c = statsGenerator.config;
     final doublings = (overall - c.valueAtReference) / c.ratingPerDoubling;
     final marketValue = (c.referenceValueEur * math.pow(2, doublings)).round();
-    final stats = statsGenerator.generate(position, marketValue);
+    // Seeded from the squad RNG: AI players get the same probabilistic
+    // stat shapes as real players, while a seeded season still rebuilds
+    // the identical squad (GDD 12.5 determinism).
+    final stats = statsGenerator.generate(position, marketValue,
+        seed: random.nextInt(1 << 31));
     return AiPlayerDefinition(
       name: _surname(random),
       position: position,
