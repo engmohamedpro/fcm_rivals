@@ -7,13 +7,40 @@
 library;
 
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
+import '../../core/ui/fcm_logo.dart' show kFcmWordmarkAsset;
 import '../../core/ui/fcm_style.dart';
 
 /// Pack width : height.
 const double kPackAspect = 0.62;
+
+/// The transparent brand logo, decoded once for canvas painting (the
+/// foil packs' metal band). Null until [precachePackLogo] resolves;
+/// painters stamp the text wordmark until then.
+ui.Image? _packLogo;
+bool _packLogoRequested = false;
+
+/// Decodes the logo art off the asset bundle once — every later
+/// [FoilPackPainter] stroke reuses the cached [ui.Image]. Called at
+/// app start so the store's static cells never fall back to text.
+Future<void> precachePackLogo() async {
+  if (_packLogoRequested) return;
+  _packLogoRequested = true;
+  try {
+    final data = await rootBundle.load(kFcmWordmarkAsset);
+    final codec =
+        await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final frame = await codec.getNextFrame();
+    _packLogo = frame.image;
+  } catch (_) {
+    // A missing/undecodable asset must never break the packs: the
+    // text wordmark fallback stays in place.
+  }
+}
 
 Path _packPath(Size s) {
   final w = s.width, h = s.height;
@@ -111,13 +138,34 @@ class FoilPackPainter extends CustomPainter {
             .createShader(bandRect),
     );
 
-    // Wordmark.
-    _text(canvas, 'FCM', size.width * 0.24, FcmColors.night,
-        Offset(size.width / 2, bandRect.center.dy - size.height * 0.015),
-        italic: true, spacing: -1);
-    _text(canvas, 'RIVALS', size.width * 0.115, FcmColors.night,
-        Offset(size.width / 2, bandRect.center.dy + size.height * 0.062),
-        italic: true, spacing: 3);
+    // Wordmark: the transparent logo art stamped dark onto the bright
+    // band — the same art as the app bar. Until the async decode
+    // lands, the metal text mark stands in.
+    final logo = _packLogo;
+    _paintedWithLogo = logo != null;
+    if (logo != null) {
+      final src = Rect.fromLTWH(
+          0, 0, logo.width.toDouble(), logo.height.toDouble());
+      final dstH = bandRect.height * 0.92;
+      final dst = Rect.fromCenter(
+        center: Offset(size.width / 2, bandRect.center.dy),
+        width: dstH * (src.width / src.height),
+        height: dstH,
+      );
+      canvas.drawImageRect(
+        logo,
+        src,
+        dst,
+        Paint()..filterQuality = FilterQuality.medium,
+      );
+    } else {
+      _text(canvas, 'FCM', size.width * 0.24, FcmColors.night,
+          Offset(size.width / 2, bandRect.center.dy - size.height * 0.015),
+          italic: true, spacing: -1);
+      _text(canvas, 'RIVALS', size.width * 0.115, FcmColors.night,
+          Offset(size.width / 2, bandRect.center.dy + size.height * 0.062),
+          italic: true, spacing: 3);
+    }
 
     // Crown + stars above the band: bright tier metal when tinted.
     _text(canvas, '★  ★  ★', size.width * 0.07,
@@ -245,11 +293,17 @@ class FoilPackPainter extends CustomPainter {
     tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
   }
 
+  /// Whether the last paint stamped the decoded logo (vs the text
+  /// fallback) — flips the repaint when the decode lands late.
+  bool _paintedWithLogo = false;
+
   @override
   bool shouldRepaint(FoilPackPainter old) =>
       old.shimmer != shimmer ||
       old.charge != charge ||
-      old.glowColor != glowColor;
+      old.glowColor != glowColor ||
+      old.tint != tint ||
+      old._paintedWithLogo != (_packLogo != null);
 }
 
 /// Rotating light beams from the centre — the stadium floodlight look.

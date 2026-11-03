@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -9,11 +10,17 @@ import 'core/ui/fcm_style.dart';
 import 'core/ui/fcm_widgets.dart';
 import 'features/collection/collection_collection_screen.dart';
 import 'features/onboarding/club_creation_screen.dart';
+import 'features/packs/pack_effects.dart' show precachePackLogo;
 import 'features/packs/packs_screen.dart';
 import 'features/season/season_screen.dart';
 import 'features/squad/squad_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Decode the brand art for canvas painting (the store's foil packs)
+  // while the first frame renders; painters fall back to the text
+  // wordmark until it lands.
+  unawaited(precachePackLogo());
   runApp(const ProviderScope(child: FcmRivalsApp()));
 }
 
@@ -121,7 +128,10 @@ class _GameShellBodyState extends State<_GameShellBody> {
       extendBodyBehindAppBar: false,
       appBar: AppBar(
         centerTitle: false,
-        title: const FcmWordmark(),
+        // The toolbar hugs the wordmark art: no dead space above or
+        // below it, and the taller mark reads as the game's masthead.
+        toolbarHeight: 44,
+        title: const FcmWordmark(size: 44),
         actions: const [_CoinBalance()],
       ),
       body: FcmBackdrop(
