@@ -1,9 +1,14 @@
-/// FCM Rivals — FIFA-style player card (GDD 5.6 / 7.1).
+/// FCM Rivals — premium player card (GDD 5.6 / 7.1).
 ///
-/// Drawn with [CustomPainter] so the card has a real shield silhouette, a
-/// rarity gradient, a foil light sweep and a player silhouette, with the
-/// rating and attributes laid on top. Stats count up from zero driven by
-/// [statProgress] so the reveal can animate them.
+/// One card design for every size in the game — the pack reveal, the
+/// collection grid, the detail sheet, the pitch and bench. Everything is
+/// drawn with [CustomPainter] in proportion to the card's width, so the
+/// card looks identical at 56px and at 320px: a bright metal bezel, a
+/// rarity-coloured face with its own motif (legendary sunburst, epic
+/// crystal shards, rare arcs), a dark glass information panel, a foil
+/// light sweep and a player silhouette, with the rating and attributes
+/// laid on top. Stats count up from zero driven by [statProgress] so the
+/// reveal can animate them.
 library;
 
 import 'dart:math' as math;
@@ -12,6 +17,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/players.dart';
 import 'country_flag.dart';
+import 'fcm_logo.dart' show kFcmWordmarkAsset;
 import 'fcm_style.dart';
 import 'fcm_widgets.dart' show ratingColor, staminaColor;
 
@@ -31,6 +37,9 @@ class FcmPlayerCard extends StatelessWidget {
     this.overall,
     this.stats,
     this.upgradeLevel = 0,
+    this.nameLetters,
+    this.maskName = false,
+    this.maskPulse = 0.0,
   });
 
   final BasePlayer player;
@@ -61,6 +70,18 @@ class FcmPlayerCard extends StatelessWidget {
   /// 0..1 — outer glow strength behind the card.
   final double glow;
 
+  /// Typewriter name reveal (the legendary walkout): 0..1 is the share of
+  /// the name's letters on show, the rest holds its space invisibly so the
+  /// name never shifts as it lands. Null uses the plain [nameProgress] fade.
+  final double? nameLetters;
+
+  /// Draws a breathing redacted bar where the name will land — the
+  /// legendary walkout's "who is it?" slot. Only while the name is hidden.
+  final bool maskName;
+
+  /// 0..1 breathing phase of the redacted bar.
+  final double maskPulse;
+
   /// The attributes worth showing: outfield players hide their goalkeeping
   /// score, goalkeepers hide ATT, so every card shows meaningful numbers.
   static List<({String label, int value})> statsFor(BasePlayer p) {
@@ -84,32 +105,78 @@ class FcmPlayerCard extends StatelessWidget {
     final w = width;
     final h = width / kPlayerCardAspect;
     final ink = rarity.ink;
-    final p = statProgress.clamp(0.0, 1.0);
+    final light = rarity.faceGradient.first;
+    final p = statProgress.clamp(0.0, 1.0).toDouble();
     final ovr = ((overall ?? player.baseStats.overall) * p).round();
     final shownStats = stats ?? statsFor(player);
+    final letters = nameLetters;
+    final nameHidden = letters == null ? nameProgress <= 0.01 : letters <= 0;
+
+    // Engraved look for the dark ink on the bright metal: a faint light
+    // edge just below each glyph.
+    final engrave = [
+      Shadow(
+        color: Colors.white.withValues(alpha: 0.45),
+        offset: Offset(0, w * 0.006),
+      ),
+    ];
+
+    final nameStyle = TextStyle(
+      color: Colors.white,
+      fontSize: w * 0.088,
+      fontWeight: FontWeight.w900,
+      letterSpacing: 1.0,
+      shadows: [
+        const Shadow(color: Colors.black, blurRadius: 6),
+        if (letters != null)
+          Shadow(
+              color: rarity.accent.withValues(alpha: 0.9),
+              blurRadius: w * 0.05),
+      ],
+    );
+
+    Widget nameWidget() {
+      final full = player.name.toUpperCase();
+      if (letters == null) {
+        return Text(
+          nameHidden ? '' : full,
+          maxLines: 1,
+          style: nameStyle,
+        );
+      }
+      // Nothing at all (not even an invisible name) until the first
+      // letter lands — the identity must not leak to screen readers.
+      if (nameHidden) return Text('', maxLines: 1, style: nameStyle);
+      final shown = math.min(
+          full.length, math.max(0, (full.length * letters).ceil()));
+      return Text.rich(
+        TextSpan(
+          style: nameStyle,
+          children: [
+            TextSpan(text: full.substring(0, shown)),
+            TextSpan(
+              text: full.substring(shown),
+              style: const TextStyle(
+                  color: Colors.transparent, shadows: <Shadow>[]),
+            ),
+          ],
+        ),
+        maxLines: 1,
+      );
+    }
 
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
       child: SizedBox(
-      width: w,
-      height: h,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          boxShadow: [
-            if (glow > 0)
-              BoxShadow(
-                color: rarity.accent.withValues(alpha: 0.65 * glow),
-                blurRadius: 50 * glow,
-                spreadRadius: 6 * glow,
-              ),
-          ],
-        ),
+        width: w,
+        height: h,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             Positioned.fill(
               child: CustomPaint(
-                painter: _CardFacePainter(rarity: rarity, shine: shine),
+                painter: _CardFacePainter(
+                    rarity: rarity, shine: shine, glow: glow),
               ),
             ),
             // Rating, position, flag.
@@ -132,6 +199,7 @@ class FcmPlayerCard extends StatelessWidget {
                           fontSize: w * 0.20,
                           fontWeight: FontWeight.w900,
                           height: 0.95,
+                          shadows: engrave,
                         ),
                       ),
                     ),
@@ -147,12 +215,13 @@ class FcmPlayerCard extends StatelessWidget {
                         fontSize: w * 0.085,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1,
+                        shadows: engrave,
                       ),
                     ),
                   ),
                   Container(
                     margin: EdgeInsets.symmetric(vertical: h * 0.012),
-                    height: 2,
+                    height: math.max(1.0, w * 0.008),
                     width: w * 0.12,
                     color: ink.withValues(alpha: 0.4),
                   ),
@@ -190,7 +259,7 @@ class FcmPlayerCard extends StatelessWidget {
                 maxLines: 1,
                 softWrap: false,
                 style: TextStyle(
-                  color: ink.withValues(alpha: 0.75),
+                  color: ink.withValues(alpha: 0.78),
                   fontSize: w * 0.04,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
@@ -205,8 +274,12 @@ class FcmPlayerCard extends StatelessWidget {
                   padding: EdgeInsets.symmetric(
                       horizontal: w * 0.03, vertical: w * 0.008),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
+                    color: Colors.black.withValues(alpha: 0.62),
                     borderRadius: BorderRadius.circular(w * 0.03),
+                    border: Border.all(
+                      color: FcmColors.gold.withValues(alpha: 0.7),
+                      width: math.max(0.5, w * 0.004),
+                    ),
                   ),
                   child: Text(
                     '+$upgradeLevel',
@@ -220,26 +293,38 @@ class FcmPlayerCard extends StatelessWidget {
                   ),
                 ),
               ),
-            // Name plate — nothing at all renders until nameProgress
-            // lifts it: the pack reveal lands the identity only after
-            // the stats have counted up (no placeholder text).
+            // Redacted name slot: a breathing bar where the identity will
+            // land — shown only by the legendary walkout, while it waits.
+            if (maskName && nameHidden)
+              Positioned(
+                left: w * 0.20,
+                right: w * 0.20,
+                top: h * 0.585,
+                height: h * 0.034,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: light.withValues(
+                        alpha: 0.14 + 0.20 * maskPulse.clamp(0.0, 1.0)),
+                    borderRadius: BorderRadius.circular(h * 0.017),
+                  ),
+                ),
+              ),
+            // Name plate — nothing at all renders until the reveal lifts
+            // it: the pack reveal lands the identity only after the stats
+            // have counted up (no placeholder text).
             Positioned(
               left: w * 0.07,
               right: w * 0.07,
-              top: h * 0.565,
+              top: h * 0.568,
+              height: h * 0.07,
               child: Opacity(
-                opacity: nameProgress.clamp(0.0, 1.0),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    nameProgress <= 0.01 ? '' : player.name.toUpperCase(),
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: ink,
-                      fontSize: w * 0.092,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
-                    ),
+                opacity: letters != null
+                    ? (nameHidden ? 0.0 : 1.0)
+                    : nameProgress.clamp(0.0, 1.0),
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: nameWidget(),
                   ),
                 ),
               ),
@@ -263,10 +348,13 @@ class FcmPlayerCard extends StatelessWidget {
                               maxLines: 1,
                               softWrap: false,
                               style: TextStyle(
-                                color: ink,
+                                color: Colors.white,
                                 fontSize: w * 0.105,
                                 fontWeight: FontWeight.w900,
                                 height: 1,
+                                shadows: const [
+                                  Shadow(color: Colors.black, blurRadius: 4),
+                                ],
                               ),
                             ),
                             Text(
@@ -274,7 +362,7 @@ class FcmPlayerCard extends StatelessWidget {
                               maxLines: 1,
                               softWrap: false,
                               style: TextStyle(
-                                color: ink.withValues(alpha: 0.75),
+                                color: light.withValues(alpha: 0.9),
                                 fontSize: w * 0.048,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1,
@@ -290,12 +378,12 @@ class FcmPlayerCard extends StatelessWidget {
           ],
         ),
       ),
-    ),
     );
   }
 }
 
-/// The card back shown before the flip.
+/// The card back shown before the flip: carbon-black face, the rarity's
+/// metal bezel and frames, the brand wordmark and the rarity stars.
 class FcmPlayerCardBack extends StatelessWidget {
   const FcmPlayerCardBack({super.key, required this.rarity, this.width = 260});
 
@@ -308,55 +396,200 @@ class FcmPlayerCardBack extends StatelessWidget {
     return SizedBox(
       width: width,
       height: h,
-      child: CustomPaint(painter: _CardBackPainter(rarity: rarity)),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(painter: _CardBackPainter(rarity: rarity)),
+          ),
+          Image.asset(
+            kFcmWordmarkAsset,
+            width: width * 0.72,
+            cacheWidth: 480,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+            // The back is still a card without its wordmark.
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// Shield-shaped card outline.
+/// Premium card outline: chamfered top corners over a curved, tapering
+/// base — the silhouette every card, ghost slot and warning ring shares.
 Path cardPath(Size s) {
   final w = s.width, h = s.height;
+  final c = w * 0.12;
   return Path()
-    ..moveTo(0, h * 0.06)
-    ..quadraticBezierTo(w * 0.5, -h * 0.012, w, h * 0.06)
-    ..lineTo(w, h * 0.87)
-    ..quadraticBezierTo(w, h * 0.94, w * 0.5, h)
-    ..quadraticBezierTo(0, h * 0.94, 0, h * 0.87)
+    ..moveTo(c, 0)
+    ..lineTo(w - c, 0)
+    ..lineTo(w, c)
+    ..lineTo(w, h * 0.865)
+    ..quadraticBezierTo(w, h * 0.935, w * 0.5, h)
+    ..quadraticBezierTo(0, h * 0.935, 0, h * 0.865)
+    ..lineTo(0, c)
     ..close();
 }
 
+/// Scales the canvas about its centre so a [cardPath] drawn afterwards
+/// lands [inset] pixels inside the full outline on every side.
+void _insetCanvas(Canvas canvas, Size size, double inset) {
+  canvas.translate(size.width / 2, size.height / 2);
+  canvas.scale((size.width - 2 * inset) / size.width,
+      (size.height - 2 * inset) / size.height);
+  canvas.translate(-size.width / 2, -size.height / 2);
+}
+
+/// Tapered rays fanning out of [c] — the legendary face's sunburst.
+void _paintRays(Canvas canvas, Offset c, double radius, Color color,
+    double alpha, int rays) {
+  final slice = 2 * math.pi / rays;
+  final paint = Paint()
+    ..shader = RadialGradient(colors: [
+      color.withValues(alpha: alpha),
+      color.withValues(alpha: 0.0),
+    ]).createShader(Rect.fromCircle(center: c, radius: radius));
+  for (var i = 0; i < rays; i++) {
+    final a = i * slice;
+    canvas.drawPath(
+      Path()
+        ..moveTo(c.dx, c.dy)
+        ..lineTo(c.dx + math.cos(a) * radius, c.dy + math.sin(a) * radius)
+        ..lineTo(c.dx + math.cos(a + slice * 0.45) * radius,
+            c.dy + math.sin(a + slice * 0.45) * radius)
+        ..close(),
+      paint,
+    );
+  }
+}
+
+/// Small five-point star path for the card back's rarity row.
+Path _cardStarPath(Offset c, double r) {
+  final p = Path();
+  for (var i = 0; i < 10; i++) {
+    final a = -math.pi / 2 + i * math.pi / 5;
+    final rad = i.isEven ? r : r * 0.45;
+    final x = c.dx + math.cos(a) * rad;
+    final y = c.dy + math.sin(a) * rad;
+    if (i == 0) {
+      p.moveTo(x, y);
+    } else {
+      p.lineTo(x, y);
+    }
+  }
+  p.close();
+  return p;
+}
+
 class _CardFacePainter extends CustomPainter {
-  _CardFacePainter({required this.rarity, required this.shine});
+  _CardFacePainter({
+    required this.rarity,
+    required this.shine,
+    this.glow = 0.0,
+    this.glowColor,
+  });
 
   final CardRarity rarity;
   final double? shine;
 
+  /// 0..1 aura strength following the card silhouette.
+  final double glow;
+
+  /// Aura colour; the rarity accent when null.
+  final Color? glowColor;
+
   @override
   void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
     final rect = Offset.zero & size;
     final path = cardPath(size);
+    final g = rarity.faceGradient;
+    final hair = math.max(0.5, w * 0.006);
 
-    // Base gradient.
+    // Aura: a soft halo hugging the silhouette (not a square box).
+    if (glow > 0) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = (glowColor ?? rarity.accent)
+              .withValues(alpha: (0.65 * glow).clamp(0.0, 1.0))
+          ..maskFilter =
+              MaskFilter.blur(BlurStyle.normal, w * 0.10 * glow + 2),
+      );
+    }
+
+    // Bezel: polished metal, white-hot top-left into the deep tone.
     canvas.drawPath(
       path,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: rarity.faceGradient,
+          colors: [Colors.white, g[0], g[1], g[2], g[1]],
+          stops: const [0.0, 0.22, 0.5, 0.82, 1.0],
+        ).createShader(rect),
+    );
+
+    // Face, inset inside the bezel.
+    canvas.save();
+    _insetCanvas(canvas, size, w * 0.034);
+    canvas.clipPath(path);
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: g,
           stops: const [0.0, 0.55, 1.0],
         ).createShader(rect),
     );
 
-    canvas.save();
-    canvas.clipPath(path);
+    // Diamond lattice.
+    final lattice = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = hair
+      ..color = Colors.white.withValues(alpha: 0.055);
+    final step = w * 0.12;
+    for (var x = -h; x < w + h; x += step) {
+      canvas.drawLine(Offset(x, h), Offset(x + h, 0), lattice);
+      canvas.drawLine(Offset(x, 0), Offset(x + h, h), lattice);
+    }
 
-    // Diagonal foil stripes.
-    final stripe = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
-      ..strokeWidth = size.width * 0.05;
-    for (var x = -size.height; x < size.width + size.height; x += size.width * 0.16) {
-      canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), stripe);
+    // Rarity motif behind the player.
+    final mc = Offset(w * 0.56, h * 0.29);
+    switch (rarity) {
+      case CardRarity.legendary:
+        _paintRays(canvas, mc, h * 0.62, Colors.white, 0.26, 22);
+      case CardRarity.epic:
+        void tri(double x1, double y1, double x2, double y2, double x3,
+            double y3, Color color) {
+          canvas.drawPath(
+            Path()
+              ..moveTo(w * x1, h * y1)
+              ..lineTo(w * x2, h * y2)
+              ..lineTo(w * x3, h * y3)
+              ..close(),
+            Paint()..color = color,
+          );
+        }
+        final lightShard = Colors.white.withValues(alpha: 0.10);
+        final darkShard = Colors.black.withValues(alpha: 0.08);
+        tri(0, 0, 0.64, 0, 0, 0.52, lightShard);
+        tri(1, 0, 0.42, 0, 1, 0.58, darkShard);
+        tri(0, 0.30, 0.55, 0.56, 0, 0.60, darkShard);
+        tri(1, 0.36, 0.45, 0.56, 1, 0.62, lightShard);
+      case CardRarity.rare:
+        final arc = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = hair * 1.4
+          ..color = Colors.white.withValues(alpha: 0.11);
+        for (var i = 1; i <= 5; i++) {
+          canvas.drawCircle(mc, w * 0.12 * i, arc);
+        }
     }
 
     // Soft top light.
@@ -364,54 +597,139 @@ class _CardFacePainter extends CustomPainter {
       rect,
       Paint()
         ..shader = RadialGradient(
-          center: const Alignment(-0.4, -0.8),
-          radius: 0.9,
+          center: const Alignment(-0.3, -0.75),
+          radius: 0.95,
           colors: [
-            Colors.white.withValues(alpha: 0.35),
+            Colors.white.withValues(alpha: 0.42),
             Colors.white.withValues(alpha: 0.0),
           ],
         ).createShader(rect),
     );
 
     // Player silhouette (head + shoulders), right of centre.
-    final sil = Paint()..color = Colors.black.withValues(alpha: 0.22);
-    final cx = size.width * 0.62;
-    final headR = size.width * 0.13;
-    final headY = size.height * 0.26;
+    final cx = w * 0.60;
+    final headR = w * 0.125;
+    final headY = h * 0.255;
+    final silRect = Rect.fromLTWH(0, h * 0.1, w, h * 0.5);
+    final sil = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.black.withValues(alpha: 0.34),
+          Colors.black.withValues(alpha: 0.10),
+        ],
+      ).createShader(silRect);
     canvas.drawCircle(Offset(cx, headY), headR, sil);
-    final shoulders = Path()
-      ..moveTo(cx - size.width * 0.30, size.height * 0.56)
-      ..quadraticBezierTo(
-          cx - size.width * 0.28, headY + headR * 1.25, cx, headY + headR * 1.2)
-      ..quadraticBezierTo(cx + size.width * 0.28, headY + headR * 1.25,
-          cx + size.width * 0.30, size.height * 0.56)
-      ..close();
-    canvas.drawPath(shoulders, sil);
+    canvas.drawPath(
+      Path()
+        ..moveTo(cx - w * 0.32, h * 0.57)
+        ..quadraticBezierTo(
+            cx - w * 0.30, headY + headR * 1.25, cx, headY + headR * 1.2)
+        ..quadraticBezierTo(
+            cx + w * 0.30, headY + headR * 1.25, cx + w * 0.32, h * 0.57)
+        ..close(),
+      sil,
+    );
 
-    // Bottom darkening so the stats read well.
+    // Dark glass information panel for name and attributes.
+    final panelTop = h * 0.545;
+    final panel = Rect.fromLTWH(0, panelTop, w, h - panelTop);
     canvas.drawRect(
-      Rect.fromLTWH(0, size.height * 0.5, size.width, size.height * 0.5),
+      panel,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withValues(alpha: 0.0),
-            Colors.black.withValues(alpha: 0.28),
+            Colors.black.withValues(alpha: 0.50),
+            Colors.black.withValues(alpha: 0.84),
           ],
-        ).createShader(
-            Rect.fromLTWH(0, size.height * 0.5, size.width, size.height * 0.5)),
+        ).createShader(panel),
     );
+    final edge = Rect.fromLTWH(0, panelTop - hair, w, hair * 2);
+    canvas.drawRect(
+      edge,
+      Paint()
+        ..shader = LinearGradient(colors: [
+          g[0].withValues(alpha: 0.0),
+          g[0],
+          g[0].withValues(alpha: 0.0),
+        ]).createShader(edge),
+    );
+
+    // Name bar and the three attribute cells.
+    final nameBar = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.07, h * 0.553, w * 0.86, h * 0.088),
+        Radius.circular(h * 0.012));
+    canvas.drawRRect(
+        nameBar, Paint()..color = Colors.white.withValues(alpha: 0.07));
+    canvas.drawRRect(
+      nameBar,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = hair
+        ..color = g[0].withValues(alpha: 0.45),
+    );
+    final cellW = w * 0.84 / 3;
+    for (var i = 0; i < 3; i++) {
+      final cell = RRect.fromRectAndRadius(
+          Rect.fromLTWH(w * 0.08 + i * cellW + w * 0.012, h * 0.70,
+              cellW - w * 0.024, h * 0.125),
+          Radius.circular(h * 0.014));
+      canvas.drawRRect(
+          cell, Paint()..color = Colors.white.withValues(alpha: 0.06));
+      canvas.drawRRect(
+        cell,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = hair
+          ..color = g[0].withValues(alpha: 0.28),
+      );
+    }
+
+    // Top gem and the brand mark at the foot.
+    final gem = Offset(w / 2, h * 0.032);
+    final gr = w * 0.024;
+    final gemPath = Path()
+      ..moveTo(gem.dx, gem.dy - gr)
+      ..lineTo(gem.dx + gr, gem.dy)
+      ..lineTo(gem.dx, gem.dy + gr)
+      ..lineTo(gem.dx - gr, gem.dy)
+      ..close();
+    canvas.drawPath(gemPath, Paint()..color = Colors.white.withValues(alpha: 0.92));
+    canvas.drawPath(
+      gemPath,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = hair
+        ..color = g[2].withValues(alpha: 0.8),
+    );
+    final brand = TextPainter(
+      text: TextSpan(
+        text: 'FCM',
+        style: TextStyle(
+          color: g[0].withValues(alpha: 0.85),
+          fontSize: w * 0.06,
+          fontWeight: FontWeight.w900,
+          fontStyle: FontStyle.italic,
+          letterSpacing: w * 0.012,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    brand.paint(canvas,
+        Offset(w / 2 - brand.width / 2, h * 0.915 - brand.height / 2));
 
     // Foil sweep.
     final s = shine;
     if (s != null) {
-      final cxs = -size.width * 0.4 + s * size.width * 1.8;
+      final cxs = -w * 0.4 + s * w * 1.8;
       final sweep = Path()
-        ..moveTo(cxs - size.width * 0.18, size.height)
-        ..lineTo(cxs + size.width * 0.05, size.height)
-        ..lineTo(cxs + size.width * 0.5, 0)
-        ..lineTo(cxs + size.width * 0.27, 0)
+        ..moveTo(cxs - w * 0.18, h)
+        ..lineTo(cxs + w * 0.05, h)
+        ..lineTo(cxs + w * 0.5, 0)
+        ..lineTo(cxs + w * 0.27, 0)
         ..close();
       canvas.drawPath(
         sweep,
@@ -422,36 +740,48 @@ class _CardFacePainter extends CustomPainter {
               Colors.white.withValues(alpha: 0.55),
               Colors.white.withValues(alpha: 0.0),
             ],
-          ).createShader(Rect.fromLTWH(
-              cxs - size.width * 0.18, 0, size.width * 0.7, size.height)),
+          ).createShader(Rect.fromLTWH(cxs - w * 0.18, 0, w * 0.7, h)),
       );
     }
     canvas.restore();
 
-    // Inner and outer borders.
-    canvas.drawPath(
-      path.shift(Offset.zero),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = size.width * 0.012
-        ..color = Colors.white.withValues(alpha: 0.85),
-    );
+    // Face edge and a fine inner keyline, then the bright outer rim.
     canvas.save();
-    canvas.translate(size.width * 0.03, size.height * 0.02);
-    canvas.scale(0.94, 0.96);
+    _insetCanvas(canvas, size, w * 0.034);
     canvas.drawPath(
       path,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = size.width * 0.006
-        ..color = Colors.white.withValues(alpha: 0.35),
+        ..strokeWidth = hair
+        ..color = Colors.black.withValues(alpha: 0.4),
     );
     canvas.restore();
+    canvas.save();
+    _insetCanvas(canvas, size, w * 0.058);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = hair
+        ..color = Colors.white.withValues(alpha: 0.30),
+    );
+    canvas.restore();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.0, w * 0.012)
+        ..strokeJoin = StrokeJoin.round
+        ..color = Colors.white.withValues(alpha: 0.9),
+    );
   }
 
   @override
   bool shouldRepaint(_CardFacePainter old) =>
-      old.rarity != rarity || old.shine != shine;
+      old.rarity != rarity ||
+      old.shine != shine ||
+      old.glow != glow ||
+      old.glowColor != glowColor;
 }
 
 class _CardBackPainter extends CustomPainter {
@@ -461,49 +791,90 @@ class _CardBackPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
     final rect = Offset.zero & size;
     final path = cardPath(size);
+    final g = rarity.faceGradient;
+    final accent = rarity.accent;
+    final hair = math.max(0.5, w * 0.006);
+
+    // Bezel in the rarity's metal.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [g[0], accent, g[2], accent],
+          stops: const [0.0, 0.35, 0.75, 1.0],
+        ).createShader(rect),
+    );
+
+    // Carbon-black face.
+    canvas.save();
+    _insetCanvas(canvas, size, w * 0.034);
+    canvas.clipPath(path);
     canvas.drawPath(
       path,
       Paint()
         ..shader = const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2A2731), Color(0xFF121014)],
+          colors: [Color(0xFF2A2731), Color(0xFF121014), Color(0xFF0B0A0E)],
         ).createShader(rect),
     );
-    canvas.save();
-    canvas.clipPath(path);
-    // Concentric rings + crest in the rarity colour.
-    final ring = Paint()
+    final lattice = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = rarity.accent.withValues(alpha: 0.35);
-    final c = Offset(size.width / 2, size.height / 2);
-    for (var i = 1; i <= 5; i++) {
-      canvas.drawCircle(c, size.width * 0.1 * i, ring);
+      ..strokeWidth = hair
+      ..color = accent.withValues(alpha: 0.14);
+    final step = w * 0.10;
+    for (var x = -h; x < w + h; x += step) {
+      canvas.drawLine(Offset(x, h), Offset(x + h, 0), lattice);
+      canvas.drawLine(Offset(x, 0), Offset(x + h, h), lattice);
     }
-    final tp = TextPainter(
-      text: TextSpan(
-        text: 'FCM',
-        style: TextStyle(
-          color: rarity.accent,
-          fontSize: size.width * 0.26,
-          fontWeight: FontWeight.w900,
-          fontStyle: FontStyle.italic,
-          letterSpacing: -2,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
+    // Warm glow behind the wordmark.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          radius: 0.7,
+          colors: [
+            accent.withValues(alpha: 0.30),
+            accent.withValues(alpha: 0.0),
+          ],
+        ).createShader(rect),
+    );
+    // Rarity stars along the foot: 3 rare, 4 epic, 5 legendary.
+    final n = switch (rarity) {
+      CardRarity.rare => 3,
+      CardRarity.epic => 4,
+      CardRarity.legendary => 5,
+    };
+    final starR = w * 0.042;
+    for (var i = 0; i < n; i++) {
+      final c = Offset(w / 2 + (i - (n - 1) / 2) * starR * 2.5, h * 0.80);
+      canvas.drawPath(_cardStarPath(c, starR), Paint()..color = g[0]);
+    }
+    canvas.restore();
+
+    // Frames: a fine keyline inside the face and the bright outer rim.
+    canvas.save();
+    _insetCanvas(canvas, size, w * 0.075);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = hair
+        ..color = accent.withValues(alpha: 0.65),
+    );
     canvas.restore();
     canvas.drawPath(
       path,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = size.width * 0.014
-        ..color = rarity.accent,
+        ..strokeWidth = math.max(1.0, w * 0.012)
+        ..strokeJoin = StrokeJoin.round
+        ..color = accent,
     );
   }
 
@@ -562,24 +933,20 @@ class FcmMiniCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
+            SizedBox(
               width: width,
               height: h,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  if (!ghost)
-                    BoxShadow(
-                      color: (warn ? FcmColors.danger : rarity.accent)
-                          .withValues(alpha: 0.5),
-                      blurRadius: 14,
-                    ),
-                ],
-              ),
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   Positioned.fill(
                     child: CustomPaint(
-                      painter: _CardFacePainter(rarity: rarity, shine: null),
+                      painter: _CardFacePainter(
+                        rarity: rarity,
+                        shine: null,
+                        glow: ghost ? 0.0 : 0.8,
+                        glowColor: warn ? FcmColors.danger : null,
+                      ),
                       foregroundPainter:
                           ghost ? _GhostPainter() : null,
                     ),

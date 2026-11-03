@@ -19,7 +19,7 @@ import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 
-BasePlayer _player({int overall = 87}) => BasePlayer(
+BasePlayer _player({int overall = 75}) => BasePlayer(
       playerId: 1,
       name: 'Test Striker',
       position: Position.st,
@@ -42,6 +42,9 @@ Future<void> _revealAll(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 8));
   await tester.pump(const Duration(milliseconds: 400));
 }
+
+/// A legendary pull (82+): rating 91, runs the long 17s sequence.
+BasePlayer _legend() => _player(overall: 91);
 
 void main() {
   testWidgets('the pack tears itself open automatically — no tap step',
@@ -118,14 +121,14 @@ void main() {
     // Stats complete exactly at t = 0.88 (7040ms of 8s): final rating
     // has landed, the name is still masked for one more beat.
     await tester.pump(const Duration(milliseconds: 840));
-    expect(find.text('87'), findsOneWidget);
+    expect(find.text('75'), findsOneWidget);
     expect(find.text('TEST STRIKER'), findsNothing);
     // Name reveal (0.88–0.97 of 8s): the identity lands AFTER the stats,
     // on the card's name plate — nothing duplicates it below the card.
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.text('TEST STRIKER'), findsOneWidget);
     expect(find.text('91'), findsOneWidget);
-    expect(find.text('LEGENDARY'), findsOneWidget);
+    expect(find.text('EPIC'), findsOneWidget);
     // The fade-in itself takes 300ms after the done mark.
     await tester.pump(const Duration(milliseconds: 400));
     final done = tester
@@ -240,5 +243,92 @@ void main() {
     // The single player is kept and the reveal pops back to the pusher.
     expect(find.byType(PackOpeningScreen), findsNothing);
     expect(find.text('PUSH'), findsOneWidget);
+  });
+
+  testWidgets('a legendary pull runs a much longer, special timeline',
+      (tester) async {
+    // The standard reveal is 8s; the legendary one is more than double.
+    expect(kLegendaryRevealDuration.inMilliseconds,
+        greaterThan(2 * kStandardRevealDuration.inMilliseconds));
+
+    await tester.pumpWidget(MaterialApp(
+      home: PackOpeningScreen(players: [_legend()]),
+    ));
+    await _autoOpen(tester);
+
+    // Where an epic pull would already be done (8s), the legend is
+    // still building: no buttons, no name, no stat card yet.
+    await tester.pump(const Duration(seconds: 8));
+    final mid = tester
+        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    expect(mid.opacity, 0);
+    expect(find.text('TEST STRIKER'), findsNothing);
+    expect(find.text('LEGENDARY PULL!'), findsNothing);
+    // The suspense caption is up while the silhouette waits.
+    expect(find.text('A LEGEND IS COMING…'), findsOneWidget);
+  });
+
+  testWidgets(
+      'legendary walkout lands clues one by one — flag, position, rating — '
+      'and the NAME comes last', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: PackOpeningScreen(players: [_legend()]),
+    ));
+    await _autoOpen(tester);
+
+    // Clue 1 (~0.30–0.37 of 17s): the flag, and nothing else yet.
+    await tester.pump(const Duration(milliseconds: 5600));
+    expect(find.text(flagEmojiFor('Brazil')), findsOneWidget);
+    expect(find.text('TEST STRIKER'), findsNothing);
+
+    // Clue 2 (~0.385–0.455): the position.
+    await tester.pump(const Duration(milliseconds: 1500));
+    expect(find.text('ST'), findsOneWidget);
+
+    // Clue 3 (rolls 0.47–0.54, locks at 0.54 = 9.18s): the rating locks.
+    await tester.pump(const Duration(milliseconds: 2500)); // ~9.6s
+    expect(find.text('91'), findsOneWidget);
+    expect(find.text('TEST STRIKER'), findsNothing);
+
+    // Card flipped, stats counting, the name still redacted
+    // (name starts at 0.89 = 15.1s).
+    await tester.pump(const Duration(milliseconds: 4900)); // ~14.5s
+    expect(find.text('ATT'), findsOneWidget);
+    expect(find.text('WHO IS IT?'), findsOneWidget);
+    expect(find.text('TEST STRIKER'), findsNothing);
+    final stillHidden = tester
+        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    expect(stillHidden.opacity, 0);
+
+    // The name types in, then the finale banner and the action row.
+    await tester.pump(const Duration(milliseconds: 2000)); // ~16.5s
+    expect(find.text('TEST STRIKER'), findsOneWidget);
+    expect(find.text('LEGENDARY PULL!'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.pump(const Duration(milliseconds: 400));
+    final done = tester
+        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    expect(done.opacity, 1);
+    expect(find.text('KEEP PLAYER'), findsOneWidget);
+  });
+
+  testWidgets('after a legend, the next player plays his own timeline',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: PackOpeningScreen(players: [_legend(), _player(overall: 60)]),
+    ));
+    await _autoOpen(tester);
+    await tester.pump(kLegendaryRevealDuration);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('NEXT PLAYER  1/2'), findsOneWidget);
+
+    await tester.tap(find.text('NEXT PLAYER  1/2'));
+    await tester.pump();
+    // The rare player runs the standard 8s timeline (from the walkout
+    // mark): well inside 8s the action row is back and he is KEPT last.
+    await tester.pump(kStandardRevealDuration);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('KEEP PLAYER'), findsOneWidget);
+    expect(find.text('RARE'), findsOneWidget);
   });
 }

@@ -82,4 +82,70 @@ void main() {
     ));
     await tester.pump();
   });
+
+  testWidgets('premium pack paints at every size, tier and grade',
+      (WidgetTester tester) async {
+    await tester.runAsync(precachePackLogo);
+    const tints = [Color(0xFF8B5CF6), Color(0xFF3B82F6), Color(0xFFF7C948)];
+    for (final width in [64.0, 120.0, 230.0]) {
+      for (var i = 0; i < tints.length; i++) {
+        await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: width,
+                height: width / kPackAspect,
+                child: CustomPaint(
+                  painter: FoilPackPainter(
+                    shimmer: 0.6,
+                    charge: 0.5,
+                    glowColor: tints[i],
+                    tint: tints[i],
+                    stars: 3 + i,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ));
+        await tester.pump();
+        expect(tester.takeException(), isNull,
+            reason: 'width $width tier $i');
+      }
+    }
+    // The untinted charcoal classic also paints.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 120,
+          height: 120 / kPackAspect,
+          child: CustomPaint(
+            painter: FoilPackPainter(
+                shimmer: 0.1, charge: 0, glowColor: const Color(0xFFD9B871)),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shockwave rings only draw while in flight',
+      (WidgetTester tester) async {
+    const gold = Color(0xFFF7C948);
+    expect(
+        ShockwavePainter(progress: 0, color: gold)
+            .shouldRepaint(ShockwavePainter(progress: 0.5, color: gold)),
+        isTrue);
+    for (final p in [0.0, 0.3, 0.99, 1.0]) {
+      await tester.pumpWidget(MaterialApp(
+        home: SizedBox.expand(
+          child: CustomPaint(
+              painter: ShockwavePainter(progress: p, color: gold, rings: 4)),
+        ),
+      ));
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: 'progress $p');
+    }
+  });
 }

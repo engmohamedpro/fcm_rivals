@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/database/app_database.dart' show Pack;
 import '../../core/domain/players.dart' show Position;
+import '../../core/ui/fcm_logo.dart' show FcmFullLogo;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../features/collection/collection_store.dart'
@@ -342,6 +343,7 @@ class _StoreGrid extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 24),
       child: Column(
         children: [
+          const _StoreHero(),
           for (final key in sectionOrder)
             _ScopeSection(
               key: ValueKey('store-section-$key'),
@@ -354,6 +356,24 @@ class _StoreGrid extends StatelessWidget {
               onInfo: onInfo,
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// The store's masthead: the full FCM 27 Rivals crest, feathered into the
+/// night background so it floats above the shelves like a showroom sign.
+class _StoreHero extends StatelessWidget {
+  const _StoreHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      key: ValueKey('store-hero'),
+      height: 120,
+      child: OverflowBox(
+        maxHeight: 190,
+        child: FcmFullLogo(size: 190),
       ),
     );
   }
@@ -529,7 +549,20 @@ class _StorePackCellState extends State<_StorePackCell>
         children: [
           Expanded(
             child: Center(
-              child: AspectRatio(
+              child: DecoratedBox(
+                // Ambient light in the tier's colour spilling from behind
+                // the pack, like a lit display case.
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: tierColor.withValues(alpha: 0.26),
+                      blurRadius: 22,
+                      spreadRadius: -8,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: AspectRatio(
                 aspectRatio: kPackAspect,
                 child: isFree
                     ? AnimatedBuilder(
@@ -572,6 +605,7 @@ class _StorePackCellState extends State<_StorePackCell>
                           stars: offer.tier.stars,
                         ),
                       ),
+              ),
               ),
             ),
           ),

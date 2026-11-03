@@ -8,6 +8,51 @@ import 'fcm_style.dart';
 /// Asset path of the transparent brand wordmark art ('FCM 27 Rivals').
 const String kFcmWordmarkAsset = 'assets/images/logo.webp';
 
+/// Asset path of the full brand badge ('FCM 27 Rivals' crest on its dark
+/// carbon backdrop). Square art; it carries its own near-black background,
+/// so [FcmFullLogo] feathers the edges into the app's night colour.
+const String kFcmFullLogoAsset = 'assets/images/logo_full.webp';
+
+/// The full badge, feathered into the night background: a radial mask
+/// fades the square art's edges to transparent so the crest floats on any
+/// dark surface instead of showing a visible box. [size] is the square's
+/// side; the crest itself fills roughly the middle 55%.
+class FcmFullLogo extends StatelessWidget {
+  const FcmFullLogo({super.key, this.size = 150});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        // Opaque through the crest, fading to fully clear exactly at the
+        // square's edge midpoints (radius 0.5 of the side), so no box edge
+        // is ever visible.
+        shaderCallback: (bounds) => const RadialGradient(
+          radius: 0.5,
+          colors: [Colors.white, Colors.white, Color(0x00FFFFFF)],
+          stops: [0.0, 0.72, 1.0],
+        ).createShader(bounds),
+        child: Image.asset(
+          kFcmFullLogoAsset,
+          width: size,
+          height: size,
+          cacheWidth: 512,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          // A missing asset must never break the store: fall back to the
+          // transparent wordmark.
+          errorBuilder: (_, __, ___) => FcmWordmark(size: size * 0.3),
+        ),
+      ),
+    );
+  }
+}
+
 /// The transparent brand wordmark, fading and scaling in once. Used as
 /// the loading screen: the art floats directly on the night background —
 /// it has no backdrop of its own. [cacheWidth] keeps the source cheap
