@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,9 +21,11 @@ import 'pack_opening_screen.dart';
 /// Epic / Legendary, each with its own odds of better players and its own
 /// price — under a shared title. Owned (free) packs of a type show a
 /// FREE ×N pill in place of the price; otherwise the cell shows the coin
-/// price with a BUY button. Each cell's ghost VIEW PLAYERS button opens
+/// price. There is no per-cell button: tapping the pack itself opens it —
+/// an owned pack straight into the reveal, a buyable one into the YES/NO
+/// purchase confirmation. Each section's ghost VIEW PLAYERS button opens
 /// the scope's full contents list (searchable, filterable by
-/// nationality); BUY opens the YES/NO purchase confirmation.
+/// nationality).
 class PacksScreen extends ConsumerStatefulWidget {
   const PacksScreen({super.key});
 
@@ -129,6 +133,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         players: result.players,
         ownedIds: result.ownedIds,
         packTint: tier.accent,
+        packStars: tier.stars,
         onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
           ref.invalidate(clubProvider);
           ref.invalidate(collectionProvider);
@@ -421,6 +426,10 @@ class _ScopeSection extends StatelessWidget {
                       if (i > 0) const SizedBox(width: 8),
                       Expanded(
                         child: _StorePackCell(
+                          key: ValueKey('store-pack-'
+                              '${ordered[i].category.name}'
+                              '-${ordered[i].scopeValue ?? 'ANY'}'
+                              '-${ordered[i].tier.name}'),
                           offer: ordered[i],
                           ownedCount: owned[_scopeKey(
                                   ordered[i].category.name,
@@ -460,16 +469,20 @@ class _ScopeSection extends StatelessWidget {
 /// One tier cell of a scope section: the sealed foil pack exactly as it
 /// looks before opening (same [FoilPackPainter] as the reveal cinematic),
 /// painted in the tier's solid jewel metal — amethyst, sapphire or
-/// champion gold — with the tier name under it, a price slot and the
-/// action button. The scope
-/// title and its VIEW PLAYERS entry live on the section, not the cell.
+/// champion gold — with the tier name under it and a price slot. The
+/// scope title and its VIEW PLAYERS entry live on the section, not the
+/// cell. There is no CLAIM/BUY button: tapping the cell IS the action —
+/// an owned pack opens straight into the reveal, a buyable one opens
+/// the YES/NO purchase dialog.
+///
 /// Owned and buyable cells share the exact same layout: the slot shows
 /// the FREE ×N pill when the club owns packs of this type, the coin
-/// price otherwise; the button reads CLAIM — which opens the next owned
-/// pack straight into the reveal, no confirmation — or BUY, which opens
-/// the YES/NO purchase dialog.
-class _StorePackCell extends StatelessWidget {
+/// price otherwise. A cell with free packs shakes its pack art in a
+/// slow heartbeat loop — shake, rest, shake — so unclaimed packs call
+/// out from the shelf without turning the whole grid into noise.
+class _StorePackCell extends StatefulWidget {
   const _StorePackCell({
+    super.key,
     required this.offer,
     required this.ownedCount,
     required this.coins,
@@ -482,13 +495,34 @@ class _StorePackCell extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
+  State<_StorePackCell> createState() => _StorePackCellState();
+}
+
+class _StorePackCellState extends State<_StorePackCell>
+    with SingleTickerProviderStateMixin {
+  /// The heartbeat: 0→1 runs one ~0.55s shake, then the curve rests at
+  /// 1 until the loop wraps — shake, rest, shake. Only the pack art
+  /// rides this transform; the texts under it stay still.
+  late final AnimationController _nudge = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _nudge.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isFree = ownedCount > 0;
-    final affordable = coins == null || coins! >= offer.price;
+    final offer = widget.offer;
+    final isFree = widget.ownedCount > 0;
+    final affordable = widget.coins == null || widget.coins! >= offer.price;
     final tierColor = offer.tier.accent;
 
     return FcmPressable(
-      onTap: onTap,
+      onTap: widget.onTap,
       scale: 0.93,
       child: Column(
         children: [
@@ -496,14 +530,47 @@ class _StorePackCell extends StatelessWidget {
             child: Center(
               child: AspectRatio(
                 aspectRatio: kPackAspect,
-                child: CustomPaint(
-                  painter: FoilPackPainter(
-                    shimmer: 0.42,
-                    charge: 0,
-                    glowColor: tierColor,
-                    tint: tierColor,
-                  ),
-                ),
+                child: isFree
+                    ? AnimatedBuilder(
+                        animation: _nudge,
+                        builder: (context, child) {
+                          // t in 0..1 across the full cycle; the shake
+                          // occupies the first quarter (~0.55s) only.
+                          final t = _nudge.value;
+                          final shakeT =
+                              (t / 0.25).clamp(0.0, 1.0).toDouble();
+                          final wobble =
+                              math.sin(shakeT * math.pi * 5) *
+                                  (1 - shakeT) *
+                                  0.034;
+                          return Transform.rotate(
+                            angle: wobble,
+                            child: Transform.translate(
+                              offset: Offset(
+                                  wobble * 34, -wobble.abs() * 10),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: CustomPaint(
+                          painter: FoilPackPainter(
+                            shimmer: 0.42,
+                            charge: 0,
+                            glowColor: tierColor,
+                            tint: tierColor,
+                            stars: offer.tier.stars,
+                          ),
+                        ),
+                      )
+                    : CustomPaint(
+                        painter: FoilPackPainter(
+                          shimmer: 0.42,
+                          charge: 0,
+                          glowColor: tierColor,
+                          tint: tierColor,
+                          stars: offer.tier.stars,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -524,7 +591,7 @@ class _StorePackCell extends StatelessWidget {
             height: 20,
             child: Center(
               child: isFree
-                  ? FcmPill('FREE ×$ownedCount')
+                  ? FcmPill('FREE ×${widget.ownedCount}')
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -547,22 +614,6 @@ class _StorePackCell extends StatelessWidget {
                         ),
                       ],
                     ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          // CLAIM opens the next owned pack straight into the reveal —
-          // no confirmation dialog — in the dark steel metal with a gift
-          // icon: instantly different from the gold BUY, and in the
-          // game's metal-on-black language rather than a flat green.
-          // BUY opens the YES/NO purchase dialog.
-          SizedBox(
-            width: double.infinity,
-            child: FcmButton(
-              compact: true,
-              style: isFree ? FcmButtonStyle.steel : FcmButtonStyle.gold,
-              icon: isFree ? Icons.card_giftcard_rounded : null,
-              label: isFree ? 'CLAIM' : 'BUY',
-              onPressed: onTap,
             ),
           ),
         ],

@@ -62,6 +62,7 @@ class PackOpeningScreen extends StatefulWidget {
     super.key,
     required this.players,
     this.packTint,
+    this.packStars = 3,
     this.ownedIds = const [],
     this.onSell,
   });
@@ -72,6 +73,10 @@ class PackOpeningScreen extends StatefulWidget {
   /// the store cell. Null keeps the classic charcoal leather (previews
   /// that are not a real store pack).
   final Color? packTint;
+
+  /// Rarity stars on the sealed pack — the same count the shelf
+  /// stamped: 3 rare, 4 epic, 5 legendary.
+  final int packStars;
 
   /// Owned-player row ids of the drawn players, index-aligned with
   /// [players] — SELL straight from the reveal sells through the caller.
@@ -445,6 +450,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                   // The store cell's exact tier metal, so the pack the
                   // player bought is the pack that tears open.
                   tint: widget.packTint,
+                  stars: widget.packStars,
                 ),
               ),
             ),

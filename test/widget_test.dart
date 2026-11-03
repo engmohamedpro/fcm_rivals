@@ -99,10 +99,11 @@ void main() {
     expect(find.text('LEGENDARY'), findsNWidgets(13));
     expect(find.text('FREE ×3'), findsNWidgets(4));
     expect(find.text('FREE ×1'), findsNWidgets(8));
-    // Owned cells show CLAIM (opens straight into the reveal), the rest
-    // BUY — identical cell layout either way.
-    expect(find.text('CLAIM'), findsNWidgets(12));
-    expect(find.text('BUY'), findsNWidgets(27));
+    // No CLAIM/BUY buttons: the pack art itself is the action now —
+    // owned cells open straight into the reveal, buyable cells open
+    // the purchase dialog.
+    expect(find.text('CLAIM'), findsNothing);
+    expect(find.text('BUY'), findsNothing);
 
     // store-level check: the 20 free packs (4 cheapest positions × 3 plus
     // one per other position, all rare) exist and remain unopened

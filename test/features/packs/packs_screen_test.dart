@@ -103,11 +103,11 @@ void main() {
     final packs = await tester.runAsync(() => store.getAvailablePacks());
     expect(packs!.length, 20);
     expect(packs.every((p) => p.tier == 'rare'), isTrue);
-    // Owned cells show CLAIM, unowned BUY — same size, style and layout:
-    // 39 cells minus the 12 owned scopes (4 cheapest at ×3 + 8 others at
-    // ×1 stack under their bronze cells).
-    expect(find.text('CLAIM'), findsNWidgets(12));
-    expect(find.text('BUY'), findsNWidgets(27));
+    // No CLAIM/BUY buttons anywhere: tapping the pack itself is the
+    // action now — owned cells open straight into the reveal, buyable
+    // cells open the purchase dialog.
+    expect(find.text('CLAIM'), findsNothing);
+    expect(find.text('BUY'), findsNothing);
     // Every section title row carries a VIEW PLAYERS button into the
     // scope's shared pool.
     expect(find.text('VIEW PLAYERS'), findsNWidgets(13));
@@ -123,9 +123,14 @@ void main() {
     await bootScreen(tester);
 
     final packsBefore = await tester.runAsync(() => store.getAvailablePacks());
-    final claimedId = packsBefore!.first.id;
+    final claimed = packsBefore!.first;
+    final claimedId = claimed.id;
 
-    await tester.tap(find.text('CLAIM').first);
+    // Tap the claimed pack's own cell — the pack art itself is the
+    // CLAIM button now.
+    await tester.tap(find.byKey(ValueKey(
+            'store-pack-${claimed.category}-${claimed.scopeValue ?? 'ANY'}-${claimed.tier}'))
+        .first);
     // Real drift I/O resolves openPack before the reveal route builds.
     await tester
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
@@ -166,7 +171,9 @@ void main() {
     final rareGlobal =
         offers!.firstWhere((o) => o.tier == PackTier.rare && o.scopeValue == null);
 
-    await tester.tap(find.text('BUY').first);
+    await tester.tap(find.byKey(ValueKey(
+            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
+        .first);
     await tester.pump();
 
     // Confirmation shows the price with YES and NO side by side in one
@@ -221,13 +228,14 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    await tester.tap(find.text('BUY').first);
+    await tester.tap(find.byKey(ValueKey(
+            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
+        .first);
     await tester.pump();
     await tester.tap(find.text('NO'));
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Buy Rare Global Pack?'), findsNothing);
-    expect(find.text('BUY'), findsNWidgets(27));
     final packs = await tester.runAsync(() => store.getAvailablePacks());
     expect(packs!.where((p) => p.category == 'global'), isEmpty);
   });
@@ -251,7 +259,9 @@ void main() {
     });
 
     await pumpScreen(tester);
-    await tester.tap(find.text('BUY').first);
+    await tester.tap(find.byKey(ValueKey(
+            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
+        .first);
     await tester.pump();
 
     expect(find.text('Not enough coins'), findsOneWidget);
@@ -294,7 +304,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(PackContentsScreen), findsNothing);
-    expect(find.text('BUY'), findsWidgets);
+    expect(find.byKey(ValueKey(
+            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}')),
+        findsOneWidget);
   });
 
   testWidgets('contents list searches by name', (WidgetTester tester) async {
@@ -364,7 +376,9 @@ void main() {
     await bootScreen(tester);
 
     // --- Buy a pack and watch its reveal to the end. ---
-    await tester.tap(find.text('BUY').first);
+    await tester.tap(find.byKey(ValueKey(
+            'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
+        .first);
     await tester.pump();
     await tester.tap(find.text('YES'));
     await tester.pump();
@@ -399,8 +413,13 @@ void main() {
 
     // The store must still be alive: _opening was reset in the finally
     // block, so CLAIM opens another owned pack straight away — before
-    // the fix the whole store stayed dead until an app restart.
-    await tester.tap(find.text('CLAIM').first);
+    // the fix the whole store stayed dead until an app restart. The
+    // pack art itself is the CLAIM button now: tap the first owned
+    // cell, derived from the inventory.
+    final remaining = await tester.runAsync(() => store.getAvailablePacks());
+    await tester.tap(find.byKey(ValueKey(
+            'store-pack-${remaining!.first.category}-${remaining.first.scopeValue ?? 'ANY'}-${remaining.first.tier}'))
+        .first);
     await tester
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump();

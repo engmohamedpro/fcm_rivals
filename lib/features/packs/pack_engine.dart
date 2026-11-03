@@ -64,6 +64,14 @@ extension PackTierColor on PackTier {
         PackTier.epic => const Color(0xFF3B82F6),
         PackTier.legendary => const Color(0xFFF7C948),
       };
+
+  /// Rarity stars stamped on the foil: rare 3, epic 4, legendary 5 —
+  /// the shelf and the reveal agree on the count.
+  int get stars => switch (this) {
+        PackTier.rare => 3,
+        PackTier.epic => 4,
+        PackTier.legendary => 5,
+      };
 }
 
 /// Filter describing which players a pack draws from.

@@ -77,6 +77,7 @@ class FoilPackPainter extends CustomPainter {
     required this.charge,
     required this.glowColor,
     this.tint,
+    this.stars = 3,
   });
 
   /// 0..1 loop position of the idle foil shimmer.
@@ -92,6 +93,10 @@ class FoilPackPainter extends CustomPainter {
   /// gold at full strength, never a translucent wash. Null keeps the
   /// untinted charcoal leather — the classic sealed look.
   final Color? tint;
+
+  /// Rarity stars stamped above the band: 3 rare, 4 epic, 5 legendary —
+  /// the pack's grade must read at a glance on the shelf.
+  final int stars;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -167,14 +172,78 @@ class FoilPackPainter extends CustomPainter {
           italic: true, spacing: 3);
     }
 
-    // Crown + stars above the band: bright tier metal when tinted.
-    _text(canvas, '★  ★  ★', size.width * 0.07,
-        shades == null ? FcmColors.gold : shades[0],
-        Offset(size.width / 2, size.height * 0.30));
-    _text(canvas, 'PLAYER PACK', size.width * 0.075,
-        shades == null ? FcmColors.goldSoft : shades[0],
-        Offset(size.width / 2, size.height * 0.76),
-        spacing: 3);
+    // Rarity stars above the band: drawn five-point stars in bright
+    // tier metal with a dark rim and a soft shadow — three glyphs of
+    // body text vanished into the foil, these read from across the
+    // shelf. Count is the pack's grade: 3 rare / 4 epic / 5 legendary.
+    final metal = shades == null ? FcmColors.gold : shades[0];
+    final starFill = Color.lerp(metal, Colors.white, 0.28)!;
+    final starRim = shades == null
+        ? const Color(0xFF0B0A0E)
+        : shades[3].withValues(alpha: 0.9);
+    final starR = size.width * 0.058;
+    final rowY = size.height * 0.285;
+    final starGap = starR * 2.42;
+    final n = stars.clamp(1, 5);
+    for (var i = 0; i < n; i++) {
+      final c = Offset(
+          size.width / 2 + (i - (n - 1) / 2) * starGap, rowY);
+      final path = _starPath(c, starR);
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.45)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+      );
+      canvas.drawPath(path, Paint()..color = starFill);
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.0, starR * 0.14)
+          ..strokeJoin = StrokeJoin.round
+          ..color = starRim,
+      );
+    }
+
+    // 'PLAYER PACK' on a deep plate with a tier-metal hairline: the
+    // words sat straight on the foil before and washed out on the
+    // bright metals — the plate guarantees contrast everywhere.
+    final plateFont = size.width * 0.082;
+    final plateTp = _layoutText('PLAYER PACK', plateFont, starFill,
+        spacing: 2.5);
+    final plate = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(size.width / 2, size.height * 0.76),
+        width: plateTp.width + size.width * 0.16,
+        height: plateTp.height + size.width * 0.10,
+      ),
+      Radius.circular(size.width * 0.05),
+    );
+    canvas.drawRRect(
+      plate,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF15130F).withValues(alpha: 0.92),
+            const Color(0xFF0B0A0E).withValues(alpha: 0.96),
+          ],
+        ).createShader(plate.outerRect),
+    );
+    canvas.drawRRect(
+      plate,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.0, size.width * 0.008)
+        ..color = metal.withValues(alpha: 0.85),
+    );
+    plateTp.paint(
+      canvas,
+      Offset(size.width / 2, size.height * 0.76) -
+          Offset(plateTp.width / 2, plateTp.height / 2),
+    );
 
     // Idle foil shimmer: warm champagne sweep.
     final sx = -size.width * 0.5 + shimmer * size.width * 2.2;
@@ -277,6 +346,15 @@ class FoilPackPainter extends CustomPainter {
   void _text(Canvas canvas, String text, double size, Color color,
       Offset center,
       {bool italic = false, double spacing = 0}) {
+    final tp = _layoutText(text, size, color,
+        italic: italic, spacing: spacing);
+    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
+  }
+
+  /// Lays one stamped wordmark line out — [_text] paints it centred,
+  /// the label plate measures it first.
+  TextPainter _layoutText(String text, double size, Color color,
+      {bool italic = false, double spacing = 0}) {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
@@ -290,7 +368,7 @@ class FoilPackPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
+    return tp;
   }
 
   /// Whether the last paint stamped the decoded logo (vs the text
@@ -303,7 +381,30 @@ class FoilPackPainter extends CustomPainter {
       old.charge != charge ||
       old.glowColor != glowColor ||
       old.tint != tint ||
+      old.stars != stars ||
       old._paintedWithLogo != (_packLogo != null);
+}
+
+/// A five-point star centred on [c] with outer radius [r], first point
+/// straight up — drawn as a path so each star gets its own fill, rim
+/// and drop shadow (a text glyph can only be one flat colour).
+Path _starPath(Offset c, double r) {
+  const points = 5;
+  const inner = 0.45;
+  final p = Path();
+  for (var i = 0; i < points * 2; i++) {
+    final a = -math.pi / 2 + i * math.pi / points;
+    final rad = i.isEven ? r : r * inner;
+    final x = c.dx + math.cos(a) * rad;
+    final y = c.dy + math.sin(a) * rad;
+    if (i == 0) {
+      p.moveTo(x, y);
+    } else {
+      p.lineTo(x, y);
+    }
+  }
+  p.close();
+  return p;
 }
 
 /// Rotating light beams from the centre — the stadium floodlight look.
