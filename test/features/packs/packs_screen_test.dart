@@ -80,7 +80,7 @@ void main() {
     expect(find.text('Global Pack'), findsOneWidget);
     expect(find.text('ST Pack'), findsOneWidget);
     expect(find.text('LW Pack'), findsOneWidget);
-    expect(find.text('FREE ×3'), findsNWidgets(4));
+    expect(find.text('FREE ×3'), findsNothing);
     // No pool sizes or player strips on the store anymore: the contents
     // list behind VIEW PLAYERS is the one place the pool is shown.
     final offers = await tester.runAsync(() => store.getStoreOffers());
@@ -96,13 +96,19 @@ void main() {
     // No rewarded-ad offer anywhere.
     expect(find.text('Free pack — watch an ad'), findsNothing);
 
-    // Free bronze packs: three of each of the 4 cheapest positions
-    // (RM/GK/RB/CM for the bundled dataset) — FREE ×3 under those bronze
-    // cells — plus one of every other position (FREE ×1).
-    expect(find.text('FREE ×1'), findsNWidgets(8));
+    // Free starter-formation packs (22-pack system): two per 4-3-3 slot,
+    // so the stack badges are ×2 on single-slot positions (GK, LB, RB,
+    // CDM, LW, ST, RW), ×4 on the doubled slots (CB, CM) — nothing at
+    // ×1, nothing at ×3, and the positions the shape doesn't use
+    // (CAM, LM, RM) carry no free stack at all.
+    expect(find.text('FREE ×1'), findsNothing);
+    expect(find.text('FREE ×2'), findsNWidgets(7));
+    expect(find.text('FREE ×4'), findsNWidgets(2));
     final packs = await tester.runAsync(() => store.getAvailablePacks());
-    expect(packs!.length, 20);
+    expect(packs!.length, 22);
     expect(packs.every((p) => p.tier == 'rare'), isTrue);
+    expect(packs.map((p) => p.scopeValue).toSet(),
+        {'GK', 'LB', 'CB', 'RB', 'CDM', 'CM', 'LW', 'ST', 'RW'});
     // No CLAIM/BUY buttons anywhere: tapping the pack itself is the
     // action now — owned cells open straight into the reveal, buyable
     // cells open the purchase dialog.
@@ -127,10 +133,14 @@ void main() {
     final claimedId = claimed.id;
 
     // Tap the claimed pack's own cell — the pack art itself is the
-    // CLAIM button now.
-    await tester.tap(find.byKey(ValueKey(
+    // CLAIM button now. Scroll it into view first: the free stack
+    // layout puts GK near the top but the sectioned store is tall.
+    final claimedCell = find.byKey(ValueKey(
             'store-pack-${claimed.category}-${claimed.scopeValue ?? 'ANY'}-${claimed.tier}'))
-        .first);
+        .first;
+    await tester.ensureVisible(claimedCell);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(claimedCell, warnIfMissed: false);
     // Real drift I/O resolves openPack before the reveal route builds.
     await tester
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
@@ -376,9 +386,12 @@ void main() {
     await bootScreen(tester);
 
     // --- Buy a pack and watch its reveal to the end. ---
-    await tester.tap(find.byKey(ValueKey(
+    final buyCell = find.byKey(ValueKey(
             'store-pack-${PackCategory.global.name}-ANY-${PackTier.rare.name}'))
-        .first);
+        .first;
+    await tester.ensureVisible(buyCell);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(buyCell);
     await tester.pump();
     await tester.tap(find.text('YES'));
     await tester.pump();
@@ -417,9 +430,12 @@ void main() {
     // pack art itself is the CLAIM button now: tap the first owned
     // cell, derived from the inventory.
     final remaining = await tester.runAsync(() => store.getAvailablePacks());
-    await tester.tap(find.byKey(ValueKey(
+    final claimCell = find.byKey(ValueKey(
             'store-pack-${remaining!.first.category}-${remaining.first.scopeValue ?? 'ANY'}-${remaining.first.tier}'))
-        .first);
+        .first;
+    await tester.ensureVisible(claimCell);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(claimCell);
     await tester
         .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump();

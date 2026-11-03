@@ -18,6 +18,7 @@ import '../../core/domain/players.dart';
 import '../ads/ad_engine.dart';
 import '../ads/ad_store.dart';
 import '../economy/economy_engine.dart';
+import '../facilities/facilities.dart';
 import '../match/stamina.dart' show StaminaConfig, PepTalk, recoverStamina, applyPepTalkBonus;
 import '../packs/pack_engine.dart';
 import '../player_database/player_database.dart';
@@ -180,16 +181,21 @@ class CollectionStore {
   /// inactive and the coin paths charge full price.
   final AdStore? adStore;
 
+  /// Facility enum name → instance, for reading FacilityLevels rows.
+  static final Map<String, Facility> _facilityByCode = {
+    for (final f in Facility.values) f.name: f,
+  };
+
   /// Packs draw from the in-memory registry mirrored into SQLite; kept in
   /// sync by [applyDatasetUpdate] and lazily loaded on first use.
   final PlayerDatabase _registry = PlayerDatabase();
   bool _registryLoaded = false;
 
-  static const int startingPacksPerPosition = 3;
+  static const int startingPacksPerPosition = 2;
 
-  /// Positions whose packs are the cheapest in the store — the free
-  /// starting packs come from these, so the gifted inventory is worth the
-  /// least and buying stays meaningful (GDD 5.8).
+  /// Positions whose packs are the cheapest in the store — kept for the
+  /// store's own context; the starting packs now follow the chosen
+  /// formation instead (2 packs per slot position).
   static const int freeStartingPositionCount = 4;
 
   /// The [freeStartingPositionCount] positions with the cheapest store
@@ -223,12 +229,16 @@ class CollectionStore {
   // Club lifecycle
   // ---------------------------------------------------------------------------
 
-  /// Creates the user club (FR-001) with starting coins and the 36 starting
-  /// position packs (GDD 5.8). Returns the club id.
+  /// Creates the user club (FR-001) with starting coins, the chosen
+  /// starter formation and its free packs (GDD 5.8): TWO position packs
+  /// per formation slot — 22 packs for an 11-slot shape, so opening the
+  /// free inventory fields the exact XI the user picked plus a full
+  /// bench's worth of cover. Returns the club id.
   Future<int> createClub({
     required String clubName,
     required String managerName,
     required int crestIndex,
+    String formationCode = '4-3-3',
   }) async {
     if (clubName.trim().isEmpty) {
       throw const CollectionException('Club name is required');
@@ -242,6 +252,7 @@ class CollectionStore {
     if (existing != null) {
       throw const CollectionException('A club already exists on this device');
     }
+    final formation = formationByCode(formationCode);
 
     final now = DateTime.now();
     return db.transaction(() async {
@@ -249,25 +260,24 @@ class CollectionStore {
             name: clubName.trim(),
             managerName: managerName.trim(),
             crestIndex: Value(crestIndex),
+            formationCode: Value(formation.code),
             coins: economy.config.startingCoins,
             createdAt: now,
           ));
       await db.coinLedger(clubId, economy.config.startingCoins,
           reason: 'starting_grant', detail: 'Club creation grant');
-      // Free starting packs (GDD 5.8): three packs of each of the four
-      // CHEAPEST positions — the least valuable packs in the store — so
-      // the gifted inventory never rivals what coins can buy, plus one
-      // pack of every other position: opening the free inventory always
-      // fields a full XI, so a new club is never stuck unable to play.
-      final freePositions = await cheapestPackPositions();
-      for (final position in Position.values) {
-        final freeCount =
-            freePositions.contains(position) ? startingPacksPerPosition : 1;
-        for (var i = 0; i < freeCount; i++) {
+      // Free starting packs (GDD 5.8), the 22-pack system: two packs of
+      // EVERY position the chosen formation asks for — one wave to fill
+      // the XI, one for the bench. Duplicated slot positions (e.g. two
+      // CB slots in a back four) each contribute their two packs, so a
+      // 4-3-3 hands out 4 CB packs while a 3-5-2 hands out 6 CB/CM-heavy
+      // packs: the inventory mirrors the shape the user committed to.
+      for (final slot in formation.slots) {
+        for (var i = 0; i < startingPacksPerPosition; i++) {
           await db.into(db.packs).insert(PacksCompanion.insert(
                 clubId: clubId,
                 category: 'position',
-                scopeValue: Value(position.code),
+                scopeValue: Value(slot.position.code),
                 tier: const Value('rare'),
                 source: const Value('starting'),
                 createdAt: now,
@@ -976,6 +986,76 @@ class CollectionStore {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Campus facilities (GDD 3.5)
+  // ---------------------------------------------------------------------------
+
+  /// Current facility levels of the user's club (missing rows = 0).
+  Future<CampusLevels> getCampus() async {
+    final club = await getClub();
+    if (club == null) return CampusLevels.empty;
+    final rows = await (db.select(db.facilityLevels)
+          ..where((f) => f.clubId.equals(club.id)))
+        .get();
+    return CampusLevels({
+      for (final row in rows)
+        if (_facilityByCode[row.facility] != null)
+          _facilityByCode[row.facility]!: row.level,
+    });
+  }
+
+  /// Builds the next level of [facility]: charges the escalating coin
+  /// price, writes the level row and the ledger entry in one
+  /// transaction. Returns the new level.
+  Future<int> upgradeFacility(
+    Facility facility, {
+    FacilitiesCosts costs = defaultFacilitiesCosts,
+  }) async {
+    final club = await getClub();
+    if (club == null) {
+      throw const CollectionException('No club');
+    }
+    final levels = await getCampus();
+    final level = levels.levelOf(facility);
+    if (level >= costs.maxLevel) {
+      throw CollectionException(
+          '${facility.title} is already at its maximum level');
+    }
+    final price = costs.upgradeCost(level);
+    if (club.coins < price) {
+      throw CollectionException('Not enough coins (need $price)');
+    }
+    final nextLevel = level + 1;
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
+          .write(ClubsCompanion(coins: Value(club.coins - price)));
+      await db.coinLedger(club.id, -price,
+          reason: 'facility_upgrade',
+          detail: '${facility.subtitle} level $nextLevel');
+      final existing = await (db.select(db.facilityLevels)
+            ..where((f) =>
+                f.clubId.equals(club.id) & f.facility.equals(facility.name)))
+          .getSingleOrNull();
+      if (existing == null) {
+        await db.into(db.facilityLevels).insert(FacilityLevelsCompanion.insert(
+              clubId: club.id,
+              facility: facility.name,
+              level: Value(nextLevel),
+              upgradedAt: Value(now),
+            ));
+      } else {
+        await (db.update(db.facilityLevels)
+              ..where((f) => f.id.equals(existing.id)))
+            .write(FacilityLevelsCompanion(
+          level: Value(nextLevel),
+          upgradedAt: Value(now),
+        ));
+      }
+    });
+    return nextLevel;
+  }
+
   /// Applies a finished match (GDD 11 recovery + 17.6 rewards, FR-016):
   /// stamina recovery with the optional pep talk bonus, the reward credit
   /// and its ledger row — all in one transaction. Bench players who did
@@ -992,6 +1072,11 @@ class CollectionStore {
     final timestamp = now ?? DateTime.now();
     final staminaConfig = const StaminaConfig();
     final adEngine = const AdEngine();
+    // Campus recovery centre (GDD 3.5/11.5): its bonus is added to the
+    // natural recovery of every player who featured — one decimal of
+    // design space the manager invests in across seasons.
+    final campus = await getCampus();
+    final campusRecoveryBonus = campus.recoveryBonusPercent;
     // GDD 19.3 'Daily reward multiplier': rewards earned today are boosted
     // while a daily-multiplier ad was watched (no consumption — it lasts
     // the whole day it was granted).
@@ -1019,6 +1104,7 @@ class CollectionStore {
             currentStamina: p.stamina,
             minutesPlayed: p.minutesPlayed,
             restDays: restDays,
+            campusRecoveryBonus: campusRecoveryBonus,
           );
           if (adBoostedRecovery) {
             // Ad-supported boosted recovery (GDD 19.3): +15% natural

@@ -22,6 +22,7 @@ import 'tactics.dart';
 /// controls row), which is vertical budget the commentary feed now owns.
 class MatchHeader extends StatelessWidget {
   const MatchHeader({
+    super.key,
     required this.home,
     required this.away,
     required this.scoreHome,
@@ -745,6 +746,156 @@ Future<MatchPepTalk?> showPepTalkChooser({
       ),
     ),
   );
+}
+
+/// The touchline pep-talk card (GDD 15.2): the half-time talk rendered
+/// as an overlay ON the live match — a manager's note held over the
+/// pitch for the few seconds the decision takes, not a modal sheet
+/// that takes the match away.
+///
+/// The options are compact rows (label + effect summary — GDD 15:
+/// effects must be visible) with a "say nothing" escape. Tapping
+/// anywhere outside dismisses without a talk.
+class TouchlinePepTalkCard extends StatelessWidget {
+  const TouchlinePepTalkCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.talks,
+    required this.onChoose,
+    required this.onSkip,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<MatchPepTalk> talks;
+  final ValueChanged<MatchPepTalk> onChoose;
+  final VoidCallback onSkip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: GestureDetector(
+        // Tap outside the card = skip (no talk).
+        onTap: onSkip,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.55),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: FcmPanel(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            accent: FcmColors.bronze,
+            glow: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.record_voice_over_rounded,
+                        color: FcmColors.gold, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FitText(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: FcmColors.textDim,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                for (final talk in talks)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: _PepTalkOption(
+                      talk: talk,
+                      onTap: () => onChoose(talk),
+                    ),
+                  ),
+                TextButton(
+                  onPressed: onSkip,
+                  child: const Text(
+                    'Say nothing — back to the match',
+                    style:
+                        TextStyle(color: FcmColors.textDim, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One pep-talk row inside the touchline card: the label over the
+/// effect summary, the summary's signed percentages in gold.
+class _PepTalkOption extends StatelessWidget {
+  const _PepTalkOption({required this.talk, required this.onTap});
+
+  final MatchPepTalk talk;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPressable(
+      onTap: onTap,
+      scale: 0.98,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    talk.label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    talk.effectSummary,
+                    style: const TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: FcmColors.textDim, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Option row used by the pep-talk and recovery sheets.

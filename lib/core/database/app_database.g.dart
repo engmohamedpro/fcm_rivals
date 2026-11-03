@@ -2394,7 +2394,7 @@ class $PacksTable extends Packs with TableInfo<$PacksTable, Pack> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('bronze'),
+    defaultValue: const Constant('rare'),
   );
   static const VerificationMeta _priceMeta = const VerificationMeta('price');
   @override
@@ -6328,6 +6328,357 @@ class AdUsagesCompanion extends UpdateCompanion<AdUsage> {
   }
 }
 
+class $FacilityLevelsTable extends FacilityLevels
+    with TableInfo<$FacilityLevelsTable, FacilityLevel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FacilityLevelsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _clubIdMeta = const VerificationMeta('clubId');
+  @override
+  late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
+    'club_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _facilityMeta = const VerificationMeta(
+    'facility',
+  );
+  @override
+  late final GeneratedColumn<String> facility = GeneratedColumn<String>(
+    'facility',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _levelMeta = const VerificationMeta('level');
+  @override
+  late final GeneratedColumn<int> level = GeneratedColumn<int>(
+    'level',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _upgradedAtMeta = const VerificationMeta(
+    'upgradedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> upgradedAt = GeneratedColumn<DateTime>(
+    'upgraded_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    clubId,
+    facility,
+    level,
+    upgradedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'facility_levels';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FacilityLevel> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('club_id')) {
+      context.handle(
+        _clubIdMeta,
+        clubId.isAcceptableOrUnknown(data['club_id']!, _clubIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clubIdMeta);
+    }
+    if (data.containsKey('facility')) {
+      context.handle(
+        _facilityMeta,
+        facility.isAcceptableOrUnknown(data['facility']!, _facilityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_facilityMeta);
+    }
+    if (data.containsKey('level')) {
+      context.handle(
+        _levelMeta,
+        level.isAcceptableOrUnknown(data['level']!, _levelMeta),
+      );
+    }
+    if (data.containsKey('upgraded_at')) {
+      context.handle(
+        _upgradedAtMeta,
+        upgradedAt.isAcceptableOrUnknown(data['upgraded_at']!, _upgradedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FacilityLevel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FacilityLevel(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      clubId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}club_id'],
+      )!,
+      facility: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}facility'],
+      )!,
+      level: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}level'],
+      )!,
+      upgradedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}upgraded_at'],
+      ),
+    );
+  }
+
+  @override
+  $FacilityLevelsTable createAlias(String alias) {
+    return $FacilityLevelsTable(attachedDatabase, alias);
+  }
+}
+
+class FacilityLevel extends DataClass implements Insertable<FacilityLevel> {
+  final int id;
+  final int clubId;
+
+  /// Facility identifier — see [lib/features/facilities/facilities.dart].
+  final String facility;
+  final int level;
+  final DateTime? upgradedAt;
+  const FacilityLevel({
+    required this.id,
+    required this.clubId,
+    required this.facility,
+    required this.level,
+    this.upgradedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['club_id'] = Variable<int>(clubId);
+    map['facility'] = Variable<String>(facility);
+    map['level'] = Variable<int>(level);
+    if (!nullToAbsent || upgradedAt != null) {
+      map['upgraded_at'] = Variable<DateTime>(upgradedAt);
+    }
+    return map;
+  }
+
+  FacilityLevelsCompanion toCompanion(bool nullToAbsent) {
+    return FacilityLevelsCompanion(
+      id: Value(id),
+      clubId: Value(clubId),
+      facility: Value(facility),
+      level: Value(level),
+      upgradedAt: upgradedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(upgradedAt),
+    );
+  }
+
+  factory FacilityLevel.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FacilityLevel(
+      id: serializer.fromJson<int>(json['id']),
+      clubId: serializer.fromJson<int>(json['clubId']),
+      facility: serializer.fromJson<String>(json['facility']),
+      level: serializer.fromJson<int>(json['level']),
+      upgradedAt: serializer.fromJson<DateTime?>(json['upgradedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'clubId': serializer.toJson<int>(clubId),
+      'facility': serializer.toJson<String>(facility),
+      'level': serializer.toJson<int>(level),
+      'upgradedAt': serializer.toJson<DateTime?>(upgradedAt),
+    };
+  }
+
+  FacilityLevel copyWith({
+    int? id,
+    int? clubId,
+    String? facility,
+    int? level,
+    Value<DateTime?> upgradedAt = const Value.absent(),
+  }) => FacilityLevel(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    facility: facility ?? this.facility,
+    level: level ?? this.level,
+    upgradedAt: upgradedAt.present ? upgradedAt.value : this.upgradedAt,
+  );
+  FacilityLevel copyWithCompanion(FacilityLevelsCompanion data) {
+    return FacilityLevel(
+      id: data.id.present ? data.id.value : this.id,
+      clubId: data.clubId.present ? data.clubId.value : this.clubId,
+      facility: data.facility.present ? data.facility.value : this.facility,
+      level: data.level.present ? data.level.value : this.level,
+      upgradedAt: data.upgradedAt.present
+          ? data.upgradedAt.value
+          : this.upgradedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FacilityLevel(')
+          ..write('id: $id, ')
+          ..write('clubId: $clubId, ')
+          ..write('facility: $facility, ')
+          ..write('level: $level, ')
+          ..write('upgradedAt: $upgradedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, clubId, facility, level, upgradedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FacilityLevel &&
+          other.id == this.id &&
+          other.clubId == this.clubId &&
+          other.facility == this.facility &&
+          other.level == this.level &&
+          other.upgradedAt == this.upgradedAt);
+}
+
+class FacilityLevelsCompanion extends UpdateCompanion<FacilityLevel> {
+  final Value<int> id;
+  final Value<int> clubId;
+  final Value<String> facility;
+  final Value<int> level;
+  final Value<DateTime?> upgradedAt;
+  const FacilityLevelsCompanion({
+    this.id = const Value.absent(),
+    this.clubId = const Value.absent(),
+    this.facility = const Value.absent(),
+    this.level = const Value.absent(),
+    this.upgradedAt = const Value.absent(),
+  });
+  FacilityLevelsCompanion.insert({
+    this.id = const Value.absent(),
+    required int clubId,
+    required String facility,
+    this.level = const Value.absent(),
+    this.upgradedAt = const Value.absent(),
+  }) : clubId = Value(clubId),
+       facility = Value(facility);
+  static Insertable<FacilityLevel> custom({
+    Expression<int>? id,
+    Expression<int>? clubId,
+    Expression<String>? facility,
+    Expression<int>? level,
+    Expression<DateTime>? upgradedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (clubId != null) 'club_id': clubId,
+      if (facility != null) 'facility': facility,
+      if (level != null) 'level': level,
+      if (upgradedAt != null) 'upgraded_at': upgradedAt,
+    });
+  }
+
+  FacilityLevelsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? clubId,
+    Value<String>? facility,
+    Value<int>? level,
+    Value<DateTime?>? upgradedAt,
+  }) {
+    return FacilityLevelsCompanion(
+      id: id ?? this.id,
+      clubId: clubId ?? this.clubId,
+      facility: facility ?? this.facility,
+      level: level ?? this.level,
+      upgradedAt: upgradedAt ?? this.upgradedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (clubId.present) {
+      map['club_id'] = Variable<int>(clubId.value);
+    }
+    if (facility.present) {
+      map['facility'] = Variable<String>(facility.value);
+    }
+    if (level.present) {
+      map['level'] = Variable<int>(level.value);
+    }
+    if (upgradedAt.present) {
+      map['upgraded_at'] = Variable<DateTime>(upgradedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FacilityLevelsCompanion(')
+          ..write('id: $id, ')
+          ..write('clubId: $clubId, ')
+          ..write('facility: $facility, ')
+          ..write('level: $level, ')
+          ..write('upgradedAt: $upgradedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6347,6 +6698,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MatchResultsTable matchResults = $MatchResultsTable(this);
   late final $AiPlayersTable aiPlayers = $AiPlayersTable(this);
   late final $AdUsagesTable adUsages = $AdUsagesTable(this);
+  late final $FacilityLevelsTable facilityLevels = $FacilityLevelsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6364,6 +6716,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     matchResults,
     aiPlayers,
     adUsages,
+    facilityLevels,
   ];
 }
 
@@ -9602,6 +9955,213 @@ typedef $$AdUsagesTableProcessedTableManager =
       AdUsage,
       PrefetchHooks Function()
     >;
+typedef $$FacilityLevelsTableCreateCompanionBuilder =
+    FacilityLevelsCompanion Function({
+      Value<int> id,
+      required int clubId,
+      required String facility,
+      Value<int> level,
+      Value<DateTime?> upgradedAt,
+    });
+typedef $$FacilityLevelsTableUpdateCompanionBuilder =
+    FacilityLevelsCompanion Function({
+      Value<int> id,
+      Value<int> clubId,
+      Value<String> facility,
+      Value<int> level,
+      Value<DateTime?> upgradedAt,
+    });
+
+class $$FacilityLevelsTableFilterComposer
+    extends Composer<_$AppDatabase, $FacilityLevelsTable> {
+  $$FacilityLevelsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get facility => $composableBuilder(
+    column: $table.facility,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get upgradedAt => $composableBuilder(
+    column: $table.upgradedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FacilityLevelsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FacilityLevelsTable> {
+  $$FacilityLevelsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get facility => $composableBuilder(
+    column: $table.facility,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get upgradedAt => $composableBuilder(
+    column: $table.upgradedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FacilityLevelsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FacilityLevelsTable> {
+  $$FacilityLevelsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get clubId =>
+      $composableBuilder(column: $table.clubId, builder: (column) => column);
+
+  GeneratedColumn<String> get facility =>
+      $composableBuilder(column: $table.facility, builder: (column) => column);
+
+  GeneratedColumn<int> get level =>
+      $composableBuilder(column: $table.level, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get upgradedAt => $composableBuilder(
+    column: $table.upgradedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$FacilityLevelsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FacilityLevelsTable,
+          FacilityLevel,
+          $$FacilityLevelsTableFilterComposer,
+          $$FacilityLevelsTableOrderingComposer,
+          $$FacilityLevelsTableAnnotationComposer,
+          $$FacilityLevelsTableCreateCompanionBuilder,
+          $$FacilityLevelsTableUpdateCompanionBuilder,
+          (
+            FacilityLevel,
+            BaseReferences<_$AppDatabase, $FacilityLevelsTable, FacilityLevel>,
+          ),
+          FacilityLevel,
+          PrefetchHooks Function()
+        > {
+  $$FacilityLevelsTableTableManager(
+    _$AppDatabase db,
+    $FacilityLevelsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FacilityLevelsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FacilityLevelsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FacilityLevelsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> clubId = const Value.absent(),
+                Value<String> facility = const Value.absent(),
+                Value<int> level = const Value.absent(),
+                Value<DateTime?> upgradedAt = const Value.absent(),
+              }) => FacilityLevelsCompanion(
+                id: id,
+                clubId: clubId,
+                facility: facility,
+                level: level,
+                upgradedAt: upgradedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int clubId,
+                required String facility,
+                Value<int> level = const Value.absent(),
+                Value<DateTime?> upgradedAt = const Value.absent(),
+              }) => FacilityLevelsCompanion.insert(
+                id: id,
+                clubId: clubId,
+                facility: facility,
+                level: level,
+                upgradedAt: upgradedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FacilityLevelsTable, FacilityLevel>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $FacilityLevelsTable,
+                    FacilityLevel
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FacilityLevelsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FacilityLevelsTable,
+      FacilityLevel,
+      $$FacilityLevelsTableFilterComposer,
+      $$FacilityLevelsTableOrderingComposer,
+      $$FacilityLevelsTableAnnotationComposer,
+      $$FacilityLevelsTableCreateCompanionBuilder,
+      $$FacilityLevelsTableUpdateCompanionBuilder,
+      (
+        FacilityLevel,
+        BaseReferences<_$AppDatabase, $FacilityLevelsTable, FacilityLevel>,
+      ),
+      FacilityLevel,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9630,4 +10190,6 @@ class $AppDatabaseManager {
       $$AiPlayersTableTableManager(_db, _db.aiPlayers);
   $$AdUsagesTableTableManager get adUsages =>
       $$AdUsagesTableTableManager(_db, _db.adUsages);
+  $$FacilityLevelsTableTableManager get facilityLevels =>
+      $$FacilityLevelsTableTableManager(_db, _db.facilityLevels);
 }

@@ -73,57 +73,76 @@ void main() {
 
     tearDown(() async => db.close());
 
-    test('creates the club with starting coins and free packs from the '
-        'cheapest positions (GDD 5.8)', () async {
+    test('creates the club with starting coins and the 22 starter-formation '
+        'packs (GDD 5.8)', () async {
       final club = await store.getClub();
       expect(club, isNotNull);
       expect(club!.name, 'FC Rivals');
       expect(club.managerName, 'Mohamed');
       expect(club.coins, const EconomyEngine().config.startingCoins);
+      // The chosen starter formation is the club's initial setup.
+      expect(club.formationCode, '4-3-3');
 
-      // The free packs: three of each of the four cheapest positions —
-      // for this seed pool GK / CB / CM / RW — plus one of every other
-      // position so a full XI is always fieldable: 4×3 + 8×1 = 20 packs,
-      // all bronze.
+      // The free packs: TWO per formation slot of the default 4-3-3 —
+      // 11 slots × 2 = 22 packs, all rare, all unopened.
       final packs = await store.getAvailablePacks();
-      expect(packs.length, 20);
+      expect(packs.length, 22);
       expect(packs.every((p) => p.category == 'position' && !p.opened), isTrue);
       expect(packs.every((p) => p.tier == 'rare'), isTrue);
       final counts = <String, int>{};
       for (final p in packs) {
         counts[p.scopeValue!] = (counts[p.scopeValue!] ?? 0) + 1;
       }
+      // Slot census of the 4-3-3: GK 1, LB 1, CB 2, RB 1, CDM 1, CM 2,
+      // LW 1, ST 1, RW 1 — doubled.
       expect(
           counts,
           equals({
-            for (final code in ['GK', 'CB', 'CM', 'RW']) code: 3,
-            for (final code in [
-              'ST', 'LW', 'CAM', 'LM', 'RM', 'CDM', 'LB', 'RB'
-            ])
-              code: 1,
+            'GK': 2,
+            'LB': 2,
+            'CB': 4,
+            'RB': 2,
+            'CDM': 2,
+            'CM': 4,
+            'LW': 2,
+            'ST': 2,
+            'RW': 2,
           }));
+    });
 
-      // And they really are the cheapest: every other position's bronze
-      // pack costs more than any of the free four.
-      final offers = await store.getStoreOffers();
-      final freePrices = [
-        for (final o in offers)
-          if (o.category == PackCategory.position &&
-              {'GK', 'CB', 'CM', 'RW'}.contains(o.scopeValue) &&
-              o.tier == PackTier.rare)
-            o.price
-      ];
-      expect(freePrices.length, 4);
-      final otherPrices = [
-        for (final o in offers)
-          if (o.category == PackCategory.position &&
-              !{'GK', 'CB', 'CM', 'RW'}.contains(o.scopeValue) &&
-              o.tier == PackTier.rare)
-            o.price
-      ];
-      expect(otherPrices.length, 8);
+    test('a different starter formation reshaapes the 22 packs to its '
+        'slots', () async {
+      final fresh = memoryDb();
+      addTearDown(fresh.close);
+      final freshStore = CollectionStore(db: fresh);
+      await freshStore.applyDatasetUpdate(
+          PlayerDataset.fromJson(datasetJson(seedRows)));
+      await freshStore.createClub(
+          clubName: 'Wing Kings',
+          managerName: 'Sara',
+          crestIndex: 1,
+          formationCode: '3-5-2');
+      final club = await freshStore.getClub();
+      expect(club!.formationCode, '3-5-2');
+      final packs = await freshStore.getAvailablePacks();
+      expect(packs.length, 22);
+      final counts = <String, int>{};
+      for (final p in packs) {
+        counts[p.scopeValue!] = (counts[p.scopeValue!] ?? 0) + 1;
+      }
+      // Slot census of the 3-5-2: GK 1, CB 3, LM 1, CM 2, CDM 1, RM 1,
+      // ST 2 — doubled.
       expect(
-          otherPrices.every((p) => p > freePrices.reduce(math.max)), isTrue);
+          counts,
+          equals({
+            'GK': 2,
+            'CB': 6,
+            'LM': 2,
+            'CM': 4,
+            'CDM': 2,
+            'RM': 2,
+            'ST': 4,
+          }));
     });
 
     test('ledger records the starting grant (FR-016)', () async {
@@ -177,7 +196,7 @@ void main() {
 
       // pack consumed
       final remaining = await store.getAvailablePacks();
-      expect(remaining.length, 19);
+      expect(remaining.length, 21);
       expect(remaining.any((p) => p.id == gkPack.id), isFalse);
 
       // players persisted as owned instances
@@ -192,12 +211,12 @@ void main() {
     test('collection grows across packs and duplicates are separate copies',
         () async {
       final packs = await store.getAvailablePacks();
-      // Open the whole free inventory: 20 packs, one player each.
+      // Open the whole free inventory: 22 packs, one player each.
       for (final pack in packs) {
         await store.openPack(packId: pack.id, random: math.Random(5));
       }
       final collection = await store.getCollection();
-      expect(collection.length, 20); // 20 packs × 1 player
+      expect(collection.length, 22); // 22 packs × 1 player
       // every draw matches its pack's position scope
       for (final pack in packs) {
         expect(
@@ -211,7 +230,7 @@ void main() {
         byPlayer.putIfAbsent(c.base.playerId, () => []).add(c);
       }
       final allOwnedIds = collection.map((c) => c.ownedId).toSet();
-      expect(allOwnedIds.length, 20,
+      expect(allOwnedIds.length, 22,
           reason: 'every drawn card is its own owned instance');
       // when a base player was drawn twice, the copies stay separate
       final dupes =

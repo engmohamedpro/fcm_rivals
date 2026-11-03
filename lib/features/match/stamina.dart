@@ -94,15 +94,19 @@ double staminaDrainForMinute({
 /// Post-match natural recovery (GDD 11.5). Depends on rest interval,
 /// minutes played and current stamina; never resets to 100% in one go
 /// unless the player was already nearly fresh with a long rest.
+/// [campusRecoveryBonus] adds the Recovery Centre's percentage points
+/// (GDD 3.5) on top of the natural amount.
 double recoverStamina({
   required StaminaConfig config,
   required double currentStamina,
   required int minutesPlayed,
   required int restDays,
+  double campusRecoveryBonus = 0,
 }) {
   var recovery = config.baseRecovery +
       restDays * config.recoveryPerRestDay -
-      (minutesPlayed / 90) * config.minutesPlayedPenalty;
+      (minutesPlayed / 90) * config.minutesPlayedPenalty +
+      campusRecoveryBonus;
   if (minutesPlayed > 0 && minutesPlayed < 30) {
     recovery += config.substituteRecoveryBonus;
   }

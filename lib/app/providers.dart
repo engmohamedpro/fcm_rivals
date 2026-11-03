@@ -14,6 +14,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import '../core/database/app_database.dart';
 import '../features/ads/ad_store.dart';
 import '../features/collection/collection_store.dart';
+import '../features/facilities/facilities.dart';
 import '../features/season/season_engine.dart' show StandingEntry;
 import '../features/season/season_store.dart';
 import '../features/squad/formations.dart';
@@ -117,4 +118,10 @@ final standingsProvider = FutureProvider<List<StandingEntry>>((ref) async {
 final nextFixtureProvider = FutureProvider<NextFixture?>((ref) async {
   final store = await ref.watch(seasonStoreProvider.future);
   return store.getNextFixture();
+});
+
+/// Club campus facility levels (GDD 3.5).
+final campusProvider = FutureProvider<CampusLevels>((ref) async {
+  final store = await ref.watch(collectionStoreProvider.future);
+  return store.getCampus();
 });

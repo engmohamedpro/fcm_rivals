@@ -171,6 +171,10 @@ class MatchSession {
   /// style and mentality replace the club's, and a different formation
   /// re-picks the whole squad in memory (same Auto Pick rules as the
   /// Team tab) so the exact shape the user previewed kicks off.
+  ///
+  /// Campus training facilities (GDD 3.5) add their small permanent
+  /// attribute fractions on top of every player's card values here —
+  /// the boost rides the same stamina scaling as the base attributes.
   static Future<(MatchTeamInput, db.Club)> _userTeamInputs(
       CollectionStore store,
       {PreMatchTacticSelection? tactics}) async {
@@ -178,6 +182,8 @@ class MatchSession {
     if (club == null) {
       throw const CollectionException('No club');
     }
+    final campus = await store.getCampus();
+    final fractions = campus.attributeFractions;
     final formationCode =
         tactics?.formationCode ?? club.formationCode;
     final style = tactics?.style ??
@@ -208,13 +214,13 @@ class MatchSession {
     }
     final starters = <MatchPlayer>[
       for (var slot = 0; slot < Formation.startingXiSize; slot++)
-        _toMatchPlayer(assignment[slot]!),
+        _toMatchPlayer(assignment[slot]!, fractions),
     ];
     final bench = <MatchPlayer>[
       for (var slot = Formation.startingXiSize;
           slot < Formation.squadSize && assignment.containsKey(slot);
           slot++)
-        _toMatchPlayer(assignment[slot]!),
+        _toMatchPlayer(assignment[slot]!, fractions),
     ];
     return (
       MatchTeamInput(
@@ -230,14 +236,34 @@ class MatchSession {
     );
   }
 
-  static MatchPlayer _toMatchPlayer(PlayerCard card) => MatchPlayer(
+  /// Card → engine player, with the campus training-facility fractions
+  /// (GDD 3.5) added to each attribute. The boost is small by design —
+  /// it nudges totals, it never replaces squad quality.
+  static MatchPlayer _toMatchPlayer(
+    PlayerCard card,
+    ({
+      double attack,
+      double support,
+      double defence,
+      double goalkeeping,
+    }) fractions,
+  ) =>
+      MatchPlayer(
         playerId: card.ownedId,
         name: card.base.name,
         position: card.position,
-        attack: card.attribute(PlayerAttribute.attack),
-        support: card.attribute(PlayerAttribute.support),
-        defence: card.attribute(PlayerAttribute.defence),
-        goalkeeping: card.attribute(PlayerAttribute.goalkeeping),
+        attack: (card.attribute(PlayerAttribute.attack) *
+                (1 + fractions.attack))
+            .round(),
+        support: (card.attribute(PlayerAttribute.support) *
+                (1 + fractions.support))
+            .round(),
+        defence: (card.attribute(PlayerAttribute.defence) *
+                (1 + fractions.defence))
+            .round(),
+        goalkeeping: (card.attribute(PlayerAttribute.goalkeeping) *
+                (1 + fractions.goalkeeping))
+            .round(),
         stamina: card.staminaPercent.toDouble(),
       );
 

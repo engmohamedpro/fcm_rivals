@@ -9,6 +9,7 @@ import 'core/ui/fcm_logo.dart';
 import 'core/ui/fcm_style.dart';
 import 'core/ui/fcm_widgets.dart';
 import 'features/collection/collection_collection_screen.dart';
+import 'features/facilities/campus_screen.dart';
 import 'features/onboarding/club_creation_screen.dart';
 import 'features/packs/pack_effects.dart' show precachePackLogo;
 import 'features/packs/packs_screen.dart';
@@ -77,9 +78,10 @@ class _EntryGate extends ConsumerWidget {
   }
 }
 
-/// Bottom-navigation shell over season, team, collection and store. League
-/// matches are played live from the Season tab (GDD 13/16); the Team tab
-/// holds the squad, formation and tactical setup.
+/// Bottom-navigation shell over season, team, collection, campus and
+/// store. League matches are played live from the Season tab (GDD
+/// 13/16); the Team tab holds the squad, formation and tactical setup;
+/// the Campus tab is the club's facility upgrade project (GDD 3.5).
 ///
 /// Tabs are built lazily on first visit and then kept alive, so scroll
 /// positions and loaded data survive switching. The Store item carries a
@@ -94,6 +96,7 @@ class GameShell extends ConsumerWidget {
       const FcmNavItem('Season', Icons.emoji_events_rounded),
       const FcmNavItem('Team', Icons.shield_rounded),
       const FcmNavItem('Collection', Icons.collections_bookmark),
+      const FcmNavItem('Campus', Icons.account_balance_rounded),
       FcmNavItem('Store', Icons.storefront_rounded, badge: packs),
     ];
 
@@ -119,6 +122,7 @@ class _GameShellBodyState extends State<_GameShellBody> {
         0 => const SeasonScreen(),
         1 => const SquadScreen(),
         2 => const CollectionScreen(),
+        3 => const CampusScreen(),
         _ => const PacksScreen(),
       };
 

@@ -8,8 +8,8 @@ import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
-import '../squad/formations.dart';
 import 'live_match_views.dart';
+import 'live_tactics_screen.dart';
 import 'match_audio.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
@@ -75,6 +75,13 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   String? _error;
   bool _halfTimeOffered = false;
   bool _finishing = false;
+
+  /// True while the post-match recovery card is up over the full-time
+  /// scoreboard — the match flow is paused on the manager's decision.
+  bool _recoveryPending = false;
+
+  /// The chosen post-match recovery (null until the card is answered).
+  _RecoveryChoice? _postMatchChoice;
 
   /// Live team statistics (GDD 13.2), shown above the commentary feed.
   /// Rebuilt from the minutes played so far — [computeStats] is linear
@@ -244,30 +251,23 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     // Offer once when the clock first reaches/reaches past half time.
     if (state.minute >= 45 && !state.isFinished) {
       _halfTimeOffered = true;
-      _chooseHalfTimeTalk();
+      _showHalfTimeTalk();
     }
   }
 
-  Future<void> _chooseHalfTimeTalk() async {
+  /// Half-time pep talk (GDD 15.2) as a touchline card ON the match —
+  /// not a modal sheet. The auto-play clock is held while the card is
+  /// up, so the match waits for the decision; effects apply from the
+  /// second-half kick-off, ad-free like every pep talk (FR-043).
+  void _showHalfTimeTalk() {
+    setState(() => _sheetOpen = true);
+  }
+
+  void _hideHalfTimeTalk({MatchPepTalk? talk}) {
     final session = widget.session;
-    // Half-time pep talk (GDD 15.2): effects apply to the second half,
-    // ad-free like every pep talk (FR-043). The auto-play clock is held
-    // while the sheet is up, so the match waits for the decision.
-    _sheetOpen = true;
-    try {
-      final talk = await showPepTalkChooser(
-        context: context,
-        title: 'Half-time pep talk',
-        subtitle:
-            'One choice for the second half — applies from kick-off '
-            'of the second half.',
-        talks: halfTimePepTalks,
-      );
-      if (talk != null && mounted && !session.isFinished) {
-        session.queueHalfTimeTalk(talk);
-      }
-    } finally {
-      _sheetOpen = false;
+    setState(() => _sheetOpen = false);
+    if (talk != null && !session.isFinished) {
+      session.queueHalfTimeTalk(talk);
     }
   }
 
@@ -278,16 +278,23 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     try {
       // Post-match pep talk (GDD 15.3/11.6) or the ad-supported boosted
       // recovery (GDD 19.3) — mutually exclusive (GDD 19.4), chosen BEFORE
-      // persistence runs so the choice is real this time.
+      // persistence runs so the choice is real this time. Same touchline
+      // card design as the half-time talk.
+      _postMatchChoice = null;
+      if (mounted) setState(() => _recoveryPending = true);
+      while (_postMatchChoice == null && mounted) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      final choice = _postMatchChoice;
+      if (mounted) setState(() => _recoveryPending = false);
       var usedAdBoost = false;
       PepTalk? talk;
-      final choice = await _choosePostMatchRecovery();
-      if (choice == null) {
-        // nothing chosen: default recovery
-      } else if (choice.boosted) {
-        usedAdBoost = true;
-      } else {
-        talk = choice.pepTalk;
+      if (choice != null) {
+        if (choice.boosted) {
+          usedAdBoost = true;
+        } else {
+          talk = choice.pepTalk;
+        }
       }
 
       final report = await session.finish(
@@ -306,6 +313,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       ref.invalidate(clubProvider);
       ref.invalidate(collectionProvider);
       ref.invalidate(squadProvider);
+      ref.invalidate(campusProvider);
     } catch (e) {
       setState(() => _error = '$e');
     } finally {
@@ -315,8 +323,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
 
   /// Chooses the post-match recovery path: a normal pep talk (free,
   /// FR-043) or the ad-boosted +15% recovery (GDD 19.3) when ads remain.
-  Future<_RecoveryChoice?> _choosePostMatchRecovery() async {
-    final theme = Theme.of(context);
+  /// Rendered as the touchline card over the full-time scoreboard —
+  /// the same design as the half-time talk.
+  Widget _buildPostMatchRecoveryCard() {
     final session = widget.session;
     final userAtHome = session.userSide == MatchSide.home;
     final userGoals = userAtHome
@@ -327,64 +336,100 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         : session.engine.state.scoreHome;
     final won = userGoals > opponentGoals;
 
-    return showModalBottomSheet<_RecoveryChoice>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          children: [
-            Text(
-              'Post-match recovery',
-              style: theme.textTheme.titleLarge?.copyWith(color: Colors.white),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Choose one recovery focus for the squad (bonus to natural '
-              'recovery, GDD 11.6):',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: FcmColors.textDim,
-              ),
-            ),
-            const SizedBox(height: 12),
-            for (final choice in PepTalk.values)
-              SheetOption(
-                title: choice.displayName,
-                subtitle:
-                    '+${(choice.recoveryBonus * 100).round()}% natural recovery',
-                icon: Icons.healing_rounded,
-                onTap: () => Navigator.pop(
-                  sheetContext,
-                  _RecoveryChoice(pepTalk: choice),
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: () => _postMatchChoice = const _RecoveryChoice.none(),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.55),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: FcmPanel(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            accent: FcmColors.bronze,
+            glow: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.healing_rounded,
+                        color: FcmColors.gold, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Post-match recovery',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            if (!won)
-              SheetOption(
-                title: 'Watch ad: boosted recovery',
-                subtitle: '+15% natural recovery for the whole squad (GDD 19.3)',
-                icon: Icons.movie_rounded,
-                accent: FcmColors.gold,
-                onTap: () => Navigator.pop(
-                  sheetContext,
-                  const _RecoveryChoice.boosted(),
+                const SizedBox(height: 4),
+                const Text(
+                  'One focus for the squad on the rest days ahead:',
+                  style: TextStyle(
+                    color: FcmColors.textDim,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
                 ),
-              ),
-            SheetOption(
-              title: 'No pep talk',
-              subtitle: 'Default recovery',
-              icon: Icons.block_rounded,
-              muted: true,
-              onTap: () => Navigator.pop(sheetContext),
+                const SizedBox(height: 10),
+                for (final choice in PepTalk.values)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: _RecoveryOption(
+                      title: choice.displayName,
+                      effect:
+                          '+${(choice.recoveryBonus * 100).round()}% natural '
+                          'recovery',
+                      onTap: () =>
+                          _postMatchChoice = _RecoveryChoice(pepTalk: choice),
+                    ),
+                  ),
+                if (!won)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: _RecoveryOption(
+                      title: 'Watch ad: boosted recovery',
+                      effect:
+                          '+15% natural recovery for the whole squad '
+                          '(GDD 19.3)',
+                      gold: true,
+                      onTap: () => _postMatchChoice =
+                          const _RecoveryChoice.boosted(),
+                    ),
+                  ),
+                TextButton(
+                  onPressed: () =>
+                      _postMatchChoice = const _RecoveryChoice.none(),
+                  child: const Text(
+                    'No pep talk — default recovery',
+                    style:
+                        TextStyle(color: FcmColors.textDim, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _applyPepTalk(PepTalk pepTalk) async {
-    // Informational selection on the report screen; the persistence
-    // already ran with the choice made at full time.
-    setState(() => _pepTalk = pepTalk);
+  /// The half-time touchline card, shown over the frozen match.
+  Widget _buildHalfTimeCard() {
+    return TouchlinePepTalkCard(
+      title: 'Half-time pep talk',
+      subtitle:
+          'One choice for the second half — applies from kick-off of the '
+          'second half. The match waits.',
+      talks: halfTimePepTalks,
+      onChoose: (talk) => _hideHalfTimeTalk(talk: talk),
+      onSkip: _hideHalfTimeTalk,
+    );
   }
 
   @override
@@ -392,392 +437,227 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     final session = widget.session;
     final state = session.engine.state;
 
-    return Scaffold(
-      // The stadium backdrop flows behind the transparent app bar, so
-      // the photo frames the scoreboard instead of a flat bar.
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(title: Text(widget.title ?? 'Live match')),
-      body: FcmMatchBackdrop(
-        // The photo runs edge to edge behind the app bar; the content
-        // column stays below it.
-        child: SafeArea(
-          child: _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: FcmPanel(
-                      accent: FcmColors.danger,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+    return PopScope(
+      // The match plays to its final minute — no backing out of the
+      // live screen; the report's Continue button ends the flow.
+      canPop: _finished,
+      child: Scaffold(
+        // The stadium backdrop flows behind the transparent app bar, so
+        // the photo frames the scoreboard instead of a flat bar.
+        extendBodyBehindAppBar: true,
+        appBar: _finished
+            ? null
+            : AppBar(
+                automaticallyImplyLeading: false,
+                title: Text(widget.title ?? 'Live match')),
+        body: FcmMatchBackdrop(
+          // The photo runs edge to edge behind the app bar; the content
+          // column stays below it.
+          child: SafeArea(
+            child: _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: FcmPanel(
+                        accent: FcmColors.danger,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_error!, textAlign: TextAlign.center),
+                            const SizedBox(height: 14),
+                            FcmButton(
+                              onPressed: _finishMatch,
+                              label: 'Retry',
+                              icon: Icons.refresh_rounded,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : Stack(
+                    children: [
+                      Column(
                         children: [
-                          Text(_error!, textAlign: TextAlign.center),
-                          const SizedBox(height: 14),
-                          FcmButton(
-                            onPressed: _finishMatch,
-                            label: 'Retry',
-                            icon: Icons.refresh_rounded,
+                          if (!_finished) ...[
+                            MatchHeader(
+                              home: session.homeTeamName,
+                              away: session.awayTeamName,
+                              scoreHome: state.scoreHome,
+                              scoreAway: state.scoreAway,
+                              minute: state.minute,
+                              fullTime: _finished || state.isFinished,
+                              userIsHome:
+                                  session.userSide == MatchSide.home,
+                              paused: _paused,
+                              speed: _speed,
+                              onTogglePause: _togglePause,
+                              onSetSpeed: _setSpeed,
+                              onTactics: () => _openLiveTactics(context),
+                            ),
+                            // Live stats strip above the commentary feed
+                            // (GDD 13.2) — every value recomputed each
+                            // minute.
+                            LiveMatchStatsPanel(
+                              stats: _stats,
+                              homeTeamName: session.homeTeamName,
+                              awayTeamName: session.awayTeamName,
+                              collapsed: _statsCollapsed,
+                              onToggle: _toggleStats,
+                            ),
+                          ],
+                          // Commentary feed / report: newest at the
+                          // bottom, the whole history scrolls up above
+                          // it. Plain forward list — rows render in
+                          // place, no entrance animation, stable keys so
+                          // minutes append cheaply.
+                          Expanded(
+                            child: _finished && _report != null
+                                ? MatchReportView(
+                                    report: _report!,
+                                    homeTeamName:
+                                        session.homeTeamName,
+                                    awayTeamName:
+                                        session.awayTeamName,
+                                    pepTalk: _pepTalk,
+                                    adBoostedRecovery: _usedAdBoost,
+                                    userSide: session.userSide,
+                                    onContinue: () =>
+                                        Navigator.of(context).pop(),
+                                  )
+                                : _lines.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      _paused
+                                          ? 'Paused — press play to '
+                                              'continue.'
+                                          : 'Kick-off! The match plays '
+                                              'itself — change speed or '
+                                              'open tactics any time.',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: FcmColors.textDim,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    controller: _feedScroll,
+                                    padding: const EdgeInsets.fromLTRB(
+                                        14, 6, 14, 16),
+                                    itemCount: _lines.length,
+                                    itemBuilder: (context, index) =>
+                                        CommentaryRow(
+                                      key: ValueKey('line-$index'),
+                                      line: _lines[index],
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                )
-              : Column(
-                  children: [
-                    if (!_finished) ...[
-                      MatchHeader(
-                        home: session.homeTeamName,
-                        away: session.awayTeamName,
-                        scoreHome: state.scoreHome,
-                        scoreAway: state.scoreAway,
-                        minute: state.minute,
-                        fullTime: _finished || state.isFinished,
-                        userIsHome: session.userSide == MatchSide.home,
-                        paused: _paused,
-                        speed: _speed,
-                        onTogglePause: _togglePause,
-                        onSetSpeed: _setSpeed,
-                        onTactics: () => _showTacticsSheet(context),
-                      ),
-                      // Live stats strip above the commentary feed
-                      // (GDD 13.2) — every value recomputed each minute.
-                      LiveMatchStatsPanel(
-                        stats: _stats,
-                        homeTeamName: session.homeTeamName,
-                        awayTeamName: session.awayTeamName,
-                        collapsed: _statsCollapsed,
-                        onToggle: _toggleStats,
-                      ),
+                      // Half-time touchline card over the frozen match.
+                      if (!_finished && _sheetOpen && !_recoveryPending)
+                        _buildHalfTimeCard(),
+                      // Post-match recovery card over the full-time
+                      // scoreboard — same touchline design.
+                      if (_recoveryPending) _buildPostMatchRecoveryCard(),
                     ],
-                    // Commentary feed / report: newest at the bottom,
-                    // the whole history scrolls up above it. Plain
-                    // forward list — rows render in place, no entrance
-                    // animation, stable keys so minutes append cheaply.
-                    Expanded(
-                      child: _finished && _report != null
-                          ? MatchReportView(
-                              report: _report!,
-                              homeTeamName: session.homeTeamName,
-                              awayTeamName: session.awayTeamName,
-                              pepTalk: _pepTalk,
-                              adBoostedRecovery: _usedAdBoost,
-                              onPepTalk: _applyPepTalk,
-                              userSide: session.userSide,
-                            )
-                          : _lines.isEmpty
-                          ? Center(
-                              child: Text(
-                                _paused
-                                    ? 'Paused — press play to continue.'
-                                    : 'Kick-off! The match plays itself — '
-                                      'change speed or open tactics any '
-                                      'time.',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: FcmColors.textDim,
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              controller: _feedScroll,
-                              padding:
-                                  const EdgeInsets.fromLTRB(14, 6, 14, 16),
-                              itemCount: _lines.length,
-                              itemBuilder: (context, index) => CommentaryRow(
-                                key: ValueKey('line-$index'),
-                                line: _lines[index],
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
+                  ),
+          ),
         ),
       ),
     );
   }
 
-  /// Live tactical changes (GDD 10.4): formation, style, mentality and
-  /// live actions with their explicit percentage effects (GDD 16), plus
-  /// substitutions (FR-023: five available). The auto-play clock is held
-  /// while the sheet is open, so changes are never made mid-minute.
-  Future<void> _showTacticsSheet(BuildContext context) async {
+  /// Live tactical changes (GDD 10.4/16): the full pitch editor pushed
+  /// over the frozen match — the same formation-pitch surface the user
+  /// knows from the Team tab and the pre-match screen (formation, style,
+  /// mentality with visible effects, live actions, substitutions). The
+  /// auto-play clock is held while the editor is open, so changes are
+  /// never made mid-minute and the user edits exactly like before the
+  /// match. Changes queue for the next minute boundary.
+  Future<void> _openLiveTactics(BuildContext context) async {
     final session = widget.session;
-    final nextMinute = session.engine.state.minute + 1;
     _sheetOpen = true;
     try {
-      await showModalBottomSheet<void>(
-        context: context,
-        builder: (sheetContext) {
-          Widget section(String title, List<Widget> children) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    color: FcmColors.gold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                  ),
-                ),
-              ),
-              ...children,
-            ],
-          );
-          return ListView(
-            children: [
-              section('Formation', [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final f in formations)
-                        FcmOptionChip(
-                          label: f.name,
-                          selected:
-                              f.code ==
-                              session.engine.formationOf(session.userSide),
-                          onTap: () {
-                            session.queueCommand(
-                              ChangeFormationCommand(
-                                atMinute: nextMinute,
-                                side: session.userSide,
-                                formationCode: f.code,
-                              ),
-                            );
-                            Navigator.pop(sheetContext);
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              ]),
-              section('Playing style', [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final s in PlayingStyle.values)
-                        FcmOptionChip(
-                          label: s.displayName,
-                          selected:
-                              s == session.engine.styleOf(session.userSide),
-                          onTap: () {
-                            session.queueCommand(
-                              ChangeStyleCommand(
-                                atMinute: nextMinute,
-                                side: session.userSide,
-                                style: s,
-                              ),
-                            );
-                            Navigator.pop(sheetContext);
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              ]),
-              section('Mentality', [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final m in Mentality.values)
-                      ActionChip(
-                        label: Text(m.displayName),
-                        onPressed: () {
-                          session.queueCommand(
-                            ChangeMentalityCommand(
-                              atMinute: nextMinute,
-                              side: session.userSide,
-                              mentality: m,
-                            ),
-                          );
-                          Navigator.pop(sheetContext);
-                        },
-                      ),
-                  ],
-                ),
-              ]),
-              section('Live action (10 minutes)', [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final a in LiveMatchAction.values)
-                      ActionChip(
-                        label: Text(a.displayName),
-                        onPressed: () {
-                          session.queueCommand(
-                            LiveActionCommand(
-                              atMinute: nextMinute,
-                              side: session.userSide,
-                              action: a,
-                            ),
-                          );
-                          Navigator.pop(sheetContext);
-                        },
-                      ),
-                  ],
-                ),
-              ]),
-              _SubstitutionSection(
-                session: session,
-                side: session.userSide,
-                onSubstitutionQueued: () => Navigator.pop(sheetContext),
-              ),
-              section('Effects', [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Mentality shifts Attack and Defence by up to ±20%. '
-                    'Live actions apply explicit Attack/Defence/Stamina '
-                    'modifiers for 10 minutes and can be replaced any time.',
-                    style: Theme.of(sheetContext).textTheme.bodySmall,
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ]),
-            ],
-          );
-        },
-      );
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => LiveTacticsScreen(
+          session: session,
+          minuteQueuedFrom: session.engine.state.minute + 1,
+        ),
+      ));
     } finally {
-      _sheetOpen = false;
+      if (mounted) setState(() => _sheetOpen = false);
     }
   }
 }
 
-/// Substitution picker (FR-023: five subs, engine-enforced): tap the
-/// player coming off, then the substitute coming on. Commands take
-/// effect at the next minute boundary like every live change.
-class _SubstitutionSection extends StatefulWidget {
-  const _SubstitutionSection({
-    required this.session,
-    required this.side,
-    required this.onSubstitutionQueued,
+/// One post-match recovery option row (touchline card style).
+class _RecoveryOption extends StatelessWidget {
+  const _RecoveryOption({
+    required this.title,
+    required this.effect,
+    required this.onTap,
+    this.gold = false,
   });
 
-  final MatchSession session;
-  final MatchSide side;
-  final VoidCallback onSubstitutionQueued;
-
-  @override
-  State<_SubstitutionSection> createState() => _SubstitutionSectionState();
-}
-
-class _SubstitutionSectionState extends State<_SubstitutionSection> {
-  MatchPlayer? _selectedOut;
+  final String title;
+  final String effect;
+  final VoidCallback onTap;
+  final bool gold;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final session = widget.session;
-    final used = session.engine.substitutionsUsedOf(widget.side);
-    final max = session.engine.config.maxSubstitutions;
-    final onPitch = session.engine.onPitchOf(widget.side);
-    final bench = session.engine.benchOf(widget.side);
-    final remaining = max - used;
-
-    if (remaining <= 0 || bench.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        child: Text(
-          'Substitutions ($used/$max used — none remaining)',
-          style: theme.textTheme.titleSmall,
+    return FcmPressable(
+      onTap: onTap,
+      scale: 0.98,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Text(
-            'Substitutions ($used/$max used)',
-            style: theme.textTheme.titleSmall,
-          ),
-        ),
-        if (_selectedOut != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Coming off: ${_selectedOut!.name} — pick the substitute:',
-              style: theme.textTheme.bodySmall,
-            ),
-          ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (_selectedOut == null)
-                for (final p in onPitch)
-                  ActionChip(
-                    avatar: CircleAvatar(
-                      backgroundColor:
-                          theme.colorScheme.surfaceContainerHighest,
-                      child: Text(
-                        '${p.stamina.round()}%',
-                        style: theme.textTheme.labelSmall,
-                      ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: gold ? FcmColors.gold : Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
                     ),
-                    label: Text('${p.name} (${p.position.code})'),
-                    onPressed: () => setState(() => _selectedOut = p),
-                  )
-              else
-                for (final p in bench)
-                  ActionChip(
-                    avatar: CircleAvatar(
-                      backgroundColor: theme.colorScheme.secondaryContainer,
-                      child: Text(
-                        '${p.stamina.round()}%',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ),
-                    label: Text('${p.name} (${p.position.code})'),
-                    onPressed: () => _queueSubstitution(p),
                   ),
-            ],
-          ),
-        ),
-        if (_selectedOut != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextButton(
-              onPressed: () => setState(() => _selectedOut = null),
-              child: const Text('Cancel selection'),
+                  const SizedBox(height: 2),
+                  Text(
+                    effect,
+                    style: const TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-      ],
-    );
-  }
-
-  void _queueSubstitution(MatchPlayer inPlayer) {
-    final out = _selectedOut;
-    if (out == null) return;
-    widget.session.queueCommand(
-      SubstitutionCommand(
-        atMinute: widget.session.engine.state.minute + 1,
-        side: widget.side,
-        outPlayerId: out.playerId,
-        inPlayerId: inPlayer.playerId,
+            const Icon(Icons.chevron_right_rounded,
+                color: FcmColors.textDim, size: 20),
+          ],
+        ),
       ),
     );
-    widget.onSubstitutionQueued();
   }
 }
 
-/// Post-match report (GDD 14 post-match screen): result, scorers, ratings,
-/// Man of the Match, team statistics and the pep talk choice.
+/// Post-match report (GDD 14 post-match screen): result, reward, Man
+/// of the Match, team statistics and BOTH squads' player ratings — the
+/// user's XI and the opponent's listed separately. The pep-talk choice
+/// is gone from here (it happens on the full-time touchline card);
+/// the screen ends with a CONTINUE button that closes the match flow.
 class MatchReportView extends StatelessWidget {
   const MatchReportView({
     super.key,
@@ -785,16 +665,18 @@ class MatchReportView extends StatelessWidget {
     required this.homeTeamName,
     required this.awayTeamName,
     required this.pepTalk,
-    required this.onPepTalk,
     this.adBoostedRecovery = false,
     this.userSide,
+    required this.onContinue,
   });
 
   final MatchReportResult report;
   final String homeTeamName;
   final String awayTeamName;
+
+  /// The post-match pep talk applied at full time (shown as a status
+  /// line — the choice itself was made on the touchline card).
   final PepTalk? pepTalk;
-  final ValueChanged<PepTalk> onPepTalk;
 
   /// Whether the ad-supported boosted recovery was applied (GDD 19.3).
   final bool adBoostedRecovery;
@@ -802,12 +684,8 @@ class MatchReportView extends StatelessWidget {
   /// Which side the player managed; drives the VICTORY / DEFEAT banner.
   final MatchSide? userSide;
 
-  static Color _ratingColor(double r) {
-    if (r >= 7.5) return FcmColors.success;
-    if (r >= 6.5) return FcmColors.gold;
-    if (r >= 5.5) return const Color(0xFFC89A5B);
-    return FcmColors.danger;
-  }
+  /// Ends the match flow — the ONLY exit (no back button above).
+  final VoidCallback onContinue;
 
   @override
   Widget build(BuildContext context) {
@@ -829,216 +707,269 @@ class MatchReportView extends StatelessWidget {
         verdict = 'DRAW';
       }
     }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 28),
+    return Column(
       children: [
-        FcmEntrance(
-          child: FcmPanel(
-            accent: verdictColor,
-            glow: true,
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-            child: Column(
-              children: [
-                if (verdict != null) ...[
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.6, end: 1),
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.elasticOut,
-                    builder: (context, v, child) =>
-                        Transform.scale(scale: v, child: child),
-                    child: FitText(
-                      verdict,
-                      align: Alignment.center,
-                      style: TextStyle(
-                        color: verdictColor,
-                        fontSize: 36,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 5,
-                        shadows: [
-                          Shadow(
-                            color: verdictColor.withValues(alpha: 0.6),
-                            blurRadius: 22,
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 18),
+            children: [
+              FcmEntrance(
+                child: FcmPanel(
+                  accent: verdictColor,
+                  glow: true,
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                  child: Column(
+                    children: [
+                      if (verdict != null) ...[
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.6, end: 1),
+                          duration: const Duration(milliseconds: 700),
+                          curve: Curves.elasticOut,
+                          builder: (context, v, child) =>
+                              Transform.scale(scale: v, child: child),
+                          child: FitText(
+                            verdict,
+                            align: Alignment.center,
+                            style: TextStyle(
+                              color: verdictColor,
+                              fontSize: 36,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 5,
+                              shadows: [
+                                Shadow(
+                                  color: verdictColor.withValues(alpha: 0.6),
+                                  blurRadius: 22,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      Text(
+                        'Full time: $homeTeamName $home - $away $awayTeamName',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.monetization_on_rounded,
+                            color: FcmColors.gold,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Reward: ${report.rewardCoins} coins',
+                            style: const TextStyle(
+                              color: FcmColors.gold,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                Text(
-                  'Full time: $homeTeamName $home - $away $awayTeamName',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
+                      const SizedBox(height: 8),
+                      // The recovery decision made on the full-time
+                      // touchline card, restated as a status line.
+                      if (adBoostedRecovery)
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.movie, size: 14, color: FcmColors.gold),
+                            SizedBox(width: 5),
+                            Text(
+                              'Ad-boosted recovery applied (+15% natural '
+                              'recovery)',
+                              style: TextStyle(
+                                  color: FcmColors.gold, fontSize: 11),
+                            ),
+                          ],
+                        )
+                      else if (pepTalk != null)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.healing_rounded,
+                                size: 14, color: FcmColors.success),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                '${pepTalk!.displayName} '
+                                '(+${(pepTalk!.recoveryBonus * 100).round()}% '
+                                'recovery)',
+                                style: const TextStyle(
+                                    color: FcmColors.success, fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.monetization_on_rounded,
-                      color: FcmColors.gold,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Reward: ${report.rewardCoins} coins',
-                      style: const TextStyle(
-                        color: FcmColors.gold,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (report.manOfTheMatch != null) ...[
-          const SizedBox(height: 12),
-          FcmEntrance(
-            index: 1,
-            child: FcmPanel(
-              accent: FcmColors.gold,
-              child: Row(
-                children: [
-                  const FcmIconBadge(
-                    icon: Icons.emoji_events_rounded,
-                    size: 50,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FitText(
-                          report.manOfTheMatch!.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Text(
-                          'Man of the Match · rating ${report.manOfTheMatch!.rating.toStringAsFixed(1)}',
-                          style: const TextStyle(
-                            color: FcmColors.textDim,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ),
-            ),
-          ),
-        ],
-        const FcmSectionTitle('Team statistics'),
-        FcmEntrance(index: 2, child: _StatsTable(stats: stats)),
-        const FcmSectionTitle('Player ratings'),
-        FcmEntrance(
-          index: 3,
-          child: FcmPanel(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Column(
-              children: [
-                for (final r
-                    in report.homeRatings.where((r) => r.played).take(11))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
+              if (report.manOfTheMatch != null) ...[
+                const SizedBox(height: 12),
+                FcmEntrance(
+                  index: 1,
+                  child: FcmPanel(
+                    accent: FcmColors.gold,
                     child: Row(
                       children: [
-                        SizedBox(
-                          width: 42,
-                          child: FitText(
-                            r.position.code,
-                            style: const TextStyle(
-                              color: FcmColors.textDim,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                        const FcmIconBadge(
+                          icon: Icons.emoji_events_rounded,
+                          size: 50,
                         ),
+                        const SizedBox(width: 14),
                         Expanded(
-                          child: FitText(
-                            r.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FitText(
+                                report.manOfTheMatch!.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              Text(
+                                'Man of the Match · rating '
+                                '${report.manOfTheMatch!.rating.toStringAsFixed(1)}',
+                                style: const TextStyle(
+                                  color: FcmColors.textDim,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        if (r.goals > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: Text(
-                              '⚽ ×${r.goals}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        if (r.assists > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: Text(
-                              '🅰 ×${r.assists}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        const SizedBox(width: 10),
-                        FcmPill(
-                          r.rating.toStringAsFixed(1),
-                          color: _ratingColor(r.rating),
                         ),
                       ],
                     ),
                   ),
-              ],
-            ),
-          ),
-        ),
-        const FcmSectionTitle('Pep talk'),
-        if (adBoostedRecovery)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              children: [
-                const Icon(Icons.movie, size: 18, color: FcmColors.gold),
-                const SizedBox(width: 6),
-                const Expanded(
-                  child: Text(
-                    'Ad-boosted recovery applied: +15% natural recovery '
-                    '(GDD 19.3)',
-                    style: TextStyle(color: FcmColors.gold, fontSize: 12),
-                  ),
                 ),
               ],
-            ),
-          )
-        else
-          const Text(
-            'Choose one recovery focus for the squad (bonus to natural recovery, GDD 11.6):',
-            style: TextStyle(color: FcmColors.textDim, fontSize: 12),
-          ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final choice in PepTalk.values)
-              ChoiceChip(
-                label: Text(choice.displayName),
-                selected: pepTalk == choice,
-                showCheckmark: false,
-                onSelected: (_) => onPepTalk(choice),
+              const FcmSectionTitle('Team statistics'),
+              FcmEntrance(index: 2, child: _StatsTable(stats: stats)),
+              // BOTH squads' ratings, separately: the user's club first,
+              // the opponent below — same row layout, colour-coded pills.
+              FcmSectionTitle('$homeTeamName ratings'),
+              FcmEntrance(
+                index: 3,
+                child: _RatingsPanel(ratings: report.homeRatings),
               ),
-          ],
+              const SizedBox(height: 12),
+              FcmSectionTitle('$awayTeamName ratings'),
+              FcmEntrance(
+                index: 4,
+                child: _RatingsPanel(ratings: report.awayRatings),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+        // CONTINUE — the only way out of the finished match: a full-width
+        // bar pinned to the bottom of the screen.
+        SafeArea(
+          minimum: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+          child: FcmButton(
+            label: 'Continue',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: onContinue,
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// One squad's player ratings: position, name, goal/assist tallies and
+/// the colour-coded rating pill. Players who feature only.
+class _RatingsPanel extends StatelessWidget {
+  const _RatingsPanel({required this.ratings});
+
+  final List<PlayerMatchRating> ratings;
+
+  static Color _ratingColor(double r) {
+    if (r >= 7.5) return FcmColors.success;
+    if (r >= 6.5) return FcmColors.gold;
+    if (r >= 5.5) return const Color(0xFFC89A5B);
+    return FcmColors.danger;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final played = ratings.where((r) => r.played).toList();
+    if (played.isEmpty) {
+      return const FcmPanel(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Text(
+          'No players featured.',
+          style: TextStyle(color: FcmColors.textDim, fontSize: 12),
+        ),
+      );
+    }
+    return FcmPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        children: [
+          for (final r in played)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 42,
+                    child: FitText(
+                      r.position.code,
+                      style: const TextStyle(
+                        color: FcmColors.textDim,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: FitText(
+                      r.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (r.goals > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Text(
+                        '⚽ ×${r.goals}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  if (r.assists > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Text(
+                        '🅰 ×${r.assists}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  const SizedBox(width: 10),
+                  FcmPill(
+                    r.rating.toStringAsFixed(1),
+                    color: _ratingColor(r.rating),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -1200,6 +1131,7 @@ class _StatsTable extends StatelessWidget {
 class _RecoveryChoice {
   const _RecoveryChoice({this.pepTalk}) : boosted = false;
   const _RecoveryChoice.boosted() : pepTalk = null, boosted = true;
+  const _RecoveryChoice.none() : pepTalk = null, boosted = false;
 
   final PepTalk? pepTalk;
   final bool boosted;

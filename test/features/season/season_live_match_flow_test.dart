@@ -79,10 +79,10 @@ Future<void> _flush(
 Future<void> _playToFullTime(WidgetTester tester) async {
   for (var i = 0; i < 220; i++) {
     await tester.pump(const Duration(milliseconds: 200));
-    // The half-time sheet holds the clock — dismiss via the barrier
-    // (same as the 'no talk' choice below the fold).
+    // The half-time touchline card holds the clock — 'say nothing'
+    // skips the talk and resumes play.
     if (find.text('Half-time pep talk').evaluate().isNotEmpty) {
-      await tester.tapAt(const Offset(400, 20));
+      await tester.tap(find.text('Say nothing — back to the match'));
       await tester.pump(const Duration(milliseconds: 400));
     }
     if (find.text('Post-match recovery').evaluate().isNotEmpty) return;
@@ -261,11 +261,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       await _playToFullTime(tester);
 
-      // Post-match recovery sheet (GDD 15.3/19.3) — dismiss for the default
-      // recovery (same as the 'No pep talk' tile below the fold).
+      // Post-match recovery touchline card (GDD 15.3/19.3) over the
+      // full-time scoreboard — take the 'rest everyone' focus.
+      await _flush(tester);
       await _flush(tester);
       expect(find.text('Post-match recovery'), findsOneWidget);
-      await tester.tapAt(const Offset(400, 20));
+      await tester.tap(find.text('Rest, everyone deserves it!'));
       await _flush(tester);
 
       // The report screen shows the result and reward, named for the real
@@ -274,8 +275,10 @@ void main() {
       expect(find.textContaining('Reward:'), findsOneWidget);
       expect(find.text('Team statistics'), findsOneWidget);
 
-      // Back to the Season tab; providers refresh after the route pops.
-      await tester.pageBack();
+      // The report ends with CONTINUE — the only exit (no back button
+      // above); the route pops and the Season tab providers refresh.
+      expect(find.text('Continue'), findsOneWidget);
+      await tester.tap(find.text('Continue'));
       await _flush(tester);
 
       // The fixture committed (FR-038): exactly one result row for the

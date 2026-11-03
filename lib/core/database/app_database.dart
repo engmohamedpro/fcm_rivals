@@ -217,6 +217,19 @@ class AdUsages extends Table {
   DateTimeColumn get completedAt => dateTime()();
 }
 
+/// Club campus facilities (GDD 3.5): one row per built facility of the
+/// user's club. The level drives the facility's team-wide effect and the
+/// escalating coin cost of the next upgrade. AI clubs own no facilities.
+class FacilityLevels extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get clubId => integer()();
+
+  /// Facility identifier — see [lib/features/facilities/facilities.dart].
+  TextColumn get facility => text()();
+  IntColumn get level => integer().withDefault(const Constant(0))();
+  DateTimeColumn get upgradedAt => dateTime().nullable()();
+}
+
 @DriftDatabase(tables: [
   Players,
   DatasetVersions,
@@ -230,12 +243,13 @@ class AdUsages extends Table {
   MatchResults,
   AiPlayers,
   AdUsages,
+  FacilityLevels,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -280,6 +294,10 @@ class AppDatabase extends _$AppDatabase {
                 goalkeeping: Value(stats.goalkeeping),
               ));
             }
+          }
+          if (from < 7) {
+            // Club campus facilities (GDD 3.5): the upgrade tab's state.
+            await m.createTable(facilityLevels);
           }
         },
       );

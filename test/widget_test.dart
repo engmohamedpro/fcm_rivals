@@ -26,7 +26,7 @@ Future<void> _settle(WidgetTester tester) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('club creation leads to the game shell with tiered packs and 12 free starting packs',
+  testWidgets('club creation leads to the game shell with the 22 starter-formation packs',
       (WidgetTester tester) async {
     // Phone-like portrait surface (800x1200 logical): the default 800x600
     // test surface leaves only ~466px of list viewport after the AppBar and
@@ -62,6 +62,8 @@ void main() {
     await tester.enterText(
         find.byType(TextFormField).at(0), 'Pyramid United');
     await tester.enterText(find.byType(TextFormField).at(1), 'Mohamed');
+    await tester.ensureVisible(find.text('Start managing'));
+    await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.text('Start managing'));
     await tester.pump();
 
@@ -97,20 +99,23 @@ void main() {
     expect(find.text('RARE'), findsNWidgets(13));
     expect(find.text('EPIC'), findsNWidgets(13));
     expect(find.text('LEGENDARY'), findsNWidgets(13));
-    expect(find.text('FREE ×3'), findsNWidgets(4));
-    expect(find.text('FREE ×1'), findsNWidgets(8));
+    // The 22-pack starter system: two per 4-3-3 slot — ×2 badges on
+    // the single-slot positions, ×4 on the doubled CB/CM cells.
+    expect(find.text('FREE ×2'), findsNWidgets(7));
+    expect(find.text('FREE ×4'), findsNWidgets(2));
     // No CLAIM/BUY buttons: the pack art itself is the action now —
     // owned cells open straight into the reveal, buyable cells open
     // the purchase dialog.
     expect(find.text('CLAIM'), findsNothing);
     expect(find.text('BUY'), findsNothing);
 
-    // store-level check: the 20 free packs (4 cheapest positions × 3 plus
-    // one per other position, all rare) exist and remain unopened
+    // store-level check: the 22 free starter-formation packs (two per
+    // 4-3-3 slot, all rare) exist and remain unopened.
     final packs = await store.getAvailablePacks();
-    expect(packs.length, 20);
+    expect(packs.length, 22);
     expect(packs.every((p) => p.tier == 'rare'), isTrue);
-    expect(packs.map((p) => p.scopeValue).toSet().length, 12);
+    expect(packs.map((p) => p.scopeValue).toSet(),
+        {'GK', 'LB', 'CB', 'RB', 'CDM', 'CM', 'LW', 'ST', 'RW'});
     await db.close();
   });
 }
