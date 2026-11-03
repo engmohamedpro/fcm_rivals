@@ -138,15 +138,18 @@ class AdEngine {
   }) {
     if (won) {
       return const AdValidation(
-          allowed: false, reason: 'No replay after a win');
+        allowed: false,
+        reason: 'No replay after a win',
+      );
     }
-    if (now.difference(fullTimeAt).inMinutes <
-        0) {
+    if (now.difference(fullTimeAt).inMinutes < 0) {
       return const AdValidation(allowed: false, reason: 'Match not finished');
     }
     if (now.difference(fullTimeAt).inHours > config.matchReplayWindowHours) {
       return const AdValidation(
-          allowed: false, reason: 'Replay window has closed');
+        allowed: false,
+        reason: 'Replay window has closed',
+      );
     }
     return const AdValidation(allowed: true);
   }
@@ -161,25 +164,30 @@ class AdEngine {
     required bool playbackCompleted,
   }) {
     if (!playbackCompleted) {
-      return const AdValidation(
-          allowed: false, reason: 'Ad did not complete');
+      return const AdValidation(allowed: false, reason: 'Ad did not complete');
     }
-    if (usageToday.any((u) =>
-        u.rewardKey == ad.rewardKey &&
-        u.rewardKind == ad.kind.name)) {
+    if (usageToday.any(
+      (u) => u.rewardKey == ad.rewardKey && u.rewardKind == ad.kind.name,
+    )) {
       return const AdValidation(
-          allowed: false, reason: 'Reward already granted');
+        allowed: false,
+        reason: 'Reward already granted',
+      );
     }
-    final sameKind =
-        usageToday.where((u) => u.rewardKind == ad.kind.name).length;
+    final sameKind = usageToday
+        .where((u) => u.rewardKind == ad.kind.name)
+        .length;
     if (sameKind >= config.dailyLimitPerKind) {
       return AdValidation(
-          allowed: false,
-          reason: 'Daily limit reached for ${ad.kind.displayName}');
+        allowed: false,
+        reason: 'Daily limit reached for ${ad.kind.displayName}',
+      );
     }
     if (usageToday.length >= config.dailyTotalLimit) {
       return const AdValidation(
-          allowed: false, reason: 'Daily ad limit reached');
+        allowed: false,
+        reason: 'Daily ad limit reached',
+      );
     }
     return AdValidation(
       allowed: true,
@@ -206,7 +214,8 @@ class AdEngine {
   }) {
     if (naturalRecovery <= 0) return staminaAfterNaturalRecovery;
     final boosted =
-        staminaAfterNaturalRecovery + naturalRecovery * config.boostedRecoveryBonus;
+        staminaAfterNaturalRecovery +
+        naturalRecovery * config.boostedRecoveryBonus;
     return boosted.round().clamp(0, config.boostedRecoveryCap).toDouble();
   }
 
@@ -216,7 +225,8 @@ class AdEngine {
   /// discount applies per purchase — the store consumes the boost when
   /// it is used.
   int discountedUpgradeCost(int fullCost) {
-    final discounted = (fullCost * (1 - config.upgradeDiscountFraction)).round();
+    final discounted = (fullCost * (1 - config.upgradeDiscountFraction))
+        .round();
     if (fullCost <= 50) return fullCost;
     return discounted.clamp(50, fullCost);
   }

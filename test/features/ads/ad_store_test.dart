@@ -16,17 +16,26 @@ import 'package:fcm_rivals/features/season/season_store.dart';
 AppDatabase memoryDb() => AppDatabase(NativeDatabase.memory());
 
 String datasetJson(List<List<dynamic>> rows, {int version = 1}) => json.encode({
-      'format': 'fcm-rivals-players',
-      'version': version,
-      'asOf': '2026-11-01',
-      'digest': 'test',
-      'players': rows,
-    });
+  'format': 'fcm-rivals-players',
+  'version': version,
+  'asOf': '2026-11-01',
+  'digest': 'test',
+  'players': rows,
+});
 
 const List<List<String>> _seedPositions = [
-  ['GK', 'Keeper'], ['CB', 'Back'], ['CM', 'Midfield'], ['RW', 'Wing'],
-  ['ST', 'Striker'], ['CDM', 'Anchor'], ['LW', 'Winger'], ['CAM', 'Playmaker'],
-  ['LB', 'Leftback'], ['RB', 'Rightback'], ['LM', 'Leftmid'], ['RM', 'Rightmid'],
+  ['GK', 'Keeper'],
+  ['CB', 'Back'],
+  ['CM', 'Midfield'],
+  ['RW', 'Wing'],
+  ['ST', 'Striker'],
+  ['CDM', 'Anchor'],
+  ['LW', 'Winger'],
+  ['CAM', 'Playmaker'],
+  ['LB', 'Leftback'],
+  ['RB', 'Rightback'],
+  ['LM', 'Leftmid'],
+  ['RM', 'Rightmid'],
 ];
 
 final List<List<dynamic>> seedRows = [
@@ -53,9 +62,13 @@ void main() {
       db = memoryDb();
       collection = CollectionStore(db: db);
       await collection.applyDatasetUpdate(
-          PlayerDataset.fromJson(datasetJson(seedRows)));
+        PlayerDataset.fromJson(datasetJson(seedRows)),
+      );
       await collection.createClub(
-          clubName: 'FC Rivals', managerName: 'Mohamed', crestIndex: 0);
+        clubName: 'FC Rivals',
+        managerName: 'Mohamed',
+        crestIndex: 0,
+      );
       for (final pack in await collection.getAvailablePacks()) {
         await collection.openPack(packId: pack.id, random: math.Random(17));
       }
@@ -82,25 +95,27 @@ void main() {
 
       // Duplicate callback rejected (FR-042).
       expect(
-          () => store.completeAd(
-                kind: AdRewardKind.boostedRecovery,
-                rewardKey: 'match:1',
-                playbackCompleted: true,
-                clubId: clubId,
-              ),
-          throwsA(isA<AdException>()));
+        () => store.completeAd(
+          kind: AdRewardKind.boostedRecovery,
+          rewardKey: 'match:1',
+          playbackCompleted: true,
+          clubId: clubId,
+        ),
+        throwsA(isA<AdException>()),
+      );
     });
 
     test('an uncompleted ad grants nothing (FR-041)', () async {
       final clubId = (await collection.getClub())!.id;
       expect(
-          () => store.completeAd(
-                kind: AdRewardKind.boostedRecovery,
-                rewardKey: 'match:2',
-                playbackCompleted: false,
-                clubId: clubId,
-              ),
-          throwsA(isA<AdException>()));
+        () => store.completeAd(
+          kind: AdRewardKind.boostedRecovery,
+          rewardKey: 'match:2',
+          playbackCompleted: false,
+          clubId: clubId,
+        ),
+        throwsA(isA<AdException>()),
+      );
       expect(await db.select(db.adUsages).get(), isEmpty);
     });
 
@@ -122,14 +137,15 @@ void main() {
       }
       // Third one today: rejected.
       expect(
-          () => limited.completeAd(
-                kind: AdRewardKind.boostedRecovery,
-                rewardKey: 'match:2',
-                playbackCompleted: true,
-                clubId: clubId,
-                now: day,
-              ),
-          throwsA(isA<AdException>()));
+        () => limited.completeAd(
+          kind: AdRewardKind.boostedRecovery,
+          rewardKey: 'match:2',
+          playbackCompleted: true,
+          clubId: clubId,
+          now: day,
+        ),
+        throwsA(isA<AdException>()),
+      );
       // Next day: allowed again (fresh daily window).
       await limited.completeAd(
         kind: AdRewardKind.boostedRecovery,
@@ -142,22 +158,25 @@ void main() {
       // Remaining counter reflects today only (queried via the same
       // limited engine so the kind limit matches).
       expect(
-          await limited.boostedRecoveryRemaining(clubId,
-              now: DateTime(2026, 11, 2, 10)),
-          engine.config.dailyLimitPerKind - 1);
+        await limited.boostedRecoveryRemaining(
+          clubId,
+          now: DateTime(2026, 11, 2, 10),
+        ),
+        engine.config.dailyLimitPerKind - 1,
+      );
     });
 
     test('boosted recovery persists higher stamina than default', () async {
       final clubId = (await collection.getClub())!.id;
       final squad = await collection.getSquad();
-      final starters = [
-        for (var slot = 0; slot < 11; slot++) squad[slot]!,
-      ];
+      final starters = [for (var slot = 0; slot < 11; slot++) squad[slot]!];
 
       // Simulate a drained match state: report every starter at low
       // stamina with full minutes, then compare recovery paths.
-      Future<double> averageStamina(
-          {PepTalk? pepTalk, bool adBoosted = false}) async {
+      Future<double> averageStamina({
+        PepTalk? pepTalk,
+        bool adBoosted = false,
+      }) async {
         // Reset stamina to the same drained baseline each run.
         for (final card in starters) {
           await (db.update(db.ownedPlayers)
@@ -206,10 +225,13 @@ void main() {
       // Whatever the result, the offer logic must agree with the stored
       // outcome and reject after the window.
       final offered = await store.replayOfferedFor(
-          fixtureId: next.fixtureId, userClubId: clubId, now: now);
-      final result = await (db.select(db.matchResults)
-            ..where((r) => r.fixtureId.equals(next.fixtureId)))
-          .getSingle();
+        fixtureId: next.fixtureId,
+        userClubId: clubId,
+        now: now,
+      );
+      final result = await (db.select(
+        db.matchResults,
+      )..where((r) => r.fixtureId.equals(next.fixtureId))).getSingle();
       final userHome = result.homeClubId == clubId;
       final userGoals = userHome ? result.homeGoals : result.awayGoals;
       final opponentGoals = userHome ? result.awayGoals : result.homeGoals;
@@ -221,49 +243,54 @@ void main() {
 
       // Far future: never offered.
       expect(
-          await store.replayOfferedFor(
-              fixtureId: next.fixtureId,
-              userClubId: clubId,
-              now: now.add(const Duration(days: 3))),
-          isFalse);
+        await store.replayOfferedFor(
+          fixtureId: next.fixtureId,
+          userClubId: clubId,
+          now: now.add(const Duration(days: 3)),
+        ),
+        isFalse,
+      );
     });
 
-    test('rewindFixtureForReplay removes the result and refunds the reward',
-        () async {
-      final clubId = (await collection.getClub())!.id;
-      final seasonStore = SeasonStore(db: db, random: math.Random(4));
-      await seasonStore.startSeason(division: 1);
-      final next = (await seasonStore.getNextFixture())!;
-      final session = await seasonStore.startNextFixture(collection);
-      session.simulateToEnd();
-      final report = await session.finish();
-      await seasonStore.commitFixtureResult(session, next);
+    test(
+      'rewindFixtureForReplay removes the result and refunds the reward',
+      () async {
+        final clubId = (await collection.getClub())!.id;
+        final seasonStore = SeasonStore(db: db, random: math.Random(4));
+        await seasonStore.startSeason(division: 1);
+        final next = (await seasonStore.getNextFixture())!;
+        final session = await seasonStore.startNextFixture(collection);
+        session.simulateToEnd();
+        final report = await session.finish();
+        await seasonStore.commitFixtureResult(session, next);
 
-      final coinsBefore = (await collection.getClub())!.coins;
-      expect(report.rewardCoins, greaterThan(0));
+        final coinsBefore = (await collection.getClub())!.coins;
+        expect(report.rewardCoins, greaterThan(0));
 
-      await seasonStore.rewindFixtureForReplay(
-        fixtureId: next.fixtureId,
-        rewardCoinsToRefund: report.rewardCoins,
-        userClubId: clubId,
-      );
+        await seasonStore.rewindFixtureForReplay(
+          fixtureId: next.fixtureId,
+          rewardCoinsToRefund: report.rewardCoins,
+          userClubId: clubId,
+        );
 
-      // Result row gone → fixture is playable again.
-      final remaining = await (db.select(db.matchResults)
-            ..where((r) => r.fixtureId.equals(next.fixtureId)))
-          .get();
-      expect(remaining, isEmpty);
-      final nextAgain = await seasonStore.getNextFixture();
-      expect(nextAgain!.fixtureId, next.fixtureId);
+        // Result row gone → fixture is playable again.
+        final remaining = await (db.select(
+          db.matchResults,
+        )..where((r) => r.fixtureId.equals(next.fixtureId))).get();
+        expect(remaining, isEmpty);
+        final nextAgain = await seasonStore.getNextFixture();
+        expect(nextAgain!.fixtureId, next.fixtureId);
 
-      // Coins refunded with a ledger row (no duplicate match rewards).
-      final coinsAfter = (await collection.getClub())!.coins;
-      expect(coinsAfter, coinsBefore - report.rewardCoins);
-      final refund = await (db.select(db.coinTransactions)
-            ..where((t) => t.reason.equals('match_replay_refund')))
-          .get();
-      expect(refund, hasLength(1));
-      expect(refund.first.amount, -report.rewardCoins);
-    }, timeout: const Timeout(Duration(minutes: 2)));
+        // Coins refunded with a ledger row (no duplicate match rewards).
+        final coinsAfter = (await collection.getClub())!.coins;
+        expect(coinsAfter, coinsBefore - report.rewardCoins);
+        final refund = await (db.select(
+          db.coinTransactions,
+        )..where((t) => t.reason.equals('match_replay_refund'))).get();
+        expect(refund, hasLength(1));
+        expect(refund.first.amount, -report.rewardCoins);
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
   });
 }

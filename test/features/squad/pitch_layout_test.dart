@@ -36,8 +36,7 @@ void main() {
       expect(shape('5-4-1'), [1, 5, 4, 1]);
     });
 
-    test('every slot is in exactly one line and lines read left to right',
-        () {
+    test('every slot is in exactly one line and lines read left to right', () {
       for (final f in formations) {
         final rows = pitchRows(f);
         final all = [for (final r in rows) ...r]..sort();
@@ -45,8 +44,11 @@ void main() {
         expect(rows.first, [0], reason: '${f.code}: the keeper stands alone');
         for (final row in rows) {
           for (var j = 1; j < row.length; j++) {
-            expect(f.slots[row[j]].x, greaterThanOrEqualTo(f.slots[row[j - 1]].x),
-                reason: '${f.code}: line ordered by x');
+            expect(
+              f.slots[row[j]].x,
+              greaterThanOrEqualTo(f.slots[row[j - 1]].x),
+              reason: '${f.code}: line ordered by x',
+            );
           }
         }
       }
@@ -56,7 +58,8 @@ void main() {
   for (final f in formations) {
     for (final width in _widths) {
       for (final extras in [false, true]) {
-        final label = '${f.code} on ${width.toInt()}px '
+        final label =
+            '${f.code} on ${width.toInt()}px '
             '${extras ? '(stats + stamina)' : '(plain cards)'}';
         test('$label: no overlap, inside the pitch, roles in place', () {
           final height = width / 0.66;
@@ -75,23 +78,34 @@ void main() {
             final b = boxes[i];
             expect(b.left, greaterThanOrEqualTo(0), reason: '$label slot $i');
             expect(b.top, greaterThanOrEqualTo(0), reason: '$label slot $i');
-            expect(b.right, lessThanOrEqualTo(width + 0.01),
-                reason: '$label slot $i');
-            expect(b.bottom, lessThanOrEqualTo(height + 0.01),
-                reason: '$label slot $i');
+            expect(
+              b.right,
+              lessThanOrEqualTo(width + 0.01),
+              reason: '$label slot $i',
+            );
+            expect(
+              b.bottom,
+              lessThanOrEqualTo(height + 0.01),
+              reason: '$label slot $i',
+            );
           }
 
           // No two footprints touch: separated by real air on one axis.
           for (var i = 0; i < boxes.length; i++) {
             for (var j = i + 1; j < boxes.length; j++) {
               final a = boxes[i], b = boxes[j];
-              final gapX = a.left < b.left ? b.left - a.right : a.left - b.right;
+              final gapX = a.left < b.left
+                  ? b.left - a.right
+                  : a.left - b.right;
               final gapY = a.top < b.top ? b.top - a.bottom : a.top - b.bottom;
-              expect(gapX >= kPitchGapH - 0.01 || gapY >= kPitchGapV - 0.01,
-                  isTrue,
-                  reason: '$label: slots $i and $j collide '
-                      '(gapX ${gapX.toStringAsFixed(1)}, '
-                      'gapY ${gapY.toStringAsFixed(1)})');
+              expect(
+                gapX >= kPitchGapH - 0.01 || gapY >= kPitchGapV - 0.01,
+                isTrue,
+                reason:
+                    '$label: slots $i and $j collide '
+                    '(gapX ${gapX.toStringAsFixed(1)}, '
+                    'gapY ${gapY.toStringAsFixed(1)})',
+              );
             }
           }
 
@@ -101,14 +115,20 @@ void main() {
           double rowTop(List<int> r) =>
               r.map((i) => boxes[i].top).reduce((a, b) => a + b) / r.length;
           for (var k = 1; k < rows.length; k++) {
-            expect(rowTop(rows[k]), lessThan(rowTop(rows[k - 1])),
-                reason: '$label: line $k sits above line ${k - 1}');
+            expect(
+              rowTop(rows[k]),
+              lessThan(rowTop(rows[k - 1])),
+              reason: '$label: line $k sits above line ${k - 1}',
+            );
           }
           // Inside a line: left-to-right as in the formation.
           for (final row in rows) {
             for (var j = 1; j < row.length; j++) {
-              expect(boxes[row[j]].left, greaterThan(boxes[row[j - 1]].left),
-                  reason: '$label: line keeps its left-to-right order');
+              expect(
+                boxes[row[j]].left,
+                greaterThan(boxes[row[j - 1]].left),
+                reason: '$label: line keeps its left-to-right order',
+              );
             }
           }
           // Full-width roles: the left back is left of the right back,
@@ -117,8 +137,11 @@ void main() {
             for (var j = 0; j < f.slots.length; j++) {
               if (f.slots[i].x + 25 < f.slots[j].x &&
                   (f.slots[i].y - f.slots[j].y).abs() < 12) {
-                expect(boxes[i].left, lessThan(boxes[j].left),
-                    reason: '$label: slot $i is wider-left than slot $j');
+                expect(
+                  boxes[i].left,
+                  lessThan(boxes[j].left),
+                  reason: '$label: slot $i is wider-left than slot $j',
+                );
               }
             }
           }
@@ -129,19 +152,28 @@ void main() {
     test('${f.code}: cards are big, never above the bench size', () {
       for (final width in _widths) {
         final plain = computePitchLayout(
-            formation: f, width: width, height: width / 0.66);
+          formation: f,
+          width: width,
+          height: width / 0.66,
+        );
         expect(plain.cardWidth, lessThanOrEqualTo(kPitchCardMaxWidth));
         expect(plain.cardWidth, greaterThanOrEqualTo(kPitchCardMinWidth));
         // The old layout topped out at 38–48px on a 362px pitch: the new
         // one is clearly bigger on every phone.
         if (width >= 362) {
-          expect(plain.cardWidth, greaterThanOrEqualTo(50),
-              reason: '${f.code} on $width');
+          expect(
+            plain.cardWidth,
+            greaterThanOrEqualTo(50),
+            reason: '${f.code} on $width',
+          );
         }
         // A big tablet pitch always gets the maximum card.
         if (width >= 600) {
-          expect(plain.cardWidth, kPitchCardMaxWidth,
-              reason: '${f.code} on $width');
+          expect(
+            plain.cardWidth,
+            kPitchCardMaxWidth,
+            reason: '${f.code} on $width',
+          );
         }
       }
     });
@@ -152,46 +184,60 @@ void main() {
       var last = 0.0;
       for (final width in _widths) {
         final w = computePitchLayout(
-                formation: f, width: width, height: width / 0.66)
-            .cardWidth;
+          formation: f,
+          width: width,
+          height: width / 0.66,
+        ).cardWidth;
         expect(w, greaterThanOrEqualTo(last), reason: f.code);
         last = w;
       }
     }
   });
 
-  test('cards carrying stats and stamina are never bigger than plain ones',
-      () {
+  test('cards carrying stats and stamina are never bigger than plain ones', () {
     for (final f in formations) {
       for (final width in _widths) {
         final h = width / 0.66;
-        final plain =
-            computePitchLayout(formation: f, width: width, height: h);
+        final plain = computePitchLayout(formation: f, width: width, height: h);
         final full = computePitchLayout(
-            formation: f,
-            width: width,
-            height: h,
-            showStats: true,
-            showStamina: true);
-        expect(full.cardWidth, lessThanOrEqualTo(plain.cardWidth),
-            reason: '${f.code} on $width');
+          formation: f,
+          width: width,
+          height: h,
+          showStats: true,
+          showStamina: true,
+        );
+        expect(
+          full.cardWidth,
+          lessThanOrEqualTo(plain.cardWidth),
+          reason: '${f.code} on $width',
+        );
       }
     }
   });
 
   test('footprint height grows with the card and with the extra rows', () {
     expect(pitchFootprintHeight(60), greaterThan(pitchFootprintHeight(40)));
-    expect(pitchFootprintHeight(50, showStats: true),
-        greaterThan(pitchFootprintHeight(50)));
-    expect(pitchFootprintHeight(50, showStats: true, showStamina: true),
-        greaterThan(pitchFootprintHeight(50, showStats: true)));
+    expect(
+      pitchFootprintHeight(50, showStats: true),
+      greaterThan(pitchFootprintHeight(50)),
+    );
+    expect(
+      pitchFootprintHeight(50, showStats: true, showStamina: true),
+      greaterThan(pitchFootprintHeight(50, showStats: true)),
+    );
   });
 
   test('the layout is deterministic', () {
     final a = computePitchLayout(
-        formation: formationByCode('4-2-3-1'), width: 362, height: 548);
+      formation: formationByCode('4-2-3-1'),
+      width: 362,
+      height: 548,
+    );
     final b = computePitchLayout(
-        formation: formationByCode('4-2-3-1'), width: 362, height: 548);
+      formation: formationByCode('4-2-3-1'),
+      width: 362,
+      height: 548,
+    );
     expect(a.cardWidth, b.cardWidth);
     for (var i = 0; i < 11; i++) {
       expect(a.boxes[i].left, b.boxes[i].left);
@@ -223,7 +269,8 @@ void main() {
               expect(
                 (edgeLeft - edgeRight).abs(),
                 lessThan(1.0),
-                reason: '${f.code} on ${width}px: the line from '
+                reason:
+                    '${f.code} on ${width}px: the line from '
                     '${first.left.toStringAsFixed(1)} to '
                     '${last.right.toStringAsFixed(1)} is off-centre by '
                     '${(edgeLeft - edgeRight).abs().toStringAsFixed(1)}px',
@@ -243,18 +290,23 @@ void main() {
 
     test('a CDM stands clearly deeper than a CM, in every shape', () {
       for (final f in formations) {
-        final cdm = f.slots
-            .indexWhere((s) => s.position.code == 'CDM');
+        final cdm = f.slots.indexWhere((s) => s.position.code == 'CDM');
         if (cdm < 0) continue;
         for (final width in [362.0, 900.0]) {
           final layout = computePitchLayout(
-              formation: f, width: width, height: width / 0.66);
+            formation: f,
+            width: width,
+            height: width / 0.66,
+          );
           for (var i = 0; i < f.slots.length; i++) {
             if (f.slots[i].position.code != 'CM') continue;
-            expect(cardMidY(layout, cdm),
-                greaterThan(cardMidY(layout, i) + 4),
-                reason: '${f.code} on ${width}px: the CDM must read '
-                    'deeper than the CM beside him');
+            expect(
+              cardMidY(layout, cdm),
+              greaterThan(cardMidY(layout, i) + 4),
+              reason:
+                  '${f.code} on ${width}px: the CDM must read '
+                  'deeper than the CM beside him',
+            );
           }
         }
       }
@@ -266,12 +318,19 @@ void main() {
         if (cam < 0) continue;
         for (final width in [362.0, 900.0]) {
           final layout = computePitchLayout(
-              formation: f, width: width, height: width / 0.66);
+            formation: f,
+            width: width,
+            height: width / 0.66,
+          );
           for (var i = 0; i < f.slots.length; i++) {
             if (f.slots[i].position.code != 'CM') continue;
-            expect(cardMidY(layout, cam), lessThan(cardMidY(layout, i) - 4),
-                reason: '${f.code} on ${width}px: the CAM must read '
-                    'higher than the CM behind him');
+            expect(
+              cardMidY(layout, cam),
+              lessThan(cardMidY(layout, i) - 4),
+              reason:
+                  '${f.code} on ${width}px: the CAM must read '
+                  'higher than the CM behind him',
+            );
           }
         }
       }
@@ -281,21 +340,37 @@ void main() {
       // A back four's LB/RB (and a back five's WBs) must read AHEAD of
       // the CB line — "a bit forward", never in line with it.
       for (final f in formations) {
-        final fbCodes = ['4-4-2', '4-3-3', '4-2-3-1', '4-1-4-1', '4-5-1',
-            '4-4-1-1', '4-2-2-2', '4-1-2-1-2', '4-3-2-1'];
+        final fbCodes = [
+          '4-4-2',
+          '4-3-3',
+          '4-2-3-1',
+          '4-1-4-1',
+          '4-5-1',
+          '4-4-1-1',
+          '4-2-2-2',
+          '4-1-2-1-2',
+          '4-3-2-1',
+        ];
         if (!fbCodes.contains(f.code)) continue;
         for (final width in [362.0, 900.0]) {
           final layout = computePitchLayout(
-              formation: f, width: width, height: width / 0.66);
+            formation: f,
+            width: width,
+            height: width / 0.66,
+          );
           double top(int i) => layout.boxes[i].top;
           for (var i = 0; i < f.slots.length; i++) {
             final code = f.slots[i].position.code;
             if (code != 'LB' && code != 'RB') continue;
             for (var j = 0; j < f.slots.length; j++) {
               if (f.slots[j].position.code != 'CB') continue;
-              expect(top(i) + 6, lessThan(top(j)),
-                  reason: '${f.code} on ${width}px: the $code must read '
-                      'ahead of the CB line');
+              expect(
+                top(i) + 6,
+                lessThan(top(j)),
+                reason:
+                    '${f.code} on ${width}px: the $code must read '
+                    'ahead of the CB line',
+              );
             }
           }
         }
@@ -307,16 +382,23 @@ void main() {
         final f = formationByCode(code);
         for (final width in [362.0, 900.0]) {
           final layout = computePitchLayout(
-              formation: f, width: width, height: width / 0.66);
+            formation: f,
+            width: width,
+            height: width / 0.66,
+          );
           double top(int i) => layout.boxes[i].top;
           for (var i = 0; i < f.slots.length; i++) {
             final p = f.slots[i].position.code;
             if (p != 'LB' && p != 'RB') continue;
             for (var j = 0; j < f.slots.length; j++) {
               if (f.slots[j].position.code != 'CB') continue;
-              expect(top(i) + 6, lessThan(top(j)),
-                  reason: '$code on ${width}px: the $p must read ahead '
-                      'of the CB line');
+              expect(
+                top(i) + 6,
+                lessThan(top(j)),
+                reason:
+                    '$code on ${width}px: the $p must read ahead '
+                    'of the CB line',
+              );
             }
           }
         }
@@ -327,9 +409,20 @@ void main() {
   group('the catalogue', () {
     test('has the classic set', () {
       const expected = [
-        '4-3-3', '4-4-2', '4-2-3-1', '4-1-4-1', '4-5-1', '4-4-1-1',
-        '4-2-2-2', '4-1-2-1-2', '4-3-2-1', '3-5-2', '3-4-3', '3-4-1-2',
-        '5-3-2', '5-4-1',
+        '4-3-3',
+        '4-4-2',
+        '4-2-3-1',
+        '4-1-4-1',
+        '4-5-1',
+        '4-4-1-1',
+        '4-2-2-2',
+        '4-1-2-1-2',
+        '4-3-2-1',
+        '3-5-2',
+        '3-4-3',
+        '3-4-1-2',
+        '5-3-2',
+        '5-4-1',
       ];
       expect(formations.map((f) => f.code), expected);
     });
@@ -341,8 +434,11 @@ void main() {
         // (allowing the same slot when x == 50).
         final xs = [for (final s in f.slots) s.x]..sort();
         for (final x in xs) {
-          expect(xs.contains(100 - x), isTrue,
-              reason: '${f.code}: x $x has no mirror at ${100 - x}');
+          expect(
+            xs.contains(100 - x),
+            isTrue,
+            reason: '${f.code}: x $x has no mirror at ${100 - x}',
+          );
         }
       }
     });

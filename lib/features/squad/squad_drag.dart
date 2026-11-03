@@ -25,8 +25,7 @@ class SquadSwapping {
 
   /// Null when dropping [dragged] on [target] is allowed, otherwise the
   /// reason it is not (drives the green / red hover feedback).
-  final String? Function(PlayerCard dragged, SquadDropTarget target)
-      rejection;
+  final String? Function(PlayerCard dragged, SquadDropTarget target) rejection;
 
   /// Performs the drop (validates again, persists, explains refusals).
   final void Function(PlayerCard dragged, SquadDropTarget target) onSwap;
@@ -67,11 +66,7 @@ class SquadDragScope extends InheritedWidget {
 /// top or bottom edge — the pitch is taller than the screen, so dragging
 /// a bench player onto the pitch needs the page to move under the finger.
 class SquadDragHost extends StatefulWidget {
-  const SquadDragHost({
-    super.key,
-    required this.swapping,
-    required this.child,
-  });
+  const SquadDragHost({super.key, required this.swapping, required this.child});
 
   final SquadSwapping swapping;
   final Widget child;
@@ -97,8 +92,10 @@ class _SquadDragHostState extends State<SquadDragHost> {
 
   void _update(Offset globalPosition) {
     _pointer = globalPosition;
-    _scrollTimer ??=
-        Timer.periodic(const Duration(milliseconds: 16), (_) => _scrollTick());
+    _scrollTimer ??= Timer.periodic(
+      const Duration(milliseconds: 16),
+      (_) => _scrollTick(),
+    );
   }
 
   void _end() {

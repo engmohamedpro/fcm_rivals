@@ -26,12 +26,12 @@ class PlayerDatasetRow {
   });
 
   factory PlayerDatasetRow.fromList(List<dynamic> row) => PlayerDatasetRow(
-        playerId: row[0] as int,
-        name: row[1] as String,
-        position: Position.fromCode(row[2] as String),
-        nationality: row[3] as String,
-        marketValueEur: row[4] as int,
-      );
+    playerId: row[0] as int,
+    name: row[1] as String,
+    position: Position.fromCode(row[2] as String),
+    nationality: row[3] as String,
+    marketValueEur: row[4] as int,
+  );
 
   final int playerId;
   final String name;
@@ -180,8 +180,11 @@ class PlayerDatabase {
       // player his own stat shape while regeneration stays stable across
       // dataset updates (GDD 4.6 — same value + position rebuilds the
       // same stats).
-      final stats = generator.generate(row.position, row.marketValueEur,
-          seed: row.playerId);
+      final stats = generator.generate(
+        row.position,
+        row.marketValueEur,
+        seed: row.playerId,
+      );
       if (existing == null) {
         final player = _toPlayer(row, stats);
         _players[row.playerId] = player;
@@ -191,7 +194,7 @@ class PlayerDatabase {
 
       final statsChanged =
           existing.marketValueEur != row.marketValueEur ||
-              existing.position != row.position;
+          existing.position != row.position;
       if (statsChanged) {
         final player = _toPlayer(row, stats);
         _players[row.playerId] = player;
@@ -231,15 +234,14 @@ class PlayerDatabase {
       importDataset(PlayerDataset.fromJson(jsonText));
 
   bool _mutableFactsChanged(BasePlayer existing, PlayerDatasetRow row) =>
-      existing.name != row.name ||
-      existing.nationality != row.nationality;
+      existing.name != row.name || existing.nationality != row.nationality;
 
   BasePlayer _toPlayer(PlayerDatasetRow row, BaseStats stats) => BasePlayer(
-        playerId: row.playerId,
-        name: row.name,
-        position: row.position,
-        nationality: row.nationality,
-        marketValueEur: row.marketValueEur,
-        baseStats: stats,
-      );
+    playerId: row.playerId,
+    name: row.name,
+    position: row.position,
+    nationality: row.nationality,
+    marketValueEur: row.marketValueEur,
+    baseStats: stats,
+  );
 }

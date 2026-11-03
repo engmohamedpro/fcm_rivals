@@ -19,7 +19,8 @@ import '../ads/ad_engine.dart';
 import '../ads/ad_store.dart';
 import '../economy/economy_engine.dart';
 import '../facilities/facilities.dart';
-import '../match/stamina.dart' show StaminaConfig, PepTalk, recoverStamina, applyPepTalkBonus;
+import '../match/stamina.dart'
+    show StaminaConfig, PepTalk, recoverStamina, applyPepTalkBonus;
 import '../packs/pack_engine.dart';
 import '../player_database/player_database.dart';
 import '../squad/formations.dart';
@@ -132,8 +133,7 @@ class DatasetUpdateReport {
   final ImportResult importResult;
   final List<RemovalCompensation> compensations;
 
-  int get totalCompensation =>
-      compensations.fold(0, (a, c) => a + c.coins);
+  int get totalCompensation => compensations.fold(0, (a, c) => a + c.coins);
 }
 
 /// Result of buying one upgrade level with coins (GDD 8.4).
@@ -206,23 +206,29 @@ class CollectionStore {
     final registry = await _ensureRegistry();
     final pool = registry.all.toList(growable: false);
     final engine = PackEngine(random: math.Random(0), economy: economy);
-    final priced = [
-      for (final position in Position.values)
-        (
-          position: position,
-          price: engine.packPriceFor(
-              PackScope(category: PackCategory.position, position: position, tier: PackTier.rare),
-              pool),
-          poolSize:
-              pool.where((p) => p.position == position).length,
-        ),
-    ]..sort((a, b) {
-        final byPrice = a.price.compareTo(b.price);
-        if (byPrice != 0) return byPrice;
-        return a.poolSize.compareTo(b.poolSize);
-      });
+    final priced =
+        [
+          for (final position in Position.values)
+            (
+              position: position,
+              price: engine.packPriceFor(
+                PackScope(
+                  category: PackCategory.position,
+                  position: position,
+                  tier: PackTier.rare,
+                ),
+                pool,
+              ),
+              poolSize: pool.where((p) => p.position == position).length,
+            ),
+        ]..sort((a, b) {
+          final byPrice = a.price.compareTo(b.price);
+          if (byPrice != 0) return byPrice;
+          return a.poolSize.compareTo(b.poolSize);
+        });
     return [
-      for (final entry in priced.take(freeStartingPositionCount)) entry.position
+      for (final entry in priced.take(freeStartingPositionCount))
+        entry.position,
     ];
   }
 
@@ -247,9 +253,9 @@ class CollectionStore {
     if (managerName.trim().isEmpty) {
       throw const CollectionException('Manager name is required');
     }
-    final existing = await (db.select(db.clubs)
-          ..where((c) => c.isUser.equals(true)))
-        .getSingleOrNull();
+    final existing = await (db.select(
+      db.clubs,
+    )..where((c) => c.isUser.equals(true))).getSingleOrNull();
     if (existing != null) {
       throw const CollectionException('A club already exists on this device');
     }
@@ -257,16 +263,24 @@ class CollectionStore {
 
     final now = DateTime.now();
     return db.transaction(() async {
-      final clubId = await db.into(db.clubs).insert(ClubsCompanion.insert(
-            name: clubName.trim(),
-            managerName: managerName.trim(),
-            crestIndex: Value(crestIndex),
-            formationCode: Value(formation.code),
-            coins: economy.config.startingCoins,
-            createdAt: now,
-          ));
-      await db.coinLedger(clubId, economy.config.startingCoins,
-          reason: 'starting_grant', detail: 'Club creation grant');
+      final clubId = await db
+          .into(db.clubs)
+          .insert(
+            ClubsCompanion.insert(
+              name: clubName.trim(),
+              managerName: managerName.trim(),
+              crestIndex: Value(crestIndex),
+              formationCode: Value(formation.code),
+              coins: economy.config.startingCoins,
+              createdAt: now,
+            ),
+          );
+      await db.coinLedger(
+        clubId,
+        economy.config.startingCoins,
+        reason: 'starting_grant',
+        detail: 'Club creation grant',
+      );
       // Free starting packs (GDD 5.8), the 22-pack system: two packs of
       // EVERY position the chosen formation asks for — one wave to fill
       // the XI, one for the bench. Duplicated slot positions (e.g. two
@@ -275,14 +289,18 @@ class CollectionStore {
       // packs: the inventory mirrors the shape the user committed to.
       for (final slot in formation.slots) {
         for (var i = 0; i < startingPacksPerPosition; i++) {
-          await db.into(db.packs).insert(PacksCompanion.insert(
-                clubId: clubId,
-                category: 'position',
-                scopeValue: Value(slot.position.code),
-                tier: const Value('rare'),
-                source: const Value('starting'),
-                createdAt: now,
-              ));
+          await db
+              .into(db.packs)
+              .insert(
+                PacksCompanion.insert(
+                  clubId: clubId,
+                  category: 'position',
+                  scopeValue: Value(slot.position.code),
+                  tier: const Value('rare'),
+                  source: const Value('starting'),
+                  createdAt: now,
+                ),
+              );
         }
       }
       return clubId;
@@ -292,9 +310,9 @@ class CollectionStore {
   /// The user club, or null before onboarding completes. Uses
   /// getSingleOrNull — watchSingle would throw on the empty table on a
   /// fresh install, crashing club creation.
-  Future<Club?> getClub() => (db.select(db.clubs)
-        ..where((c) => c.isUser.equals(true)))
-      .getSingleOrNull();
+  Future<Club?> getClub() => (db.select(
+    db.clubs,
+  )..where((c) => c.isUser.equals(true))).getSingleOrNull();
 
   /// TEMPORARY DEV HELPER — remove together with the app-bar "+"
   /// button (main.dart) once testing is done. Credits the user club
@@ -306,10 +324,15 @@ class CollectionStore {
       throw const CollectionException('No club yet — cannot grant coins');
     }
     await db.transaction(() async {
-      await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
-          .write(ClubsCompanion(coins: Value(club.coins + amount)));
-      await db.coinLedger(club.id, amount,
-          reason: 'test_grant', detail: 'Dev test grant from app-bar + button');
+      await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+        ClubsCompanion(coins: Value(club.coins + amount)),
+      );
+      await db.coinLedger(
+        club.id,
+        amount,
+        reason: 'test_grant',
+        detail: 'Dev test grant from app-bar + button',
+      );
     });
   }
 
@@ -324,8 +347,8 @@ class CollectionStore {
     final rows = await db.select(db.players).get();
     if (rows.isNotEmpty) {
       final dataset = PlayerDataset(
-        version: (await db.select(db.datasetVersions).getSingleOrNull())
-                ?.version ??
+        version:
+            (await db.select(db.datasetVersions).getSingleOrNull())?.version ??
             0,
         asOf: '',
         rows: [
@@ -349,8 +372,7 @@ class CollectionStore {
   /// primes the in-memory registry. Called at app start.
   Future<void> importBundledDataset(String jsonText) async {
     final dataset = PlayerDataset.fromJson(jsonText);
-    final current =
-        await db.select(db.datasetVersions).getSingleOrNull();
+    final current = await db.select(db.datasetVersions).getSingleOrNull();
     if (current != null && current.version >= dataset.version) return;
     await applyDatasetUpdate(dataset);
   }
@@ -362,9 +384,9 @@ class CollectionStore {
     await _ensureRegistry();
     final importResult = _registry.importDataset(dataset);
 
-    final club = await (db.select(db.clubs)
-          ..where((c) => c.isUser.equals(true)))
-        .getSingleOrNull();
+    final club = await (db.select(
+      db.clubs,
+    )..where((c) => c.isUser.equals(true))).getSingleOrNull();
     final compensations = <RemovalCompensation>[];
 
     await db.transaction(() async {
@@ -374,7 +396,9 @@ class CollectionStore {
         ...importResult.updated,
         ...importResult.regenerated,
       ]) {
-        await db.into(db.players).insertOnConflictUpdate(
+        await db
+            .into(db.players)
+            .insertOnConflictUpdate(
               PlayersCompanion.insert(
                 playerId: Value(player.playerId),
                 name: player.name,
@@ -394,39 +418,47 @@ class CollectionStore {
       // (GDD 4.8) — inside the same transaction as the data update.
       if (club != null) {
         for (final removed in importResult.removed) {
-          final owned = await (db.select(db.ownedPlayers)
-                ..where((o) =>
-                    o.playerId.equals(removed.playerId) &
-                    o.status.equals('owned')))
-              .get();
+          final owned =
+              await (db.select(db.ownedPlayers)..where(
+                    (o) =>
+                        o.playerId.equals(removed.playerId) &
+                        o.status.equals('owned'),
+                  ))
+                  .get();
           for (final copy in owned) {
             final coins = economy.sellPriceOfUpgraded(
-                removed, copy.upgradeLevel);
-            compensations.add(RemovalCompensation(
-              playerName: removed.name,
-              upgradeLevel: copy.upgradeLevel,
-              coins: coins,
-            ));
-            await (db.delete(db.ownedPlayers)
-                  ..where((o) => o.id.equals(copy.id)))
-                .go();
+              removed,
+              copy.upgradeLevel,
+            );
+            compensations.add(
+              RemovalCompensation(
+                playerName: removed.name,
+                upgradeLevel: copy.upgradeLevel,
+                coins: coins,
+              ),
+            );
+            await (db.delete(
+              db.ownedPlayers,
+            )..where((o) => o.id.equals(copy.id))).go();
           }
         }
         if (compensations.isNotEmpty) {
-          final total =
-              compensations.fold<int>(0, (a, c) => a + c.coins);
-          await (db.update(db.clubs)
-                ..where((c) => c.id.equals(club.id)))
-              .write(ClubsCompanion(
-                  coins: Value(club.coins + total)));
-          await db.coinLedger(club.id, total,
-              reason: 'removal_compensation',
-              detail:
-                  '${compensations.length} players removed by dataset update');
+          final total = compensations.fold<int>(0, (a, c) => a + c.coins);
+          await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+            ClubsCompanion(coins: Value(club.coins + total)),
+          );
+          await db.coinLedger(
+            club.id,
+            total,
+            reason: 'removal_compensation',
+            detail: '${compensations.length} players removed by dataset update',
+          );
         }
       }
 
-      await db.into(db.datasetVersions).insertOnConflictUpdate(
+      await db
+          .into(db.datasetVersions)
+          .insertOnConflictUpdate(
             DatasetVersionsCompanion.insert(
               version: Value(dataset.version),
               asOf: dataset.asOf,
@@ -439,7 +471,9 @@ class CollectionStore {
 
     _registryLoaded = true;
     return DatasetUpdateReport(
-        importResult: importResult, compensations: compensations);
+      importResult: importResult,
+      compensations: compensations,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -453,15 +487,17 @@ class CollectionStore {
     required math.Random random,
   }) async {
     final registry = await _ensureRegistry();
-    final pack = await (db.select(db.packs)
-          ..where((p) => p.id.equals(packId)))
-        .getSingleOrNull();
+    final pack = await (db.select(
+      db.packs,
+    )..where((p) => p.id.equals(packId))).getSingleOrNull();
     if (pack == null || pack.opened) {
       throw const CollectionException('Pack not available');
     }
 
-    final category = PackCategory.values
-        .firstWhere((c) => c.name == pack.category, orElse: () => PackCategory.global);
+    final category = PackCategory.values.firstWhere(
+      (c) => c.name == pack.category,
+      orElse: () => PackCategory.global,
+    );
     final scope = PackScope(
       category: category,
       position: pack.scopeValue != null && category == PackCategory.position
@@ -480,17 +516,21 @@ class CollectionStore {
     final ownedIds = <int>[];
     await db.transaction(() async {
       for (final draw in draws) {
-        final ownedId = await db.into(db.ownedPlayers).insert(OwnedPlayersCompanion.insert(
-              clubId: pack.clubId,
-              playerId: draw.player.playerId,
-              acquisitionSource: Value('pack'),
-              acquiredAt: now,
-            ));
+        final ownedId = await db
+            .into(db.ownedPlayers)
+            .insert(
+              OwnedPlayersCompanion.insert(
+                clubId: pack.clubId,
+                playerId: draw.player.playerId,
+                acquisitionSource: Value('pack'),
+                acquiredAt: now,
+              ),
+            );
         ownedIds.add(ownedId);
       }
-      await (db.update(db.packs)
-            ..where((p) => p.id.equals(packId)))
-          .write(PacksCompanion(opened: const Value(true), openedAt: Value(now)));
+      await (db.update(db.packs)..where((p) => p.id.equals(packId))).write(
+        PacksCompanion(opened: const Value(true), openedAt: Value(now)),
+      );
     });
     return PackOpenResult(
       players: [for (final d in draws) d.player],
@@ -515,11 +555,9 @@ class CollectionStore {
           : null,
       tier: tier,
     );
-    final eligible =
-        registry.all.where(scope.matches).toList(growable: false);
+    final eligible = registry.all.where(scope.matches).toList(growable: false);
     eligible.sort((a, b) {
-      final byOverall =
-          b.baseStats.overall.compareTo(a.baseStats.overall);
+      final byOverall = b.baseStats.overall.compareTo(a.baseStats.overall);
       if (byOverall != 0) return byOverall;
       return a.playerId.compareTo(b.playerId);
     });
@@ -530,9 +568,9 @@ class CollectionStore {
   Future<List<Pack>> getAvailablePacks() async {
     final club = await getClub();
     if (club == null) return const [];
-    return (db.select(db.packs)
-          ..where((p) => p.clubId.equals(club.id) & p.opened.equals(false)))
-        .get();
+    return (db.select(
+      db.packs,
+    )..where((p) => p.clubId.equals(club.id) & p.opened.equals(false))).get();
   }
 
   /// The store's buyable packs (GDD 5.5): one section per position, each
@@ -549,13 +587,17 @@ class CollectionStore {
     final pool = registry.all.toList(growable: false);
 
     CardRarity rarityOf(PackTier tier) => switch (tier) {
-          PackTier.rare => CardRarity.rare,
-          PackTier.epic => CardRarity.epic,
-          PackTier.legendary => CardRarity.legendary,
-        };
+      PackTier.rare => CardRarity.rare,
+      PackTier.epic => CardRarity.epic,
+      PackTier.legendary => CardRarity.legendary,
+    };
 
-    StorePackOffer? offerFor(PackCategory category, String? scopeValue,
-        PackTier tier, String baseTitle) {
+    StorePackOffer? offerFor(
+      PackCategory category,
+      String? scopeValue,
+      PackTier tier,
+      String baseTitle,
+    ) {
       final scope = PackScope(
         category: category,
         position: category == PackCategory.position && scopeValue != null
@@ -564,8 +606,9 @@ class CollectionStore {
         tier: tier,
       );
       final eligible = pool.where(scope.matches).toList(growable: false);
-      if (!eligible.any((p) =>
-          CardRarity.fromOverall(p.baseStats.overall) == rarityOf(tier))) {
+      if (!eligible.any(
+        (p) => CardRarity.fromOverall(p.baseStats.overall) == rarityOf(tier),
+      )) {
         return null;
       }
       return StorePackOffer(
@@ -573,8 +616,10 @@ class CollectionStore {
         title: '${tier.label} $baseTitle',
         scopeValue: scopeValue,
         tier: tier,
-        price: PackEngine(random: math.Random(0), economy: economy)
-            .packPriceFor(scope, eligible),
+        price: PackEngine(
+          random: math.Random(0),
+          economy: economy,
+        ).packPriceFor(scope, eligible),
         eligibleCount: eligible.length,
       );
     }
@@ -582,8 +627,12 @@ class CollectionStore {
     final offers = <StorePackOffer>[];
     for (final position in Position.values) {
       for (final tier in PackTier.values) {
-        final offer = offerFor(PackCategory.position, position.code, tier,
-            '${position.code} Position Pack');
+        final offer = offerFor(
+          PackCategory.position,
+          position.code,
+          tier,
+          '${position.code} Position Pack',
+        );
         if (offer != null) offers.add(offer);
       }
     }
@@ -628,22 +677,31 @@ class CollectionStore {
     }
     final now = DateTime.now();
     return db.transaction(() async {
-      await (db.update(db.clubs)..where((c) => c.id.equals(userClub.id)))
-          .write(ClubsCompanion(coins: Value(userClub.coins - price)));
-      await db.coinLedger(userClub.id, -price,
-          reason: 'pack_purchase',
-          detail: 'Bought ${tier.label} ${category.name} pack');
-      final id = await db.into(db.packs).insert(PacksCompanion.insert(
-            clubId: userClub.id,
-            category: category.name,
-            scopeValue: Value(position?.code ?? nationality),
-            tier: Value(tier.name),
-            price: Value(price),
-            source: const Value('purchase'),
-            createdAt: now,
-          ));
-      return (await (db.select(db.packs)..where((p) => p.id.equals(id)))
-          .getSingle());
+      await (db.update(db.clubs)..where((c) => c.id.equals(userClub.id))).write(
+        ClubsCompanion(coins: Value(userClub.coins - price)),
+      );
+      await db.coinLedger(
+        userClub.id,
+        -price,
+        reason: 'pack_purchase',
+        detail: 'Bought ${tier.label} ${category.name} pack',
+      );
+      final id = await db
+          .into(db.packs)
+          .insert(
+            PacksCompanion.insert(
+              clubId: userClub.id,
+              category: category.name,
+              scopeValue: Value(position?.code ?? nationality),
+              tier: Value(tier.name),
+              price: Value(price),
+              source: const Value('purchase'),
+              createdAt: now,
+            ),
+          );
+      return (await (db.select(
+        db.packs,
+      )..where((p) => p.id.equals(id))).getSingle());
     });
   }
 
@@ -657,10 +715,14 @@ class CollectionStore {
     if (club == null) return const [];
     final query = db.select(db.ownedPlayers).join([
       innerJoin(
-          db.players, db.players.playerId.equalsExp(db.ownedPlayers.playerId)),
+        db.players,
+        db.players.playerId.equalsExp(db.ownedPlayers.playerId),
+      ),
     ]);
-    query.where(db.ownedPlayers.clubId.equals(club.id) &
-        db.ownedPlayers.status.equals('owned'));
+    query.where(
+      db.ownedPlayers.clubId.equals(club.id) &
+          db.ownedPlayers.status.equals('owned'),
+    );
     final rows = await query.map((row) {
       final owned = row.readTable(db.ownedPlayers);
       final base = row.readTable(db.players);
@@ -713,35 +775,46 @@ class CollectionStore {
     }
     await db.transaction(() async {
       for (final id in ownedIds) {
-        final copy = await (db.select(db.ownedPlayers)
-              ..where((o) => o.id.equals(id) & o.status.equals('owned')))
-            .getSingleOrNull();
+        final copy =
+            await (db.select(db.ownedPlayers)
+                  ..where((o) => o.id.equals(id) & o.status.equals('owned')))
+                .getSingleOrNull();
         if (copy == null) continue;
         if (copy.squadSlot != null) {
           throw CollectionException(
-              'Player is in the squad (slot ${copy.squadSlot})');
+            'Player is in the squad (slot ${copy.squadSlot})',
+          );
         }
-        final base = await (db.select(db.players)
-              ..where((p) => p.playerId.equals(copy.playerId)))
-            .getSingle();
+        final base = await (db.select(
+          db.players,
+        )..where((p) => p.playerId.equals(copy.playerId))).getSingle();
         var price = economy.sellPriceOfUpgraded(
-            _toBasePlayer(base), copy.upgradeLevel);
+          _toBasePlayer(base),
+          copy.upgradeLevel,
+        );
         if (bonusActive) {
           price = const AdEngine().sellingBonus(price);
         }
         credit += price;
         sold.add(id);
-        await (db.update(db.ownedPlayers)..where((o) => o.id.equals(id)))
-            .write(const OwnedPlayersCompanion(
-                status: Value('sold'), squadSlot: Value(null)));
+        await (db.update(db.ownedPlayers)..where((o) => o.id.equals(id))).write(
+          const OwnedPlayersCompanion(
+            status: Value('sold'),
+            squadSlot: Value(null),
+          ),
+        );
       }
       if (sold.isNotEmpty) {
-        await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
-            .write(ClubsCompanion(coins: Value(club.coins + credit)));
-        await db.coinLedger(club.id, credit,
-            reason: 'player_sale',
-            detail:
-                '${sold.length} players sold${bonusActive ? ' (ad selling bonus)' : ''}');
+        await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+          ClubsCompanion(coins: Value(club.coins + credit)),
+        );
+        await db.coinLedger(
+          club.id,
+          credit,
+          reason: 'player_sale',
+          detail:
+              '${sold.length} players sold${bonusActive ? ' (ad selling bonus)' : ''}',
+        );
         if (bonusActive) {
           await ads!.consumeSellingBonus(club.id);
         }
@@ -767,14 +840,16 @@ class CollectionStore {
       throw const CollectionException('No club');
     }
 
-    final target = await (db.select(db.ownedPlayers)
-          ..where((o) =>
-              o.id.equals(targetOwnedId) & o.status.equals('owned')))
-        .getSingleOrNull();
-    final duplicate = await (db.select(db.ownedPlayers)
-          ..where((o) =>
-              o.id.equals(duplicateOwnedId) & o.status.equals('owned')))
-        .getSingleOrNull();
+    final target =
+        await (db.select(db.ownedPlayers)..where(
+              (o) => o.id.equals(targetOwnedId) & o.status.equals('owned'),
+            ))
+            .getSingleOrNull();
+    final duplicate =
+        await (db.select(db.ownedPlayers)..where(
+              (o) => o.id.equals(duplicateOwnedId) & o.status.equals('owned'),
+            ))
+            .getSingleOrNull();
     if (target == null || duplicate == null) {
       throw const CollectionException('Both copies must be owned');
     }
@@ -782,14 +857,15 @@ class CollectionStore {
       throw const CollectionException('Merging requires the same player');
     }
     if (!upgrades.canMerge(
-        targetLevel: target.upgradeLevel,
-        duplicateLevel: duplicate.upgradeLevel)) {
+      targetLevel: target.upgradeLevel,
+      duplicateLevel: duplicate.upgradeLevel,
+    )) {
       throw const CollectionException('Maximum upgrade level reached');
     }
 
-    final base = await (db.select(db.players)
-          ..where((p) => p.playerId.equals(target.playerId)))
-        .getSingle();
+    final base = await (db.select(
+      db.players,
+    )..where((p) => p.playerId.equals(target.playerId))).getSingle();
     final outcome = upgrades.merge(
       position: Position.fromCode(base.position),
       targetLevel: target.upgradeLevel,
@@ -798,28 +874,43 @@ class CollectionStore {
     );
 
     await db.transaction(() async {
-      await (db.update(db.ownedPlayers)
-            ..where((o) => o.id.equals(targetOwnedId)))
-          .write(OwnedPlayersCompanion(
-        upgradeLevel: Value(outcome.newUpgradeLevel),
-        upgradedAttack:
-            Value(target.upgradedAttack + (outcome.attributeGain[PlayerAttribute.attack] ?? 0)),
-        upgradedSupport:
-            Value(target.upgradedSupport + (outcome.attributeGain[PlayerAttribute.support] ?? 0)),
-        upgradedDefence:
-            Value(target.upgradedDefence + (outcome.attributeGain[PlayerAttribute.defence] ?? 0)),
-        upgradedGoalkeeping: Value(target.upgradedGoalkeeping +
-            (outcome.attributeGain[PlayerAttribute.goalkeeping] ?? 0)),
-      ));
+      await (db.update(
+        db.ownedPlayers,
+      )..where((o) => o.id.equals(targetOwnedId))).write(
+        OwnedPlayersCompanion(
+          upgradeLevel: Value(outcome.newUpgradeLevel),
+          upgradedAttack: Value(
+            target.upgradedAttack +
+                (outcome.attributeGain[PlayerAttribute.attack] ?? 0),
+          ),
+          upgradedSupport: Value(
+            target.upgradedSupport +
+                (outcome.attributeGain[PlayerAttribute.support] ?? 0),
+          ),
+          upgradedDefence: Value(
+            target.upgradedDefence +
+                (outcome.attributeGain[PlayerAttribute.defence] ?? 0),
+          ),
+          upgradedGoalkeeping: Value(
+            target.upgradedGoalkeeping +
+                (outcome.attributeGain[PlayerAttribute.goalkeeping] ?? 0),
+          ),
+        ),
+      );
       // Consume the duplicate; keep the row as history.
-      await (db.update(db.ownedPlayers)
-            ..where((o) => o.id.equals(duplicateOwnedId)))
-          .write(const OwnedPlayersCompanion(
-              status: Value('merged'), squadSlot: Value(null)));
+      await (db.update(
+        db.ownedPlayers,
+      )..where((o) => o.id.equals(duplicateOwnedId))).write(
+        const OwnedPlayersCompanion(
+          status: Value('merged'),
+          squadSlot: Value(null),
+        ),
+      );
       // The duplicate may have been a starter (merged INTO from the
       // bench): its slot is now empty — re-run Auto Pick so every XI
       // slot stays filled (GDD 6.4 invariant, next fixture depends on it).
-      if (duplicate.squadSlot != null && duplicate.squadSlot! < Formation.startingXiSize) {
+      if (duplicate.squadSlot != null &&
+          duplicate.squadSlot! < Formation.startingXiSize) {
         final cards = await getCollection();
         final formation = formationByCode(club.formationCode);
         await saveSquad(squad.autoPick(cards, formation));
@@ -847,19 +938,23 @@ class CollectionStore {
     if (club == null) {
       throw const CollectionException('No club');
     }
-    final copy = await (db.select(db.ownedPlayers)
-          ..where((o) => o.id.equals(ownedId) & o.status.equals('owned')))
-        .getSingleOrNull();
+    final copy =
+        await (db.select(db.ownedPlayers)
+              ..where((o) => o.id.equals(ownedId) & o.status.equals('owned')))
+            .getSingleOrNull();
     if (copy == null) {
       throw const CollectionException('Player not owned');
     }
     if (copy.upgradeLevel >= UpgradeEngine.maxUpgradeLevel) {
       throw const CollectionException('Maximum upgrade level reached');
     }
-    final base = await (db.select(db.players)
-          ..where((p) => p.playerId.equals(copy.playerId)))
-        .getSingle();
-    final fullCost = economy.upgradeCostOf(_toBasePlayer(base), copy.upgradeLevel);
+    final base = await (db.select(
+      db.players,
+    )..where((p) => p.playerId.equals(copy.playerId))).getSingle();
+    final fullCost = economy.upgradeCostOf(
+      _toBasePlayer(base),
+      copy.upgradeLevel,
+    );
 
     var price = fullCost;
     var discounted = false;
@@ -880,25 +975,39 @@ class CollectionStore {
     );
 
     await db.transaction(() async {
-      await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
-          .write(ClubsCompanion(coins: Value(club.coins - price)));
-      await db.coinLedger(club.id, -price,
-          reason: 'upgrade_purchase',
-          detail:
-              'Bought upgrade to +${outcome.newUpgradeLevel} for ${base.name}');
-      await (db.update(db.ownedPlayers)
-            ..where((o) => o.id.equals(ownedId)))
-          .write(OwnedPlayersCompanion(
-        upgradeLevel: Value(outcome.newUpgradeLevel),
-        upgradedAttack: Value(
-            copy.upgradedAttack + (outcome.attributeGain[PlayerAttribute.attack] ?? 0)),
-        upgradedSupport: Value(
-            copy.upgradedSupport + (outcome.attributeGain[PlayerAttribute.support] ?? 0)),
-        upgradedDefence: Value(
-            copy.upgradedDefence + (outcome.attributeGain[PlayerAttribute.defence] ?? 0)),
-        upgradedGoalkeeping: Value(copy.upgradedGoalkeeping +
-            (outcome.attributeGain[PlayerAttribute.goalkeeping] ?? 0)),
-      ));
+      await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+        ClubsCompanion(coins: Value(club.coins - price)),
+      );
+      await db.coinLedger(
+        club.id,
+        -price,
+        reason: 'upgrade_purchase',
+        detail:
+            'Bought upgrade to +${outcome.newUpgradeLevel} for ${base.name}',
+      );
+      await (db.update(
+        db.ownedPlayers,
+      )..where((o) => o.id.equals(ownedId))).write(
+        OwnedPlayersCompanion(
+          upgradeLevel: Value(outcome.newUpgradeLevel),
+          upgradedAttack: Value(
+            copy.upgradedAttack +
+                (outcome.attributeGain[PlayerAttribute.attack] ?? 0),
+          ),
+          upgradedSupport: Value(
+            copy.upgradedSupport +
+                (outcome.attributeGain[PlayerAttribute.support] ?? 0),
+          ),
+          upgradedDefence: Value(
+            copy.upgradedDefence +
+                (outcome.attributeGain[PlayerAttribute.defence] ?? 0),
+          ),
+          upgradedGoalkeeping: Value(
+            copy.upgradedGoalkeeping +
+                (outcome.attributeGain[PlayerAttribute.goalkeeping] ?? 0),
+          ),
+        ),
+      );
       if (discounted) {
         await ads!.consumeUpgradeDiscount(club.id);
       }
@@ -927,10 +1036,11 @@ class CollectionStore {
     if (club == null) return const {};
     final cards = await getCollection();
     final byId = {for (final c in cards) c.ownedId: c};
-    final rows = await (db.select(db.ownedPlayers)
-          ..where((o) => o.clubId.equals(club.id))
-          ..orderBy([(o) => OrderingTerm.asc(o.squadSlot)]))
-        .get();
+    final rows =
+        await (db.select(db.ownedPlayers)
+              ..where((o) => o.clubId.equals(club.id))
+              ..orderBy([(o) => OrderingTerm.asc(o.squadSlot)]))
+            .get();
     final squad = <int, PlayerCard>{};
     for (final row in rows) {
       if (row.squadSlot != null && byId.containsKey(row.id)) {
@@ -947,10 +1057,9 @@ class CollectionStore {
     if (club == null) {
       throw const CollectionException('No club');
     }
-    final owned = await (db.select(db.ownedPlayers)
-          ..where((o) =>
-              o.clubId.equals(club.id) & o.status.equals('owned')))
-        .get();
+    final owned = await (db.select(
+      db.ownedPlayers,
+    )..where((o) => o.clubId.equals(club.id) & o.status.equals('owned'))).get();
     final byOwned = {for (final o in owned) o.id: o};
     for (final id in assignments.values) {
       if (!byOwned.containsKey(id)) {
@@ -998,23 +1107,33 @@ class CollectionStore {
       throw const CollectionException('No club');
     }
     final formation = formationByCode(formationCode);
-    await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
-        .write(ClubsCompanion(formationCode: Value(formation.code)));
+    await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+      ClubsCompanion(formationCode: Value(formation.code)),
+    );
     await autoPickSquad();
   }
 
   /// Updates the club's tactical setup for future matches (GDD 10.2/10.3).
-  Future<void> changeTactics({String? formationCode, String? playingStyle, String? mentality}) async {
+  Future<void> changeTactics({
+    String? formationCode,
+    String? playingStyle,
+    String? mentality,
+  }) async {
     final club = await getClub();
     if (club == null) {
       throw const CollectionException('No club');
     }
-    await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
-        .write(ClubsCompanion(
-      formationCode: formationCode != null ? Value(formationByCode(formationCode).code) : const Value.absent(),
-      playingStyle: playingStyle != null ? Value(playingStyle) : const Value.absent(),
-      mentality: mentality != null ? Value(mentality) : const Value.absent(),
-    ));
+    await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+      ClubsCompanion(
+        formationCode: formationCode != null
+            ? Value(formationByCode(formationCode).code)
+            : const Value.absent(),
+        playingStyle: playingStyle != null
+            ? Value(playingStyle)
+            : const Value.absent(),
+        mentality: mentality != null ? Value(mentality) : const Value.absent(),
+      ),
+    );
     if (formationCode != null) {
       await autoPickSquad();
     }
@@ -1028,9 +1147,9 @@ class CollectionStore {
   Future<CampusLevels> getCampus() async {
     final club = await getClub();
     if (club == null) return CampusLevels.empty;
-    final rows = await (db.select(db.facilityLevels)
-          ..where((f) => f.clubId.equals(club.id)))
-        .get();
+    final rows = await (db.select(
+      db.facilityLevels,
+    )..where((f) => f.clubId.equals(club.id))).get();
     return CampusLevels({
       for (final row in rows)
         if (_facilityByCode[row.facility] != null)
@@ -1053,7 +1172,8 @@ class CollectionStore {
     final level = levels.levelOf(facility);
     if (level >= costs.maxLevel) {
       throw CollectionException(
-          '${facility.title} is already at its maximum level');
+        '${facility.title} is already at its maximum level',
+      );
     }
     final price = costs.upgradeCost(level);
     if (club.coins < price) {
@@ -1062,29 +1182,41 @@ class CollectionStore {
     final nextLevel = level + 1;
     final now = DateTime.now();
     await db.transaction(() async {
-      await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
-          .write(ClubsCompanion(coins: Value(club.coins - price)));
-      await db.coinLedger(club.id, -price,
-          reason: 'facility_upgrade',
-          detail: '${facility.subtitle} level $nextLevel');
-      final existing = await (db.select(db.facilityLevels)
-            ..where((f) =>
-                f.clubId.equals(club.id) & f.facility.equals(facility.name)))
-          .getSingleOrNull();
+      await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+        ClubsCompanion(coins: Value(club.coins - price)),
+      );
+      await db.coinLedger(
+        club.id,
+        -price,
+        reason: 'facility_upgrade',
+        detail: '${facility.subtitle} level $nextLevel',
+      );
+      final existing =
+          await (db.select(db.facilityLevels)..where(
+                (f) =>
+                    f.clubId.equals(club.id) & f.facility.equals(facility.name),
+              ))
+              .getSingleOrNull();
       if (existing == null) {
-        await db.into(db.facilityLevels).insert(FacilityLevelsCompanion.insert(
-              clubId: club.id,
-              facility: facility.name,
-              level: Value(nextLevel),
-              upgradedAt: Value(now),
-            ));
+        await db
+            .into(db.facilityLevels)
+            .insert(
+              FacilityLevelsCompanion.insert(
+                clubId: club.id,
+                facility: facility.name,
+                level: Value(nextLevel),
+                upgradedAt: Value(now),
+              ),
+            );
       } else {
-        await (db.update(db.facilityLevels)
-              ..where((f) => f.id.equals(existing.id)))
-            .write(FacilityLevelsCompanion(
-          level: Value(nextLevel),
-          upgradedAt: Value(now),
-        ));
+        await (db.update(
+          db.facilityLevels,
+        )..where((f) => f.id.equals(existing.id))).write(
+          FacilityLevelsCompanion(
+            level: Value(nextLevel),
+            upgradedAt: Value(now),
+          ),
+        );
       }
     });
     return nextLevel;
@@ -1117,9 +1249,9 @@ class CollectionStore {
     final ads = adStore;
     var reward = rewardCoins;
     if (ads != null && rewardCoins > 0) {
-      final club = await (db.select(db.clubs)
-            ..where((c) => c.id.equals(clubId)))
-          .getSingleOrNull();
+      final club = await (db.select(
+        db.clubs,
+      )..where((c) => c.id.equals(clubId))).getSingleOrNull();
       if (club != null &&
           await ads.dailyMultiplierActive(club.id, now: timestamp)) {
         reward = adEngine.boostedMatchReward(rewardCoins);
@@ -1127,9 +1259,9 @@ class CollectionStore {
     }
     await db.transaction(() async {
       for (final p in players) {
-        final row = await (db.select(db.ownedPlayers)
-              ..where((o) => o.id.equals(p.ownedId)))
-            .getSingleOrNull();
+        final row = await (db.select(
+          db.ownedPlayers,
+        )..where((o) => o.id.equals(p.ownedId))).getSingleOrNull();
         if (row == null) continue;
         var next = row.staminaPercent.toDouble();
         if (p.minutesPlayed > 0) {
@@ -1173,57 +1305,72 @@ class CollectionStore {
             campusRecoveryBonus: campusRecoveryBonus,
           );
         }
-        await (db.update(db.ownedPlayers)
-              ..where((o) => o.id.equals(p.ownedId)))
-            .write(OwnedPlayersCompanion(
-                staminaPercent: Value(next.round().clamp(0, 100))));
+        await (db.update(
+          db.ownedPlayers,
+        )..where((o) => o.id.equals(p.ownedId))).write(
+          OwnedPlayersCompanion(
+            staminaPercent: Value(next.round().clamp(0, 100)),
+          ),
+        );
       }
       if (reward > 0) {
-        final club = await (db.select(db.clubs)
-              ..where((c) => c.id.equals(clubId)))
-            .getSingle();
-        await (db.update(db.clubs)..where((c) => c.id.equals(clubId)))
-            .write(ClubsCompanion(coins: Value(club.coins + reward)));
-        await db.coinLedger(clubId, reward,
-            reason: 'match_reward',
-            detail: 'Match reward for ${players.length} squad players'
-                '${reward != rewardCoins ? ' (ad daily multiplier)' : ''}');
+        final club = await (db.select(
+          db.clubs,
+        )..where((c) => c.id.equals(clubId))).getSingle();
+        await (db.update(db.clubs)..where((c) => c.id.equals(clubId))).write(
+          ClubsCompanion(coins: Value(club.coins + reward)),
+        );
+        await db.coinLedger(
+          clubId,
+          reward,
+          reason: 'match_reward',
+          detail:
+              'Match reward for ${players.length} squad players'
+              '${reward != rewardCoins ? ' (ad daily multiplier)' : ''}',
+        );
       }
     });
   }
 
   /// Adapts a persisted player row to the domain model.
   BasePlayer _toBasePlayer(Player row) => BasePlayer(
-        playerId: row.playerId,
-        name: row.name,
-        position: Position.fromCode(row.position),
-        nationality: row.nationality,
-        marketValueEur: row.marketValueEur,
-        baseStats: BaseStats(
-          overall: row.overall,
-          attack: row.attack,
-          support: row.support,
-          defence: row.defence,
-          goalkeeping: row.goalkeeping,
-        ),
-      );
+    playerId: row.playerId,
+    name: row.name,
+    position: Position.fromCode(row.position),
+    nationality: row.nationality,
+    marketValueEur: row.marketValueEur,
+    baseStats: BaseStats(
+      overall: row.overall,
+      attack: row.attack,
+      support: row.support,
+      defence: row.defence,
+      goalkeeping: row.goalkeeping,
+    ),
+  );
 }
 
 extension on AppDatabase {
   /// Appends one ledger row for [amount] credited to [clubId]. Must be
   /// called AFTER the balance update inside the same transaction so
   /// balanceAfter reflects the post-transaction state (FR-016).
-  Future<void> coinLedger(int clubId, int amount,
-      {required String reason, String? detail}) async {
-    final club = await (select(clubs)..where((c) => c.id.equals(clubId)))
-        .getSingle();
-    await into(coinTransactions).insert(CoinTransactionsCompanion.insert(
-      clubId: clubId,
-      amount: amount,
-      balanceAfter: club.coins,
-      reason: reason,
-      detail: Value(detail),
-      createdAt: DateTime.now(),
-    ));
+  Future<void> coinLedger(
+    int clubId,
+    int amount, {
+    required String reason,
+    String? detail,
+  }) async {
+    final club = await (select(
+      clubs,
+    )..where((c) => c.id.equals(clubId))).getSingle();
+    await into(coinTransactions).insert(
+      CoinTransactionsCompanion.insert(
+        clubId: clubId,
+        amount: amount,
+        balanceAfter: club.coins,
+        reason: reason,
+        detail: Value(detail),
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 }

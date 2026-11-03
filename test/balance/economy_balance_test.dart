@@ -32,14 +32,19 @@ import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/season/season_engine.dart';
 
 BasePlayer _fakePlayer(int marketValue) => BasePlayer(
-      playerId: 1,
-      name: 'Test',
-      position: Position.st,
-      nationality: 'Egypt',
-      marketValueEur: marketValue,
-      baseStats: const BaseStats(
-          overall: 70, attack: 74, support: 60, defence: 45, goalkeeping: 0),
-    );
+  playerId: 1,
+  name: 'Test',
+  position: Position.st,
+  nationality: 'Egypt',
+  marketValueEur: marketValue,
+  baseStats: const BaseStats(
+    overall: 70,
+    attack: 74,
+    support: 60,
+    defence: 45,
+    goalkeeping: 0,
+  ),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -59,14 +64,15 @@ void main() {
       expect(win3, 3375);
     });
 
-    test('an average season of 38 matches banks 70k-160k before sinks',
-        () {
+    test('an average season of 38 matches banks 70k-160k before sinks', () {
       var total = 0;
       const wins = 14, draws = 10, losses = 14;
       const avgGoalsFor = 1.3;
       for (var i = 0; i < wins; i++) {
         total += economy.matchReward(
-            goalsFor: (avgGoalsFor + 0.7).round(), won: true);
+          goalsFor: (avgGoalsFor + 0.7).round(),
+          won: true,
+        );
       }
       for (var i = 0; i < draws; i++) {
         total += economy.matchReward(goalsFor: avgGoalsFor.round(), won: false);
@@ -108,8 +114,10 @@ void main() {
       try {
         final store = CollectionStore(db: db);
         await store.applyDatasetUpdate(
-            PlayerDataset.fromJson(
-                File('assets/data/players_v1.json').readAsStringSync()));
+          PlayerDataset.fromJson(
+            File('assets/data/players_v1.json').readAsStringSync(),
+          ),
+        );
         offers = await store.getStoreOffers();
       } finally {
         await db.close();
@@ -139,9 +147,15 @@ void main() {
       }
       // The tier ladder itself is steep within one scope: legendary
       // costs ~8-11x rare, epic ~3-4x rare.
-      final st = {for (final o in offers) if (o.scopeValue == 'ST') o.tier: o.price};
+      final st = {
+        for (final o in offers)
+          if (o.scopeValue == 'ST') o.tier: o.price,
+      };
       expect(st[PackTier.epic]! / st[PackTier.rare]!, inInclusiveRange(2, 6));
-      expect(st[PackTier.legendary]! / st[PackTier.rare]!, inInclusiveRange(6, 16));
+      expect(
+        st[PackTier.legendary]! / st[PackTier.rare]!,
+        inInclusiveRange(6, 16),
+      );
     });
 
     test('rare packs are pocket change; legendary is ~2-8 matches', () {
@@ -176,8 +190,11 @@ void main() {
       }
       for (final prices in byTier.values) {
         prices.sort();
-        expect(prices.last / prices.first, inInclusiveRange(0.5, 1.6),
-            reason: 'same-tier scope spread must stay bounded');
+        expect(
+          prices.last / prices.first,
+          inInclusiveRange(0.5, 1.6),
+          reason: 'same-tier scope spread must stay bounded',
+        );
       }
     });
 
@@ -229,25 +246,26 @@ void main() {
       expect(sellAt5, greaterThan(spent * 0.08));
     });
 
-    test('facility curve: first level cheap, full building a season project',
-        () {
-      const costs = defaultFacilitiesCosts;
-      final level1 = costs.upgradeCost(0);
-      final level10 = costs.upgradeCost(9);
-      expect(level1, 4_000); // ~2 match rewards
-      expect(level10, greaterThan(80_000));
-      final full = costs.investedAt(10);
-      // Rebalanced (Ch.8): the final three levels taper (1.22 instead of
-      // 1.55), so one building's full 10 levels ≈ 400k and the whole
-      // 6-building campus ≈ 2.4M — at ~90k net season income that's a
-      // 20+ season project: still the deepest sink in the game, but a
-      // finishable one. Was ~575k/3.45M (~38 seasons) before the taper.
-      expect(full, inInclusiveRange(380_000, 440_000));
-      expect(full * 6, inInclusiveRange(2_280_000, 2_640_000));
-    });
+    test(
+      'facility curve: first level cheap, full building a season project',
+      () {
+        const costs = defaultFacilitiesCosts;
+        final level1 = costs.upgradeCost(0);
+        final level10 = costs.upgradeCost(9);
+        expect(level1, 4_000); // ~2 match rewards
+        expect(level10, greaterThan(80_000));
+        final full = costs.investedAt(10);
+        // Rebalanced (Ch.8): the final three levels taper (1.22 instead of
+        // 1.55), so one building's full 10 levels ≈ 400k and the whole
+        // 6-building campus ≈ 2.4M — at ~90k net season income that's a
+        // 20+ season project: still the deepest sink in the game, but a
+        // finishable one. Was ~575k/3.45M (~38 seasons) before the taper.
+        expect(full, inInclusiveRange(380_000, 440_000));
+        expect(full * 6, inInclusiveRange(2_280_000, 2_640_000));
+      },
+    );
 
-    test('facility payoff is slight by design: level 5 ≈ +4.5% attribute',
-        () {
+    test('facility payoff is slight by design: level 5 ≈ +4.5% attribute', () {
       const costs = defaultFacilitiesCosts;
       final invested5 = costs.investedAt(5);
       expect(invested5, inInclusiveRange(15_000, 60_000));
@@ -294,8 +312,10 @@ void main() {
     });
 
     test('season multiplier: +25% of a season reward — the biggest ad', () {
-      final normal =
-          const SeasonEngine().seasonRewardCoins(division: 1, position: 1);
+      final normal = const SeasonEngine().seasonRewardCoins(
+        division: 1,
+        position: 1,
+      );
       final boosted = ads.boostedSeasonReward(normal);
       expect(boosted - normal, 5_000);
     });
@@ -310,17 +330,23 @@ void main() {
       expect(ads.sellingBonus(1000), 1200);
     });
 
-    test('boosted recovery: +15% of natural recovery, whole points, capped',
-        () {
-      final boosted = ads.boostedRecovery(
-          staminaAfterNaturalRecovery: 80, naturalRecovery: 30);
-      expect(boosted, 85); // 84.5 rounds to a whole stamina point
-      final capped = ads.boostedRecovery(
-          staminaAfterNaturalRecovery: 95, naturalRecovery: 30);
-      // The raw sum lands at 99.5; the result is rounded so the ad
-      // delivers exactly the 100 the UI promises.
-      expect(capped, 100);
-    });
+    test(
+      'boosted recovery: +15% of natural recovery, whole points, capped',
+      () {
+        final boosted = ads.boostedRecovery(
+          staminaAfterNaturalRecovery: 80,
+          naturalRecovery: 30,
+        );
+        expect(boosted, 85); // 84.5 rounds to a whole stamina point
+        final capped = ads.boostedRecovery(
+          staminaAfterNaturalRecovery: 95,
+          naturalRecovery: 30,
+        );
+        // The raw sum lands at 99.5; the result is rounded so the ad
+        // delivers exactly the 100 the UI promises.
+        expect(capped, 100);
+      },
+    );
 
     test('ad caps keep daily grind bounded (8 ads/day max)', () {
       final cfg = ads.config;

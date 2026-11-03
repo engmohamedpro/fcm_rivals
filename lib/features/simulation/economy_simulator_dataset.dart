@@ -8,8 +8,6 @@ library;
 import 'dart:convert';
 import 'dart:math' as math;
 
-
-
 /// The dataset shapes the GDD 30 scenarios require: value bands.
 enum SimValueBand { low, medium, high }
 
@@ -21,7 +19,18 @@ class SimDataset {
   final SimValueBand _band;
 
   static const _positions = [
-    'GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'LM', 'RM', 'CAM', 'LW', 'RW', 'ST',
+    'GK',
+    'CB',
+    'LB',
+    'RB',
+    'CDM',
+    'CM',
+    'LM',
+    'RM',
+    'CAM',
+    'LW',
+    'RW',
+    'ST',
   ];
 
   /// Dataset shape per band (market values in EUR):
@@ -46,8 +55,9 @@ class SimDataset {
     final rows = <List<dynamic>>[
       for (var i = 0; i < size; i++)
         () {
-          final value =
-              math.exp(logMin + random.nextDouble() * (logMax - logMin)).round();
+          final value = math
+              .exp(logMin + random.nextDouble() * (logMax - logMin))
+              .round();
           final position = _positions[i % _positions.length];
           return <dynamic>[
             900_000 + i,
@@ -62,17 +72,17 @@ class SimDataset {
   }
 
   String get bandName => switch (_band) {
-        SimValueBand.low => 'low',
-        SimValueBand.medium => 'medium',
-        SimValueBand.high => 'high',
-      };
+    SimValueBand.low => 'low',
+    SimValueBand.medium => 'medium',
+    SimValueBand.high => 'high',
+  };
 
   /// The import JSON the CollectionStore's applyDatasetUpdate accepts.
   String toJson() => json.encode({
-        'format': 'fcm-rivals-players',
-        'version': 1,
-        'asOf': '2026-11-01',
-        'digest': 'sim-$_band',
-        'players': _rows,
-      });
+    'format': 'fcm-rivals-players',
+    'version': 1,
+    'asOf': '2026-11-01',
+    'digest': 'sim-$_band',
+    'players': _rows,
+  });
 }

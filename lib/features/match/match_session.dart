@@ -7,7 +7,6 @@
 /// timeline for the bar is derived live in the match screen).
 library;
 
-
 import '../../core/database/app_database.dart' as db;
 import '../collection/collection_store.dart';
 import '../economy/economy_engine.dart';
@@ -45,8 +44,15 @@ class MatchReportResult {
 
 /// Live session over one match (GDD 26.1 MatchState + command queue).
 class MatchSession {
-  MatchSession._(this.engine, this._store, this._club, this._opponentName,
-      this._opponentTeamId, this._homeName, this._awayName);
+  MatchSession._(
+    this.engine,
+    this._store,
+    this._club,
+    this._opponentName,
+    this._opponentTeamId,
+    this._homeName,
+    this._awayName,
+  );
 
   final MatchEngine engine;
   final CollectionStore _store;
@@ -100,11 +106,19 @@ class MatchSession {
       ),
     );
     if (preMatchTalk != null) {
-      engine.queueCommand(PepTalkCommand(
-          atMinute: 0, side: MatchSide.home, talk: preMatchTalk));
+      engine.queueCommand(
+        PepTalkCommand(atMinute: 0, side: MatchSide.home, talk: preMatchTalk),
+      );
     }
     return MatchSession._(
-        engine, store, inputs.$2, opponentName, -1, inputs.$2.name, opponentName);
+      engine,
+      store,
+      inputs.$2,
+      opponentName,
+      -1,
+      inputs.$2.name,
+      opponentName,
+    );
   }
 
   /// Creates a session against a persisted AI club (season fixtures): the
@@ -128,11 +142,13 @@ class MatchSession {
   }) async {
     final inputs = await _userTeamInputs(store, tactics: tactics);
     final style = PlayingStyle.values.firstWhere(
-        (s) => s.name == opponentClub.playingStyle,
-        orElse: () => PlayingStyle.balanced);
+      (s) => s.name == opponentClub.playingStyle,
+      orElse: () => PlayingStyle.balanced,
+    );
     final mentality = Mentality.values.firstWhere(
-        (m) => m.name == opponentClub.mentality,
-        orElse: () => Mentality.balanced);
+      (m) => m.name == opponentClub.mentality,
+      orElse: () => Mentality.balanced,
+    );
     final opponentTeam = MatchTeamInput(
       teamId: opponentClub.id,
       teamName: opponentClub.name,
@@ -150,19 +166,23 @@ class MatchSession {
       away: userAtHome ? opponentTeam : inputs.$1,
     );
     if (preMatchTalk != null) {
-      engine.queueCommand(PepTalkCommand(
+      engine.queueCommand(
+        PepTalkCommand(
           atMinute: 0,
           side: userAtHome ? MatchSide.home : MatchSide.away,
-          talk: preMatchTalk));
+          talk: preMatchTalk,
+        ),
+      );
     }
     return MatchSession._(
-        engine,
-        store,
-        inputs.$2,
-        opponentClub.name,
-        opponentClub.id,
-        userAtHome ? inputs.$2.name : opponentClub.name,
-        userAtHome ? opponentClub.name : inputs.$2.name);
+      engine,
+      store,
+      inputs.$2,
+      opponentClub.name,
+      opponentClub.id,
+      userAtHome ? inputs.$2.name : opponentClub.name,
+      userAtHome ? opponentClub.name : inputs.$2.name,
+    );
   }
 
   /// The user's engine input + club row, shared by both factories.
@@ -175,22 +195,24 @@ class MatchSession {
   /// attribute fractions on top of every player's card values here —
   /// the boost rides the same stamina scaling as the base attributes.
   static Future<(MatchTeamInput, db.Club)> _userTeamInputs(
-      CollectionStore store,
-      {PreMatchTacticSelection? tactics}) async {
+    CollectionStore store, {
+    PreMatchTacticSelection? tactics,
+  }) async {
     final club = await store.getClub();
     if (club == null) {
       throw const CollectionException('No club');
     }
     final campus = await store.getCampus();
     final fractions = campus.attributeFractions;
-    final formationCode =
-        tactics?.formationCode ?? club.formationCode;
-    final style = tactics?.style ??
+    final formationCode = tactics?.formationCode ?? club.formationCode;
+    final style =
+        tactics?.style ??
         PlayingStyle.values.firstWhere(
           (s) => s.name == club.playingStyle,
           orElse: () => PlayingStyle.balanced,
         );
-    final mentality = tactics?.mentality ??
+    final mentality =
+        tactics?.mentality ??
         Mentality.values.firstWhere(
           (m) => m.name == club.mentality,
           orElse: () => Mentality.balanced,
@@ -204,21 +226,28 @@ class MatchSession {
       final collection = await store.getCollection();
       assignment = const SquadEngine()
           .autoPick(collection, formation)
-          .map((slot, ownedId) => MapEntry(
-              slot, collection.firstWhere((c) => c.ownedId == ownedId)));
+          .map(
+            (slot, ownedId) => MapEntry(
+              slot,
+              collection.firstWhere((c) => c.ownedId == ownedId),
+            ),
+          );
     }
     if (assignment.length < Formation.startingXiSize) {
       throw const CollectionException(
-          'A full starting XI is required to play a match');
+        'A full starting XI is required to play a match',
+      );
     }
     final starters = <MatchPlayer>[
       for (var slot = 0; slot < Formation.startingXiSize; slot++)
         _toMatchPlayer(assignment[slot]!, fractions),
     ];
     final bench = <MatchPlayer>[
-      for (var slot = Formation.startingXiSize;
-          slot < Formation.squadSize && assignment.containsKey(slot);
-          slot++)
+      for (
+        var slot = Formation.startingXiSize;
+        slot < Formation.squadSize && assignment.containsKey(slot);
+        slot++
+      )
         _toMatchPlayer(assignment[slot]!, fractions),
     ];
     return (
@@ -231,7 +260,7 @@ class MatchSession {
         starters: starters,
         bench: bench,
       ),
-      club
+      club,
     );
   }
 
@@ -240,31 +269,24 @@ class MatchSession {
   /// it nudges totals, it never replaces squad quality.
   static MatchPlayer _toMatchPlayer(
     PlayerCard card,
-    ({
-      double attack,
-      double support,
-      double defence,
-      double goalkeeping,
-    }) fractions,
-  ) =>
-      MatchPlayer(
-        playerId: card.ownedId,
-        name: card.base.name,
-        position: card.position,
-        attack: (card.attribute(PlayerAttribute.attack) *
-                (1 + fractions.attack))
-            .round(),
-        support: (card.attribute(PlayerAttribute.support) *
-                (1 + fractions.support))
-            .round(),
-        defence: (card.attribute(PlayerAttribute.defence) *
-                (1 + fractions.defence))
-            .round(),
-        goalkeeping: (card.attribute(PlayerAttribute.goalkeeping) *
+    ({double attack, double support, double defence, double goalkeeping})
+    fractions,
+  ) => MatchPlayer(
+    playerId: card.ownedId,
+    name: card.base.name,
+    position: card.position,
+    attack: (card.attribute(PlayerAttribute.attack) * (1 + fractions.attack))
+        .round(),
+    support: (card.attribute(PlayerAttribute.support) * (1 + fractions.support))
+        .round(),
+    defence: (card.attribute(PlayerAttribute.defence) * (1 + fractions.defence))
+        .round(),
+    goalkeeping:
+        (card.attribute(PlayerAttribute.goalkeeping) *
                 (1 + fractions.goalkeeping))
             .round(),
-        stamina: card.staminaPercent.toDouble(),
-      );
+    stamina: card.staminaPercent.toDouble(),
+  );
 
   /// Deterministic synthetic opponent (no persistent AI clubs yet — those
   /// arrive with the division iteration; friendly opponents are generated
@@ -298,19 +320,19 @@ class MatchSession {
 
   /// Squad names of the user's club for commentary.
   Map<int, String> get userPlayerNames => {
-        for (final p in engine.playersOf(userSide)) p.playerId: p.name,
-      };
+    for (final p in engine.playersOf(userSide)) p.playerId: p.name,
+  };
 
   /// Names of every player on BOTH sides, for live commentary on matches
   /// against named AI squads (league fixtures) where opponent events must
   /// name real players, not 'an opponent'.
   Map<int, String> get allPlayerNames => {
-        for (final p in [
-          ...engine.playersOf(MatchSide.home),
-          ...engine.playersOf(MatchSide.away),
-        ])
-          p.playerId: p.name,
-      };
+    for (final p in [
+      ...engine.playersOf(MatchSide.home),
+      ...engine.playersOf(MatchSide.away),
+    ])
+      p.playerId: p.name,
+  };
 
   /// The engine team id of the home side — the user's club id when the
   /// user is home, the opponent's id otherwise. The live momentum bar
@@ -330,12 +352,14 @@ class MatchSession {
   /// Queues the half-time pep talk (GDD 15.2): applied at the first
   /// minute of the second half, affecting future events only.
   void queueHalfTimeTalk(MatchPepTalk talk) {
-    engine.queueCommand(PepTalkCommand(
-        atMinute: 46, side: userSide, talk: talk));
+    engine.queueCommand(
+      PepTalkCommand(atMinute: 46, side: userSide, talk: talk),
+    );
   }
 
   /// The engine side carrying the user's club.
-  MatchSide get userSide => engine.playersOf(MatchSide.home).any((p) => p.playerId >= 0)
+  MatchSide get userSide =>
+      engine.playersOf(MatchSide.home).any((p) => p.playerId >= 0)
       ? MatchSide.home
       : MatchSide.away;
 
@@ -361,8 +385,10 @@ class MatchSession {
     int restDays = 3,
     bool adBoostedRecovery = false,
   }) async {
-    assert(!(pepTalk != null && adBoostedRecovery),
-        'Ad bonus and pep talk cannot stack on one transaction (GDD 19.4)');
+    assert(
+      !(pepTalk != null && adBoostedRecovery),
+      'Ad bonus and pep talk cannot stack on one transaction (GDD 19.4)',
+    );
     if (!engine.isFinished) {
       engine.simulateToEnd();
     }
@@ -410,7 +436,8 @@ class MatchSession {
     // Match rewards (GDD 17.6): base + per-goal for the USER's goals,
     // win bonus for the user's result.
     final economy = const EconomyEngine();
-    var reward = economy.config.baseMatchReward +
+    var reward =
+        economy.config.baseMatchReward +
         userGoals * economy.config.matchRewardPerGoal;
     if (userGoals > opponentGoals) reward = (reward * 1.5).round();
 
@@ -419,7 +446,11 @@ class MatchSession {
       rewardCoins: reward,
       players: [
         for (final p in engine.playersOf(userSide))
-          (ownedId: p.playerId, stamina: p.stamina, minutesPlayed: p.minutesPlayed),
+          (
+            ownedId: p.playerId,
+            stamina: p.stamina,
+            minutesPlayed: p.minutesPlayed,
+          ),
       ],
       pepTalk: pepTalk,
       restDays: restDays,

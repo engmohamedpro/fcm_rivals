@@ -66,7 +66,9 @@ class FcmBackdrop extends StatefulWidget {
 class _FcmBackdropState extends State<FcmBackdrop>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(seconds: 26));
+    vsync: this,
+    duration: const Duration(seconds: 26),
+  );
 
   @override
   void didChangeDependencies() {
@@ -128,21 +130,41 @@ class _BackdropPainter extends CustomPainter {
         c,
         r,
         Paint()
-          ..shader = RadialGradient(colors: [
-            color.withValues(alpha: alpha),
-            color.withValues(alpha: 0),
-          ]).createShader(Rect.fromCircle(center: c, radius: r)),
+          ..shader = RadialGradient(
+            colors: [
+              color.withValues(alpha: alpha),
+              color.withValues(alpha: 0),
+            ],
+          ).createShader(Rect.fromCircle(center: c, radius: r)),
       );
     }
 
     final w = size.width, h = size.height;
     final base = math.max(w, h);
-    orb(Offset(w * (0.2 + 0.1 * math.sin(t)), h * (0.12 + 0.05 * math.cos(t))),
-        base * 0.55, FcmColors.gold, 0.11);
-    orb(Offset(w * (0.85 + 0.08 * math.cos(t * 2)), h * (0.35 + 0.06 * math.sin(t))),
-        base * 0.42, tint, 0.07);
-    orb(Offset(w * (0.5 + 0.12 * math.sin(t * 1.5)), h * (1.0 + 0.03 * math.cos(t))),
-        base * 0.55, FcmColors.pitch, 0.12);
+    orb(
+      Offset(w * (0.2 + 0.1 * math.sin(t)), h * (0.12 + 0.05 * math.cos(t))),
+      base * 0.55,
+      FcmColors.gold,
+      0.11,
+    );
+    orb(
+      Offset(
+        w * (0.85 + 0.08 * math.cos(t * 2)),
+        h * (0.35 + 0.06 * math.sin(t)),
+      ),
+      base * 0.42,
+      tint,
+      0.07,
+    );
+    orb(
+      Offset(
+        w * (0.5 + 0.12 * math.sin(t * 1.5)),
+        h * (1.0 + 0.03 * math.cos(t)),
+      ),
+      base * 0.55,
+      FcmColors.pitch,
+      0.12,
+    );
 
     // Faint stadium-light diagonals.
     final line = Paint()
@@ -318,8 +340,12 @@ class FcmCountUp extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (context, v, _) {
         final n = v.round();
-        return Text(format != null ? format!(n) : '$n',
-            maxLines: 1, softWrap: false, style: style);
+        return Text(
+          format != null ? format!(n) : '$n',
+          maxLines: 1,
+          softWrap: false,
+          style: style,
+        );
       },
     );
   }
@@ -426,7 +452,8 @@ class FcmButton extends StatelessWidget {
         ? SizedBox(
             height: 20,
             width: 20,
-            child: CircularProgressIndicator(strokeWidth: 2.4, color: fg))
+            child: CircularProgressIndicator(strokeWidth: 2.4, color: fg),
+          )
         : Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -438,8 +465,12 @@ class FcmButton extends StatelessWidget {
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(label,
-                      maxLines: 1, softWrap: false, style: textStyle),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: textStyle,
+                  ),
                 ),
               ),
               if (coinValue != null) ...[
@@ -527,8 +558,11 @@ class FcmPanel extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.lerp(FcmColors.surfaceHigh, a ?? FcmColors.surfaceHigh,
-                a != null ? 0.18 : 0)!,
+            Color.lerp(
+              FcmColors.surfaceHigh,
+              a ?? FcmColors.surfaceHigh,
+              a != null ? 0.18 : 0,
+            )!,
             FcmColors.surface,
           ],
         ),
@@ -549,7 +583,9 @@ class FcmPanel extends StatelessWidget {
       ),
       child: child,
     );
-    return onTap == null ? box : FcmPressable(onTap: onTap, scale: 0.98, child: box);
+    return onTap == null
+        ? box
+        : FcmPressable(onTap: onTap, scale: 0.98, child: box);
   }
 }
 
@@ -586,7 +622,7 @@ class FcmSectionTitle extends StatelessWidget {
               ),
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );
@@ -613,13 +649,18 @@ class FcmIconBadge extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(colors: [
-          color.withValues(alpha: 0.35),
-          color.withValues(alpha: 0.08),
-        ]),
+        gradient: RadialGradient(
+          colors: [
+            color.withValues(alpha: 0.35),
+            color.withValues(alpha: 0.08),
+          ],
+        ),
         border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
         boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: size * 0.4),
+          BoxShadow(
+            color: color.withValues(alpha: 0.35),
+            blurRadius: size * 0.4,
+          ),
         ],
       ),
       child: Icon(icon, color: color, size: size * 0.5),
@@ -653,16 +694,18 @@ class FcmEmptyState extends StatelessWidget {
             children: [
               FcmIconBadge(icon: icon),
               const SizedBox(height: 18),
-              Text(title,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
-              Text(message,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: FcmColors.textDim)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: FcmColors.textDim),
+              ),
               if (action != null) ...[const SizedBox(height: 22), action!],
             ],
           ),
@@ -674,7 +717,12 @@ class FcmEmptyState extends StatelessWidget {
 
 /// Small coloured number pill (ratings, levels).
 class FcmPill extends StatelessWidget {
-  const FcmPill(this.text, {super.key, this.color = FcmColors.gold, this.filled = true});
+  const FcmPill(
+    this.text, {
+    super.key,
+    this.color = FcmColors.gold,
+    this.filled = true,
+  });
 
   final String text;
   final Color color;
@@ -733,7 +781,9 @@ class FcmOptionChip extends StatelessWidget {
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
         padding: EdgeInsets.symmetric(
-            horizontal: subtitle != null ? 12 : 14, vertical: subtitle != null ? 8 : 9),
+          horizontal: subtitle != null ? 12 : 14,
+          vertical: subtitle != null ? 8 : 9,
+        ),
         decoration: BoxDecoration(
           gradient: active ? FcmColors.goldGradient : FcmColors.steelGradient,
           borderRadius: BorderRadius.circular(12),
@@ -753,7 +803,9 @@ class FcmOptionChip extends StatelessWidget {
               softWrap: false,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: active ? FcmColors.ink : (enabled ? Colors.white : Colors.white38),
+                color: active
+                    ? FcmColors.ink
+                    : (enabled ? Colors.white : Colors.white38),
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
               ),
@@ -820,10 +872,9 @@ class FcmStatBar extends StatelessWidget {
                   widthFactor: f,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        color.withValues(alpha: 0.65),
-                        color,
-                      ]),
+                      gradient: LinearGradient(
+                        colors: [color.withValues(alpha: 0.65), color],
+                      ),
                     ),
                   ),
                 ),
@@ -839,12 +890,15 @@ class FcmStatBar extends StatelessWidget {
         children: [
           SizedBox(
             width: 46,
-            child: FitText(label,
-                style: const TextStyle(
-                    color: FcmColors.textDim,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    letterSpacing: 1)),
+            child: FitText(
+              label,
+              style: const TextStyle(
+                color: FcmColors.textDim,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+                letterSpacing: 1,
+              ),
+            ),
           ),
           Expanded(
             child: ClipRRect(
@@ -863,10 +917,9 @@ class FcmStatBar extends StatelessWidget {
                         widthFactor: f,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              color.withValues(alpha: 0.65),
-                              color,
-                            ]),
+                            gradient: LinearGradient(
+                              colors: [color.withValues(alpha: 0.65), color],
+                            ),
                           ),
                         ),
                       ),
@@ -921,11 +974,14 @@ class FcmCoinGlyph extends StatelessWidget {
         gradient: color == null ? FcmColors.goldGradient : null,
         color: color,
       ),
-      child: Text('C',
-          style: TextStyle(
-              color: FcmColors.ink,
-              fontWeight: FontWeight.w900,
-              fontSize: size * 0.54)),
+      child: Text(
+        'C',
+        style: TextStyle(
+          color: FcmColors.ink,
+          fontWeight: FontWeight.w900,
+          fontSize: size * 0.54,
+        ),
+      ),
     );
   }
 }
@@ -968,11 +1024,14 @@ class FcmCoinChip extends StatelessWidget {
               ),
             ],
           ),
-          child: const Text('C',
-              style: TextStyle(
-                  color: FcmColors.ink,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13)),
+          child: const Text(
+            'C',
+            style: TextStyle(
+              color: FcmColors.ink,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
         ),
         const SizedBox(width: 8),
         FcmCountUp(
@@ -982,9 +1041,7 @@ class FcmCoinChip extends StatelessWidget {
             color: FcmColors.goldSoft,
             fontWeight: FontWeight.w900,
             fontSize: 15,
-            shadows: [
-              Shadow(color: Color(0x59D9B871), blurRadius: 12),
-            ],
+            shadows: [Shadow(color: Color(0x59D9B871), blurRadius: 12)],
           ),
         ),
       ],
@@ -999,7 +1056,11 @@ class FcmCoinChip extends StatelessWidget {
 /// One entry of an [FcmDropdown]: a value plus the label shown in the
 /// closed field and the effect summary rendered under it in the sheet.
 class FcmDropdownItem<T> {
-  const FcmDropdownItem({required this.value, required this.label, this.subtitle});
+  const FcmDropdownItem({
+    required this.value,
+    required this.label,
+    this.subtitle,
+  });
 
   final T value;
   final String label;
@@ -1065,8 +1126,11 @@ class FcmDropdown<T> extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(Icons.expand_more_rounded,
-                color: FcmColors.goldSoft, size: 20),
+            const Icon(
+              Icons.expand_more_rounded,
+              color: FcmColors.goldSoft,
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -1143,9 +1207,13 @@ class _SheetTile extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: EdgeInsets.symmetric(
-              horizontal: 14, vertical: item.subtitle != null ? 11 : 13),
+            horizontal: 14,
+            vertical: item.subtitle != null ? 11 : 13,
+          ),
           decoration: BoxDecoration(
-            gradient: selected ? FcmColors.goldGradient : FcmColors.steelGradient,
+            gradient: selected
+                ? FcmColors.goldGradient
+                : FcmColors.steelGradient,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected
@@ -1188,8 +1256,7 @@ class _SheetTile extends StatelessWidget {
                 ),
               ),
               if (selected)
-                const Icon(Icons.check_rounded,
-                    color: FcmColors.ink, size: 20),
+                const Icon(Icons.check_rounded, color: FcmColors.ink, size: 20),
             ],
           ),
         ),
@@ -1207,7 +1274,11 @@ class _SheetTile extends StatelessWidget {
 /// into the bar, the bottom nav mirrors it with the bloom falling into
 /// the nav — the two chrome edges read as one lit system.
 class FcmGoldSeam extends StatelessWidget {
-  const FcmGoldSeam({super.key, this.bloomBelow = false, this.bloomHeight = 3.8});
+  const FcmGoldSeam({
+    super.key,
+    this.bloomBelow = false,
+    this.bloomHeight = 3.8,
+  });
 
   /// When true the line sits on top and the bloom falls below it (bottom
   /// nav); otherwise the bloom rises above the line (AppBar bottom edge).
@@ -1220,12 +1291,14 @@ class FcmGoldSeam extends StatelessWidget {
     final line = Container(
       height: 1.2,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [
-          Color(0x3D6E5426),
-          FcmColors.goldSoft,
-          FcmColors.gold,
-          Color(0x3D6E5426),
-        ]),
+        gradient: LinearGradient(
+          colors: [
+            Color(0x3D6E5426),
+            FcmColors.goldSoft,
+            FcmColors.gold,
+            Color(0x3D6E5426),
+          ],
+        ),
       ),
     );
     final bloom = Container(
@@ -1235,14 +1308,8 @@ class FcmGoldSeam extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: bloomBelow
-              ? [
-                  FcmColors.gold.withValues(alpha: 0.22),
-                  Colors.transparent,
-                ]
-              : [
-                  Colors.transparent,
-                  FcmColors.gold.withValues(alpha: 0.22),
-                ],
+              ? [FcmColors.gold.withValues(alpha: 0.22), Colors.transparent]
+              : [Colors.transparent, FcmColors.gold.withValues(alpha: 0.22)],
         ),
       ),
     );
@@ -1291,9 +1358,10 @@ class FcmBottomNav extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 24,
-              offset: const Offset(0, -6)),
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 24,
+            offset: const Offset(0, -6),
+          ),
         ],
       ),
       child: Column(
@@ -1544,171 +1612,174 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
       container: true,
       label: widget.semanticsLabel,
       value: '$_value of 100',
-      child: LayoutBuilder(builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final f = _value / 100;
-        final thumbX = _thumbRadius + f * (w - _thumbRadius * 2);
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final f = _value / 100;
+          final thumbX = _thumbRadius + f * (w - _thumbRadius * 2);
 
-        // The pill rides above the marker, clamped inside the track so
-        // long names never spill off the slider's ends.
-        final pillW = _pillWidth(label);
-        final pillCenter =
-            thumbX.clamp(pillW / 2, w - pillW / 2).toDouble();
+          // The pill rides above the marker, clamped inside the track so
+          // long names never spill off the slider's ends.
+          final pillW = _pillWidth(label);
+          final pillCenter = thumbX.clamp(pillW / 2, w - pillW / 2).toDouble();
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // The floating label above the marker.
-            SizedBox(
-              height: _pillBandHeight,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned(
-                    left: pillCenter,
-                    top: 0,
-                    child: FractionalTranslation(
-                      translation: const Offset(-0.5, 0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          gradient: FcmColors.goldGradient,
-                          borderRadius: BorderRadius.circular(7),
-                          border: Border.all(
-                              color: FcmColors.night,
-                              width: 1.5),
-                        ),
-                        child: Text(label, style: _pillTextStyle),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-            // The track band: gesture surface, track, centre tick, thumb.
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapUp: (d) =>
-                  _updateFromDx(d.localPosition.dx, w, commit: true),
-              onHorizontalDragStart: (d) =>
-                  _updateFromDx(d.localPosition.dx, w, commit: false),
-              onHorizontalDragUpdate: (d) =>
-                  _updateFromDx(d.localPosition.dx, w, commit: false),
-              onHorizontalDragEnd: (_) =>
-                  widget.onChangeEnd?.call(_value),
-              child: SizedBox(
-                height: _bandHeight,
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // The floating label above the marker.
+              SizedBox(
+                height: _pillBandHeight,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // Base track.
                     Positioned(
-                      left: 0,
-                      right: 0,
-                      top: (_bandHeight - _trackHeight) / 2,
-                      height: _trackHeight,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.10),
-                          borderRadius:
-                              BorderRadius.circular(_trackHeight / 2),
-                        ),
-                      ),
-                    ),
-                    // Filled track up to the marker.
-                    Positioned(
-                      left: 0,
-                      width: thumbX,
-                      top: (_bandHeight - _trackHeight) / 2,
-                      height: _trackHeight,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              FcmColors.goldSoft,
-                              FcmColors.gold,
-                            ],
+                      left: pillCenter,
+                      top: 0,
+                      child: FractionalTranslation(
+                        translation: const Offset(-0.5, 0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
                           ),
-                          borderRadius:
-                              BorderRadius.circular(_trackHeight / 2),
-                        ),
-                      ),
-                    ),
-                    // Centre tick: the scale's default mark.
-                    Positioned(
-                      left: w / 2 - 1,
-                      width: 2,
-                      top: (_bandHeight - 12) / 2,
-                      height: 12,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.38),
-                          borderRadius: BorderRadius.circular(1),
-                        ),
-                      ),
-                    ),
-                    // The marker.
-                    Positioned(
-                      left: thumbX - _thumbRadius,
-                      top: (_bandHeight - _thumbRadius * 2) / 2,
-                      width: _thumbRadius * 2,
-                      height: _thumbRadius * 2,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: FcmColors.goldGradient,
-                          border: Border.all(
-                              color: FcmColors.night, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  FcmColors.gold.withValues(alpha: 0.35),
-                              blurRadius: 8,
+                          decoration: BoxDecoration(
+                            gradient: FcmColors.goldGradient,
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(
+                              color: FcmColors.night,
+                              width: 1.5,
                             ),
-                          ],
+                          ),
+                          child: Text(label, style: _pillTextStyle),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            if (widget.minLabel != null || widget.maxLabel != null) ...[
               const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (widget.minLabel != null)
-                    Text(
-                      widget.minLabel!,
-                      style: const TextStyle(
-                        color: FcmColors.textDim,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
+              // The track band: gesture surface, track, centre tick, thumb.
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (d) =>
+                    _updateFromDx(d.localPosition.dx, w, commit: true),
+                onHorizontalDragStart: (d) =>
+                    _updateFromDx(d.localPosition.dx, w, commit: false),
+                onHorizontalDragUpdate: (d) =>
+                    _updateFromDx(d.localPosition.dx, w, commit: false),
+                onHorizontalDragEnd: (_) => widget.onChangeEnd?.call(_value),
+                child: SizedBox(
+                  height: _bandHeight,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Base track.
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: (_bandHeight - _trackHeight) / 2,
+                        height: _trackHeight,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(
+                              _trackHeight / 2,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  if (widget.maxLabel != null)
-                    Text(
-                      widget.maxLabel!,
-                      style: const TextStyle(
-                        color: FcmColors.textDim,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
+                      // Filled track up to the marker.
+                      Positioned(
+                        left: 0,
+                        width: thumbX,
+                        top: (_bandHeight - _trackHeight) / 2,
+                        height: _trackHeight,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [FcmColors.goldSoft, FcmColors.gold],
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              _trackHeight / 2,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                ],
+                      // Centre tick: the scale's default mark.
+                      Positioned(
+                        left: w / 2 - 1,
+                        width: 2,
+                        top: (_bandHeight - 12) / 2,
+                        height: 12,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.38),
+                            borderRadius: BorderRadius.circular(1),
+                          ),
+                        ),
+                      ),
+                      // The marker.
+                      Positioned(
+                        left: thumbX - _thumbRadius,
+                        top: (_bandHeight - _thumbRadius * 2) / 2,
+                        width: _thumbRadius * 2,
+                        height: _thumbRadius * 2,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: FcmColors.goldGradient,
+                            border: Border.all(
+                              color: FcmColors.night,
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: FcmColors.gold.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
+              if (widget.minLabel != null || widget.maxLabel != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (widget.minLabel != null)
+                      Text(
+                        widget.minLabel!,
+                        style: const TextStyle(
+                          color: FcmColors.textDim,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    if (widget.maxLabel != null)
+                      Text(
+                        widget.maxLabel!,
+                        style: const TextStyle(
+                          color: FcmColors.textDim,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ],
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }

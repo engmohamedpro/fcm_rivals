@@ -122,15 +122,14 @@ class BasePlayer {
     String? nationality,
     int? marketValueEur,
     BaseStats? baseStats,
-  }) =>
-      BasePlayer(
-        playerId: playerId,
-        name: name ?? this.name,
-        position: position ?? this.position,
-        nationality: nationality ?? this.nationality,
-        marketValueEur: marketValueEur ?? this.marketValueEur,
-        baseStats: baseStats ?? this.baseStats,
-      );
+  }) => BasePlayer(
+    playerId: playerId,
+    name: name ?? this.name,
+    position: position ?? this.position,
+    nationality: nationality ?? this.nationality,
+    marketValueEur: marketValueEur ?? this.marketValueEur,
+    baseStats: baseStats ?? this.baseStats,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -177,15 +176,14 @@ class OwnedPlayer {
     int? upgradeLevel,
     Map<PlayerAttribute, int>? upgradedAttributes,
     int? staminaPercent,
-  }) =>
-      OwnedPlayer(
-        ownedId: ownedId,
-        playerId: playerId,
-        upgradeLevel: upgradeLevel ?? this.upgradeLevel,
-        upgradedAttributes: upgradedAttributes ?? this.upgradedAttributes,
-        acquiredAt: acquiredAt,
-        staminaPercent: staminaPercent ?? this.staminaPercent,
-      );
+  }) => OwnedPlayer(
+    ownedId: ownedId,
+    playerId: playerId,
+    upgradeLevel: upgradeLevel ?? this.upgradeLevel,
+    upgradedAttributes: upgradedAttributes ?? this.upgradedAttributes,
+    acquiredAt: acquiredAt,
+    staminaPercent: staminaPercent ?? this.staminaPercent,
+  );
 
   @override
   bool operator ==(Object other) =>

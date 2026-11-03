@@ -16,8 +16,7 @@ class ClubCreationScreen extends ConsumerStatefulWidget {
   const ClubCreationScreen({super.key});
 
   @override
-  ConsumerState<ClubCreationScreen> createState() =>
-      _ClubCreationScreenState();
+  ConsumerState<ClubCreationScreen> createState() => _ClubCreationScreenState();
 }
 
 class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
@@ -90,7 +89,7 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                             kFcmWordmarkAsset,
                             cacheWidth: 500,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 const FcmWordmark(size: 36),
                           ),
                         ),
@@ -101,17 +100,21 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                       index: 1,
                       child: Column(
                         children: [
-                          Text('Create your club',
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.headlineSmall
-                                  ?.copyWith(color: Colors.white)),
+                          Text(
+                            'Create your club',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           Text(
                             'You start with coins and 22 free packs — two '
                             'for every position in your starter formation.',
                             textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(color: FcmColors.textDim),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: FcmColors.textDim,
+                            ),
                           ),
                         ],
                       ),
@@ -129,7 +132,9 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               textInputAction: TextInputAction.next,
                               textCapitalization: TextCapitalization.words,
                               decoration: _field(
-                                  'Club name', Icons.shield_outlined),
+                                'Club name',
+                                Icons.shield_outlined,
+                              ),
                               validator: (v) => (v == null || v.trim().isEmpty)
                                   ? 'Required'
                                   : null,
@@ -140,18 +145,23 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               textInputAction: TextInputAction.done,
                               textCapitalization: TextCapitalization.words,
                               decoration: _field(
-                                  'Manager name', Icons.person_outline),
+                                'Manager name',
+                                Icons.person_outline,
+                              ),
                               validator: (v) => (v == null || v.trim().isEmpty)
                                   ? 'Required'
                                   : null,
                             ),
                             const SizedBox(height: 22),
-                            const Text('CLUB CREST',
-                                style: TextStyle(
-                                    color: FcmColors.textDim,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 2)),
+                            const Text(
+                              'CLUB CREST',
+                              style: TextStyle(
+                                color: FcmColors.textDim,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 2,
+                              ),
+                            ),
                             const SizedBox(height: 12),
                             Wrap(
                               spacing: 12,
@@ -168,12 +178,15 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               ],
                             ),
                             const SizedBox(height: 22),
-                            const Text('STARTER FORMATION',
-                                style: TextStyle(
-                                    color: FcmColors.textDim,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 2)),
+                            const Text(
+                              'STARTER FORMATION',
+                              style: TextStyle(
+                                color: FcmColors.textDim,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 2,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             const Text(
                               'This is your starter formation — your team '
@@ -181,9 +194,10 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               'match its positions. You can change it any '
                               'time later from the Team tab.',
                               style: TextStyle(
-                                  color: FcmColors.textDim,
-                                  fontSize: 11,
-                                  height: 1.4),
+                                color: FcmColors.textDim,
+                                fontSize: 11,
+                                height: 1.4,
+                              ),
                             ),
                             const SizedBox(height: 10),
                             // The formation catalogue scrolls inside a
@@ -191,18 +205,17 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                             // would stretch the page and push the submit
                             // button far below the fold.
                             ConstrainedBox(
-                              constraints:
-                                  const BoxConstraints(maxHeight: 300),
+                              constraints: const BoxConstraints(maxHeight: 300),
                               child: SingleChildScrollView(
                                 child: Column(
                                   children: [
                                     for (final f in formations)
                                       _FormationOption(
                                         formation: f,
-                                        selected:
-                                            f.code == _formationCode,
+                                        selected: f.code == _formationCode,
                                         onTap: () => setState(
-                                            () => _formationCode = f.code),
+                                          () => _formationCode = f.code,
+                                        ),
                                       ),
                                   ],
                                 ),
@@ -233,27 +246,28 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
   }
 
   InputDecoration _field(String label, IconData icon) => InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: FcmColors.gold),
-        filled: true,
-        fillColor: Colors.black.withValues(alpha: 0.28),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: FcmColors.gold, width: 2),
-        ),
-      );
+    labelText: label,
+    prefixIcon: Icon(icon, color: FcmColors.gold),
+    filled: true,
+    fillColor: Colors.black.withValues(alpha: 0.28),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: FcmColors.gold, width: 2),
+    ),
+  );
 }
 
 /// Shield-shaped crest swatch; the selected one pops and glows.
-class _CrestOption extends StatelessWidget {  const _CrestOption({
+class _CrestOption extends StatelessWidget {
+  const _CrestOption({
     required this.color,
     required this.selected,
     required this.onTap,
@@ -297,8 +311,7 @@ class _CrestOption extends StatelessWidget {  const _CrestOption({
             ),
             boxShadow: [
               if (selected)
-                BoxShadow(
-                    color: color.withValues(alpha: 0.7), blurRadius: 18),
+                BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 18),
             ],
           ),
           child: const Icon(Icons.star_rounded, color: Colors.white),
@@ -381,7 +394,9 @@ class _FormationOption extends StatelessWidget {
                     for (final (position, count) in _census)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: selected
                               ? FcmColors.ink.withValues(alpha: 0.16)
@@ -391,8 +406,7 @@ class _FormationOption extends StatelessWidget {
                         child: Text(
                           '${position.code} $count',
                           style: TextStyle(
-                            color:
-                                selected ? FcmColors.ink : FcmColors.textDim,
+                            color: selected ? FcmColors.ink : FcmColors.textDim,
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                           ),
@@ -402,8 +416,11 @@ class _FormationOption extends StatelessWidget {
                 ),
               ),
               if (selected)
-                const Icon(Icons.check_circle_rounded,
-                    color: FcmColors.ink, size: 18),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: FcmColors.ink,
+                  size: 18,
+                ),
             ],
           ),
         ),

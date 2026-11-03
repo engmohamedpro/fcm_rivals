@@ -81,8 +81,7 @@ class MatchSimBatchReport {
   double get avgRedCards => matches == 0 ? 0 : redCards / matches;
 
   /// Goals / shots on target, across the whole batch.
-  double get goalConversion =>
-      shotsOnTarget == 0 ? 0 : goals / shotsOnTarget;
+  double get goalConversion => shotsOnTarget == 0 ? 0 : goals / shotsOnTarget;
 
   /// Tactical-effectiveness delta: tactics-group home win rate minus
   /// control-group home win rate (both from this batch).
@@ -124,7 +123,7 @@ class MatchSimResult {
 /// and aggregates GDD 31 metrics.
 class MatchSimulator {
   MatchSimulator({math.Random? random})
-      : _random = random ?? math.Random(20261101);
+    : _random = random ?? math.Random(20261101);
 
   final math.Random _random;
   final BaseStatsGenerator _generator = const BaseStatsGenerator();
@@ -137,9 +136,16 @@ class MatchSimulator {
   List<MatchPlayer> _squad(int base, String prefix, int marketValueEur) {
     const positions = [
       Position.gk,
-      Position.lb, Position.cb, Position.cb, Position.rb,
-      Position.lm, Position.cm, Position.cm, Position.rm,
-      Position.st, Position.st,
+      Position.lb,
+      Position.cb,
+      Position.cb,
+      Position.rb,
+      Position.lm,
+      Position.cm,
+      Position.cm,
+      Position.rm,
+      Position.st,
+      Position.st,
     ];
     return [
       for (var i = 0; i < positions.length; i++)
@@ -166,8 +172,7 @@ class MatchSimulator {
   }) {
     // Division difficulty (GDD 9.6/31): higher divisions field stronger
     // squads — modelled by shifting the away side's market value band.
-    final awayValue = awayValueEur +
-        (homeDivision - 1) * 10_000_000;
+    final awayValue = awayValueEur + (homeDivision - 1) * 10_000_000;
     return MatchEngine(
       seed: seed,
       home: MatchTeamInput(
@@ -215,13 +220,20 @@ class MatchSimulator {
 
     for (var i = 0; i < matches; i++) {
       final seed = _random.nextInt(1 << 31);
-      final engine = _engine(seed,
-          homeValueEur: homeValueEur,
-          awayValueEur: awayValueEur,
-          homeDivision: homeDivision);
+      final engine = _engine(
+        seed,
+        homeValueEur: homeValueEur,
+        awayValueEur: awayValueEur,
+        homeDivision: homeDivision,
+      );
       if (tacticsAtMinute60) {
-        engine.queueCommand(LiveActionCommand(
-            atMinute: 60, side: MatchSide.home, action: LiveMatchAction.pushForward));
+        engine.queueCommand(
+          LiveActionCommand(
+            atMinute: 60,
+            side: MatchSide.home,
+            action: LiveMatchAction.pushForward,
+          ),
+        );
       }
       engine.simulateToEnd();
 
@@ -272,10 +284,12 @@ class MatchSimulator {
       yellowCards: yellowCards,
       redCards: redCards,
       staminaDepletion: staminaCount == 0 ? 0 : staminaLost / staminaCount,
-      avgHomeStaminaEnd:
-          staminaCount == 0 ? 0 : homeStaminaEnd / (staminaCount / 2),
-      avgAwayStaminaEnd:
-          staminaCount == 0 ? 0 : awayStaminaEnd / (staminaCount / 2),
+      avgHomeStaminaEnd: staminaCount == 0
+          ? 0
+          : homeStaminaEnd / (staminaCount / 2),
+      avgAwayStaminaEnd: staminaCount == 0
+          ? 0
+          : awayStaminaEnd / (staminaCount / 2),
       homeTacticsWins: controlHomeWins ?? homeWins,
       awayTacticsWins: controlAwayWins ?? awayWins,
     );
@@ -288,8 +302,11 @@ class MatchSimulator {
     List<MatchCommand Function()> commandFactories = const [],
   }) {
     int run() {
-      final engine = _engine(seed,
-          homeValueEur: mediumValueEur, awayValueEur: mediumValueEur);
+      final engine = _engine(
+        seed,
+        homeValueEur: mediumValueEur,
+        awayValueEur: mediumValueEur,
+      );
       for (final factory in commandFactories) {
         engine.queueCommand(factory());
       }
@@ -297,8 +314,15 @@ class MatchSimulator {
       return Object.hashAll([
         engine.state.scoreHome,
         engine.state.scoreAway,
-        ...engine.events.map((e) => Object.hash(e.minute, e.type.index,
-            e.side.index, e.primaryPlayerId, e.secondaryPlayerId)),
+        ...engine.events.map(
+          (e) => Object.hash(
+            e.minute,
+            e.type.index,
+            e.side.index,
+            e.primaryPlayerId,
+            e.secondaryPlayerId,
+          ),
+        ),
       ]);
     }
 
@@ -315,10 +339,16 @@ class MatchSimulator {
   }) {
     for (var i = 0; i < sampleMatches; i++) {
       final matchSeed = seed + i;
-      final plain = _engine(matchSeed,
-          homeValueEur: mediumValueEur, awayValueEur: mediumValueEur);
-      final changed = _engine(matchSeed,
-          homeValueEur: mediumValueEur, awayValueEur: mediumValueEur);
+      final plain = _engine(
+        matchSeed,
+        homeValueEur: mediumValueEur,
+        awayValueEur: mediumValueEur,
+      );
+      final changed = _engine(
+        matchSeed,
+        homeValueEur: mediumValueEur,
+        awayValueEur: mediumValueEur,
+      );
 
       // Run both to minute 59 step by step — identical prefixes.
       for (var minute = 0; minute < 60; minute++) {
@@ -339,8 +369,13 @@ class MatchSimulator {
       }
 
       // Diverge: one command at minute 60, then run both out.
-      changed.queueCommand(ChangeMentalityCommand(
-          atMinute: 60, side: MatchSide.home, mentality: Mentality.attacking));
+      changed.queueCommand(
+        ChangeMentalityCommand(
+          atMinute: 60,
+          side: MatchSide.home,
+          mentality: Mentality.attacking,
+        ),
+      );
       plain.simulateToEnd();
       changed.simulateToEnd();
 
@@ -368,8 +403,11 @@ class MatchSimulator {
 
   /// One match summary for replay-record comparisons.
   MatchSimResult summarize(int seed) {
-    final engine = _engine(seed,
-        homeValueEur: mediumValueEur, awayValueEur: mediumValueEur);
+    final engine = _engine(
+      seed,
+      homeValueEur: mediumValueEur,
+      awayValueEur: mediumValueEur,
+    );
     engine.simulateToEnd();
     return MatchSimResult(
       seed: seed,

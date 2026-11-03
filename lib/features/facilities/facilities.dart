@@ -27,23 +27,54 @@ import 'package:flutter/material.dart';
 
 /// Everything the campus can build (GDD 3.5).
 enum Facility {
-  attack('Attack Academy', 'attack academy', Icons.sports_soccer_rounded,
-      FacilityEffect.attribute(
-          attribute: FacilityAttribute.attack, perLevelPercent: 0.9)),
-  support('Playmaker Hub', 'playmaker hub', Icons.hub_rounded,
-      FacilityEffect.attribute(
-          attribute: FacilityAttribute.support, perLevelPercent: 0.9)),
-  defence('Defence Forge', 'defence forge', Icons.shield_rounded,
-      FacilityEffect.attribute(
-          attribute: FacilityAttribute.defence, perLevelPercent: 0.9)),
-  goalkeeping('Keeper School', 'keeper school',
-      Icons.sports_handball_rounded, FacilityEffect.attribute(
-          attribute: FacilityAttribute.goalkeeping, perLevelPercent: 1.1)),
-  recovery('Recovery Centre', 'recovery centre', Icons.spa_rounded,
-      FacilityEffect.recovery(2.5)),
-  medical('Medical Centre', 'medical centre',
-      Icons.medical_services_rounded, FacilityEffect.medical(0.6)),
-  ;
+  attack(
+    'Attack Academy',
+    'attack academy',
+    Icons.sports_soccer_rounded,
+    FacilityEffect.attribute(
+      attribute: FacilityAttribute.attack,
+      perLevelPercent: 0.9,
+    ),
+  ),
+  support(
+    'Playmaker Hub',
+    'playmaker hub',
+    Icons.hub_rounded,
+    FacilityEffect.attribute(
+      attribute: FacilityAttribute.support,
+      perLevelPercent: 0.9,
+    ),
+  ),
+  defence(
+    'Defence Forge',
+    'defence forge',
+    Icons.shield_rounded,
+    FacilityEffect.attribute(
+      attribute: FacilityAttribute.defence,
+      perLevelPercent: 0.9,
+    ),
+  ),
+  goalkeeping(
+    'Keeper School',
+    'keeper school',
+    Icons.sports_handball_rounded,
+    FacilityEffect.attribute(
+      attribute: FacilityAttribute.goalkeeping,
+      perLevelPercent: 1.1,
+    ),
+  ),
+  recovery(
+    'Recovery Centre',
+    'recovery centre',
+    Icons.spa_rounded,
+    FacilityEffect.recovery(2.5),
+  ),
+  medical(
+    'Medical Centre',
+    'medical centre',
+    Icons.medical_services_rounded,
+    FacilityEffect.medical(0.6),
+  );
 
   const Facility(this.title, this.subtitle, this.icon, this.effect);
 
@@ -71,20 +102,20 @@ class FacilityEffect {
   const FacilityEffect.attribute({
     required this.attribute,
     required double perLevelPercent,
-  })  : attributePerLevel = perLevelPercent,
-        recoveryPerLevelPercent = 0,
-        injuryRiskPerLevel = 0;
+  }) : attributePerLevel = perLevelPercent,
+       recoveryPerLevelPercent = 0,
+       injuryRiskPerLevel = 0;
   const FacilityEffect.recovery(double perLevelPercent)
-      : attribute = null,
-        attributePerLevel = 0,
-        recoveryPerLevelPercent = perLevelPercent,
-        injuryRiskPerLevel = 0;
+    : attribute = null,
+      attributePerLevel = 0,
+      recoveryPerLevelPercent = perLevelPercent,
+      injuryRiskPerLevel = 0;
 
   const FacilityEffect.medical(double perLevelRisk)
-      : attribute = null,
-        attributePerLevel = 0,
-        recoveryPerLevelPercent = 0,
-        injuryRiskPerLevel = perLevelRisk;
+    : attribute = null,
+      attributePerLevel = 0,
+      recoveryPerLevelPercent = 0,
+      injuryRiskPerLevel = perLevelRisk;
 
   final FacilityAttribute? attribute;
   final double attributePerLevel;
@@ -185,7 +216,8 @@ class FacilitiesCosts {
     if (currentLevel <= taperFromLevel) {
       factor = math.pow(growth, currentLevel).toDouble();
     } else {
-      factor = math.pow(growth, taperFromLevel).toDouble() *
+      factor =
+          math.pow(growth, taperFromLevel).toDouble() *
           math.pow(taper, currentLevel - taperFromLevel).toDouble();
     }
     final cost = baseCost * factor;
@@ -201,7 +233,6 @@ class FacilitiesCosts {
     }
     return total;
   }
-
 }
 
 /// Default campus economy: level 1 at 4k coins (a couple of match
@@ -222,12 +253,8 @@ class CampusLevels {
 
   /// Fraction of BASE attribute added per player at current levels
   /// (match-input hook): only training facilities contribute.
-  ({
-    double attack,
-    double support,
-    double defence,
-    double goalkeeping,
-  }) get attributeFractions {
+  ({double attack, double support, double defence, double goalkeeping})
+  get attributeFractions {
     double attack = 0, support = 0, defence = 0, goalkeeping = 0;
     for (final f in Facility.values) {
       final e = f.effect;

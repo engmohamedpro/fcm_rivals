@@ -16,7 +16,8 @@ void main() {
 
   test('a v8 database upgrades to v9, keeping its AI squads', () async {
     final file = File(
-        '${Directory.systemTemp.path}/v8_upgrade_${DateTime.now().millisecondsSinceEpoch}.sqlite');
+      '${Directory.systemTemp.path}/v8_upgrade_${DateTime.now().millisecondsSinceEpoch}.sqlite',
+    );
 
     // Phase 1: create the database with the CURRENT code, then rewind it
     // to a v8 shape (drop the v9 column by rebuilding the table without
@@ -25,19 +26,22 @@ void main() {
     {
       final db = AppDatabase(NativeDatabase(file));
       await db.customStatement(
-          'CREATE TABLE ai_players_v8 (id INTEGER PRIMARY KEY AUTOINCREMENT, '
-          'club_id INTEGER NOT NULL, player_name TEXT NOT NULL, '
-          'position TEXT NOT NULL, attack INTEGER NOT NULL, '
-          'support INTEGER NOT NULL, defence INTEGER NOT NULL, '
-          'goalkeeping INTEGER NOT NULL, stamina_percent INTEGER NOT NULL '
-          'DEFAULT 100)');
+        'CREATE TABLE ai_players_v8 (id INTEGER PRIMARY KEY AUTOINCREMENT, '
+        'club_id INTEGER NOT NULL, player_name TEXT NOT NULL, '
+        'position TEXT NOT NULL, attack INTEGER NOT NULL, '
+        'support INTEGER NOT NULL, defence INTEGER NOT NULL, '
+        'goalkeeping INTEGER NOT NULL, stamina_percent INTEGER NOT NULL '
+        'DEFAULT 100)',
+      );
       await db.customStatement(
-          "INSERT INTO ai_players_v8 (club_id, player_name, position, attack, "
-          "support, defence, goalkeeping, stamina_percent) VALUES "
-          "(1, 'Legacy Star', 'ST', 70, 70, 70, 20, 88)");
+        "INSERT INTO ai_players_v8 (club_id, player_name, position, attack, "
+        "support, defence, goalkeeping, stamina_percent) VALUES "
+        "(1, 'Legacy Star', 'ST', 70, 70, 70, 20, 88)",
+      );
       await db.customStatement('DROP TABLE ai_players');
-      await db
-          .customStatement('ALTER TABLE ai_players_v8 RENAME TO ai_players');
+      await db.customStatement(
+        'ALTER TABLE ai_players_v8 RENAME TO ai_players',
+      );
       await db.customStatement('PRAGMA user_version = 8');
       await db.close();
     }
@@ -46,8 +50,11 @@ void main() {
     {
       final db = AppDatabase(NativeDatabase(file));
       final version = await db.customSelect('PRAGMA user_version').get();
-      expect(version.first.read<int>('user_version'), 9,
-          reason: 'opening a v8 database migrates it to v9');
+      expect(
+        version.first.read<int>('user_version'),
+        9,
+        reason: 'opening a v8 database migrates it to v9',
+      );
 
       // The v8 row survived and reads through the drift API with a null
       // realPlayerId (synthetic legacy player).
@@ -59,9 +66,10 @@ void main() {
 
       // And the column accepts a real id for newly signed players.
       await db.customStatement(
-          "INSERT INTO ai_players (club_id, player_name, position, attack, "
-          "support, defence, goalkeeping, stamina_percent, real_player_id) "
-          "VALUES (1, 'New Real', 'CB', 60, 60, 60, 20, 100, 4242)");
+        "INSERT INTO ai_players (club_id, player_name, position, attack, "
+        "support, defence, goalkeeping, stamina_percent, real_player_id) "
+        "VALUES (1, 'New Real', 'CB', 60, 60, 60, 20, 100, 4242)",
+      );
       final after = await db.select(db.aiPlayers).get();
       expect(after.length, 2);
       expect(after.last.realPlayerId, 4242);
@@ -74,8 +82,7 @@ void main() {
   test('the fresh schema carries the real_player_id column', () async {
     final db = AppDatabase(NativeDatabase.memory());
     expect(db.schemaVersion, 9);
-    final cols =
-        await db.customSelect("PRAGMA table_info('ai_players')").get();
+    final cols = await db.customSelect("PRAGMA table_info('ai_players')").get();
     final names = cols.map((row) => row.read<String>('name')).toSet();
     expect(names.contains('real_player_id'), isTrue);
     await db.close();

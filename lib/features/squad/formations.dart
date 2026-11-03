@@ -260,6 +260,7 @@ const List<Formation> formations = [
   ]),
 ];
 
-Formation formationByCode(String code) =>
-    formations.firstWhere((f) => f.code == code,
-        orElse: () => formations.first);
+Formation formationByCode(String code) => formations.firstWhere(
+  (f) => f.code == code,
+  orElse: () => formations.first,
+);

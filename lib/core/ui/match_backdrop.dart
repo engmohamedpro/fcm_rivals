@@ -73,7 +73,8 @@ class _FcmMatchBackdropState extends State<FcmMatchBackdrop>
               final ay = 0.5 + 0.04 * math.cos(t * 0.5 + 0.7);
               return Transform(
                 alignment: Alignment(-1 + 2 * ax, -1 + 2 * ay),
-                transform: Matrix4.identity()..scale(zoom),
+                transform: Matrix4.identity()
+                  ..scaleByDouble(zoom, zoom, zoom, 1),
                 child: Image.asset(
                   kMatchBackgroundAsset,
                   fit: BoxFit.cover,

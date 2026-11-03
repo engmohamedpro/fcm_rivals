@@ -157,6 +157,7 @@ class _PlayerDetailSheet extends StatelessWidget {
               duration: const Duration(milliseconds: 700),
               curve: Curves.easeOutBack,
               builder: (context, v, child) {
+                final s = 0.85 + 0.15 * v;
                 return Opacity(
                   opacity: v.clamp(0.0, 1.0),
                   child: Transform(
@@ -164,7 +165,7 @@ class _PlayerDetailSheet extends StatelessWidget {
                     transform: Matrix4.identity()
                       ..setEntry(3, 2, 0.001)
                       ..rotateY((1 - v) * 0.9)
-                      ..scale(0.85 + 0.15 * v),
+                      ..scaleByDouble(s, s, s, 1),
                     child: child,
                   ),
                 );
@@ -177,13 +178,16 @@ class _PlayerDetailSheet extends StatelessWidget {
             index: 1,
             child: Column(
               children: [
-                FitText(p.name.toUpperCase(),
-                    align: Alignment.center,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2)),
+                FitText(
+                  p.name.toUpperCase(),
+                  align: Alignment.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   '${flagEmojiFor(p.nationality)} ${p.nationality}  ·  ${p.position.code}',
@@ -200,11 +204,17 @@ class _PlayerDetailSheet extends StatelessWidget {
                     if (card.upgradeLevel > 0)
                       FcmPill('LEVEL +${card.upgradeLevel}'),
                     if (copies >= 2)
-                      FcmPill('×$copies COPIES',
-                          color: FcmColors.bronze, filled: false),
+                      FcmPill(
+                        '×$copies COPIES',
+                        color: FcmColors.bronze,
+                        filled: false,
+                      ),
                     if (inSquad)
-                      const FcmPill('IN SQUAD',
-                          color: FcmColors.success, filled: false),
+                      const FcmPill(
+                        'IN SQUAD',
+                        color: FcmColors.success,
+                        filled: false,
+                      ),
                   ],
                 ),
               ],
@@ -218,32 +228,40 @@ class _PlayerDetailSheet extends StatelessWidget {
               child: Column(
                 children: [
                   FcmStatBar(
-                      label: 'ATT',
-                      value: card.attribute(PlayerAttribute.attack),
-                      bonus: card.upgradedAttack),
+                    label: 'ATT',
+                    value: card.attribute(PlayerAttribute.attack),
+                    bonus: card.upgradedAttack,
+                  ),
                   FcmStatBar(
-                      label: 'SUP',
-                      value: card.attribute(PlayerAttribute.support),
-                      bonus: card.upgradedSupport),
+                    label: 'SUP',
+                    value: card.attribute(PlayerAttribute.support),
+                    bonus: card.upgradedSupport,
+                  ),
                   FcmStatBar(
-                      label: 'DEF',
-                      value: card.attribute(PlayerAttribute.defence),
-                      bonus: card.upgradedDefence),
+                    label: 'DEF',
+                    value: card.attribute(PlayerAttribute.defence),
+                    bonus: card.upgradedDefence,
+                  ),
                   FcmStatBar(
-                      label: 'GK',
-                      value: card.attribute(PlayerAttribute.goalkeeping),
-                      bonus: card.upgradedGoalkeeping),
+                    label: 'GK',
+                    value: card.attribute(PlayerAttribute.goalkeeping),
+                    bonus: card.upgradedGoalkeeping,
+                  ),
                   const Divider(height: 22),
                   Row(
                     children: [
                       const Expanded(
-                        child: Text('Market value',
-                            style: TextStyle(color: FcmColors.textDim)),
+                        child: Text(
+                          'Market value',
+                          style: TextStyle(color: FcmColors.textDim),
+                        ),
                       ),
                       Text(
                         '€${(p.marketValueEur / 1000000).toStringAsFixed(1)}M',
                         style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w900),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ],
                   ),

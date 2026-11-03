@@ -6,12 +6,12 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 
 String datasetJson(List<List<dynamic>> rows, {int version = 1}) => json.encode({
-      'format': 'fcm-rivals-players',
-      'version': version,
-      'asOf': '2026-11-01',
-      'digest': 'test',
-      'players': rows,
-    });
+  'format': 'fcm-rivals-players',
+  'version': version,
+  'asOf': '2026-11-01',
+  'digest': 'test',
+  'players': rows,
+});
 
 // [id, name, pos, nat, mv]
 const List<List<dynamic>> baseRows = [
@@ -51,7 +51,10 @@ void main() {
         [9, 'Bad Value', 'ST', 'Egypt', 0],
         [0, 'Bad Id', 'ST', 'Egypt', 5_000_000],
       ]);
-      expect(() => db.importDataset(bad), throwsA(isA<DatasetValidationException>()));
+      expect(
+        () => db.importDataset(bad),
+        throwsA(isA<DatasetValidationException>()),
+      );
       expect(db.count, before); // untouched
     });
 
@@ -60,39 +63,48 @@ void main() {
         [5, 'A', 'ST', 'Egypt', 1_000_000],
         [5, 'B', 'CB', 'Egypt', 1_000_000],
       ]);
-      expect(() => PlayerDatabase().importDataset(dup),
-          throwsA(isA<DatasetValidationException>()));
+      expect(
+        () => PlayerDatabase().importDataset(dup),
+        throwsA(isA<DatasetValidationException>()),
+      );
     });
 
-    test('GDD 4.6: name/nationality changes update fields, stats preserved', () {
-      final db = PlayerDatabase();
-      db.importDataset(ds(baseRows));
-      final statsBefore = db[1]!.baseStats;
+    test(
+      'GDD 4.6: name/nationality changes update fields, stats preserved',
+      () {
+        final db = PlayerDatabase();
+        db.importDataset(ds(baseRows));
+        final statsBefore = db[1]!.baseStats;
 
-      final result = db.importDataset(ds([
-        [1, 'Player One Renamed', 'ST', 'Mexico', 5_000_000],
-        [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
-        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
-      ], version: 2));
+        final result = db.importDataset(
+          ds([
+            [1, 'Player One Renamed', 'ST', 'Mexico', 5_000_000],
+            [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+            [3, 'Player Three', 'GK', 'Germany', 30_000_000],
+          ], version: 2),
+        );
 
-      expect(result.updated.length, 1);
-      expect(result.regenerated, isEmpty);
-      expect(result.unchanged, 2);
-      final p = db[1]!;
-      expect(p.name, 'Player One Renamed');
-      expect(p.nationality, 'Mexico');
-      expect(p.baseStats, statsBefore); // FR-006
-    });
+        expect(result.updated.length, 1);
+        expect(result.regenerated, isEmpty);
+        expect(result.unchanged, 2);
+        final p = db[1]!;
+        expect(p.name, 'Player One Renamed');
+        expect(p.nationality, 'Mexico');
+        expect(p.baseStats, statsBefore); // FR-006
+      },
+    );
 
     test('GDD 4.6: market value change regenerates base stats', () {
       final db = PlayerDatabase();
       db.importDataset(ds(baseRows));
 
-      final result = db.importDataset(ds([
-        [1, 'Player One', 'ST', 'Egypt', 40_000_000],
-        [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
-        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
-      ], version: 2));
+      final result = db.importDataset(
+        ds([
+          [1, 'Player One', 'ST', 'Egypt', 40_000_000],
+          [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+          [3, 'Player Three', 'GK', 'Germany', 30_000_000],
+        ], version: 2),
+      );
 
       expect(result.regenerated.length, 1);
       expect(db[1]!.baseStats.overall, greaterThan(0));
@@ -104,19 +116,20 @@ void main() {
       final db = PlayerDatabase();
       db.importDataset(ds(baseRows));
 
-      db.importDataset(ds([
-        [1, 'Player One', 'CB', 'Egypt', 5_000_000],
-        [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
-        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
-      ], version: 2));
+      db.importDataset(
+        ds([
+          [1, 'Player One', 'CB', 'Egypt', 5_000_000],
+          [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+          [3, 'Player Three', 'GK', 'Germany', 30_000_000],
+        ], version: 2),
+      );
 
       final p = db[1]!;
       expect(p.position, Position.cb);
       expect(p.baseStats.defence, greaterThan(p.baseStats.attack));
     });
 
-    test('GDD 4.6: unchanged value+position preserves stats byte-for-byte',
-        () {
+    test('GDD 4.6: unchanged value+position preserves stats byte-for-byte', () {
       final db = PlayerDatabase();
       db.importDataset(ds(baseRows));
       final before = db[2]!.baseStats;
@@ -129,10 +142,12 @@ void main() {
       final db = PlayerDatabase();
       db.importDataset(ds(baseRows));
 
-      final result = db.importDataset(ds([
-        [1, 'Player One', 'ST', 'Egypt', 5_000_000],
-        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
-      ], version: 2));
+      final result = db.importDataset(
+        ds([
+          [1, 'Player One', 'ST', 'Egypt', 5_000_000],
+          [3, 'Player Three', 'GK', 'Germany', 30_000_000],
+        ], version: 2),
+      );
 
       expect(result.removed.length, 1);
       expect(result.removed.single.playerId, 2);
@@ -140,16 +155,21 @@ void main() {
       expect(db[2], isNull);
     });
 
-    test('stable ids: same player keeps id across renames and value changes', () {
-      final db = PlayerDatabase();
-      db.importDataset(ds(baseRows));
-      db.importDataset(ds([
-        [1, 'Completely New Name', 'ST', 'Egypt', 60_000_000],
-        [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
-        [3, 'Player Three', 'GK', 'Germany', 30_000_000],
-      ], version: 2));
-      expect(db[1]!.playerId, 1);
-      expect(db[1]!.name, 'Completely New Name');
-    });
+    test(
+      'stable ids: same player keeps id across renames and value changes',
+      () {
+        final db = PlayerDatabase();
+        db.importDataset(ds(baseRows));
+        db.importDataset(
+          ds([
+            [1, 'Completely New Name', 'ST', 'Egypt', 60_000_000],
+            [2, 'Player Two', 'CB', 'Brazil', 1_000_000],
+            [3, 'Player Three', 'GK', 'Germany', 30_000_000],
+          ], version: 2),
+        );
+        expect(db[1]!.playerId, 1);
+        expect(db[1]!.name, 'Completely New Name');
+      },
+    );
   });
 }

@@ -26,9 +26,17 @@ import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/squad/formations.dart';
 
 const _positions = [
-  Position.gk, Position.lb, Position.cb, Position.cb, Position.rb,
-  Position.lm, Position.cm, Position.cm, Position.rm,
-  Position.st, Position.st,
+  Position.gk,
+  Position.lb,
+  Position.cb,
+  Position.cb,
+  Position.rb,
+  Position.lm,
+  Position.cm,
+  Position.cm,
+  Position.rm,
+  Position.st,
+  Position.st,
 ];
 
 /// Value that generates a given target overall under the default curve.
@@ -64,32 +72,39 @@ MatchEngine _engine(
   String awayFormation = '4-4-2',
   PlayingStyle awayStyle = PlayingStyle.balanced,
   Mentality awayMentality = Mentality.balanced,
-}) =>
-    MatchEngine(
-      seed: seed,
-      home: MatchTeamInput(
-        teamId: 1,
-        teamName: 'Home',
-        formationCode: homeFormation,
-        style: homeStyle,
-        mentality: homeMentality,
-        starters: _squad(100, 'H', homeOverall),
-        bench: const [],
-      ),
-      away: MatchTeamInput(
-        teamId: 2,
-        teamName: 'Away',
-        formationCode: awayFormation,
-        style: awayStyle,
-        mentality: awayMentality,
-        starters: _squad(300, 'A', awayOverall),
-        bench: const [],
-      ),
-    );
+}) => MatchEngine(
+  seed: seed,
+  home: MatchTeamInput(
+    teamId: 1,
+    teamName: 'Home',
+    formationCode: homeFormation,
+    style: homeStyle,
+    mentality: homeMentality,
+    starters: _squad(100, 'H', homeOverall),
+    bench: const [],
+  ),
+  away: MatchTeamInput(
+    teamId: 2,
+    teamName: 'Away',
+    formationCode: awayFormation,
+    style: awayStyle,
+    mentality: awayMentality,
+    starters: _squad(300, 'A', awayOverall),
+    bench: const [],
+  ),
+);
 
 class Batch {
-  Batch(this.matches, this.homeWins, this.draws, this.awayWins, this.goals,
-      this.homeGoals, this.shots, this.staminaEnd);
+  Batch(
+    this.matches,
+    this.homeWins,
+    this.draws,
+    this.awayWins,
+    this.goals,
+    this.homeGoals,
+    this.shots,
+    this.staminaEnd,
+  );
 
   final int matches;
   final int homeWins;
@@ -124,15 +139,17 @@ Batch runBatch(
   var staminaSum = 0.0;
   var staminaN = 0;
   for (var m = 0; m < matches; m++) {
-    final engine = _engine(seedBase + m,
-        homeOverall: homeOverall,
-        awayOverall: awayOverall,
-        homeFormation: homeFormation,
-        homeStyle: homeStyle,
-        homeMentality: homeMentality,
-        awayFormation: awayFormation,
-        awayStyle: awayStyle,
-        awayMentality: awayMentality);
+    final engine = _engine(
+      seedBase + m,
+      homeOverall: homeOverall,
+      awayOverall: awayOverall,
+      homeFormation: homeFormation,
+      homeStyle: homeStyle,
+      homeMentality: homeMentality,
+      awayFormation: awayFormation,
+      awayStyle: awayStyle,
+      awayMentality: awayMentality,
+    );
     engine.simulateToEnd();
     final s = engine.state;
     if (s.scoreHome > s.scoreAway) {
@@ -153,8 +170,16 @@ Batch runBatch(
       }
     }
   }
-  return Batch(matches, hw, d, aw, goals, homeGoals, shots,
-      staminaN == 0 ? 0 : staminaSum / staminaN);
+  return Batch(
+    matches,
+    hw,
+    d,
+    aw,
+    goals,
+    homeGoals,
+    shots,
+    staminaN == 0 ? 0 : staminaSum / staminaN,
+  );
 }
 
 void main() {
@@ -166,16 +191,22 @@ void main() {
     final results = <int, Batch>{};
     setUpAll(() {
       for (final gap in [0, 4, 8, 12, 16, 20]) {
-        results[gap] = runBatch(n, 1000 + gap * 10,
-            homeOverall: 70 + gap, awayOverall: 70);
+        results[gap] = runBatch(
+          n,
+          1000 + gap * 10,
+          homeOverall: 70 + gap,
+          awayOverall: 70,
+        );
       }
     });
 
     test('win probability rises monotonically with the OVR gap', () {
       for (final gap in [4, 8, 12, 16, 20]) {
-        expect(results[gap]!.homeWinRate,
-            greaterThan(results[gap - 4]!.homeWinRate),
-            reason: 'gap $gap did not beat gap ${gap - 4}');
+        expect(
+          results[gap]!.homeWinRate,
+          greaterThan(results[gap - 4]!.homeWinRate),
+          reason: 'gap $gap did not beat gap ${gap - 4}',
+        );
       }
     });
 
@@ -195,8 +226,7 @@ void main() {
       expect(results[20]!.homeWinRate, inInclusiveRange(0.72, 0.88));
     });
 
-    test('the underdog still scores: goals stay realistic at every gap',
-        () {
+    test('the underdog still scores: goals stay realistic at every gap', () {
       for (final gap in [0, 8, 16, 20]) {
         final b = results[gap]!;
         expect(b.avgGoals, inInclusiveRange(1.4, 5.2), reason: 'gap $gap');
@@ -238,43 +268,55 @@ void main() {
       final swings = <String, double>{};
       for (final style in PlayingStyle.values) {
         if (style == PlayingStyle.balanced) continue;
-        final b = runBatch(n, 7000 + style.index * 100,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeFormation: '4-4-2',
-            awayFormation: '4-4-2',
-            homeStyle: style);
+        final b = runBatch(
+          n,
+          7000 + style.index * 100,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeFormation: '4-4-2',
+          awayFormation: '4-4-2',
+          homeStyle: style,
+        );
         swings[style.name] = b.homeWinRate;
-        expect(b.homeWinRate, inInclusiveRange(0.35, 0.62),
-            reason:
-                '${style.name} win rate ${b.homeWinRate.toStringAsFixed(2)}');
+        expect(
+          b.homeWinRate,
+          inInclusiveRange(0.35, 0.62),
+          reason: '${style.name} win rate ${b.homeWinRate.toStringAsFixed(2)}',
+        );
       }
       final sorted = swings.values.toList()..sort();
-      expect(sorted.last - sorted.first, greaterThan(0.04),
-          reason: 'styles look inert: $swings');
+      expect(
+        sorted.last - sorted.first,
+        greaterThan(0.04),
+        reason: 'styles look inert: $swings',
+      );
     });
 
-    test('possession styles actually hold the ball; direct styles shoot',
-        () {
+    test('possession styles actually hold the ball; direct styles shoot', () {
       const n = 300;
       final possessionStats = <String, double>{};
       for (final style in [
         PlayingStyle.tikiTaka,
         PlayingStyle.balanced,
-        PlayingStyle.longBall
+        PlayingStyle.longBall,
       ]) {
         var possSum = 0.0;
         var matches = 0;
         for (var m = 0; m < n; m++) {
-          final engine = _engine(8000 + m,
-              homeOverall: 70,
-              awayOverall: 70,
-              homeFormation: '4-4-2',
-              awayFormation: '4-4-2',
-              homeStyle: style);
+          final engine = _engine(
+            8000 + m,
+            homeOverall: 70,
+            awayOverall: 70,
+            homeFormation: '4-4-2',
+            awayFormation: '4-4-2',
+            homeStyle: style,
+          );
           engine.simulateToEnd();
-          final stats =
-              computeStats(engine.events, homeTeamId: 1, awayTeamId: 2);
+          final stats = computeStats(
+            engine.events,
+            homeTeamId: 1,
+            awayTeamId: 2,
+          );
           if (stats.home.possessionMinutes + stats.away.possessionMinutes > 0) {
             possSum += stats.possessionPercent(stats.home);
             matches++;
@@ -282,32 +324,41 @@ void main() {
         }
         possessionStats[style.name] = possSum / matches;
       }
-      expect(possessionStats['tikiTaka']!,
-          greaterThan(possessionStats['balanced']!));
-      expect(possessionStats['balanced']!,
-          greaterThan(possessionStats['longBall']!));
+      expect(
+        possessionStats['tikiTaka']!,
+        greaterThan(possessionStats['balanced']!),
+      );
+      expect(
+        possessionStats['balanced']!,
+        greaterThan(possessionStats['longBall']!),
+      );
     });
   });
 
   group('tactics matrix — mentalities', () {
     const n = 600;
-    test('both mentality extremes stay viable; attacking plays more goals',
-        () {
+    test('both mentality extremes stay viable; attacking plays more goals', () {
       // The aggressive end must not be a trap: veryAttacking's win rate
       // sits in the same band as veryDefensive's (each trades draws for
       // its own flavour of risk), and neither extreme dominates.
-      final veryDef = runBatch(n, 10000,
-          homeOverall: 70,
-          awayOverall: 70,
-          homeFormation: '4-4-2',
-          awayFormation: '4-4-2',
-          homeMentality: Mentality.veryDefensive);
-      final veryAtt = runBatch(n, 11000,
-          homeOverall: 70,
-          awayOverall: 70,
-          homeFormation: '4-4-2',
-          awayFormation: '4-4-2',
-          homeMentality: Mentality.veryAttacking);
+      final veryDef = runBatch(
+        n,
+        10000,
+        homeOverall: 70,
+        awayOverall: 70,
+        homeFormation: '4-4-2',
+        awayFormation: '4-4-2',
+        homeMentality: Mentality.veryDefensive,
+      );
+      final veryAtt = runBatch(
+        n,
+        11000,
+        homeOverall: 70,
+        awayOverall: 70,
+        homeFormation: '4-4-2',
+        awayFormation: '4-4-2',
+        homeMentality: Mentality.veryAttacking,
+      );
       expect(veryAtt.homeWinRate, inInclusiveRange(0.38, 0.55));
       expect(veryDef.homeWinRate, inInclusiveRange(0.38, 0.55));
       expect(veryAtt.avgGoals, greaterThan(veryDef.avgGoals + 0.3));
@@ -316,20 +367,29 @@ void main() {
     test('mentality ladder: no step is dominant, none is a trap', () {
       final rates = <double>[];
       for (final mentality in Mentality.values) {
-        final b = runBatch(400, 12000 + mentality.index * 50,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeFormation: '4-4-2',
-            awayFormation: '4-4-2',
-            homeMentality: mentality);
+        final b = runBatch(
+          400,
+          12000 + mentality.index * 50,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeFormation: '4-4-2',
+          awayFormation: '4-4-2',
+          homeMentality: mentality,
+        );
         rates.add(b.homeWinRate);
       }
       for (var i = 0; i < rates.length; i++) {
-        expect(rates[i], inInclusiveRange(0.36, 0.56),
-            reason: '${Mentality.values[i].name} → ${rates[i]}');
+        expect(
+          rates[i],
+          inInclusiveRange(0.36, 0.56),
+          reason: '${Mentality.values[i].name} → ${rates[i]}',
+        );
       }
-      expect((rates.first - rates.last).abs(), lessThan(0.05),
-          reason: 'ladder $rates');
+      expect(
+        (rates.first - rates.last).abs(),
+        lessThan(0.05),
+        reason: 'ladder $rates',
+      );
     });
   });
 
@@ -339,17 +399,19 @@ void main() {
       for (final formation in formations) {
         if (formation.code == '4-4-2') continue;
         final b = runBatch(
-            n,
-            13000 +
-                formation.slots.first.y.toInt() * 7 +
-                formation.slots.length,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeFormation: formation.code,
-            awayFormation: '4-4-2');
-        expect(b.homeWinRate, inInclusiveRange(0.40, 0.60),
-            reason:
-                '${formation.code} vs 4-4-2: ${b.homeWinRate.toStringAsFixed(2)}');
+          n,
+          13000 + formation.slots.first.y.toInt() * 7 + formation.slots.length,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeFormation: formation.code,
+          awayFormation: '4-4-2',
+        );
+        expect(
+          b.homeWinRate,
+          inInclusiveRange(0.40, 0.60),
+          reason:
+              '${formation.code} vs 4-4-2: ${b.homeWinRate.toStringAsFixed(2)}',
+        );
       }
     });
   });
@@ -361,12 +423,14 @@ void main() {
         var sum = 0.0;
         var count = 0;
         for (var m = 0; m < n; m++) {
-          final engine = _engine(14000 + m,
-              homeOverall: 70,
-              awayOverall: 70,
-              homeFormation: '4-4-2',
-              awayFormation: '4-4-2',
-              homeStyle: style);
+          final engine = _engine(
+            14000 + m,
+            homeOverall: 70,
+            awayOverall: 70,
+            homeFormation: '4-4-2',
+            awayFormation: '4-4-2',
+            homeStyle: style,
+          );
           engine.simulateToEnd();
           for (final p in engine.playersOf(MatchSide.home)) {
             if (p.minutesPlayed >= 90) {
@@ -380,8 +444,11 @@ void main() {
 
       final gegen = avgEnd(PlayingStyle.gegenpressing);
       final lowBlock = avgEnd(PlayingStyle.lowBlock);
-      expect(gegen, lessThan(lowBlock - 3),
-          reason: 'gegenpressing $gegen vs low block $lowBlock');
+      expect(
+        gegen,
+        lessThan(lowBlock - 3),
+        reason: 'gegenpressing $gegen vs low block $lowBlock',
+      );
       final balanced = avgEnd(PlayingStyle.balanced);
       expect(100 - balanced, inInclusiveRange(20, 55));
     });
@@ -403,8 +470,14 @@ void main() {
           engine.state.scoreHome,
           engine.state.scoreAway,
           for (final e in engine.events)
-            Object.hash(e.minute, e.type.index, e.side.index,
-                e.primaryPlayerId, e.secondaryPlayerId, e.xg),
+            Object.hash(
+              e.minute,
+              e.type.index,
+              e.side.index,
+              e.primaryPlayerId,
+              e.secondaryPlayerId,
+              e.xg,
+            ),
         ]);
       }
 
@@ -422,10 +495,13 @@ void main() {
           changed.advanceMinute();
         }
         final prefix = plain.events.length;
-        changed.queueCommand(ChangeMentalityCommand(
+        changed.queueCommand(
+          ChangeMentalityCommand(
             atMinute: 60,
             side: MatchSide.home,
-            mentality: Mentality.attacking));
+            mentality: Mentality.attacking,
+          ),
+        );
         plain.simulateToEnd();
         changed.simulateToEnd();
         for (var e = 0; e < prefix; e++) {

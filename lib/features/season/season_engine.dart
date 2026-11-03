@@ -71,19 +71,68 @@ class SeasonConfig {
       division1TargetAverageOverall + (division - 1) * overallPerDivision;
 
   static const List<String> defaultAiManagerNames = [
-    'Hassan', 'Karim', 'Omar', 'Youssef', 'Mostafa', 'Ahmed', 'Tarek',
-    'Sherif', 'Khaled', 'Waleed', 'Mahmoud', 'Amr', 'Nabil', 'Fathy',
-    'Sami', 'Rami', 'Hany', 'Farouk', 'Galal', 'Zaki', 'Adel', 'Mourad',
+    'Hassan',
+    'Karim',
+    'Omar',
+    'Youssef',
+    'Mostafa',
+    'Ahmed',
+    'Tarek',
+    'Sherif',
+    'Khaled',
+    'Waleed',
+    'Mahmoud',
+    'Amr',
+    'Nabil',
+    'Fathy',
+    'Sami',
+    'Rami',
+    'Hany',
+    'Farouk',
+    'Galal',
+    'Zaki',
+    'Adel',
+    'Mourad',
   ];
   static const List<String> defaultAiNamePrefixes = [
-    'Al', 'El', 'Pyramid', 'Nile', 'Delta', 'Cairo', 'Alexandria',
-    'Desert', 'Oasis', 'Pharaoh', 'Sphinx', 'Lotus', 'Falcon', 'Eagle',
-    'Scorpion', 'Cobra', 'Ibis', 'Storm', 'Union', 'Star',
+    'Al',
+    'El',
+    'Pyramid',
+    'Nile',
+    'Delta',
+    'Cairo',
+    'Alexandria',
+    'Desert',
+    'Oasis',
+    'Pharaoh',
+    'Sphinx',
+    'Lotus',
+    'Falcon',
+    'Eagle',
+    'Scorpion',
+    'Cobra',
+    'Ibis',
+    'Storm',
+    'Union',
+    'Star',
   ];
   static const List<String> defaultAiNameSuffixes = [
-    'SC', 'FC', 'United', 'Rovers', 'Athletic', 'City', 'Wanderers',
-    'Dynamo', 'Olympic', 'Warriors', 'Titans', 'Legends', 'Kings',
-    'Giants', 'Rangers', 'Mariners',
+    'SC',
+    'FC',
+    'United',
+    'Rovers',
+    'Athletic',
+    'City',
+    'Wanderers',
+    'Dynamo',
+    'Olympic',
+    'Warriors',
+    'Titans',
+    'Legends',
+    'Kings',
+    'Giants',
+    'Rangers',
+    'Mariners',
   ];
 }
 
@@ -258,7 +307,10 @@ enum SeasonOutcome { promoted, stayed, relegated }
 
 /// The pure season engine.
 class SeasonEngine {
-  const SeasonEngine({this.config = defaultSeasonConfig, this.statsGenerator = const BaseStatsGenerator()});
+  const SeasonEngine({
+    this.config = defaultSeasonConfig,
+    this.statsGenerator = const BaseStatsGenerator(),
+  });
 
   final SeasonConfig config;
   final BaseStatsGenerator statsGenerator;
@@ -302,19 +354,23 @@ class SeasonEngine {
       names.add(name);
 
       final formation = _pickFormation(random);
-      final realSquad =
-          tracker == null ? null : _generateRealSquad(formation, target, tracker);
-      clubs.add(AiClubDefinition(
-        name: name,
-        managerName:
-            config.aiManagerNames[managerCursor++ % config.aiManagerNames.length],
-        crestIndex: random.nextInt(8),
-        formationCode: formation.code,
-        style: PlayingStyle.values[random.nextInt(PlayingStyle.values.length)],
-        mentality: _pickMentality(random),
-        players: realSquad ?? _generateSquad(target, formation, random),
-        targetAverageOverall: target,
-      ));
+      final realSquad = tracker == null
+          ? null
+          : _generateRealSquad(formation, target, tracker);
+      clubs.add(
+        AiClubDefinition(
+          name: name,
+          managerName: config
+              .aiManagerNames[managerCursor++ % config.aiManagerNames.length],
+          crestIndex: random.nextInt(8),
+          formationCode: formation.code,
+          style:
+              PlayingStyle.values[random.nextInt(PlayingStyle.values.length)],
+          mentality: _pickMentality(random),
+          players: realSquad ?? _generateSquad(target, formation, random),
+          targetAverageOverall: target,
+        ),
+      );
     }
     return clubs;
   }
@@ -326,7 +382,10 @@ class SeasonEngine {
   /// has no candidate left in the pool — the caller then generates a
   /// synthetic squad instead.
   List<AiPlayerDefinition>? _generateRealSquad(
-      Formation formation, int targetOverall, _PoolTracker tracker) {
+    Formation formation,
+    int targetOverall,
+    _PoolTracker tracker,
+  ) {
     final positions = [
       ...formation.slots.map((s) => s.position),
       ..._benchPositions,
@@ -335,15 +394,17 @@ class SeasonEngine {
     for (final position in positions) {
       final p = tracker.take(position, targetOverall);
       if (p == null) return null;
-      squad.add(AiPlayerDefinition(
-        name: p.name,
-        position: p.position,
-        attack: p.attack,
-        support: p.support,
-        defence: p.defence,
-        goalkeeping: p.goalkeeping,
-        realPlayerId: p.playerId,
-      ));
+      squad.add(
+        AiPlayerDefinition(
+          name: p.name,
+          position: p.position,
+          attack: p.attack,
+          support: p.support,
+          defence: p.defence,
+          goalkeeping: p.goalkeeping,
+          realPlayerId: p.playerId,
+        ),
+      );
     }
     return squad;
   }
@@ -351,7 +412,10 @@ class SeasonEngine {
   /// An AI squad: exact XI by formation slot + 7 bench players covering
   /// common positions (GDD 10.5: substitutions need bodies).
   List<AiPlayerDefinition> _generateSquad(
-      int targetOverall, Formation formation, math.Random random) {
+    int targetOverall,
+    Formation formation,
+    math.Random random,
+  ) {
     final slots = formation.slots.map((s) => s.position).toList();
     final all = [...slots, ..._benchPositions];
     return [
@@ -362,8 +426,10 @@ class SeasonEngine {
 
   static const List<Position> _benchPositions = [
     Position.gk,
-    Position.cb, Position.cb,
-    Position.lb, Position.rb,
+    Position.cb,
+    Position.cb,
+    Position.lb,
+    Position.rb,
     Position.cm,
     Position.st,
   ];
@@ -378,7 +444,9 @@ class SeasonEngine {
   /// fitness demands it, not every match. Starters return in formation
   /// slot order; the remaining players form the bench (GDD 10.5).
   ({List<AiSquadPlayer> starters, List<AiSquadPlayer> bench}) pickAiLineup(
-      List<AiSquadPlayer> squad, String formationCode) {
+    List<AiSquadPlayer> squad,
+    String formationCode,
+  ) {
     final formation = formationByCode(formationCode);
     final available = [...squad];
     final assigned = List<AiSquadPlayer?>.filled(formation.slots.length, null);
@@ -426,17 +494,21 @@ class SeasonEngine {
   /// down to 0.65 at zero, which is what makes the AI rest tired legs
   /// when the backup is close enough in quality.
   double _aiSlotScore(AiSquadPlayer p, Position slotPosition) {
-    final compat = const SquadEngine().compatibilityOf(p.position, slotPosition);
+    final compat = const SquadEngine().compatibilityOf(
+      p.position,
+      slotPosition,
+    );
     if (compat <= 0.1) return 0;
     final weights = positionWeights[slotPosition]!;
     var base = 0.0;
     for (final e in weights.entries) {
-      base += switch (e.key) {
-        PlayerAttribute.attack => p.attack,
-        PlayerAttribute.support => p.support,
-        PlayerAttribute.defence => p.defence,
-        PlayerAttribute.goalkeeping => p.goalkeeping,
-      } *
+      base +=
+          switch (e.key) {
+            PlayerAttribute.attack => p.attack,
+            PlayerAttribute.support => p.support,
+            PlayerAttribute.defence => p.defence,
+            PlayerAttribute.goalkeeping => p.goalkeeping,
+          } *
           e.value;
     }
     final fitness = 0.65 + 0.35 * (p.stamina.clamp(0, 100) / 100);
@@ -448,16 +520,21 @@ class SeasonEngine {
 
   int _naturalFits(Position slotPosition, List<AiSquadPlayer> players) =>
       players
-          .where((p) =>
-              const SquadEngine().compatibilityOf(p.position, slotPosition) >
-              0.5)
+          .where(
+            (p) =>
+                const SquadEngine().compatibilityOf(p.position, slotPosition) >
+                0.5,
+          )
           .length;
 
   /// Inverts the BaseStatsGenerator value curve to the market value that
   /// yields [overall], then generates through the same position weights —
   /// guaranteeing AI attribute parity with real players of the same level.
   AiPlayerDefinition _generatePlayer(
-      Position position, int targetOverall, math.Random random) {
+    Position position,
+    int targetOverall,
+    math.Random random,
+  ) {
     final spread = random.nextInt(7) - 3;
     final overall = (targetOverall + spread).clamp(35, 94);
     final c = statsGenerator.config;
@@ -466,8 +543,11 @@ class SeasonEngine {
     // Seeded from the squad RNG: AI players get the same probabilistic
     // stat shapes as real players, while a seeded season still rebuilds
     // the identical squad (GDD 12.5 determinism).
-    final stats = statsGenerator.generate(position, marketValue,
-        seed: random.nextInt(1 << 31));
+    final stats = statsGenerator.generate(
+      position,
+      marketValue,
+      seed: random.nextInt(1 << 31),
+    );
     return AiPlayerDefinition(
       name: _surname(random),
       position: position,
@@ -480,8 +560,26 @@ class SeasonEngine {
 
   String _surname(math.Random random) {
     const syllables = [
-      'ha', 'sa', 'ma', 'ra', 'ka', 'la', 'na', 'ta', 'za', 'fa',
-      'heb', 'med', 'rid', 'sam', 'ham', 'mor', 'sal', 'far', 'nas', 'eid',
+      'ha',
+      'sa',
+      'ma',
+      'ra',
+      'ka',
+      'la',
+      'na',
+      'ta',
+      'za',
+      'fa',
+      'heb',
+      'med',
+      'rid',
+      'sam',
+      'ham',
+      'mor',
+      'sal',
+      'far',
+      'nas',
+      'eid',
     ];
     final parts = [
       syllables[random.nextInt(syllables.length)].toUpperCase(),
@@ -492,7 +590,13 @@ class SeasonEngine {
 
   Formation _pickFormation(math.Random random) {
     const codes = [
-      '4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2', '4-5-1', '4-1-4-1',
+      '4-4-2',
+      '4-3-3',
+      '4-2-3-1',
+      '3-5-2',
+      '5-3-2',
+      '4-5-1',
+      '4-1-4-1',
     ];
     return formationByCode(codes[random.nextInt(codes.length)]);
   }
@@ -500,10 +604,15 @@ class SeasonEngine {
   Mentality _pickMentality(math.Random random) {
     // Most AI sides play balanced-ish; extremes are rarer.
     const pool = [
-      Mentality.veryDefensive, Mentality.defensive,
-      Mentality.cautious, Mentality.balanced, Mentality.balanced,
-      Mentality.positive, Mentality.positive,
-      Mentality.attacking, Mentality.veryAttacking,
+      Mentality.veryDefensive,
+      Mentality.defensive,
+      Mentality.cautious,
+      Mentality.balanced,
+      Mentality.balanced,
+      Mentality.positive,
+      Mentality.positive,
+      Mentality.attacking,
+      Mentality.veryAttacking,
     ];
     return pool[random.nextInt(pool.length)];
   }
@@ -518,7 +627,7 @@ class SeasonEngine {
     final rounds = 2 * (teamCount - 1);
     final others = [
       for (var i = 0; i < teamCount; i++)
-        if (i != anchorIndex) i
+        if (i != anchorIndex) i,
     ];
     final pairings = <FixturePairing>[];
 
@@ -530,11 +639,13 @@ class SeasonEngine {
       int mod(int x) => x % others.length;
 
       void add(int home, int away, {bool flip = false}) {
-        pairings.add(FixturePairing(
-          round: round,
-          homeIndex: flip ? away : home,
-          awayIndex: flip ? home : away,
-        ));
+        pairings.add(
+          FixturePairing(
+            round: round,
+            homeIndex: flip ? away : home,
+            awayIndex: flip ? home : away,
+          ),
+        );
       }
 
       // Anchor pairing: home in the first half, away in the mirror.
@@ -554,8 +665,10 @@ class SeasonEngine {
   List<StandingEntry> computeStandings({
     required List<int> clubIds,
     required List<String> names,
-    required List<({int round, int homeIndex, int awayIndex, int homeGoals, int awayGoals})>
-        results,
+    required List<
+      ({int round, int homeIndex, int awayIndex, int homeGoals, int awayGoals})
+    >
+    results,
   }) {
     final n = clubIds.length;
     final played = List.filled(n, 0);
@@ -605,7 +718,7 @@ class SeasonEngine {
           goalsAgainst: goalsAgainst[i],
           points: points[i],
           position: 0,
-        )
+        ),
     ];
     entries.sort((a, b) {
       if (a.points != b.points) return b.points.compareTo(a.points);
@@ -629,7 +742,7 @@ class SeasonEngine {
           goalsAgainst: entries[i].goalsAgainst,
           points: entries[i].points,
           position: i + 1,
-        )
+        ),
     ];
   }
 
@@ -685,15 +798,17 @@ class _PoolTracker {
     required Set<int> exclude,
     required this.random,
   }) : _byPosition = {
-          for (final position in Position.values)
-            position: [
-              ...pool
-                  .where((p) =>
-                      p.position == position && !exclude.contains(p.playerId))
-                  .toList()
-                ..sort((a, b) => a.overall.compareTo(b.overall)),
-            ],
-        };
+         for (final position in Position.values)
+           position: [
+             ...pool
+                 .where(
+                   (p) =>
+                       p.position == position && !exclude.contains(p.playerId),
+                 )
+                 .toList()
+               ..sort((a, b) => a.overall.compareTo(b.overall)),
+           ],
+       };
 
   final Map<Position, List<AiPoolPlayer>> _byPosition;
   final math.Random random;
@@ -706,7 +821,9 @@ class _PoolTracker {
   /// stay populated even where the dataset is thin.
   AiPoolPlayer? take(Position position, int targetOverall) {
     final candidates = _byPosition[position] ?? const <AiPoolPlayer>[];
-    final unused = candidates.where((p) => !_used.contains(p.playerId)).toList();
+    final unused = candidates
+        .where((p) => !_used.contains(p.playerId))
+        .toList();
     if (unused.isEmpty) return null;
     var halfWidth = 3;
     while (true) {

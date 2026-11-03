@@ -107,8 +107,7 @@ class TacticsSetupView extends StatelessWidget {
   Widget build(BuildContext context) {
     final teamRating = xi.isEmpty
         ? 0
-        : (xi.values.fold<int>(0, (a, c) => a + c.overall) / xi.length)
-            .round();
+        : (xi.values.fold<int>(0, (a, c) => a + c.overall) / xi.length).round();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -152,25 +151,27 @@ class TacticsSetupView extends StatelessWidget {
               // their full quota of slots, unassigned ones rendered as
               // empty cards (GDD 11 — the 23-man surface is always
               // visible as a whole).
-              FcmSectionTitle(
-                  'Bench (${bench.length}/${Formation.benchSize})'),
+              FcmSectionTitle('Bench (${bench.length}/${Formation.benchSize})'),
               SquadCardRow(
-                  cards: bench,
-                  emptySlots: Formation.benchSize - bench.length,
-                  zone: SquadZone.bench,
-                  showStamina: showStamina,
-                  showStats: showStats,
-                  onPlayerTap: onPlayerTap),
+                cards: bench,
+                emptySlots: Formation.benchSize - bench.length,
+                zone: SquadZone.bench,
+                showStamina: showStamina,
+                showStats: showStats,
+                onPlayerTap: onPlayerTap,
+              ),
               if (showReserves) ...[
                 FcmSectionTitle(
-                    'Reserves (${reserves.length}/${Formation.reservesSize})'),
+                  'Reserves (${reserves.length}/${Formation.reservesSize})',
+                ),
                 SquadCardRow(
-                    cards: reserves,
-                    emptySlots: Formation.reservesSize - reserves.length,
-                    zone: SquadZone.reserves,
-                    showStamina: showStamina,
-                    showStats: showStats,
-                    onPlayerTap: onPlayerTap),
+                  cards: reserves,
+                  emptySlots: Formation.reservesSize - reserves.length,
+                  zone: SquadZone.reserves,
+                  showStamina: showStamina,
+                  showStats: showStats,
+                  onPlayerTap: onPlayerTap,
+                ),
               ],
             ],
           ),
@@ -274,49 +275,58 @@ class _ControlCard extends StatelessWidget {
   /// One labelled setup value of the control card's top row: a dim
   /// mini-label over the value, shrinking to fit its share of the row.
   Widget _info(String label, String value) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FitText(label,
-              style: const TextStyle(
-                  color: FcmColors.textDim,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5)),
-          const SizedBox(height: 2),
-          FitText(value,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800)),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      FitText(
+        label,
+        style: const TextStyle(
+          color: FcmColors.textDim,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.5,
+        ),
+      ),
+      const SizedBox(height: 2),
+      FitText(
+        value,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ],
+  );
 
   /// The team rating closing the setup row: dim label over the big
   /// colour-coded number, right-aligned.
   Widget _rating() => Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('TEAM RATING',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                  color: FcmColors.textDim,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5)),
-          const SizedBox(height: 2),
-          FcmCountUp(
-            value: teamRating,
-            style: TextStyle(
-              color: ratingColor(teamRating),
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              height: 1.0,
-            ),
-          ),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.end,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Text(
+        'TEAM RATING',
+        textAlign: TextAlign.right,
+        style: TextStyle(
+          color: FcmColors.textDim,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.5,
+        ),
+      ),
+      const SizedBox(height: 2),
+      FcmCountUp(
+        value: teamRating,
+        style: TextStyle(
+          color: ratingColor(teamRating),
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+          height: 1.0,
+        ),
+      ),
+    ],
+  );
 }
 
 /// Opens the tactic options sheet (GDD 10): the playing style dropdown
@@ -409,13 +419,16 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
               ),
             ),
             const SizedBox(height: 10),
-            const Text('TACTIC OPTIONS',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: FcmColors.gold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2)),
+            const Text(
+              'TACTIC OPTIONS',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: FcmColors.gold,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              ),
+            ),
             const SizedBox(height: 14),
             _labeledRow(
               label: 'PLAYING STYLE',
@@ -424,9 +437,10 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
                 items: [
                   for (final s in PlayingStyle.values)
                     FcmDropdownItem(
-                        value: s,
-                        label: s.displayName,
-                        subtitle: s.effectSummary),
+                      value: s,
+                      label: s.displayName,
+                      subtitle: s.effectSummary,
+                    ),
                 ],
                 selected: _style,
                 onChanged: (v) => setState(() {
@@ -460,9 +474,10 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
                     mentality.effectSummary,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                        color: FcmColors.gold,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700),
+                      color: FcmColors.gold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -483,12 +498,15 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-                color: FcmColors.textDim,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2)),
+        Text(
+          label,
+          style: const TextStyle(
+            color: FcmColors.textDim,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2,
+          ),
+        ),
         const SizedBox(height: 6),
         child,
       ],
@@ -500,16 +518,16 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
 /// ATT / SUP / DEF, keepers GK / DEF / SUP — upgraded values included.
 List<({String label, int value})> statsOf(PlayerCard c) =>
     c.position.isGoalkeeper
-        ? [
-            (label: 'GK', value: c.attribute(PlayerAttribute.goalkeeping)),
-            (label: 'DEF', value: c.attribute(PlayerAttribute.defence)),
-            (label: 'SUP', value: c.attribute(PlayerAttribute.support)),
-          ]
-        : [
-            (label: 'ATT', value: c.attribute(PlayerAttribute.attack)),
-            (label: 'SUP', value: c.attribute(PlayerAttribute.support)),
-            (label: 'DEF', value: c.attribute(PlayerAttribute.defence)),
-          ];
+    ? [
+        (label: 'GK', value: c.attribute(PlayerAttribute.goalkeeping)),
+        (label: 'DEF', value: c.attribute(PlayerAttribute.defence)),
+        (label: 'SUP', value: c.attribute(PlayerAttribute.support)),
+      ]
+    : [
+        (label: 'ATT', value: c.attribute(PlayerAttribute.attack)),
+        (label: 'SUP', value: c.attribute(PlayerAttribute.support)),
+        (label: 'DEF', value: c.attribute(PlayerAttribute.defence)),
+      ];
 
 /// Renders the pitch with player cards at formation coordinates (GDD 6.2).
 /// Card size adapts to the formation: the widest line and the number of
@@ -552,79 +570,84 @@ class SquadPitch extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             borderRadius: BorderRadius.circular(22),
           ),
-          child: LayoutBuilder(builder: (context, constraints) {
-            final pw = constraints.maxWidth;
-            final ph = constraints.maxHeight;
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final pw = constraints.maxWidth;
+              final ph = constraints.maxHeight;
 
-            // The layout solver (pitch_layout.dart) sizes the cards as big
-            // as the pitch allows and places every slot by its role — keeper
-            // at the bottom, back line, midfield, attack at the top, each
-            // line in the formation's left-to-right order — with air
-            // between all cards and names, whatever the formation or the
-            // screen.
-            final layout = computePitchLayout(
-              formation: formation,
-              width: pw,
-              height: ph,
-              showStats: showStats,
-              showStamina: showStamina,
-            );
-            final cardW = layout.cardWidth;
-            final slotW = layout.slotWidth;
+              // The layout solver (pitch_layout.dart) sizes the cards as big
+              // as the pitch allows and places every slot by its role — keeper
+              // at the bottom, back line, midfield, attack at the top, each
+              // line in the formation's left-to-right order — with air
+              // between all cards and names, whatever the formation or the
+              // screen.
+              final layout = computePitchLayout(
+                formation: formation,
+                width: pw,
+                height: ph,
+                showStats: showStats,
+                showStamina: showStamina,
+              );
+              final cardW = layout.cardWidth;
+              final slotW = layout.slotWidth;
 
-            return Stack(
-              children: [
-                const Positioned.fill(
-                  child: CustomPaint(painter: _PitchPainter()),
-                ),
-                for (var slot = 0; slot < formation.slots.length; slot++)
-                  () {
-                    final fs = formation.slots[slot];
-                    final card = assignments[slot];
-                    final box = layout.boxes[slot];
-                    return AnimatedPositioned(
-                      key: ValueKey('slot-$slot'),
-                      duration: const Duration(milliseconds: 650),
-                      curve: Curves.easeOutCubic,
-                      left: box.left,
-                      top: box.top,
-                      width: box.width,
-                      // A held player can be dropped on any slot: onto a
-                      // player (swap) or onto an empty slot (move).
-                      child: SquadDropZone(
-                        target: card == null
-                            ? SquadDropTarget.xiSlot(slot)
-                            : SquadDropTarget.player(card),
-                        child: card == null
-                            ? _EmptySlot(position: fs.position, width: cardW)
-                            : SquadDraggable(
-                                card: card,
-                                feedbackSize: Size(slotW, cardW / kPlayerCardAspect + 20),
-                                feedback: _dragFeedback(card, cardW),
-                                child: FcmPressable(
-                                  onTap: onPlayerTap == null
-                                      ? null
-                                      : () => onPlayerTap!(card),
-                                  child: FcmMiniCard(
-                                    overall: card.overall,
-                                    position: card.position.code,
-                                    name: card.base.name.split(' ').last,
-                                    rarity: rarityOf(card),
-                                    width: cardW,
-                                    warn: fs.position != card.position,
-                                    stamina: showStamina
-                                        ? card.staminaPercent
-                                        : null,
-                                    stats: showStats ? statsOf(card) : null,
+              return Stack(
+                children: [
+                  const Positioned.fill(
+                    child: CustomPaint(painter: _PitchPainter()),
+                  ),
+                  for (var slot = 0; slot < formation.slots.length; slot++)
+                    () {
+                      final fs = formation.slots[slot];
+                      final card = assignments[slot];
+                      final box = layout.boxes[slot];
+                      return AnimatedPositioned(
+                        key: ValueKey('slot-$slot'),
+                        duration: const Duration(milliseconds: 650),
+                        curve: Curves.easeOutCubic,
+                        left: box.left,
+                        top: box.top,
+                        width: box.width,
+                        // A held player can be dropped on any slot: onto a
+                        // player (swap) or onto an empty slot (move).
+                        child: SquadDropZone(
+                          target: card == null
+                              ? SquadDropTarget.xiSlot(slot)
+                              : SquadDropTarget.player(card),
+                          child: card == null
+                              ? _EmptySlot(position: fs.position, width: cardW)
+                              : SquadDraggable(
+                                  card: card,
+                                  feedbackSize: Size(
+                                    slotW,
+                                    cardW / kPlayerCardAspect + 20,
+                                  ),
+                                  feedback: _dragFeedback(card, cardW),
+                                  child: FcmPressable(
+                                    onTap: onPlayerTap == null
+                                        ? null
+                                        : () => onPlayerTap!(card),
+                                    child: FcmMiniCard(
+                                      overall: card.overall,
+                                      position: card.position.code,
+                                      name: card.base.name.split(' ').last,
+                                      rarity: rarityOf(card),
+                                      width: cardW,
+                                      warn: fs.position != card.position,
+                                      stamina: showStamina
+                                          ? card.staminaPercent
+                                          : null,
+                                      stats: showStats ? statsOf(card) : null,
+                                    ),
                                   ),
                                 ),
-                              ),
-                      ),
-                    );
-                  }(),
-              ],
-            );
-          }),
+                        ),
+                      );
+                    }(),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -674,7 +697,8 @@ class SquadCardRow extends StatelessWidget {
   Widget build(BuildContext context) {
     // Shield + surname, plus the optional stat row and stamina bar
     // (20 + 22 + 8 = the flat 50 the full strip always used).
-    final stripHeight = cardWidth / kPlayerCardAspect +
+    final stripHeight =
+        cardWidth / kPlayerCardAspect +
         20 +
         (showStats ? 22 : 0) +
         (showStamina ? 8 : 0);
@@ -683,7 +707,7 @@ class SquadCardRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: cards.length + emptySlots,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
         itemBuilder: (context, i) {
           if (i >= cards.length) {
             final z = zone;
@@ -703,8 +727,10 @@ class SquadCardRow extends StatelessWidget {
               target: SquadDropTarget.player(c),
               child: SquadDraggable(
                 card: c,
-                feedbackSize:
-                    Size(cardWidth + 12, cardWidth / kPlayerCardAspect + 20),
+                feedbackSize: Size(
+                  cardWidth + 12,
+                  cardWidth / kPlayerCardAspect + 20,
+                ),
                 feedback: _dragFeedback(c, cardWidth),
                 child: FcmPressable(
                   onTap: onPlayerTap == null ? null : () => onPlayerTap!(c),
@@ -730,12 +756,12 @@ class SquadCardRow extends StatelessWidget {
 /// The card that follows the finger while a player is dragged: the plain
 /// mini card (no stamina bar or stat row), the same size as on the page.
 Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
-      overall: card.overall,
-      position: card.position.code,
-      name: card.base.name.split(' ').last,
-      rarity: rarityOf(card),
-      width: width,
-    );
+  overall: card.overall,
+  position: card.position.code,
+  name: card.base.name.split(' ').last,
+  rarity: rarityOf(card),
+  width: width,
+);
 
 /// An unassigned formation slot: a ghost mini card — the exact shape,
 /// size and layout of a filled one (same painter silhouette, same text
@@ -824,25 +850,29 @@ class _PitchPainter extends CustomPainter {
     canvas.drawRect(field, line);
     canvas.drawLine(Offset(m, h / 2), Offset(w - m, h / 2), line);
     canvas.drawCircle(Offset(w / 2, h / 2), w * 0.14, line);
-    canvas.drawCircle(
-        Offset(w / 2, h / 2), 3, Paint()..color = line.color);
+    canvas.drawCircle(Offset(w / 2, h / 2), 3, Paint()..color = line.color);
 
     // Penalty and goal areas, top and bottom.
     final boxW = w * 0.56, boxH = h * 0.14;
     final goalW = w * 0.28, goalH = h * 0.055;
     for (final top in [true, false]) {
       final y0 = top ? m : h - m - boxH;
-      canvas.drawRect(
-          Rect.fromLTWH((w - boxW) / 2, y0, boxW, boxH), line);
+      canvas.drawRect(Rect.fromLTWH((w - boxW) / 2, y0, boxW, boxH), line);
       final gy = top ? m : h - m - goalH;
-      canvas.drawRect(
-          Rect.fromLTWH((w - goalW) / 2, gy, goalW, goalH), line);
+      canvas.drawRect(Rect.fromLTWH((w - goalW) / 2, gy, goalW, goalH), line);
       // penalty arc
-      final arcCenter =
-          Offset(w / 2, top ? m + boxH * 0.72 : h - m - boxH * 0.72);
+      final arcCenter = Offset(
+        w / 2,
+        top ? m + boxH * 0.72 : h - m - boxH * 0.72,
+      );
       final arcRect = Rect.fromCircle(center: arcCenter, radius: w * 0.11);
       canvas.drawArc(
-          arcRect, top ? 0.45 : math.pi + 0.45, math.pi - 0.9, false, line);
+        arcRect,
+        top ? 0.45 : math.pi + 0.45,
+        math.pi - 0.9,
+        false,
+        line,
+      );
     }
 
     // Floodlight vignette.
@@ -852,10 +882,7 @@ class _PitchPainter extends CustomPainter {
         ..shader = RadialGradient(
           center: Alignment.center,
           radius: 0.95,
-          colors: [
-            Colors.transparent,
-            Colors.black.withValues(alpha: 0.35),
-          ],
+          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.35)],
           stops: const [0.55, 1.0],
         ).createShader(rect),
     );

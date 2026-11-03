@@ -40,7 +40,7 @@ void installAudioplayersMocks() {
 
   // An empty stream handler: answers `listen`/`cancel` with silence.
   final emptyStream = MockStreamHandler.inline(
-    onListen: (_, __) {},
+    onListen: (_, _) {},
     onCancel: (_) {},
   );
 

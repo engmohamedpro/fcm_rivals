@@ -38,10 +38,7 @@ class AdRewardResult {
 }
 
 class AdStore {
-  AdStore({
-    required this.db,
-    this.engine = const AdEngine(),
-  });
+  AdStore({required this.db, this.engine = const AdEngine()});
 
   final AppDatabase db;
   final AdEngine engine;
@@ -60,7 +57,11 @@ class AdStore {
     final usage = await _usageToday(clubId, timestamp);
     final validation = engine.validateReward(
       ad: CompletedAd(
-          kind: kind, rewardKey: rewardKey, clubId: clubId, completedAt: timestamp),
+        kind: kind,
+        rewardKey: rewardKey,
+        clubId: clubId,
+        completedAt: timestamp,
+      ),
       usageToday: usage,
       playbackCompleted: playbackCompleted,
     );
@@ -68,12 +69,16 @@ class AdStore {
       throw AdException(validation.reason ?? 'Reward not allowed');
     }
     await db.transaction(() async {
-      await db.into(db.adUsages).insert(AdUsagesCompanion.insert(
-            clubId: clubId,
-            rewardKind: kind.name,
-            rewardKey: rewardKey,
-            completedAt: timestamp,
-          ));
+      await db
+          .into(db.adUsages)
+          .insert(
+            AdUsagesCompanion.insert(
+              clubId: clubId,
+              rewardKind: kind.name,
+              rewardKey: rewardKey,
+              completedAt: timestamp,
+            ),
+          );
     });
     return AdRewardResult(kind: kind, rewardKey: rewardKey);
   }
@@ -87,9 +92,9 @@ class AdStore {
     DateTime? now,
   }) async {
     final timestamp = now ?? DateTime.now();
-    final result = await (db.select(db.matchResults)
-          ..where((r) => r.fixtureId.equals(fixtureId)))
-        .getSingleOrNull();
+    final result = await (db.select(
+      db.matchResults,
+    )..where((r) => r.fixtureId.equals(fixtureId))).getSingleOrNull();
     if (result == null) return false;
     final userHome = result.homeClubId == userClubId;
     final userGoals = userHome ? result.homeGoals : result.awayGoals;
@@ -102,26 +107,33 @@ class AdStore {
     );
     if (!offer.allowed) return false;
     // One replay per match (duplicate prevention).
-    final used = await (db.select(db.adUsages)
-          ..where((u) =>
-              u.rewardKind.equals(AdRewardKind.matchReplay.name) &
-              u.rewardKey.equals('match:$fixtureId')))
-        .get();
+    final used =
+        await (db.select(db.adUsages)..where(
+              (u) =>
+                  u.rewardKind.equals(AdRewardKind.matchReplay.name) &
+                  u.rewardKey.equals('match:$fixtureId'),
+            ))
+            .get();
     return used.isEmpty;
   }
 
   /// Usage rows of one club since local midnight.
   Future<List<AdUsageRecord>> _usageToday(int clubId, DateTime now) async {
     final startOfDay = DateTime(now.year, now.month, now.day);
-    final rows = await (db.select(db.adUsages)
-          ..where((u) =>
-              u.clubId.equals(clubId) &
-              u.completedAt.isBiggerOrEqualValue(startOfDay)))
-        .get();
+    final rows =
+        await (db.select(db.adUsages)..where(
+              (u) =>
+                  u.clubId.equals(clubId) &
+                  u.completedAt.isBiggerOrEqualValue(startOfDay),
+            ))
+            .get();
     return [
       for (final r in rows)
         AdUsageRecord(
-            rewardKind: r.rewardKind, rewardKey: r.rewardKey, completedAt: r.completedAt)
+          rewardKind: r.rewardKind,
+          rewardKey: r.rewardKey,
+          completedAt: r.completedAt,
+        ),
     ];
   }
 
@@ -131,16 +143,24 @@ class AdStore {
     final used = usage
         .where((u) => u.rewardKind == AdRewardKind.boostedRecovery.name)
         .length;
-    return (engine.config.dailyLimitPerKind - used).clamp(0, engine.config.dailyLimitPerKind);
+    return (engine.config.dailyLimitPerKind - used).clamp(
+      0,
+      engine.config.dailyLimitPerKind,
+    );
   }
 
   /// Remaining ads of one kind today (for UI limits display).
-  Future<int> remainingToday(int clubId, AdRewardKind kind,
-      {DateTime? now}) async {
+  Future<int> remainingToday(
+    int clubId,
+    AdRewardKind kind, {
+    DateTime? now,
+  }) async {
     final usage = await _usageToday(clubId, now ?? DateTime.now());
     final used = usage.where((u) => u.rewardKind == kind.name).length;
-    return (engine.config.dailyLimitPerKind - used)
-        .clamp(0, engine.config.dailyLimitPerKind);
+    return (engine.config.dailyLimitPerKind - used).clamp(
+      0,
+      engine.config.dailyLimitPerKind,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -161,7 +181,8 @@ class AdStore {
     final timestamp = now ?? DateTime.now();
     // One free pack per calendar day per club, whatever the scope — the
     // daily key scopes the whole surface, not the scope choice.
-    final dayKey = 'freepack:${timestamp.year}-${timestamp.month}-${timestamp.day}';
+    final dayKey =
+        'freepack:${timestamp.year}-${timestamp.month}-${timestamp.day}';
     final result = await completeAd(
       kind: AdRewardKind.freePack,
       rewardKey: dayKey,
@@ -169,18 +190,23 @@ class AdStore {
       clubId: clubId,
       now: timestamp,
     );
-    final packId = await db.into(db.packs).insert(PacksCompanion.insert(
-          clubId: clubId,
-          category: category.name,
-          scopeValue: Value(scopeValue),
-          price: const Value(0),
-          source: const Value('ad_free'),
-          createdAt: timestamp,
-        ));
+    final packId = await db
+        .into(db.packs)
+        .insert(
+          PacksCompanion.insert(
+            clubId: clubId,
+            category: category.name,
+            scopeValue: Value(scopeValue),
+            price: const Value(0),
+            source: const Value('ad_free'),
+            createdAt: timestamp,
+          ),
+        );
     return AdRewardResult(
-        kind: result.kind,
-        rewardKey: result.rewardKey,
-        detail: 'Pack #$packId (${category.name})');
+      kind: result.kind,
+      rewardKey: result.rewardKey,
+      detail: 'Pack #$packId (${category.name})',
+    );
   }
 
   /// Whether an upgrade purchased now benefits from the ad discount, and
@@ -190,13 +216,19 @@ class AdStore {
   /// discounted price before charging.
   Future<bool> upgradeDiscountActive(int clubId, {DateTime? now}) async {
     return await _kindUsedSince(
-        clubId, AdRewardKind.upgradeDiscount, _startOfDailyWindow(now));
+      clubId,
+      AdRewardKind.upgradeDiscount,
+      _startOfDailyWindow(now),
+    );
   }
 
   Future<void> consumeUpgradeDiscount(int clubId, {DateTime? now}) async {
-    await _consumeOldestGrant(clubId, AdRewardKind.upgradeDiscount,
-        DateTime(2000),
-        now: now);
+    await _consumeOldestGrant(
+      clubId,
+      AdRewardKind.upgradeDiscount,
+      DateTime(2000),
+      now: now,
+    );
   }
 
   /// Whether a sale right now earns the ad selling bonus (GDD 19.3
@@ -204,20 +236,29 @@ class AdStore {
   /// sale it applied to.
   Future<bool> sellingBonusActive(int clubId, {DateTime? now}) async {
     return await _kindUsedSince(
-        clubId, AdRewardKind.sellingBonus, _startOfDailyWindow(now));
+      clubId,
+      AdRewardKind.sellingBonus,
+      _startOfDailyWindow(now),
+    );
   }
 
   Future<void> consumeSellingBonus(int clubId, {DateTime? now}) async {
-    await _consumeOldestGrant(clubId, AdRewardKind.sellingBonus,
-        DateTime(2000),
-        now: now);
+    await _consumeOldestGrant(
+      clubId,
+      AdRewardKind.sellingBonus,
+      DateTime(2000),
+      now: now,
+    );
   }
 
   /// Whether match rewards today are multiplied (GDD 19.3 'Daily reward
   /// multiplier'): true while a daily-multiplier ad was watched today.
   Future<bool> dailyMultiplierActive(int clubId, {DateTime? now}) async {
     return await _kindUsedSince(
-        clubId, AdRewardKind.dailyRewardMultiplier, _startOfDailyWindow(now));
+      clubId,
+      AdRewardKind.dailyRewardMultiplier,
+      _startOfDailyWindow(now),
+    );
   }
 
   /// Whether the next season completion pays the boosted reward (GDD
@@ -225,13 +266,19 @@ class AdStore {
   /// consumed by [consumeSeasonMultiplier] when the season pays out.
   Future<bool> seasonMultiplierActive(int clubId, {DateTime? now}) async {
     return await _kindUsedSince(
-        clubId, AdRewardKind.seasonRewardMultiplier, DateTime(2000));
+      clubId,
+      AdRewardKind.seasonRewardMultiplier,
+      DateTime(2000),
+    );
   }
 
   Future<void> consumeSeasonMultiplier(int clubId, {DateTime? now}) async {
-    await _consumeOldestGrant(clubId, AdRewardKind.seasonRewardMultiplier,
-        DateTime(2000),
-        now: now);
+    await _consumeOldestGrant(
+      clubId,
+      AdRewardKind.seasonRewardMultiplier,
+      DateTime(2000),
+      now: now,
+    );
   }
 
   DateTime _startOfDailyWindow(DateTime? now) {
@@ -245,13 +292,18 @@ class AdStore {
   /// they consumed and prefix it `kind:consumed:window` — one-to-one,
   /// so a boost can never apply twice (GDD 19.4).
   Future<bool> _kindUsedSince(
-      int clubId, AdRewardKind kind, DateTime since) async {
-    final rows = await (db.select(db.adUsages)
-          ..where((u) =>
-              u.clubId.equals(clubId) &
-              u.rewardKind.equals(kind.name) &
-              u.completedAt.isBiggerOrEqualValue(since)))
-        .get();
+    int clubId,
+    AdRewardKind kind,
+    DateTime since,
+  ) async {
+    final rows =
+        await (db.select(db.adUsages)..where(
+              (u) =>
+                  u.clubId.equals(clubId) &
+                  u.rewardKind.equals(kind.name) &
+                  u.completedAt.isBiggerOrEqualValue(since),
+            ))
+            .get();
     final grants = rows
         .map((r) => r.rewardKey)
         .where((k) => k.startsWith('${kind.name}:grant:'))
@@ -268,15 +320,21 @@ class AdStore {
   /// Consumes the OLDEST unconsumed grant of [kind] (one boost = one
   /// use). No-op when no grant is active.
   Future<void> _consumeOldestGrant(
-      int clubId, AdRewardKind kind, DateTime since,
-      {DateTime? now}) async {
-    final rows = await (db.select(db.adUsages)
-          ..where((u) =>
-              u.clubId.equals(clubId) &
-              u.rewardKind.equals(kind.name) &
-              u.completedAt.isBiggerOrEqualValue(since))
-          ..orderBy([(u) => OrderingTerm.asc(u.completedAt)]))
-        .get();
+    int clubId,
+    AdRewardKind kind,
+    DateTime since, {
+    DateTime? now,
+  }) async {
+    final rows =
+        await (db.select(db.adUsages)
+              ..where(
+                (u) =>
+                    u.clubId.equals(clubId) &
+                    u.rewardKind.equals(kind.name) &
+                    u.completedAt.isBiggerOrEqualValue(since),
+              )
+              ..orderBy([(u) => OrderingTerm.asc(u.completedAt)]))
+            .get();
     final consumed = rows
         .map((r) => r.rewardKey)
         .where((k) => k.startsWith('${kind.name}:consumed:'))
@@ -284,15 +342,22 @@ class AdStore {
         .toSet();
     final grant = rows
         .map((r) => r.rewardKey)
-        .firstWhere((k) => k.startsWith('${kind.name}:grant:') && !consumed.contains(k),
-            orElse: () => '');
+        .firstWhere(
+          (k) => k.startsWith('${kind.name}:grant:') && !consumed.contains(k),
+          orElse: () => '',
+        );
     if (grant.isEmpty) return;
-    await db.into(db.adUsages).insert(AdUsagesCompanion.insert(
-          clubId: clubId,
-          rewardKind: kind.name,
-          rewardKey: '${kind.name}:consumed:${grant.substring('${kind.name}:grant:'.length)}',
-          completedAt: now ?? DateTime.now(),
-        ));
+    await db
+        .into(db.adUsages)
+        .insert(
+          AdUsagesCompanion.insert(
+            clubId: clubId,
+            rewardKind: kind.name,
+            rewardKey:
+                '${kind.name}:consumed:${grant.substring('${kind.name}:grant:'.length)}',
+            completedAt: now ?? DateTime.now(),
+          ),
+        );
   }
 
   /// Completes a boost-granting ad (upgrade discount, selling bonus,
@@ -310,13 +375,12 @@ class AdStore {
     switch (kind) {
       case AdRewardKind.seasonRewardMultiplier:
         // One per season: keyed by the latest season id.
-        final season = await (db.select(db.seasons)
-              ..orderBy([(s) => OrderingTerm.desc(db.seasons.id)]))
-            .get();
+        final season = await (db.select(
+          db.seasons,
+        )..orderBy([(s) => OrderingTerm.desc(db.seasons.id)])).get();
         windowKey = 'season:${season.isEmpty ? 0 : season.first.id}';
       default:
-        windowKey =
-            'day:${timestamp.year}-${timestamp.month}-${timestamp.day}';
+        windowKey = 'day:${timestamp.year}-${timestamp.month}-${timestamp.day}';
     }
     return completeAd(
       kind: kind,

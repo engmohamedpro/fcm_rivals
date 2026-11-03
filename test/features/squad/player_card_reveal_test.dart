@@ -13,30 +13,32 @@ import 'package:fcm_rivals/features/squad/player_card_reveal.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
 
 PlayerCard _card() => PlayerCard(
-      ownedId: 7,
-      upgradeLevel: 2,
-      base: BasePlayer(
-        playerId: 1007,
-        name: 'Karim Fouad',
-        position: Position.st,
-        nationality: 'Egypt',
-        marketValueEur: 5_000_000,
-        baseStats: const BaseStats(
-            overall: 80, attack: 82, support: 75, defence: 40, goalkeeping: 0),
-      ),
-    );
+  ownedId: 7,
+  upgradeLevel: 2,
+  base: BasePlayer(
+    playerId: 1007,
+    name: 'Karim Fouad',
+    position: Position.st,
+    nationality: 'Egypt',
+    marketValueEur: 5_000_000,
+    baseStats: const BaseStats(
+      overall: 80,
+      attack: 82,
+      support: 75,
+      defence: 40,
+      goalkeeping: 0,
+    ),
+  ),
+);
 
 Widget _host() => MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () {},
-            child: const Text('REVEAL'),
-          ),
-        ),
-      ),
-    );
+  home: Scaffold(
+    backgroundColor: Colors.black,
+    body: Center(
+      child: ElevatedButton(onPressed: () {}, child: const Text('REVEAL')),
+    ),
+  ),
+);
 
 Future<void> _open(WidgetTester tester) async {
   await tester.pumpWidget(_host());
@@ -46,8 +48,9 @@ Future<void> _open(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('card zooms in face-up — identity and stats visible at once',
-      (WidgetTester tester) async {
+  testWidgets('card zooms in face-up — identity and stats visible at once', (
+    WidgetTester tester,
+  ) async {
     await _open(tester);
 
     // Mid-entrance (~120ms): the face is already up with everything on
@@ -70,8 +73,9 @@ void main() {
     expect(find.text('TAP TO CLOSE'), findsOneWidget);
   });
 
-  testWidgets('a tap anywhere dismisses the card view',
-      (WidgetTester tester) async {
+  testWidgets('a tap anywhere dismisses the card view', (
+    WidgetTester tester,
+  ) async {
     await _open(tester);
     await tester.pump(const Duration(milliseconds: 1500));
     expect(find.byType(FcmPlayerCard), findsOneWidget);

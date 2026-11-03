@@ -18,8 +18,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/player_card.dart' show FcmPlayerCard, pulse;
-import '../collection/player_detail_sheet.dart'
-    show cardStatsOf, rarityOf;
+import '../collection/player_detail_sheet.dart' show cardStatsOf, rarityOf;
 import '../packs/pack_effects.dart'
     show LightRaysPainter, ParticleBurstPainter, Spark;
 import 'squad_engine.dart' show PlayerCard;
@@ -82,18 +81,26 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
   @override
   void initState() {
     super.initState();
-    _seq = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1500))
-      ..addListener(_onTick)..forward();
+    _seq =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 1500),
+          )
+          ..addListener(_onTick)
+          ..forward();
     _idle = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2600))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat();
     _spin = AnimationController(
-        vsync: this, duration: const Duration(seconds: 24))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(seconds: 24),
+    )..repeat();
     final r = math.Random(widget.card.ownedId * 31 + 7);
     _sparks = List.generate(
-        (40 * rarityOf(widget.card).intensity).round(), (_) => Spark(r));
+      (40 * rarityOf(widget.card).intensity).round(),
+      (_) => Spark(r),
+    );
   }
 
   @override
@@ -145,9 +152,11 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
                       painter: LightRaysPainter(
                         rotation: _spin.value,
                         color: rarity.accent,
-                        strength: (0.30 + 0.20 * pulse(_idle.value)) *
-                            Curves.easeOut
-                                .transform(((t - 0.02) / 0.20).clamp(0.0, 1.0)),
+                        strength:
+                            (0.30 + 0.20 * pulse(_idle.value)) *
+                            Curves.easeOut.transform(
+                              ((t - 0.02) / 0.20).clamp(0.0, 1.0),
+                            ),
                       ),
                     ),
                   ),
@@ -155,7 +164,12 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
                   // the burst converge.
                   Align(
                     alignment: const Alignment(0, -0.08),
-                    child: _buildCard(t, _T.enter.transform(t), cardWidth, rarity),
+                    child: _buildCard(
+                      t,
+                      _T.enter.transform(t),
+                      cardWidth,
+                      rarity,
+                    ),
                   ),
                   // Sparks fly OVER the card as it settles.
                   CustomPaint(
@@ -200,7 +214,11 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
   /// rendered in full from the first frame of the face: the user knows
   /// this player already, this is a showcase, not a reveal.
   Widget _buildCard(
-      double t, double enterT, double cardWidth, CardRarity rarity) {
+    double t,
+    double enterT,
+    double cardWidth,
+    CardRarity rarity,
+  ) {
     final card = widget.card;
     final e = Curves.easeOutBack.transform(enterT.clamp(0.0, 1.0));
     final fade = Curves.easeOut.transform(((t - 0.02) / 0.16).clamp(0.0, 1.0));
@@ -232,7 +250,8 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
               stats: cardStatsOf(card),
               upgradeLevel: card.upgradeLevel,
               shine: shine,
-              glow: (0.55 + 0.45 * pulse(_idle.value)) *
+              glow:
+                  (0.55 + 0.45 * pulse(_idle.value)) *
                   enterT.clamp(0.0, 1.0) *
                   (0.6 + 0.2 * rarity.intensity),
             ),

@@ -34,8 +34,7 @@ Future<void> precachePackLogo() async {
   _packLogoRequested = true;
   try {
     final data = await rootBundle.load(kFcmWordmarkAsset);
-    final codec =
-        await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
     final frame = await codec.getNextFrame();
     _packLogo = frame.image;
   } catch (_) {
@@ -187,10 +186,16 @@ class FoilPackPainter extends CustomPainter {
     for (var x = w * 0.025; x < w; x += w * 0.05) {
       canvas.drawLine(Offset(x, 0), Offset(x, crimpH), groove);
       canvas.drawLine(
-          Offset(x + w * 0.012, 0), Offset(x + w * 0.012, crimpH), lit);
+        Offset(x + w * 0.012, 0),
+        Offset(x + w * 0.012, crimpH),
+        lit,
+      );
       canvas.drawLine(Offset(x, h - crimpH), Offset(x, h), groove);
-      canvas.drawLine(Offset(x + w * 0.012, h - crimpH),
-          Offset(x + w * 0.012, h), lit);
+      canvas.drawLine(
+        Offset(x + w * 0.012, h - crimpH),
+        Offset(x + w * 0.012, h),
+        lit,
+      );
     }
     // Seal shading: the crimp folds away from the flat body.
     for (final top in [true, false]) {
@@ -215,7 +220,11 @@ class FoilPackPainter extends CustomPainter {
     // darkened like tinted glass so the artwork pops off the foil.
     final inset = w * 0.07;
     final frame = Rect.fromLTRB(
-        inset, crimpH * 1.45, w - inset, h - crimpH * 1.45);
+      inset,
+      crimpH * 1.45,
+      w - inset,
+      h - crimpH * 1.45,
+    );
     final framePath = _chamfered(frame, w * 0.075);
     canvas.drawPath(
       framePath,
@@ -236,18 +245,23 @@ class FoilPackPainter extends CustomPainter {
     canvas.clipPath(framePath);
     final fanCenter = Offset(w / 2, h * 0.315);
     if (stars >= 4) {
-      _paintSunburst(canvas, fanCenter, h * 0.5, light,
-          stars >= 5 ? 0.34 : 0.20, stars >= 5 ? 20 : 14);
+      _paintSunburst(
+        canvas,
+        fanCenter,
+        h * 0.5,
+        light,
+        stars >= 5 ? 0.34 : 0.20,
+        stars >= 5 ? 20 : 14,
+      );
     }
     // Soft radial glow behind the fan.
     canvas.drawCircle(
       fanCenter,
       w * 0.42,
       Paint()
-        ..shader = RadialGradient(colors: [
-          light.withValues(alpha: 0.38),
-          light.withValues(alpha: 0.0),
-        ]).createShader(Rect.fromCircle(center: fanCenter, radius: w * 0.42)),
+        ..shader = RadialGradient(
+          colors: [light.withValues(alpha: 0.38), light.withValues(alpha: 0.0)],
+        ).createShader(Rect.fromCircle(center: fanCenter, radius: w * 0.42)),
     );
     canvas.restore();
 
@@ -276,8 +290,9 @@ class FoilPackPainter extends CustomPainter {
     // across the shelf. Count is the pack's grade: 3 / 4 / 5.
     final metal = trim;
     final starFill = Color.lerp(metal, Colors.white, 0.28)!;
-    final starRim =
-        shades == null ? const Color(0xFF0B0A0E) : deep.withValues(alpha: 0.9);
+    final starRim = shades == null
+        ? const Color(0xFF0B0A0E)
+        : deep.withValues(alpha: 0.9);
     final starR = w * 0.05;
     final rowY = h * 0.118;
     final starGap = starR * 2.42;
@@ -305,26 +320,29 @@ class FoilPackPainter extends CustomPainter {
     // Wordmark band: dark glass between two metal hairlines, the
     // transparent brand logo large on it with a warm glow behind.
     final band = Rect.fromLTRB(
-        frame.left + w * 0.012, h * 0.465, frame.right - w * 0.012, h * 0.725);
+      frame.left + w * 0.012,
+      h * 0.465,
+      frame.right - w * 0.012,
+      h * 0.725,
+    );
     final bandPath = _chamfered(band, w * 0.04);
     canvas.drawPath(
       bandPath,
       Paint()
-        ..shader = LinearGradient(colors: [
-          deep.withValues(alpha: 0.96),
-          const Color(0xFF15130F).withValues(alpha: 0.98),
-          deep.withValues(alpha: 0.96),
-        ]).createShader(band),
+        ..shader = LinearGradient(
+          colors: [
+            deep.withValues(alpha: 0.96),
+            const Color(0xFF15130F).withValues(alpha: 0.98),
+            deep.withValues(alpha: 0.96),
+          ],
+        ).createShader(band),
     );
     canvas.drawRect(
       band,
       Paint()
         ..shader = RadialGradient(
           radius: 0.9,
-          colors: [
-            trim.withValues(alpha: 0.30),
-            trim.withValues(alpha: 0.0),
-          ],
+          colors: [trim.withValues(alpha: 0.30), trim.withValues(alpha: 0.0)],
         ).createShader(band),
     );
     canvas.drawPath(
@@ -342,7 +360,11 @@ class FoilPackPainter extends CustomPainter {
     _paintedWithLogo = logo != null;
     if (logo != null) {
       final src = Rect.fromLTWH(
-          0, 0, logo.width.toDouble(), logo.height.toDouble());
+        0,
+        0,
+        logo.width.toDouble(),
+        logo.height.toDouble(),
+      );
       final aspect = src.width / src.height;
       var dstH = band.height * 0.96;
       if (dstH * aspect > band.width * 0.96) {
@@ -360,12 +382,24 @@ class FoilPackPainter extends CustomPainter {
         Paint()..filterQuality = FilterQuality.medium,
       );
     } else {
-      _text(canvas, 'FCM', w * 0.24, FcmColors.silver,
-          Offset(w / 2, band.center.dy - h * 0.025),
-          italic: true, spacing: -1);
-      _text(canvas, 'RIVALS', w * 0.115, FcmColors.gold,
-          Offset(w / 2, band.center.dy + h * 0.06),
-          italic: true, spacing: 3);
+      _text(
+        canvas,
+        'FCM',
+        w * 0.24,
+        FcmColors.silver,
+        Offset(w / 2, band.center.dy - h * 0.025),
+        italic: true,
+        spacing: -1,
+      );
+      _text(
+        canvas,
+        'RIVALS',
+        w * 0.115,
+        FcmColors.gold,
+        Offset(w / 2, band.center.dy + h * 0.06),
+        italic: true,
+        spacing: 3,
+      );
     }
 
     // The tier's name on a deep plate with a tier-metal hairline: the
@@ -377,8 +411,7 @@ class FoilPackPainter extends CustomPainter {
       _ => 'RARE',
     };
     final plateFont = w * 0.082;
-    final plateTp =
-        _layoutText(plateText, plateFont, starFill, spacing: 2.5);
+    final plateTp = _layoutText(plateText, plateFont, starFill, spacing: 2.5);
     final plateCenter = Offset(w / 2, h * 0.805);
     final plate = RRect.fromRectAndRadius(
       Rect.fromCenter(
@@ -417,10 +450,8 @@ class FoilPackPainter extends CustomPainter {
     final ornPaint = Paint()
       ..strokeWidth = math.max(0.8, w * 0.006)
       ..color = trim.withValues(alpha: 0.6);
-    canvas.drawLine(
-        Offset(w * 0.22, orn), Offset(w * 0.45, orn), ornPaint);
-    canvas.drawLine(
-        Offset(w * 0.55, orn), Offset(w * 0.78, orn), ornPaint);
+    canvas.drawLine(Offset(w * 0.22, orn), Offset(w * 0.45, orn), ornPaint);
+    canvas.drawLine(Offset(w * 0.55, orn), Offset(w * 0.78, orn), ornPaint);
     final dm = w * 0.022;
     canvas.drawPath(
       Path()
@@ -451,10 +482,12 @@ class FoilPackPainter extends CustomPainter {
     canvas.drawRect(
       rim,
       Paint()
-        ..shader = LinearGradient(colors: [
-          Colors.white.withValues(alpha: 0.22),
-          Colors.white.withValues(alpha: 0.0),
-        ]).createShader(rim),
+        ..shader = LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.22),
+            Colors.white.withValues(alpha: 0.0),
+          ],
+        ).createShader(rim),
     );
 
     // Holographic sheen: a prismatic band sweeping across the foil as
@@ -494,11 +527,13 @@ class FoilPackPainter extends CustomPainter {
     canvas.drawPath(
       sweep,
       Paint()
-        ..shader = LinearGradient(colors: [
-          FcmColors.goldSoft.withValues(alpha: 0.0),
-          FcmColors.goldSoft.withValues(alpha: 0.32),
-          FcmColors.goldSoft.withValues(alpha: 0.0),
-        ]).createShader(Rect.fromLTWH(sx, 0, w * 0.7, h)),
+        ..shader = LinearGradient(
+          colors: [
+            FcmColors.goldSoft.withValues(alpha: 0.0),
+            FcmColors.goldSoft.withValues(alpha: 0.32),
+            FcmColors.goldSoft.withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromLTWH(sx, 0, w * 0.7, h)),
     );
 
     // Charging: inner light bleeding through a growing crack.
@@ -512,8 +547,11 @@ class FoilPackPainter extends CustomPainter {
             center: Alignment.center,
             radius: 0.2 + 0.9 * c,
             colors: [
-              Color.lerp(Colors.white, glowColor, 0.5)!
-                  .withValues(alpha: 0.85 * c),
+              Color.lerp(
+                Colors.white,
+                glowColor,
+                0.5,
+              )!.withValues(alpha: 0.85 * c),
               glowColor.withValues(alpha: 0.0),
             ],
           ).createShader(rect),
@@ -581,18 +619,28 @@ class FoilPackPainter extends CustomPainter {
     ];
   }
 
-  void _text(Canvas canvas, String text, double size, Color color,
-      Offset center,
-      {bool italic = false, double spacing = 0}) {
-    final tp = _layoutText(text, size, color,
-        italic: italic, spacing: spacing);
+  void _text(
+    Canvas canvas,
+    String text,
+    double size,
+    Color color,
+    Offset center, {
+    bool italic = false,
+    double spacing = 0,
+  }) {
+    final tp = _layoutText(text, size, color, italic: italic, spacing: spacing);
     tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
   }
 
   /// Lays one stamped wordmark line out — [_text] paints it centred,
   /// the label plate measures it first.
-  TextPainter _layoutText(String text, double size, Color color,
-      {bool italic = false, double spacing = 0}) {
+  TextPainter _layoutText(
+    String text,
+    double size,
+    Color color, {
+    bool italic = false,
+    double spacing = 0,
+  }) {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
@@ -627,14 +675,24 @@ class FoilPackPainter extends CustomPainter {
 /// in the deeper tier metal, the hero card in the middle, larger and
 /// bright, each wearing the same silhouette-and-stat-bars hint as the
 /// real card face.
-void _paintCardFan(Canvas canvas, Size size, Offset center,
-    List<Color> ramp, Color trim) {
+void _paintCardFan(
+  Canvas canvas,
+  Size size,
+  Offset center,
+  List<Color> ramp,
+  Color trim,
+) {
   final w = size.width;
   final cw = w * 0.30;
   final ch = cw / 0.70;
 
-  void card(double dx, double dy, double angle, double scale,
-      {required bool hero}) {
+  void card(
+    double dx,
+    double dy,
+    double angle,
+    double scale, {
+    required bool hero,
+  }) {
     canvas.save();
     canvas.translate(center.dx + dx, center.dy + dy);
     canvas.rotate(angle);
@@ -666,26 +724,35 @@ void _paintCardFan(Canvas canvas, Size size, Offset center,
     canvas.drawPath(
       Path()
         ..moveTo(hx - cw * 0.34, ch * 0.70)
+        ..quadraticBezierTo(hx - cw * 0.32, hy + hr * 1.25, hx, hy + hr * 1.2)
         ..quadraticBezierTo(
-            hx - cw * 0.32, hy + hr * 1.25, hx, hy + hr * 1.2)
-        ..quadraticBezierTo(
-            hx + cw * 0.32, hy + hr * 1.25, hx + cw * 0.34, ch * 0.70)
+          hx + cw * 0.32,
+          hy + hr * 1.25,
+          hx + cw * 0.34,
+          ch * 0.70,
+        )
         ..close(),
       ink,
     );
     // Rating chip and two stat bars.
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-          Rect.fromLTWH(cw * 0.12, ch * 0.09, cw * 0.24, cw * 0.14),
-          Radius.circular(cw * 0.03)),
+        Rect.fromLTWH(cw * 0.12, ch * 0.09, cw * 0.24, cw * 0.14),
+        Radius.circular(cw * 0.03),
+      ),
       ink,
     );
     for (var i = 0; i < 2; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-            Rect.fromLTWH(cw * 0.16, ch * (0.76 + i * 0.08), cw * 0.68,
-                ch * 0.035),
-            Radius.circular(cw * 0.02)),
+          Rect.fromLTWH(
+            cw * 0.16,
+            ch * (0.76 + i * 0.08),
+            cw * 0.68,
+            ch * 0.035,
+          ),
+          Radius.circular(cw * 0.02),
+        ),
         ink,
       );
     }
@@ -709,22 +776,32 @@ void _paintCardFan(Canvas canvas, Size size, Offset center,
 }
 
 /// Thin tapered rays fanning out of [c] — the sunburst behind the cards.
-void _paintSunburst(Canvas canvas, Offset c, double radius, Color color,
-    double alpha, int rays) {
+void _paintSunburst(
+  Canvas canvas,
+  Offset c,
+  double radius,
+  Color color,
+  double alpha,
+  int rays,
+) {
   final slice = 2 * math.pi / rays;
   final paint = Paint()
-    ..shader = RadialGradient(colors: [
-      color.withValues(alpha: alpha),
-      color.withValues(alpha: 0.0),
-    ]).createShader(Rect.fromCircle(center: c, radius: radius));
+    ..shader = RadialGradient(
+      colors: [
+        color.withValues(alpha: alpha),
+        color.withValues(alpha: 0.0),
+      ],
+    ).createShader(Rect.fromCircle(center: c, radius: radius));
   for (var i = 0; i < rays; i++) {
     final a = i * slice;
     canvas.drawPath(
       Path()
         ..moveTo(c.dx, c.dy)
         ..lineTo(c.dx + math.cos(a) * radius, c.dy + math.sin(a) * radius)
-        ..lineTo(c.dx + math.cos(a + slice * 0.45) * radius,
-            c.dy + math.sin(a + slice * 0.45) * radius)
+        ..lineTo(
+          c.dx + math.cos(a + slice * 0.45) * radius,
+          c.dy + math.sin(a + slice * 0.45) * radius,
+        )
         ..close(),
       paint,
     );
@@ -788,8 +865,10 @@ class LightRaysPainter extends CustomPainter {
       final path = Path()
         ..moveTo(c.dx, c.dy)
         ..lineTo(c.dx + math.cos(a) * radius, c.dy + math.sin(a) * radius)
-        ..lineTo(c.dx + math.cos(a + slice * 0.42) * radius,
-            c.dy + math.sin(a + slice * 0.42) * radius)
+        ..lineTo(
+          c.dx + math.cos(a + slice * 0.42) * radius,
+          c.dy + math.sin(a + slice * 0.42) * radius,
+        )
         ..close();
       canvas.drawPath(path, paint);
     }
@@ -805,11 +884,11 @@ class LightRaysPainter extends CustomPainter {
 /// One spark of the burst; all values are fixed at creation.
 class Spark {
   Spark(math.Random r)
-      : angle = r.nextDouble() * 2 * math.pi,
-        speed = 0.35 + r.nextDouble() * 0.85,
-        size = 2 + r.nextDouble() * 5,
-        delay = r.nextDouble() * 0.15,
-        gold = r.nextBool();
+    : angle = r.nextDouble() * 2 * math.pi,
+      speed = 0.35 + r.nextDouble() * 0.85,
+      size = 2 + r.nextDouble() * 5,
+      delay = r.nextDouble() * 0.15,
+      gold = r.nextBool();
 
   final double angle;
   final double speed;
@@ -840,7 +919,8 @@ class ParticleBurstPainter extends CustomPainter {
       final t = ((progress - s.delay) / (1 - s.delay)).clamp(0.0, 1.0);
       if (t <= 0) continue;
       final eased = 1 - math.pow(1 - t, 3).toDouble();
-      final pos = c +
+      final pos =
+          c +
           Offset(math.cos(s.angle), math.sin(s.angle)) *
               (reach * s.speed * eased) +
           Offset(0, 90 * t * t);

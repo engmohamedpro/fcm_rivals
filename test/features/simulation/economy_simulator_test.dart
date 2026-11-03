@@ -7,8 +7,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('EconomySimulator progression (GDD 30/32)', () {
-    test('multi-season save: metrics grow, ledger reconciles, no runaway inflation',
-        () async {
+    test('multi-season save: metrics grow, ledger reconciles, no runaway inflation', () async {
       final sim = EconomySimulator(seed: 31);
       final report = await sim.run(
         label: 'medium-3season',
@@ -30,8 +29,10 @@ void main() {
       final first = report.seasons.first;
       final last = report.seasons.last;
       expect(last.collectionSize, greaterThanOrEqualTo(first.collectionSize));
-      expect(last.bestSquadOverall,
-          greaterThanOrEqualTo(first.bestSquadOverall - 2));
+      expect(
+        last.bestSquadOverall,
+        greaterThanOrEqualTo(first.bestSquadOverall - 2),
+      );
 
       // GDD 32: rewards do not cause Coin inflation — the average net
       // coins per season must stay well under one season's typical
@@ -42,27 +43,41 @@ void main() {
       // GDD 32: promotion achievable OR relegation possible — with a
       // mid-strength squad both outcomes are legitimate; what must hold
       // is that the engine actually produced season outcomes at all.
-      expect(report.seasons.map((s) => s.outcome).toSet(),
-          isNot(contains('unknown')));
+      expect(
+        report.seasons.map((s) => s.outcome).toSet(),
+        isNot(contains('unknown')),
+      );
     }, timeout: const Timeout(Duration(minutes: 8)));
 
-    test('value bands behave differently (GDD 30 low vs high datasets)',
-        () async {
-      final low = await EconomySimulator(seed: 5).run(
-          label: 'low', seasonCount: 1, valueBand: SimValueBand.low, datasetSize: 120);
-      final high = await EconomySimulator(seed: 5).run(
-          label: 'high', seasonCount: 1, valueBand: SimValueBand.high, datasetSize: 120);
+    test(
+      'value bands behave differently (GDD 30 low vs high datasets)',
+      () async {
+        final low = await EconomySimulator(seed: 5).run(
+          label: 'low',
+          seasonCount: 1,
+          valueBand: SimValueBand.low,
+          datasetSize: 120,
+        );
+        final high = await EconomySimulator(seed: 5).run(
+          label: 'high',
+          seasonCount: 1,
+          valueBand: SimValueBand.high,
+          datasetSize: 120,
+        );
 
-      // A superstar dataset builds a stronger XI than a low-value one.
-      expect(high.seasons.first.bestSquadOverall,
-          greaterThan(low.seasons.first.bestSquadOverall));
-      // Both still earn match coins and complete the season.
-      expect(low.seasons.first.coinsEarned, greaterThan(0));
-      expect(high.seasons.first.coinsEarned, greaterThan(0));
-    }, timeout: const Timeout(Duration(minutes: 8)));
+        // A superstar dataset builds a stronger XI than a low-value one.
+        expect(
+          high.seasons.first.bestSquadOverall,
+          greaterThan(low.seasons.first.bestSquadOverall),
+        );
+        // Both still earn match coins and complete the season.
+        expect(low.seasons.first.coinsEarned, greaterThan(0));
+        expect(high.seasons.first.coinsEarned, greaterThan(0));
+      },
+      timeout: const Timeout(Duration(minutes: 8)),
+    );
 
-    test('rewarded ads stay optional and bounded (GDD 33, FR-043)',
-        () async {
+    test('rewarded ads stay optional and bounded (GDD 33, FR-043)', () async {
       final withAds = await EconomySimulator(seed: 11).run(
         label: 'ads',
         seasonCount: 2,
@@ -81,8 +96,10 @@ void main() {
       // Ads were watched (after non-wins) but never unbounded: the
       // daily engine caps usage, and a season has a finite fixture list.
       expect(withAds.adsWatched, greaterThan(0));
-      expect(withAds.adsWatched,
-          lessThanOrEqualTo(withAds.matchDraws + withAds.matchLosses));
+      expect(
+        withAds.adsWatched,
+        lessThanOrEqualTo(withAds.matchDraws + withAds.matchLosses),
+      );
 
       // GDD 33: the game must remain playable without ads — the same
       // seed produces a comparable save either way.

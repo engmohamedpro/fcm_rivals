@@ -89,7 +89,8 @@ double staminaDrainForMinute({
   required double mentalityStamina,
   bool involvedInEvent = false,
 }) {
-  var drain = config.baseDrainPerMinute *
+  var drain =
+      config.baseDrainPerMinute *
       styleStamina *
       mentalityStamina *
       (config.positionWorkload[position] ?? 1.0);
@@ -109,7 +110,8 @@ double recoverStamina({
   required int restDays,
   double campusRecoveryBonus = 0,
 }) {
-  var recovery = config.baseRecovery +
+  var recovery =
+      config.baseRecovery +
       restDays * config.recoveryPerRestDay -
       (minutesPlayed / 90) * config.minutesPlayedPenalty +
       campusRecoveryBonus;
@@ -132,9 +134,21 @@ double recoverStamina({
 /// the player's natural recovery, not a direct stamina addition.
 enum PepTalk {
   restEveryone('Rest, everyone deserves it!', 0.05, PepTalkTarget.all),
-  focusExhausted('Focus on exhausted players!', 0.10, PepTalkTarget.belowThreshold),
-  rewardSubstitutes('Reward the substitutes!', 0.10, PepTalkTarget.playedUnderThreshold),
-  everyoneGaveBest('Everyone gave their best!', 0.07, PepTalkTarget.playedThresholdOrMore);
+  focusExhausted(
+    'Focus on exhausted players!',
+    0.10,
+    PepTalkTarget.belowThreshold,
+  ),
+  rewardSubstitutes(
+    'Reward the substitutes!',
+    0.10,
+    PepTalkTarget.playedUnderThreshold,
+  ),
+  everyoneGaveBest(
+    'Everyone gave their best!',
+    0.07,
+    PepTalkTarget.playedThresholdOrMore,
+  );
 
   const PepTalk(this.displayName, this.recoveryBonus, this.target);
 
@@ -146,7 +160,12 @@ enum PepTalk {
   final PepTalkTarget target;
 }
 
-enum PepTalkTarget { all, belowThreshold, playedUnderThreshold, playedThresholdOrMore }
+enum PepTalkTarget {
+  all,
+  belowThreshold,
+  playedUnderThreshold,
+  playedThresholdOrMore,
+}
 
 /// Whether a player is affected by [pepTalk] (GDD 11.6: the game must show
 /// the affected player count before confirmation).
@@ -162,7 +181,8 @@ bool pepTalkAppliesTo({
     case PepTalkTarget.belowThreshold:
       return staminaAfterNaturalRecovery < config.exhaustedThreshold;
     case PepTalkTarget.playedUnderThreshold:
-      return minutesPlayed > 0 && minutesPlayed < config.subPlayedThresholdMinutes;
+      return minutesPlayed > 0 &&
+          minutesPlayed < config.subPlayedThresholdMinutes;
     case PepTalkTarget.playedThresholdOrMore:
       return minutesPlayed >= config.subPlayedThresholdMinutes;
   }
@@ -179,10 +199,11 @@ double applyPepTalkBonus({
   StaminaConfig config = defaultStaminaConfig,
 }) {
   if (!pepTalkAppliesTo(
-      pepTalk: pepTalk,
-      config: config,
-      staminaAfterNaturalRecovery: staminaAfterNaturalRecovery,
-      minutesPlayed: minutesPlayed)) {
+    pepTalk: pepTalk,
+    config: config,
+    staminaAfterNaturalRecovery: staminaAfterNaturalRecovery,
+    minutesPlayed: minutesPlayed,
+  )) {
     return staminaAfterNaturalRecovery;
   }
   return (staminaAfterNaturalRecovery + naturalRecovery * pepTalk.recoveryBonus)

@@ -411,8 +411,11 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.healing_rounded,
-                        color: FcmColors.gold, size: 20),
+                    Icon(
+                      Icons.healing_rounded,
+                      color: FcmColors.gold,
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Post-match recovery',
@@ -455,8 +458,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                           '+15% natural recovery for the whole squad '
                           '(GDD 19.3)',
                       gold: true,
-                      onTap: () => _postMatchChoice =
-                          const _RecoveryChoice.boosted(),
+                      onTap: () =>
+                          _postMatchChoice = const _RecoveryChoice.boosted(),
                     ),
                   ),
                 TextButton(
@@ -464,8 +467,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                       _postMatchChoice = const _RecoveryChoice.none(),
                   child: const Text(
                     'No pep talk — default recovery',
-                    style:
-                        TextStyle(color: FcmColors.textDim, fontSize: 12),
+                    style: TextStyle(color: FcmColors.textDim, fontSize: 12),
                   ),
                 ),
               ],
@@ -514,7 +516,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
             ? null
             : AppBar(
                 automaticallyImplyLeading: false,
-                title: Text(widget.title ?? 'Live match')),
+                title: Text(widget.title ?? 'Live match'),
+              ),
         body: FcmMatchBackdrop(
           // The photo runs edge to edge behind the app bar; the content
           // column stays below it.
@@ -552,8 +555,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               scoreAway: state.scoreAway,
                               minute: state.minute,
                               fullTime: _finished || state.isFinished,
-                              userIsHome:
-                                  session.userSide == MatchSide.home,
+                              userIsHome: session.userSide == MatchSide.home,
                               paused: _paused,
                               speed: _speed,
                               onTogglePause: _togglePause,
@@ -567,11 +569,14 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                             // is on top reads at a glance. The user's
                             // crest colour tints their side's spikes.
                             Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(12, 2, 12, 6),
+                              padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
                               child: FcmPanel(
                                 padding: const EdgeInsets.fromLTRB(
-                                    12, 10, 12, 8),
+                                  12,
+                                  10,
+                                  12,
+                                  8,
+                                ),
                                 accent: FcmColors.bronze,
                                 child: MomentumBar(
                                   series: _momentumSeries ?? const [],
@@ -596,10 +601,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                             child: _finished && _report != null
                                 ? MatchReportView(
                                     report: _report!,
-                                    homeTeamName:
-                                        session.homeTeamName,
-                                    awayTeamName:
-                                        session.awayTeamName,
+                                    homeTeamName: session.homeTeamName,
+                                    awayTeamName: session.awayTeamName,
                                     pepTalk: _pepTalk,
                                     adBoostedRecovery: _usedAdBoost,
                                     userSide: session.userSide,
@@ -613,10 +616,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                     child: Text(
                                       _paused
                                           ? 'Paused — press play to '
-                                              'continue.'
+                                                'continue.'
                                           : 'Kick-off! The match plays '
-                                              'itself — change speed or '
-                                              'open tactics any time.',
+                                                'itself — change speed or '
+                                                'open tactics any time.',
                                       textAlign: TextAlign.center,
                                       style: const TextStyle(
                                         color: FcmColors.textDim,
@@ -626,13 +629,17 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                 : ListView.builder(
                                     controller: _feedScroll,
                                     padding: const EdgeInsets.fromLTRB(
-                                        14, 6, 14, 16),
+                                      14,
+                                      6,
+                                      14,
+                                      16,
+                                    ),
                                     itemCount: _lines.length,
                                     itemBuilder: (context, index) =>
                                         CommentaryRow(
-                                      key: ValueKey('line-$index'),
-                                      line: _lines[index],
-                                    ),
+                                          key: ValueKey('line-$index'),
+                                          line: _lines[index],
+                                        ),
                                   ),
                           ),
                         ],
@@ -662,13 +669,15 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     final session = widget.session;
     _sheetOpen = true;
     try {
-      await Navigator.of(context).push(MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => LiveTacticsScreen(
-          session: session,
-          minuteQueuedFrom: session.engine.state.minute + 1,
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => LiveTacticsScreen(
+            session: session,
+            minuteQueuedFrom: session.engine.state.minute + 1,
+          ),
         ),
-      ));
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -733,8 +742,11 @@ class _RecoveryOption extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: FcmColors.textDim, size: 20),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: FcmColors.textDim,
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -814,10 +826,8 @@ class _MatchReportViewState extends State<MatchReportView> {
     String? verdict;
     var verdictColor = FcmColors.gold;
     if (widget.userSide != null) {
-      final mine =
-          widget.userSide == MatchSide.home ? home : away;
-      final theirs =
-          widget.userSide == MatchSide.home ? away : home;
+      final mine = widget.userSide == MatchSide.home ? home : away;
+      final theirs = widget.userSide == MatchSide.home ? away : home;
       if (mine > theirs) {
         verdict = 'VICTORY';
         verdictColor = FcmColors.success;
@@ -834,10 +844,12 @@ class _MatchReportViewState extends State<MatchReportView> {
     final opponentTeamName = _initialTab == 0
         ? widget.awayTeamName
         : widget.homeTeamName;
-    final userRatings =
-        _initialTab == 0 ? report.homeRatings : report.awayRatings;
-    final opponentRatings =
-        _initialTab == 0 ? report.awayRatings : report.homeRatings;
+    final userRatings = _initialTab == 0
+        ? report.homeRatings
+        : report.awayRatings;
+    final opponentRatings = _initialTab == 0
+        ? report.awayRatings
+        : report.homeRatings;
     // Spike colours: the user's crest colour tints their side, the
     // opponent's stays dimmed white (brand gold when no user side).
     Color homeColor = FcmColors.gold;
@@ -880,8 +892,7 @@ class _MatchReportViewState extends State<MatchReportView> {
                               letterSpacing: 5,
                               shadows: [
                                 Shadow(
-                                  color: verdictColor
-                                      .withValues(alpha: 0.6),
+                                  color: verdictColor.withValues(alpha: 0.6),
                                   blurRadius: 22,
                                 ),
                               ],
@@ -925,14 +936,15 @@ class _MatchReportViewState extends State<MatchReportView> {
                         const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.movie,
-                                size: 14, color: FcmColors.gold),
+                            Icon(Icons.movie, size: 14, color: FcmColors.gold),
                             SizedBox(width: 5),
                             Text(
                               'Ad-boosted recovery applied (+15% natural '
                               'recovery)',
                               style: TextStyle(
-                                  color: FcmColors.gold, fontSize: 11),
+                                color: FcmColors.gold,
+                                fontSize: 11,
+                              ),
                             ),
                           ],
                         )
@@ -940,8 +952,11 @@ class _MatchReportViewState extends State<MatchReportView> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.healing_rounded,
-                                size: 14, color: FcmColors.success),
+                            const Icon(
+                              Icons.healing_rounded,
+                              size: 14,
+                              color: FcmColors.success,
+                            ),
                             const SizedBox(width: 5),
                             Flexible(
                               child: Text(
@@ -949,8 +964,9 @@ class _MatchReportViewState extends State<MatchReportView> {
                                 '(+${(widget.pepTalk!.recoveryBonus * 100).round()}% '
                                 'recovery)',
                                 style: const TextStyle(
-                                    color: FcmColors.success,
-                                    fontSize: 11),
+                                  color: FcmColors.success,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                           ],
@@ -1031,8 +1047,7 @@ class _MatchReportViewState extends State<MatchReportView> {
                   firstRatings: userRatings,
                   secondRatings: opponentRatings,
                   current: _ratingsTab,
-                  onChanged: (tab) =>
-                      setState(() => _ratingsTab = tab),
+                  onChanged: (tab) => setState(() => _ratingsTab = tab),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1083,8 +1098,7 @@ class _RatingsTabs extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: FcmColors.steelGradient,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: FcmColors.bronze.withValues(alpha: 0.4)),
+            border: Border.all(color: FcmColors.bronze.withValues(alpha: 0.4)),
           ),
           child: Row(
             children: [
@@ -1097,15 +1111,15 @@ class _RatingsTabs extends StatelessWidget {
                       height: double.infinity,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        gradient:
-                            i == current ? FcmColors.goldGradient : null,
+                        gradient: i == current ? FcmColors.goldGradient : null,
                         borderRadius: BorderRadius.circular(9),
                       ),
                       child: FitText(
                         label,
                         style: TextStyle(
-                          color:
-                              i == current ? FcmColors.ink : FcmColors.textDim,
+                          color: i == current
+                              ? FcmColors.ink
+                              : FcmColors.textDim,
                           fontWeight: FontWeight.w900,
                           fontSize: 12,
                           letterSpacing: 0.5,
@@ -1118,8 +1132,7 @@ class _RatingsTabs extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        _RatingsPanel(
-            ratings: current == 0 ? firstRatings : secondRatings),
+        _RatingsPanel(ratings: current == 0 ? firstRatings : secondRatings),
       ],
     );
   }

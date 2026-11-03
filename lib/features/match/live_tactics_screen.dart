@@ -99,11 +99,16 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                   child: FcmPanel(
                     accent: FcmColors.success,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     child: Row(
                       children: [
-                        const Icon(Icons.schedule_rounded,
-                            color: FcmColors.success, size: 16),
+                        const Icon(
+                          Icons.schedule_rounded,
+                          color: FcmColors.success,
+                          size: 16,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -141,21 +146,27 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                 xi: xiCards,
                 bench: benchCards,
                 reserves: const [],
-                onFormation: (code) => _queue(ChangeFormationCommand(
-                  atMinute: nextMinute,
-                  side: _side,
-                  formationCode: code,
-                )),
-                onStyle: (s) => _queue(ChangeStyleCommand(
-                  atMinute: nextMinute,
-                  side: _side,
-                  style: s,
-                )),
-                onMentality: (m) => _queue(ChangeMentalityCommand(
-                  atMinute: nextMinute,
-                  side: _side,
-                  mentality: m,
-                )),
+                onFormation: (code) => _queue(
+                  ChangeFormationCommand(
+                    atMinute: nextMinute,
+                    side: _side,
+                    formationCode: code,
+                  ),
+                ),
+                onStyle: (s) => _queue(
+                  ChangeStyleCommand(
+                    atMinute: nextMinute,
+                    side: _side,
+                    style: s,
+                  ),
+                ),
+                onMentality: (m) => _queue(
+                  ChangeMentalityCommand(
+                    atMinute: nextMinute,
+                    side: _side,
+                    mentality: m,
+                  ),
+                ),
                 showStamina: true,
                 showStats: true,
                 showReserves: false,
@@ -173,11 +184,13 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                       FcmOptionChip(
                         label: a.displayName,
                         selected: false,
-                        onTap: () => _queue(LiveActionCommand(
-                          atMinute: nextMinute,
-                          side: _side,
-                          action: a,
-                        )),
+                        onTap: () => _queue(
+                          LiveActionCommand(
+                            atMinute: nextMinute,
+                            side: _side,
+                            action: a,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -190,7 +203,10 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                   'modifiers for 10 minutes and can be replaced any time. '
                   'Mentality shifts Attack and Defence by up to ±20%.',
                   style: TextStyle(
-                      color: FcmColors.textDim, fontSize: 11, height: 1.4),
+                    color: FcmColors.textDim,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -218,24 +234,28 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
   void _onPlayerTap(PlayerCard card) {
     final engine = widget.session.engine;
     final onPitch = engine.onPitchOf(_side);
-    final isOnPitch =
-        onPitch.any((p) => p.playerId == card.base.playerId);
+    final isOnPitch = onPitch.any((p) => p.playerId == card.base.playerId);
     if (isOnPitch) {
       fcmTick();
-      setState(() => _subOut = onPitch
-          .firstWhere((p) => p.playerId == card.base.playerId));
+      setState(
+        () => _subOut = onPitch.firstWhere(
+          (p) => p.playerId == card.base.playerId,
+        ),
+      );
     } else if (_subOut != null) {
       final bench = engine.benchOf(_side);
       final sub = bench
           .where((p) => p.playerId == card.base.playerId)
           .firstOrNull;
       if (sub != null) {
-        widget.session.queueCommand(SubstitutionCommand(
-          atMinute: engine.state.minute + 1,
-          side: _side,
-          outPlayerId: _subOut!.playerId,
-          inPlayerId: sub.playerId,
-        ));
+        widget.session.queueCommand(
+          SubstitutionCommand(
+            atMinute: engine.state.minute + 1,
+            side: _side,
+            outPlayerId: _subOut!.playerId,
+            inPlayerId: sub.playerId,
+          ),
+        );
         fcmTick();
         setState(() {
           _subOut = null;
@@ -307,8 +327,11 @@ class _LiveSubstitutions extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.swap_horiz_rounded,
-                  color: FcmColors.gold, size: 18),
+              const Icon(
+                Icons.swap_horiz_rounded,
+                color: FcmColors.gold,
+                size: 18,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Substitutions ($used/$max used)',
@@ -324,14 +347,16 @@ class _LiveSubstitutions extends StatelessWidget {
           if (remaining <= 0 || bench.isEmpty)
             const Text(
               'No substitution windows remaining.',
-              style:
-                  TextStyle(color: FcmColors.textDim, fontSize: 12),
+              style: TextStyle(color: FcmColors.textDim, fontSize: 12),
             )
           else ...[
             Text(
               _selectedOutLabel(),
               style: const TextStyle(
-                  color: FcmColors.textDim, fontSize: 12, height: 1.35),
+                color: FcmColors.textDim,
+                fontSize: 12,
+                height: 1.35,
+              ),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -340,21 +365,20 @@ class _LiveSubstitutions extends StatelessWidget {
               children: [
                 if (selectedOut == null)
                   for (final p in onPitch)
-                    _PlayerChip(
-                      player: p,
-                      onTap: () => onSelectOut(p),
-                    )
+                    _PlayerChip(player: p, onTap: () => onSelectOut(p))
                 else
                   for (final p in bench)
                     _PlayerChip(
                       player: p,
                       onTap: () {
-                        session.queueCommand(SubstitutionCommand(
-                          atMinute: session.engine.state.minute + 1,
-                          side: side,
-                          outPlayerId: selectedOut!.playerId,
-                          inPlayerId: p.playerId,
-                        ));
+                        session.queueCommand(
+                          SubstitutionCommand(
+                            atMinute: session.engine.state.minute + 1,
+                            side: side,
+                            outPlayerId: selectedOut!.playerId,
+                            inPlayerId: p.playerId,
+                          ),
+                        );
                         fcmTick();
                         onQueued();
                       },
@@ -366,9 +390,11 @@ class _LiveSubstitutions extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 6),
                 child: TextButton(
                   onPressed: () => onSelectOut(
-                      onPitch.firstWhere(
-                          (p) => p.playerId == selectedOut!.playerId,
-                          orElse: () => selectedOut!)),
+                    onPitch.firstWhere(
+                      (p) => p.playerId == selectedOut!.playerId,
+                      orElse: () => selectedOut!,
+                    ),
+                  ),
                   child: const Text('Cancel selection'),
                 ),
               ),

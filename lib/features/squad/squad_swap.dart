@@ -41,11 +41,14 @@ enum SquadZone {
         return List<int>.generate(Formation.startingXiSize, (i) => i);
       case SquadZone.bench:
         return List<int>.generate(
-            Formation.benchSize, (i) => Formation.startingXiSize + i);
+          Formation.benchSize,
+          (i) => Formation.startingXiSize + i,
+        );
       case SquadZone.reserves:
         return List<int>.generate(
-            Formation.reservesSize,
-            (i) => Formation.startingXiSize + Formation.benchSize + i);
+          Formation.reservesSize,
+          (i) => Formation.startingXiSize + Formation.benchSize + i,
+        );
     }
   }
 }
@@ -53,17 +56,11 @@ enum SquadZone {
 /// Where a dragged player was dropped: ON a player, on an EMPTY
 /// formation slot, or on an empty place of the bench / reserves.
 class SquadDropTarget {
-  const SquadDropTarget.player(PlayerCard this.card)
-      : slot = null,
-        zone = null;
+  const SquadDropTarget.player(PlayerCard this.card) : slot = null, zone = null;
 
-  const SquadDropTarget.xiSlot(int this.slot)
-      : card = null,
-        zone = null;
+  const SquadDropTarget.xiSlot(int this.slot) : card = null, zone = null;
 
-  const SquadDropTarget.emptyIn(SquadZone this.zone)
-      : card = null,
-        slot = null;
+  const SquadDropTarget.emptyIn(SquadZone this.zone) : card = null, slot = null;
 
   /// The player dropped on, when the target is a player.
   final PlayerCard? card;
@@ -79,7 +76,7 @@ class SquadDropTarget {
 /// player id, ready for the store) or a human-readable reason.
 class SquadSwapOutcome {
   const SquadSwapOutcome.accepted(Map<int, int> this.assignment)
-      : rejection = null;
+    : rejection = null;
 
   const SquadSwapOutcome.rejected(String this.rejection) : assignment = null;
 
@@ -125,8 +122,9 @@ SquadSwapOutcome swapSquadSlots({
       fromSlot < Formation.startingXiSize &&
       toSlot >= Formation.startingXiSize) {
     return const SquadSwapOutcome.rejected(
-        'The starting XI must stay full — drop a bench player on him '
-        'instead.');
+      'The starting XI must stay full — drop a bench player on him '
+      'instead.',
+    );
   }
 
   // The one real restriction: whoever lands in a starting slot must have
@@ -139,8 +137,8 @@ SquadSwapOutcome swapSquadSlots({
         '${need.code} place needs a ${need.code}.';
   }
 
-  final bad = misfit(mover, toSlot) ??
-      (other == null ? null : misfit(other, fromSlot));
+  final bad =
+      misfit(mover, toSlot) ?? (other == null ? null : misfit(other, fromSlot));
   if (bad != null) return SquadSwapOutcome.rejected(bad);
 
   final assignment = <int, int>{
@@ -188,5 +186,9 @@ SquadSwapOutcome planSquadDrop({
     return const SquadSwapOutcome.rejected('There is no free place there.');
   }
   return swapSquadSlots(
-      formation: formation, squad: squad, fromSlot: from, toSlot: to);
+    formation: formation,
+    squad: squad,
+    fromSlot: from,
+    toSlot: to,
+  );
 }

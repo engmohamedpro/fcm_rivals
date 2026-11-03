@@ -41,8 +41,7 @@ List<BasePlayer> loadRealPool() {
 /// spread and tier structure (verified against the full pool in the
 /// pricing tests) while making frequency tests ~20× faster.
 List<BasePlayer> loadDrawPool() {
-  final all = loadRealPool()
-    ..sort((a, b) => a.playerId.compareTo(b.playerId));
+  final all = loadRealPool()..sort((a, b) => a.playerId.compareTo(b.playerId));
   return [for (var i = 0; i < all.length; i += 20) all[i]];
 }
 
@@ -68,8 +67,7 @@ void main() {
     test('the shipped dataset loads: 20,876 players, v2', () {
       expect(pool, hasLength(20_876));
       // Haaland tops the shipped pool at €200M.
-      expect(pool.map((p) => p.marketValueEur).reduce(math.max),
-          200_000_000);
+      expect(pool.map((p) => p.marketValueEur).reduce(math.max), 200_000_000);
     });
 
     test('rating is monotonic in market value and clamps at [30, 94]', () {
@@ -110,8 +108,12 @@ void main() {
     test('attribute spread stays within 1..99 and follows weights', () {
       final random = math.Random(7);
       for (var i = 0; i < 3000; i++) {
-        final v = math.exp(math.log(10_000) +
-                random.nextDouble() * (math.log(200_000_000) - math.log(10_000)))
+        final v = math
+            .exp(
+              math.log(10_000) +
+                  random.nextDouble() *
+                      (math.log(200_000_000) - math.log(10_000)),
+            )
             .round();
         final p = Position.values[random.nextInt(Position.values.length)];
         final stats = generator.generate(p, v);
@@ -187,8 +189,7 @@ void main() {
       expect(low / n, inInclusiveRange(0.01, 0.08));
     });
 
-    test('displayed odds are statistically calibrated (oddsFor vs open)',
-        () {
+    test('displayed odds are statistically calibrated (oddsFor vs open)', () {
       // Distribution-level calibration: for every player whose displayed
       // probability is large enough to judge, the z-score of the observed
       // count must behave like a standard normal — mean 0, sd 1, no
@@ -197,7 +198,10 @@ void main() {
       // correct assertion.
       const n = 30_000;
       final engine = engineFor(math.Random(99));
-      final scope = PackScope(category: PackCategory.global, tier: PackTier.epic);
+      final scope = PackScope(
+        category: PackCategory.global,
+        tier: PackTier.epic,
+      );
       final displayed = engine.oddsFor(scope, drawPool);
       final perPlayer = <int, int>{};
       for (var i = 0; i < n; i++) {
@@ -225,16 +229,25 @@ void main() {
       expect(count, greaterThan(200));
       final meanZ = sumZ / count;
       final sdZ = math.sqrt(sumZ2 / count - meanZ * meanZ);
-      expect(meanZ, inInclusiveRange(-0.12, 0.12),
-          reason: 'systematic bias: mean z $meanZ');
-      expect(sdZ, inInclusiveRange(0.85, 1.15),
-          reason: 'dispersion wrong: sd z $sdZ');
+      expect(
+        meanZ,
+        inInclusiveRange(-0.12, 0.12),
+        reason: 'systematic bias: mean z $meanZ',
+      );
+      expect(
+        sdZ,
+        inInclusiveRange(0.85, 1.15),
+        reason: 'dispersion wrong: sd z $sdZ',
+      );
     });
 
     test('value weighting: cheap players genuinely drop more often', () {
       const n = 30_000;
       final engine = engineFor(math.Random(21));
-      final scope = PackScope(category: PackCategory.global, tier: PackTier.epic);
+      final scope = PackScope(
+        category: PackCategory.global,
+        tier: PackTier.epic,
+      );
       final counts = <int, int>{};
       for (var i = 0; i < n; i++) {
         final draws = engine.open(scope, drawPool);
@@ -245,16 +258,22 @@ void main() {
         ..sort((a, b) => a.marketValueEur.compareTo(b.marketValueEur));
       final cheap = sorted.take(sorted.length ~/ 10);
       final expensive = sorted.skip(sorted.length - sorted.length ~/ 10);
-      final cheapRate = _mean([for (final p in cheap) (counts[p.playerId] ?? 0)]);
-      final expensiveRate =
-          _mean([for (final p in expensive) (counts[p.playerId] ?? 0)]);
+      final cheapRate = _mean([
+        for (final p in cheap) (counts[p.playerId] ?? 0),
+      ]);
+      final expensiveRate = _mean([
+        for (final p in expensive) (counts[p.playerId] ?? 0),
+      ]);
       expect(cheapRate, greaterThan(expensiveRate * 1.5));
     });
 
     test('elite pulls exist but are rare: P(≥ €50M) per epic pack ≤ 1%', () {
       const n = 30_000;
       final engine = engineFor(math.Random(31));
-      final scope = PackScope(category: PackCategory.global, tier: PackTier.epic);
+      final scope = PackScope(
+        category: PackCategory.global,
+        tier: PackTier.epic,
+      );
       var elite = 0;
       for (var i = 0; i < n; i++) {
         final draws = engine.open(scope, drawPool);
@@ -282,45 +301,53 @@ void main() {
       final prices = [
         for (final t in PackTier.values)
           engine.packPriceFor(
-              PackScope(category: PackCategory.global, tier: t), pool),
+            PackScope(category: PackCategory.global, tier: t),
+            pool,
+          ),
       ];
       expect(prices[0], lessThan(prices[1]));
       expect(prices[1], lessThan(prices[2]));
     });
 
-    test('regression lock: legendary premium margin, standard elsewhere',
-        () {
+    test('regression lock: legendary premium margin, standard elsewhere', () {
       // Rebalance Ch.8: legendary packs were the cheapest power-per-coin
       // purchase at the flat 1.25x margin (~4.2 matches per elite pull),
       // so the tier now pays a 1.35-1.4x premium while Rare/Epic keep
       // the standard margin. Failing this test means the store's elite
       // pricing regressed to the flat margin.
       expect(economy.config.packMarginMultiplier, 1.25);
-      expect(economy.config.legendaryPackMarginMultiplier,
-          inInclusiveRange(1.35, 1.4));
+      expect(
+        economy.config.legendaryPackMarginMultiplier,
+        inInclusiveRange(1.35, 1.4),
+      );
       final engine = PackEngine(random: math.Random(0), economy: economy);
       for (final tier in PackTier.values) {
         final scope = PackScope(category: PackCategory.global, tier: tier);
         final ev = engine.expectedPackValue(scope, pool);
         // Price actually applies the tier's margin over the same EV.
-        expect(engine.packPriceFor(scope, pool) / ev,
-            closeTo(
-                tier == PackTier.legendary
-                    ? economy.config.legendaryPackMarginMultiplier
-                    : economy.config.packMarginMultiplier,
-                0.01),
-            reason: '$tier margin not applied');
+        expect(
+          engine.packPriceFor(scope, pool) / ev,
+          closeTo(
+            tier == PackTier.legendary
+                ? economy.config.legendaryPackMarginMultiplier
+                : economy.config.packMarginMultiplier,
+            0.01,
+          ),
+          reason: '$tier margin not applied',
+        );
       }
     });
 
-    test('a legendary pack costs ~10x a rare pack (no degenerate pricing)',
-        () {
+    test('a legendary pack costs ~10x a rare pack (no degenerate pricing)', () {
       final engine = PackEngine(random: math.Random(0), economy: economy);
       final rare = engine.packPriceFor(
-          PackScope(category: PackCategory.global, tier: PackTier.rare), pool);
+        PackScope(category: PackCategory.global, tier: PackTier.rare),
+        pool,
+      );
       final legendary = engine.packPriceFor(
-          PackScope(category: PackCategory.global, tier: PackTier.legendary),
-          pool);
+        PackScope(category: PackCategory.global, tier: PackTier.legendary),
+        pool,
+      );
       final ratio = legendary / rare;
       expect(ratio, inInclusiveRange(3, 60));
     });
@@ -337,17 +364,22 @@ void main() {
         }
         final mc = total / n;
         final analytic = engine.expectedPackValue(scope, pool).toDouble();
-        expect(mc / analytic, inInclusiveRange(0.88, 1.12),
-            reason: '$tier: MC $mc vs analytic $analytic');
+        expect(
+          mc / analytic,
+          inInclusiveRange(0.88, 1.12),
+          reason: '$tier: MC $mc vs analytic $analytic',
+        );
       }
     });
 
     test('sell-back returns 60% EV — and 48% of pack price paid', () {
       final recovery =
-          economy.config.sellingPercentage / economy.config.packMarginMultiplier;
+          economy.config.sellingPercentage /
+          economy.config.packMarginMultiplier;
       expect(recovery, closeTo(0.48, 0.01));
-      final star = pool.reduce((a, b) =>
-          a.marketValueEur >= b.marketValueEur ? a : b);
+      final star = pool.reduce(
+        (a, b) => a.marketValueEur >= b.marketValueEur ? a : b,
+      );
       final starEv = economy.economicValueOf(star.marketValueEur);
       expect(starEv, 60_000); // €200M tops the shipped pool.
       expect(economy.sellPriceOf(star), 36_000);
@@ -355,12 +387,16 @@ void main() {
     });
 
     test('upgrade cost curve: each level costs 1.5x the previous', () {
-      final base = pool.firstWhere((p) => p.marketValueEur == 50_000_000,
-          orElse: () => pool.reduce((a, b) =>
+      final base = pool.firstWhere(
+        (p) => p.marketValueEur == 50_000_000,
+        orElse: () => pool.reduce(
+          (a, b) =>
               (a.marketValueEur - 50_000_000).abs() <=
-                      (b.marketValueEur - 50_000_000).abs()
-                  ? a
-                  : b));
+                  (b.marketValueEur - 50_000_000).abs()
+              ? a
+              : b,
+        ),
+      );
       final l0 = economy.upgradeCostOf(base, 0);
       final l1 = economy.upgradeCostOf(base, 1);
       final l2 = economy.upgradeCostOf(base, 2);
@@ -374,7 +410,10 @@ void main() {
     test('200 pulls from rare packs: duplicate structure is sane', () {
       const n = 200;
       final engine = PackEngine(random: math.Random(51), economy: economy);
-      final scope = PackScope(category: PackCategory.global, tier: PackTier.rare);
+      final scope = PackScope(
+        category: PackCategory.global,
+        tier: PackTier.rare,
+      );
       final counts = <int, int>{};
       var totalEv = 0;
       for (var i = 0; i < n; i++) {
@@ -396,9 +435,10 @@ void main() {
       final engine = PackEngine(random: math.Random(61), economy: economy);
       for (final position in [Position.st, Position.cb, Position.gk]) {
         final scope = PackScope(
-            category: PackCategory.position,
-            position: position,
-            tier: PackTier.epic);
+          category: PackCategory.position,
+          position: position,
+          tier: PackTier.epic,
+        );
         for (var i = 0; i < n; i++) {
           final draws = engine.open(scope, drawPool);
           expect(draws[0].player.position, position);

@@ -36,17 +36,17 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     Position.cm,
     Position.cam,
     Position.lm,
-    Position.rm
+    Position.rm,
   };
   static const _att = {Position.st, Position.lw, Position.rw};
 
   bool _matches(PlayerCard c) => switch (_filter) {
-        _Filter.all => true,
-        _Filter.gk => c.position == Position.gk,
-        _Filter.def => _def.contains(c.position),
-        _Filter.mid => _mid.contains(c.position),
-        _Filter.att => _att.contains(c.position),
-      };
+    _Filter.all => true,
+    _Filter.gk => c.position == Position.gk,
+    _Filter.def => _def.contains(c.position),
+    _Filter.mid => _mid.contains(c.position),
+    _Filter.att => _att.contains(c.position),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -72,12 +72,15 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
           byPlayer.putIfAbsent(c.base.playerId, () => []).add(c);
         }
         final shown = cards.where(_matches).toList()
-          ..sort((a, b) => switch (_sort) {
-                _Sort.overall => b.overall.compareTo(a.overall),
-                _Sort.newest => b.ownedId.compareTo(a.ownedId),
-                _Sort.value =>
-                  b.base.marketValueEur.compareTo(a.base.marketValueEur),
-              });
+          ..sort(
+            (a, b) => switch (_sort) {
+              _Sort.overall => b.overall.compareTo(a.overall),
+              _Sort.newest => b.ownedId.compareTo(a.ownedId),
+              _Sort.value => b.base.marketValueEur.compareTo(
+                a.base.marketValueEur,
+              ),
+            },
+          );
 
         return CustomScrollView(
           slivers: [
@@ -93,9 +96,10 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                           child: FitText(
                             '${cards.length} players',
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900),
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                         _SortMenu(
@@ -150,8 +154,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
                 sliver: SliverGrid.builder(
-                  gridDelegate:
-                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 190,
                     childAspectRatio: kPlayerCardAspect * 0.88,
                     crossAxisSpacing: 12,
@@ -160,8 +163,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                   itemCount: shown.length,
                   itemBuilder: (context, i) {
                     final card = shown[i];
-                    final copies =
-                        byPlayer[card.base.playerId]?.length ?? 1;
+                    final copies = byPlayer[card.base.playerId]?.length ?? 1;
                     final dupes =
                         byPlayer[card.base.playerId] ?? const <PlayerCard>[];
                     final inSquad = squadIds.contains(card.ownedId);
@@ -171,8 +173,8 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                         card: card,
                         copies: copies,
                         inSquad: inSquad,
-                        onTap: () => _openDetail(
-                            context, economy, card, dupes, inSquad),
+                        onTap: () =>
+                            _openDetail(context, economy, card, dupes, inSquad),
                       ),
                     );
                   },
@@ -184,10 +186,14 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     );
   }
 
-  void _openDetail(BuildContext context, EconomyEngine economy,
-      PlayerCard card, List<PlayerCard> dupes, bool inSquad) {
-    final sellPrice =
-        economy.sellPriceOfUpgraded(card.base, card.upgradeLevel);
+  void _openDetail(
+    BuildContext context,
+    EconomyEngine economy,
+    PlayerCard card,
+    List<PlayerCard> dupes,
+    bool inSquad,
+  ) {
+    final sellPrice = economy.sellPriceOfUpgraded(card.base, card.upgradeLevel);
     final upgradeCost = card.upgradeLevel < UpgradeEngine.maxUpgradeLevel
         ? economy.upgradeCostOf(card.base, card.upgradeLevel)
         : null;
@@ -213,31 +219,40 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     );
   }
 
-  Future<void> _sell(BuildContext context, WidgetRef ref, PlayerCard card) async {
+  Future<void> _sell(
+    BuildContext context,
+    WidgetRef ref,
+    PlayerCard card,
+  ) async {
     // GDD 19.3 'Player selling bonus': offer the ad before the sale so
     // the boosted price is the one confirmed. Optional, skippable.
     final ads = await ref.read(adStoreProvider.future);
     final club = await ref.read(clubProvider.future);
-    final canBoost = club != null &&
+    final canBoost =
+        club != null &&
         await ads.remainingToday(club.id, AdRewardKind.sellingBonus) > 0;
     var bonusWatched = false;
     if (canBoost) {
       if (!context.mounted) return;
-      bonusWatched = await showDialog<bool>(
+      bonusWatched =
+          await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Boost this sale?'),
               content: const Text(
-                  'Watch a rewarded ad to add +20% to the selling price of '
-                  'this sale. Ads are always optional.'),
+                'Watch a rewarded ad to add +20% to the selling price of '
+                'this sale. Ads are always optional.',
+              ),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('No thanks')),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('No thanks'),
+                ),
                 FilledButton.icon(
-                    onPressed: () => Navigator.pop(context, true),
-                    icon: const Icon(Icons.play_circle_outline),
-                    label: const Text('Watch ad')),
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('Watch ad'),
+                ),
               ],
             ),
           ) ??
@@ -257,22 +272,26 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     if (!context.mounted) return;
 
     final price = _price(card);
-    final boostedPrice =
-        bonusWatched ? const AdEngine().sellingBonus(price) : price;
+    final boostedPrice = bonusWatched
+        ? const AdEngine().sellingBonus(price)
+        : price;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Sell player?'),
         content: Text(
-            '${card.base.name} will be sold for ${formatCoins(boostedPrice)} coins. '
-            'This cannot be undone.'),
+          '${card.base.name} will be sold for ${formatCoins(boostedPrice)} coins. '
+          'This cannot be undone.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Sell')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sell'),
+          ),
         ],
       ),
     );
@@ -283,9 +302,11 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
       ref.invalidate(collectionProvider);
       ref.invalidate(clubProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:
-                Text('Sold for ${formatCoins(result.credit)} coins')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sold for ${formatCoins(result.credit)} coins'),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -295,21 +316,24 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     }
   }
 
-  int _price(PlayerCard card) => EconomyEngine()
-      .sellPriceOfUpgraded(card.base, card.upgradeLevel);
+  int _price(PlayerCard card) =>
+      EconomyEngine().sellPriceOfUpgraded(card.base, card.upgradeLevel);
 
   /// Buys one upgrade level with coins (GDD 8.4). When the user has
   /// watched an upgrade-discount ad (GDD 19.3) the dialog shows the
   /// discounted price; the store charges and consumes it.
-  Future<void> _upgrade(BuildContext context, WidgetRef ref, PlayerCard card) async {
+  Future<void> _upgrade(
+    BuildContext context,
+    WidgetRef ref,
+    PlayerCard card,
+  ) async {
     const economy = EconomyEngine();
     final store = await ref.read(collectionStoreProvider.future);
     final club = await ref.read(clubProvider.future);
     if (club == null) return;
     if (!context.mounted) return;
     final ads = await ref.read(adStoreProvider.future);
-    final fullCost =
-        economy.upgradeCostOf(card.base, card.upgradeLevel);
+    final fullCost = economy.upgradeCostOf(card.base, card.upgradeLevel);
     final discounted = await ads.upgradeDiscountActive(club.id);
     final price = discounted
         ? const AdEngine().discountedUpgradeCost(fullCost)
@@ -321,17 +345,20 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
       builder: (context) => AlertDialog(
         title: Text('Upgrade ${card.base.name}?'),
         content: Text(
-            'Next level: +${card.upgradeLevel + 1}\n'
-            'Cost: ${formatCoins(price)} coins'
-            '${discounted ? ' (ad discount applied)' : ''}\n'
-            'Balance: ${formatCoins(club.coins)} coins'),
+          'Next level: +${card.upgradeLevel + 1}\n'
+          'Cost: ${formatCoins(price)} coins'
+          '${discounted ? ' (ad discount applied)' : ''}\n'
+          'Balance: ${formatCoins(club.coins)} coins',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Upgrade')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Upgrade'),
+          ),
         ],
       ),
     );
@@ -346,9 +373,13 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
       ref.invalidate(squadProvider);
       if (context.mounted) {
         final gains = result.upgradeLevel;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text(
-                '${card.base.name} upgraded to +$gains for ${formatCoins(result.coins)} coins')));
+              '${card.base.name} upgraded to +$gains for ${formatCoins(result.coins)} coins',
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -358,8 +389,12 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     }
   }
 
-  Future<void> _merge(BuildContext context, WidgetRef ref,
-      PlayerCard target, PlayerCard duplicate) async {
+  Future<void> _merge(
+    BuildContext context,
+    WidgetRef ref,
+    PlayerCard target,
+    PlayerCard duplicate,
+  ) async {
     final store = await ref.read(collectionStoreProvider.future);
     final random = ref.read(randomProvider);
     try {
@@ -374,10 +409,14 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
         final gains = result.attributeGain.entries
             .map((e) => '+${e.value} ${e.key.name}')
             .join(', ');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             content: Text(
-                '${target.base.name} upgraded to +${result.newUpgradeLevel}'
-                '${gains.isEmpty ? '' : ' ($gains)'}')));
+              '${target.base.name} upgraded to +${result.newUpgradeLevel}'
+              '${gains.isEmpty ? '' : ' ($gains)'}',
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -407,36 +446,38 @@ class _GridCard extends StatelessWidget {
     final rarity = rarityOf(card);
     return FcmPressable(
       onTap: onTap,
-      child: LayoutBuilder(builder: (context, c) {
-        final w = c.maxWidth;
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            RepaintBoundary(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ownedCardView(
-                  card,
-                  width: w,
-                  glow: rarity == CardRarity.legendary ? 0.35 : 0,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final w = c.maxWidth;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              RepaintBoundary(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ownedCardView(
+                    card,
+                    width: w,
+                    glow: rarity == CardRarity.legendary ? 0.35 : 0,
+                  ),
                 ),
               ),
-            ),
-            if (copies >= 2)
-              Positioned(
-                left: -4,
-                bottom: 22,
-                child: FcmPill('×$copies', color: FcmColors.bronze),
-              ),
-            if (inSquad)
-              const Positioned(
-                right: -4,
-                bottom: 22,
-                child: FcmPill('XI', color: FcmColors.success),
-              ),
-          ],
-        );
-      }),
+              if (copies >= 2)
+                Positioned(
+                  left: -4,
+                  bottom: 22,
+                  child: FcmPill('×$copies', color: FcmColors.bronze),
+                ),
+              if (inSquad)
+                const Positioned(
+                  right: -4,
+                  bottom: 22,
+                  child: FcmPill('XI', color: FcmColors.success),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -476,7 +517,9 @@ class _SortMenu extends StatelessWidget {
                 _Sort.value => 'Value',
               },
               style: const TextStyle(
-                  fontWeight: FontWeight.w800, color: Colors.white),
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
             ),
           ],
         ),

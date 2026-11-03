@@ -54,11 +54,14 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
   @override
   void initState() {
     super.initState();
-    widget.loadPlayers().then((players) {
-      if (mounted) setState(() => _players = players);
-    }, onError: (Object e) {
-      if (mounted) setState(() => _error = e);
-    });
+    widget.loadPlayers().then(
+      (players) {
+        if (mounted) setState(() => _players = players);
+      },
+      onError: (Object e) {
+        if (mounted) setState(() => _error = e);
+      },
+    );
   }
 
   @override
@@ -73,13 +76,15 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
     if (players == null) return const <BasePlayer>[];
     final query = _search.text.trim().toLowerCase();
     final nationality = _nationality;
-    return players.where((p) {
-      if (nationality != null && p.nationality != nationality) return false;
-      if (query.isNotEmpty && !p.name.toLowerCase().contains(query)) {
-        return false;
-      }
-      return true;
-    }).toList(growable: false);
+    return players
+        .where((p) {
+          if (nationality != null && p.nationality != nationality) return false;
+          if (query.isNotEmpty && !p.name.toLowerCase().contains(query)) {
+            return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
   }
 
   @override
@@ -88,36 +93,39 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
     return Scaffold(
       backgroundColor: FcmColors.night,
       appBar: AppBar(
-        title: Text(widget.title,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w900)),
+        title: Text(
+          widget.title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
         backgroundColor: FcmColors.surface,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _players == null && _error == null
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: FcmPanel(
-                    accent: FcmColors.danger,
-                    child: Text('$_error', textAlign: TextAlign.center),
-                  ),
-                )
-              : Column(
-                  children: [
-                    _FiltersBar(
-                      controller: _search,
-                      nationalities: _nationalities(),
-                      selected: _nationality,
-                      onSearch: (_) => setState(() {}),
-                      onNationality: (n) =>
-                          setState(() => _nationality = n ?? _nationality),
-                    ),
-                    Expanded(child: _buildList(tierColor)),
-                  ],
+          ? Center(
+              child: FcmPanel(
+                accent: FcmColors.danger,
+                child: Text('$_error', textAlign: TextAlign.center),
+              ),
+            )
+          : Column(
+              children: [
+                _FiltersBar(
+                  controller: _search,
+                  nationalities: _nationalities(),
+                  selected: _nationality,
+                  onSearch: (_) => setState(() {}),
+                  onNationality: (n) =>
+                      setState(() => _nationality = n ?? _nationality),
                 ),
+                Expanded(child: _buildList(tierColor)),
+              ],
+            ),
     );
   }
 
@@ -184,26 +192,39 @@ class _FiltersBar extends StatelessWidget {
               controller: controller,
               onChanged: onSearch,
               style: const TextStyle(
-                  color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
               decoration: InputDecoration(
                 isDense: true,
                 hintText: 'Search players',
                 hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
-                prefixIcon: Icon(Icons.search_rounded,
-                    color: FcmColors.goldSoft.withValues(alpha: 0.7), size: 19),
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 13,
+                ),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: FcmColors.goldSoft.withValues(alpha: 0.7),
+                  size: 19,
+                ),
                 filled: true,
                 fillColor: FcmColors.surface,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: FcmColors.silver.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(
+                    color: FcmColors.silver.withValues(alpha: 0.3),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: FcmColors.gold.withValues(alpha: 0.6)),
+                  borderSide: BorderSide(
+                    color: FcmColors.gold.withValues(alpha: 0.6),
+                  ),
                 ),
               ),
             ),
@@ -217,39 +238,48 @@ class _FiltersBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: FcmColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: FcmColors.silver.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: FcmColors.silver.withValues(alpha: 0.3),
+              ),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String?>(
                 value: selected,
-                icon: Icon(Icons.arrow_drop_down_rounded,
-                    color: FcmColors.goldSoft.withValues(alpha: 0.7)),
+                icon: Icon(
+                  Icons.arrow_drop_down_rounded,
+                  color: FcmColors.goldSoft.withValues(alpha: 0.7),
+                ),
                 dropdownColor: FcmColors.surface,
                 borderRadius: BorderRadius.circular(12),
                 items: [
                   DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('All nationalities',
-                        style: TextStyle(
-                            color: selected == null
-                                ? Colors.white
-                                : FcmColors.textDim,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700)),
+                    child: Text(
+                      'All nationalities',
+                      style: TextStyle(
+                        color: selected == null
+                            ? Colors.white
+                            : FcmColors.textDim,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                   for (final n in nationalities)
                     DropdownMenuItem<String?>(
                       value: n,
-                      child: Text('${flagEmojiFor(n)} $n',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: selected == n
-                                  ? Colors.white
-                                  : FcmColors.textDim,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700)),
+                      child: Text(
+                        '${flagEmojiFor(n)} $n',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected == n
+                              ? Colors.white
+                              : FcmColors.textDim,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                 ],
                 onChanged: onNationality,

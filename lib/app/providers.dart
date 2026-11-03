@@ -52,7 +52,10 @@ final adStoreProvider = FutureProvider<AdStore>((ref) async {
 final collectionStoreProvider = FutureProvider<CollectionStore>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   await ref.watch(datasetBootstrapProvider.future);
-  return CollectionStore(db: db, adStore: await ref.watch(adStoreProvider.future));
+  return CollectionStore(
+    db: db,
+    adStore: await ref.watch(adStoreProvider.future),
+  );
 });
 
 /// Random source for pack draws and merges; seedable in tests.
@@ -78,8 +81,7 @@ final availablePacksProvider = FutureProvider<List<Pack>>((ref) async {
 });
 
 /// The store's buyable pack offers with their coin prices (GDD 5.5).
-final storeOffersProvider =
-    FutureProvider<List<StorePackOffer>>((ref) async {
+final storeOffersProvider = FutureProvider<List<StorePackOffer>>((ref) async {
   final store = await ref.watch(collectionStoreProvider.future);
   return store.getStoreOffers();
 });
@@ -100,8 +102,7 @@ final squadProvider = FutureProvider<Map<int, PlayerCard>>((ref) async {
 final squadEngineProvider = Provider<SquadEngine>((ref) => const SquadEngine());
 
 /// All formation definitions (GDD 6.4).
-final formationsProvider =
-    Provider<List<Formation>>((ref) => formations);
+final formationsProvider = Provider<List<Formation>>((ref) => formations);
 
 /// Season store (GDD 9): divisions, fixtures and standings.
 final seasonStoreProvider = FutureProvider<SeasonStore>((ref) async {

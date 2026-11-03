@@ -184,8 +184,7 @@ class BaseStatsGenerator {
   /// superstar is not ten times a €20M international.
   int baseRatingFor(int marketValueEur) {
     if (marketValueEur <= 0) return config.minRating;
-    final doublings =
-        _log2(marketValueEur / config.referenceValueEur);
+    final doublings = _log2(marketValueEur / config.referenceValueEur);
     final rating =
         config.valueAtReference + config.ratingPerDoubling * doublings;
     final clamped = rating.clamp(config.minRating, config.maxRating);
@@ -214,8 +213,7 @@ class BaseStatsGenerator {
     final spread = config.attributeSpread;
     final anchor = config.attributeAnchor;
     final rng = seed == null ? null : math.Random(seed);
-    final quality =
-        rng == null ? 0.0 : _triangle(rng) * config.qualityNoise;
+    final quality = rng == null ? 0.0 : _triangle(rng) * config.qualityNoise;
 
     final attrs = <PlayerAttribute, int>{};
     for (final entry in weights.entries) {
@@ -225,8 +223,7 @@ class BaseStatsGenerator {
         continue;
       }
       final deviation = spread * (w - anchor);
-      final style =
-          rng == null ? 0.0 : _triangle(rng) * config.attributeNoise;
+      final style = rng == null ? 0.0 : _triangle(rng) * config.attributeNoise;
       final v = (base + deviation + quality + style).round().clamp(1, 99);
       attrs[entry.key] = v;
     }

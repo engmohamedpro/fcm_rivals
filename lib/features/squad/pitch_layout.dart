@@ -98,8 +98,11 @@ class PitchLayout {
 /// 3px gap, the surname line, and — when shown — the stat row and the
 /// stamina bar. The text line height is budgeted generously (1.3×) so
 /// platform font differences can never push a name into the next line.
-double pitchFootprintHeight(double w,
-    {bool showStats = false, bool showStamina = false}) {
+double pitchFootprintHeight(
+  double w, {
+  bool showStats = false,
+  bool showStamina = false,
+}) {
   var h = w / _cardAspect + 3 + math.max(9.0, w * 0.19) * 1.3;
   if (showStats) {
     h += 2 + math.max(6.5, w * 0.115) * 1.1 + math.max(9.0, w * 0.17) * 1.1;
@@ -152,8 +155,11 @@ PitchLayout computePitchLayout({
 
   bool fits(double w) {
     final sw = w + kPitchSlotPad;
-    final sh = pitchFootprintHeight(w,
-        showStats: showStats, showStamina: showStamina);
+    final sh = pitchFootprintHeight(
+      w,
+      showStats: showStats,
+      showStamina: showStamina,
+    );
     // The vertical budget keeps a stagger reserve between the lines (see
     // [kPitchStaggerReserve]): lines whose players stand at different
     // depths need air to show it, so a five-line shape gives up a little
@@ -181,8 +187,11 @@ PitchLayout computePitchLayout({
   w = math.max(w, kPitchCardMinWidth);
 
   final sw = w + kPitchSlotPad;
-  final sh = pitchFootprintHeight(w,
-      showStats: showStats, showStamina: showStamina);
+  final sh = pitchFootprintHeight(
+    w,
+    showStats: showStats,
+    showStamina: showStamina,
+  );
   final spanY = height - 2 * kPitchMargin - sh;
   final spanX = width - 2 * kPitchMargin - sw;
 
@@ -193,8 +202,7 @@ PitchLayout computePitchLayout({
   // consecutive lines never touch. rows[0] (keeper) is the lowest line:
   // tops DEcrease with the row index.
   final tops = <double>[
-    for (final row in rows)
-      kPitchMargin + (1 - meanY(row) / 100) * spanY,
+    for (final row in rows) kPitchMargin + (1 - meanY(row) / 100) * spanY,
   ];
   final step = sh + kPitchGapV;
   for (var pass = 0; pass < 6; pass++) {

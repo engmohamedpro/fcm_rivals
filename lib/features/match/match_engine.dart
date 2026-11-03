@@ -140,16 +140,17 @@ class MatchPlayer {
   int yellowCards = 0;
   bool sentOff = false;
 
-  MatchPlayer clone() => MatchPlayer(
-        playerId: playerId,
-        name: name,
-        position: position,
-        attack: attack,
-        support: support,
-        defence: defence,
-        goalkeeping: goalkeeping,
-        stamina: stamina,
-      )
+  MatchPlayer clone() =>
+      MatchPlayer(
+          playerId: playerId,
+          name: name,
+          position: position,
+          attack: attack,
+          support: support,
+          defence: defence,
+          goalkeeping: goalkeeping,
+          stamina: stamina,
+        )
         ..minutesPlayed = minutesPlayed
         ..yellowCards = yellowCards
         ..sentOff = sentOff;
@@ -166,8 +167,8 @@ class MatchTeamInput {
     required List<MatchPlayer> starters,
     required this.bench,
     this.aiControlled = false,
-  })  : assert(starters.length == 11, 'starting XI must have 11 players'),
-        starters = List.of(starters);
+  }) : assert(starters.length == 11, 'starting XI must have 11 players'),
+       starters = List.of(starters);
 
   final int teamId;
   final String teamName;
@@ -295,40 +296,53 @@ abstract class MatchCommand {
 }
 
 class ChangeFormationCommand extends MatchCommand {
-  const ChangeFormationCommand(
-      {required super.atMinute, required super.side, required this.formationCode});
+  const ChangeFormationCommand({
+    required super.atMinute,
+    required super.side,
+    required this.formationCode,
+  });
 
   final String formationCode;
 }
 
 class ChangeStyleCommand extends MatchCommand {
-  const ChangeStyleCommand(
-      {required super.atMinute, required super.side, required this.style});
+  const ChangeStyleCommand({
+    required super.atMinute,
+    required super.side,
+    required this.style,
+  });
 
   final PlayingStyle style;
 }
 
 class ChangeMentalityCommand extends MatchCommand {
-  const ChangeMentalityCommand(
-      {required super.atMinute, required super.side, required this.mentality});
+  const ChangeMentalityCommand({
+    required super.atMinute,
+    required super.side,
+    required this.mentality,
+  });
 
   final Mentality mentality;
 }
 
 class SubstitutionCommand extends MatchCommand {
-  const SubstitutionCommand(
-      {required super.atMinute,
-      required super.side,
-      required this.outPlayerId,
-      required this.inPlayerId});
+  const SubstitutionCommand({
+    required super.atMinute,
+    required super.side,
+    required this.outPlayerId,
+    required this.inPlayerId,
+  });
 
   final int outPlayerId;
   final int inPlayerId;
 }
 
 class LiveActionCommand extends MatchCommand {
-  const LiveActionCommand(
-      {required super.atMinute, required super.side, required this.action});
+  const LiveActionCommand({
+    required super.atMinute,
+    required super.side,
+    required this.action,
+  });
 
   final LiveMatchAction action;
 }
@@ -429,9 +443,9 @@ class MatchEngine {
     required MatchTeamInput away,
     required int seed,
     this.config = defaultMatchEngineConfig,
-  })  : _home = _TeamRuntime.from(home),
-        _away = _TeamRuntime.from(away),
-        _random = MatchRandom(seed) {
+  }) : _home = _TeamRuntime.from(home),
+       _away = _TeamRuntime.from(away),
+       _random = MatchRandom(seed) {
     // Stoppage deterministically drawn once at setup (GDD 12.5: one seed,
     // one stream — stoppage is part of that stream).
     _firstHalfStoppage = 1 + _random.nextInt(3);
@@ -469,23 +483,24 @@ class MatchEngine {
   List<MatchCommand> get appliedCommands => List.unmodifiable(_applied);
 
   MatchState get state => MatchState(
-        minute: _minute,
-        scoreHome: _scoreHome,
-        scoreAway: _scoreAway,
-        isFinished: _finished,
-        isHalfTime: _halfTimeReached && _minute == _halfTimeMinute,
-        substitutionsHome: _home.substitutionsUsed,
-        substitutionsAway: _away.substitutionsUsed,
-      );
+    minute: _minute,
+    scoreHome: _scoreHome,
+    scoreAway: _scoreAway,
+    isFinished: _finished,
+    isHalfTime: _halfTimeReached && _minute == _halfTimeMinute,
+    substitutionsHome: _home.substitutionsUsed,
+    substitutionsAway: _away.substitutionsUsed,
+  );
 
   bool get isFinished => _finished;
   int get seed => _random.initialSeed;
 
   /// Effective team totals for one side at this instant.
   TeamTotals totalsOf(MatchSide side) => _runtimeOf(side).computeTotals(
-      isHome: side == MatchSide.home,
-      homeAdvantage: config.homeAdvantage,
-      actionModifiers: _activeActionModifiersOf(side));
+    isHome: side == MatchSide.home,
+    homeAdvantage: config.homeAdvantage,
+    actionModifiers: _activeActionModifiersOf(side),
+  );
 
   /// Every player of one side with final (live) state — for post-match
   /// stamina persistence, ratings and recovery.
@@ -509,8 +524,7 @@ class MatchEngine {
   List<MatchPlayer> benchOf(MatchSide side) => [..._runtimeOf(side).bench];
 
   /// Substitutions used so far by [side] (of config.maxSubstitutions).
-  int substitutionsUsedOf(MatchSide side) =>
-      _runtimeOf(side).substitutionsUsed;
+  int substitutionsUsedOf(MatchSide side) => _runtimeOf(side).substitutionsUsed;
 
   /// Current formation code of [side] — the live tactics UI marks the
   /// active choice.
@@ -546,13 +560,17 @@ class MatchEngine {
 
     if (minute == 1) {
       produced.add(
-          _emit(minute: 0, type: MatchEventType.kickoff, side: MatchSide.home));
+        _emit(minute: 0, type: MatchEventType.kickoff, side: MatchSide.home),
+      );
     } else if (minute == _halfTimeMinute + 1) {
-      produced.add(_emit(
+      produced.add(
+        _emit(
           minute: minute,
           type: MatchEventType.kickoff,
           side: MatchSide.away,
-          metadata: {'secondHalf': true}));
+          metadata: {'secondHalf': true},
+        ),
+      );
     }
 
     // Attack segments this minute (GDD 12.3 steps 1-9).
@@ -571,13 +589,23 @@ class MatchEngine {
 
     if (minute == _halfTimeMinute) {
       _halfTimeReached = true;
-      produced.add(_emit(
-          minute: minute, type: MatchEventType.halfTime, side: MatchSide.home));
+      produced.add(
+        _emit(
+          minute: minute,
+          type: MatchEventType.halfTime,
+          side: MatchSide.home,
+        ),
+      );
     }
     if (minute >= _fullTimeMinute) {
       _finished = true;
-      produced.add(_emit(
-          minute: minute, type: MatchEventType.fullTime, side: MatchSide.home));
+      produced.add(
+        _emit(
+          minute: minute,
+          type: MatchEventType.fullTime,
+          side: MatchSide.home,
+        ),
+      );
     }
     return produced;
   }
@@ -614,29 +642,42 @@ class MatchEngine {
     final homeTotals = totalsOf(MatchSide.home);
     final awayTotals = totalsOf(MatchSide.away);
     final homePoss = math.pow(
-        homeTotals.support * _home.style.modifiers.possession, 1.6);
+      homeTotals.support * _home.style.modifiers.possession,
+      1.6,
+    );
     final awayPoss = math.pow(
-        awayTotals.support * _away.style.modifiers.possession, 1.6);
-    final attackerSide =
-        _random.chance(homePoss / (homePoss + awayPoss)) ? MatchSide.home : MatchSide.away;
+      awayTotals.support * _away.style.modifiers.possession,
+      1.6,
+    );
+    final attackerSide = _random.chance(homePoss / (homePoss + awayPoss))
+        ? MatchSide.home
+        : MatchSide.away;
     final att = _runtimeOf(attackerSide);
-    final def = _runtimeOf(attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home);
+    final def = _runtimeOf(
+      attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
+    );
     final attTotals = attackerSide == MatchSide.home ? homeTotals : awayTotals;
     final defTotals = attackerSide == MatchSide.home ? awayTotals : homeTotals;
 
     // Possession event carries pass volume for the statistics module.
     final passesAttempted = 3 + _random.nextInt(8);
-    produced.add(_emit(
+    produced.add(
+      _emit(
         minute: minute,
         type: MatchEventType.possession,
         side: attackerSide,
-        metadata: {'passesAttempted': passesAttempted}));
+        metadata: {'passesAttempted': passesAttempted},
+      ),
+    );
 
     // 2-3. Build-up: passing and progression vs defensive pressure.
     final supportRatio =
         attTotals.support / (attTotals.support + defTotals.defence * 0.85);
-    final passSuccess = (config.buildUpBase + config.buildUpScale * supportRatio)
-        .clamp(0.15, 0.88);
+    final passSuccess =
+        (config.buildUpBase + config.buildUpScale * supportRatio).clamp(
+          0.15,
+          0.88,
+        );
     if (!_random.chance(passSuccess)) {
       // Turnover: tackle, interception, or foul.
       produced.addAll(_turnover(minute, attackerSide, att, def));
@@ -646,11 +687,14 @@ class MatchEngine {
     // Offside during progression.
     if (_random.chance(config.offsideChance)) {
       final striker = _pickAttacker(att)!;
-      produced.add(_emit(
+      produced.add(
+        _emit(
           minute: minute,
           type: MatchEventType.offside,
           side: attackerSide,
-          primaryPlayerId: striker.playerId));
+          primaryPlayerId: striker.playerId,
+        ),
+      );
       _involvedThisMinute.add(striker.playerId);
       return produced;
     }
@@ -663,18 +707,22 @@ class MatchEngine {
     //    superiority into half-chances, not penalties. The mid/steepness
     //    pair sets where the curve bends: ±10 engine points ≈ the
     //    crossing region, +20 is near-saturation.
-    final attackEdge =
-        attTotals.attack - defTotals.defence;
+    final attackEdge = attTotals.attack - defTotals.defence;
     final urgency = _urgencyBoost(attackerSide, minute);
-    final edgeFactor = 1 /
+    final edgeFactor =
+        1 /
         (1 +
-            math.exp(-config.chanceSigmoidSteepness *
-                (attackEdge - config.chanceSigmoidMid)));
-    final chanceP = (config.chanceBase +
-            config.chanceScale * edgeFactor *
-                att.style.modifiers.chance *
-                urgency)
-        .clamp(0.05, config.chanceMax);
+            math.exp(
+              -config.chanceSigmoidSteepness *
+                  (attackEdge - config.chanceSigmoidMid),
+            ));
+    final chanceP =
+        (config.chanceBase +
+                config.chanceScale *
+                    edgeFactor *
+                    att.style.modifiers.chance *
+                    urgency)
+            .clamp(0.05, config.chanceMax);
     if (!_random.chance(chanceP)) {
       // Retained possession: completed passes, maybe a cross or dribble.
       // A share of these pockets end in a LOW-QUALITY shot — a snatched
@@ -684,14 +732,14 @@ class MatchEngine {
       // half-chances.
       if (_random.chance(config.speculativeShotChance)) {
         produced.addAll(
-            _shoot(minute, attackerSide, att, def, ChanceQuality.normal));
+          _shoot(minute, attackerSide, att, def, ChanceQuality.normal),
+        );
         return produced;
       }
-      final passAccuracy = (attTotals.support / 100) *
-          att.style.modifiers.passAccuracy *
-          0.85;
-      final completed =
-          (passesAttempted * passAccuracy.clamp(0.3, 0.95)).round();
+      final passAccuracy =
+          (attTotals.support / 100) * att.style.modifiers.passAccuracy * 0.85;
+      final completed = (passesAttempted * passAccuracy.clamp(0.3, 0.95))
+          .round();
       final md = <String, dynamic>{
         'passesAttempted': passesAttempted,
         'passesCompleted': completed,
@@ -699,17 +747,22 @@ class MatchEngine {
       if (_random.chance(0.22)) md['cross'] = true;
       if (_random.chance(0.18)) md['dribble'] = true;
       final creator = _pickAttacker(att);
-      produced.add(_emit(
+      produced.add(
+        _emit(
           minute: minute,
           type: MatchEventType.passMove,
           side: attackerSide,
           primaryPlayerId: creator?.playerId,
-          metadata: md));
+          metadata: md,
+        ),
+      );
       if (creator != null) _involvedThisMinute.add(creator.playerId);
 
       // Deep crosses can win corners (GDD 13.2 corners).
       if (md['cross'] == true && _random.chance(config.cornerFromCross)) {
-        produced.addAll(_corner(minute, attackerSide, att, headerChance: false));
+        produced.addAll(
+          _corner(minute, attackerSide, att, headerChance: false),
+        );
       }
       return produced;
     }
@@ -721,13 +774,19 @@ class MatchEngine {
 
   /// Losing teams push harder late (GDD 12.4: match score + time).
   double _urgencyBoost(MatchSide side, int minute) {
-    final diff = side == MatchSide.home ? _scoreHome - _scoreAway : _scoreAway - _scoreHome;
+    final diff = side == MatchSide.home
+        ? _scoreHome - _scoreAway
+        : _scoreAway - _scoreHome;
     if (diff < 0 && minute > 60) return 1 + (0.04 * -diff).clamp(0, 0.12);
     return 1.0;
   }
 
   List<MatchEvent> _turnover(
-      int minute, MatchSide attackerSide, _TeamRuntime att, _TeamRuntime def) {
+    int minute,
+    MatchSide attackerSide,
+    _TeamRuntime att,
+    _TeamRuntime def,
+  ) {
     final produced = <MatchEvent>[];
     final loser = _pickAttacker(att)!;
     _involvedThisMinute.add(loser.playerId);
@@ -738,41 +797,77 @@ class MatchEngine {
       _involvedThisMinute.add(fouler.playerId);
       final inBox = _random.chance(0.07);
       final finalThird = !inBox && _random.chance(0.30);
-      produced.add(_emit(
+      produced.add(
+        _emit(
           minute: minute,
           type: MatchEventType.foul,
           side: _opposite(attackerSide),
           primaryPlayerId: fouler.playerId,
           secondaryPlayerId: loser.playerId,
           metadata: {
-            'fouledTeam': attackerSide == MatchSide.home ? _home.teamId : _away.teamId,
+            'fouledTeam': attackerSide == MatchSide.home
+                ? _home.teamId
+                : _away.teamId,
             'inBox': inBox,
             'finalThird': finalThird,
-          }));
+          },
+        ),
+      );
       // Cards (GDD 13.1).
       if (_random.chance(config.yellowCardChance)) {
         produced.addAll(
-            _issueCard(minute, _opposite(attackerSide), def, fouler, straightRed: false));
+          _issueCard(
+            minute,
+            _opposite(attackerSide),
+            def,
+            fouler,
+            straightRed: false,
+          ),
+        );
       } else if (_random.chance(config.straightRedChance)) {
         produced.addAll(
-            _issueCard(minute, _opposite(attackerSide), def, fouler, straightRed: true));
+          _issueCard(
+            minute,
+            _opposite(attackerSide),
+            def,
+            fouler,
+            straightRed: true,
+          ),
+        );
       }
       if (inBox) {
-        produced.add(_emit(
+        produced.add(
+          _emit(
             minute: minute,
             type: MatchEventType.penaltyAwarded,
             side: attackerSide,
             primaryPlayerId: loser.playerId,
-            secondaryPlayerId: fouler.playerId));
-        produced.addAll(_shoot(
-            minute, attackerSide, att, def, ChanceQuality.penalty,
-            shooterOverride: _pickAttacker(att)!));
+            secondaryPlayerId: fouler.playerId,
+          ),
+        );
+        produced.addAll(
+          _shoot(
+            minute,
+            attackerSide,
+            att,
+            def,
+            ChanceQuality.penalty,
+            shooterOverride: _pickAttacker(att)!,
+          ),
+        );
         return produced;
       }
       if (finalThird && _random.chance(0.35)) {
-        produced.addAll(_shoot(
-            minute, attackerSide, att, def, ChanceQuality.freeKick,
-            shooterOverride: _pickAttacker(att)!));
+        produced.addAll(
+          _shoot(
+            minute,
+            attackerSide,
+            att,
+            def,
+            ChanceQuality.freeKick,
+            shooterOverride: _pickAttacker(att)!,
+          ),
+        );
       }
       return produced;
     }
@@ -780,24 +875,34 @@ class MatchEngine {
     // Clean turnover: tackle or interception (GDD 13.2).
     final winner = _pickDefender(def)!;
     _involvedThisMinute.add(winner.playerId);
-    produced.add(_emit(
+    produced.add(
+      _emit(
         minute: minute,
         type: MatchEventType.dispossessed,
         side: _opposite(attackerSide),
         primaryPlayerId: winner.playerId,
         secondaryPlayerId: loser.playerId,
-        metadata: _random.chance(0.45) ? {'interception': true} : {'tackle': true}));
+        metadata: _random.chance(0.45)
+            ? {'interception': true}
+            : {'tackle': true},
+      ),
+    );
     return produced;
   }
 
   List<MatchEvent> _issueCard(
-      int minute, MatchSide side, _TeamRuntime team, MatchPlayer fouler,
-      {required bool straightRed}) {
+    int minute,
+    MatchSide side,
+    _TeamRuntime team,
+    MatchPlayer fouler, {
+    required bool straightRed,
+  }) {
     final produced = <MatchEvent>[];
     fouler.yellowCards++;
     final secondYellow = fouler.yellowCards >= 2;
     final isRed = straightRed || secondYellow;
-    produced.add(_emit(
+    produced.add(
+      _emit(
         minute: minute,
         type: MatchEventType.card,
         side: side,
@@ -805,7 +910,9 @@ class MatchEngine {
         metadata: {
           'card': isRed ? 'red' : 'yellow',
           'secondYellow': secondYellow && !straightRed,
-        }));
+        },
+      ),
+    );
     if (isRed) _sendOff(team, fouler);
     return produced;
   }
@@ -817,35 +924,57 @@ class MatchEngine {
   }
 
   List<MatchEvent> _corner(
-      int minute, MatchSide attackerSide, _TeamRuntime att,
-      {required bool headerChance}) {
+    int minute,
+    MatchSide attackerSide,
+    _TeamRuntime att, {
+    required bool headerChance,
+  }) {
     final produced = <MatchEvent>[];
     final taker = _pickAttacker(att)!;
     _involvedThisMinute.add(taker.playerId);
-    produced.add(_emit(
+    produced.add(
+      _emit(
         minute: minute,
         type: MatchEventType.corner,
         side: attackerSide,
-        primaryPlayerId: taker.playerId));
+        primaryPlayerId: taker.playerId,
+      ),
+    );
     if (headerChance || _random.chance(config.headerFromCorner)) {
       produced.addAll(
-          _shoot(minute, attackerSide, att, _oppositeRuntime(attackerSide), ChanceQuality.header));
+        _shoot(
+          minute,
+          attackerSide,
+          att,
+          _oppositeRuntime(attackerSide),
+          ChanceQuality.header,
+        ),
+      );
     }
     return produced;
   }
 
   /// Chance creation → shot → outcome (GDD 12.3 steps 6-9).
-  List<MatchEvent> _attackChance(int minute, MatchSide attackerSide,
-      _TeamRuntime att, _TeamRuntime def, TeamTotals defTotals) {
+  List<MatchEvent> _attackChance(
+    int minute,
+    MatchSide attackerSide,
+    _TeamRuntime att,
+    _TeamRuntime def,
+    TeamTotals defTotals,
+  ) {
     var quality = ChanceQuality.normal;
     if (_random.chance(0.15)) quality = ChanceQuality.bigChance;
     return _shoot(minute, attackerSide, att, def, quality);
   }
 
   List<MatchEvent> _shoot(
-      int minute, MatchSide attackerSide, _TeamRuntime att, _TeamRuntime def,
-      ChanceQuality quality,
-      {MatchPlayer? shooterOverride}) {
+    int minute,
+    MatchSide attackerSide,
+    _TeamRuntime att,
+    _TeamRuntime def,
+    ChanceQuality quality, {
+    MatchPlayer? shooterOverride,
+  }) {
     final produced = <MatchEvent>[];
     final shooter = shooterOverride ?? _pickShooter(att);
     if (shooter == null) return produced;
@@ -870,10 +999,11 @@ class MatchEngine {
       ChanceQuality.penalty => 0.44,
       ChanceQuality.normal => 0.0,
     };
-    final onTargetP = (config.onTargetBase +
-            config.onTargetScale * (shooterEff / 100) +
-            qualityOnTargetBonus)
-        .clamp(0.10, 0.95);
+    final onTargetP =
+        (config.onTargetBase +
+                config.onTargetScale * (shooterEff / 100) +
+                qualityOnTargetBonus)
+            .clamp(0.10, 0.95);
 
     // Goalkeeper reaction (GDD 12.3 step 8) — BOUNDED conversion: the
     // shooter-minus-keeper edge moves the goal rate by at most a few
@@ -888,11 +1018,11 @@ class MatchEngine {
       ChanceQuality.penalty => 1.55,
       ChanceQuality.normal => 1.0,
     };
-    final goalPGivenOnTarget = (config.goalBase +
-            config.goalScale * qualityGoalFactor +
-            config.goalDiffScale *
-                ((shooterEff - gkEff) / 100))
-        .clamp(0.04, 0.88);
+    final goalPGivenOnTarget =
+        (config.goalBase +
+                config.goalScale * qualityGoalFactor +
+                config.goalDiffScale * ((shooterEff - gkEff) / 100))
+            .clamp(0.04, 0.88);
 
     // xG (GDD 13.2): P(on target) × P(goal | on target).
     final xg = onTargetP * goalPGivenOnTarget;
@@ -908,7 +1038,8 @@ class MatchEngine {
       outcome = ShotOutcome.offTarget;
     }
 
-    produced.add(_emit(
+    produced.add(
+      _emit(
         minute: minute,
         type: MatchEventType.shot,
         side: attackerSide,
@@ -918,9 +1049,13 @@ class MatchEngine {
         quality: quality,
         xg: xg,
         metadata: {
-          'isBigChance': quality == ChanceQuality.bigChance || quality == ChanceQuality.penalty,
+          'isBigChance':
+              quality == ChanceQuality.bigChance ||
+              quality == ChanceQuality.penalty,
           'gkPlayerId': gk?.playerId,
-        }));
+        },
+      ),
+    );
 
     if (outcome == ShotOutcome.goal) {
       _involvedThisMinute.add(gk?.playerId ?? -1);
@@ -929,7 +1064,8 @@ class MatchEngine {
       } else {
         _scoreAway++;
       }
-      produced.add(_emit(
+      produced.add(
+        _emit(
           minute: minute,
           type: MatchEventType.goal,
           side: attackerSide,
@@ -937,10 +1073,13 @@ class MatchEngine {
           secondaryPlayerId: assister?.playerId,
           shotOutcome: ShotOutcome.goal,
           quality: quality,
-          xg: xg));
+          xg: xg,
+        ),
+      );
       return produced;
     }
-    if (outcome == ShotOutcome.blocked && _random.chance(config.cornerFromBlock)) {
+    if (outcome == ShotOutcome.blocked &&
+        _random.chance(config.cornerFromBlock)) {
       produced.addAll(_corner(minute, attackerSide, att, headerChance: true));
     }
     return produced;
@@ -952,24 +1091,30 @@ class MatchEngine {
 
   static const Map<Position, double> _shooterWeights = {
     Position.st: 4.0,
-    Position.lw: 2.6, Position.rw: 2.6,
+    Position.lw: 2.6,
+    Position.rw: 2.6,
     Position.cam: 2.4,
-    Position.lm: 1.4, Position.rm: 1.4,
+    Position.lm: 1.4,
+    Position.rm: 1.4,
     Position.cm: 1.0,
     Position.cdm: 0.4,
-    Position.lb: 0.4, Position.rb: 0.4,
+    Position.lb: 0.4,
+    Position.rb: 0.4,
     Position.cb: 0.7,
     Position.gk: 0.01,
   };
 
   static const Map<Position, double> _creatorWeights = {
     Position.cam: 4.0,
-    Position.lw: 2.6, Position.rw: 2.6,
+    Position.lw: 2.6,
+    Position.rw: 2.6,
     Position.cm: 2.4,
-    Position.lm: 2.0, Position.rm: 2.0,
+    Position.lm: 2.0,
+    Position.rm: 2.0,
     Position.st: 1.6,
     Position.cdm: 1.0,
-    Position.lb: 0.9, Position.rb: 0.9,
+    Position.lb: 0.9,
+    Position.rb: 0.9,
     Position.cb: 0.4,
     Position.gk: 0.01,
   };
@@ -977,16 +1122,22 @@ class MatchEngine {
   static const Map<Position, double> _defenderWeights = {
     Position.cdm: 3.2,
     Position.cb: 3.0,
-    Position.lb: 2.2, Position.rb: 2.2,
+    Position.lb: 2.2,
+    Position.rb: 2.2,
     Position.cm: 2.0,
-    Position.lm: 1.2, Position.rm: 1.2,
+    Position.lm: 1.2,
+    Position.rm: 1.2,
     Position.cam: 0.8,
-    Position.lw: 0.6, Position.rw: 0.6,
+    Position.lw: 0.6,
+    Position.rw: 0.6,
     Position.st: 0.4,
     Position.gk: 0.05,
   };
 
-  MatchPlayer? _pickWeighted(Iterable<MatchPlayer> players, Map<Position, double> weights) {
+  MatchPlayer? _pickWeighted(
+    Iterable<MatchPlayer> players,
+    Map<Position, double> weights,
+  ) {
     final pool = players.where((p) => !p.sentOff).toList();
     if (pool.isEmpty) return null;
     final ticket = <MatchPlayer, double>{};
@@ -1010,10 +1161,13 @@ class MatchEngine {
   MatchPlayer? _pickShooter(_TeamRuntime team) =>
       _pickWeighted(team.onPitch.whereType<MatchPlayer>(), _shooterWeights);
 
-  MatchPlayer? _pickAssister(_TeamRuntime team, {required MatchPlayer exclude}) =>
-      _pickWeighted(
-          team.onPitch.whereType<MatchPlayer>().where((p) => p != exclude),
-          _creatorWeights);
+  MatchPlayer? _pickAssister(
+    _TeamRuntime team, {
+    required MatchPlayer exclude,
+  }) => _pickWeighted(
+    team.onPitch.whereType<MatchPlayer>().where((p) => p != exclude),
+    _creatorWeights,
+  );
 
   MatchPlayer? _pickDefender(_TeamRuntime team) =>
       _pickWeighted(team.onPitch.whereType<MatchPlayer>(), _defenderWeights);
@@ -1025,7 +1179,8 @@ class MatchEngine {
   void _drainStamina() {
     for (final side in MatchSide.values) {
       final rt = _runtimeOf(side);
-      final styleStamina = rt.style.modifiers.stamina *
+      final styleStamina =
+          rt.style.modifiers.stamina *
           rt.mentality.staminaMod *
           _activeActionModifiersOf(side).stamina *
           rt.pepTalkModifiers.stamina;
@@ -1067,47 +1222,53 @@ class MatchEngine {
       case ChangeFormationCommand(:final formationCode):
         rt.changeFormation(formationByCode(formationCode), _random);
         event = _event(
-            minute: minute,
-            type: MatchEventType.tacticalChange,
-            side: command.side,
-            metadata: {'change': 'formation', 'value': formationCode});
+          minute: minute,
+          type: MatchEventType.tacticalChange,
+          side: command.side,
+          metadata: {'change': 'formation', 'value': formationCode},
+        );
       case ChangeStyleCommand(:final style):
         rt.style = style;
         event = _event(
-            minute: minute,
-            type: MatchEventType.tacticalChange,
-            side: command.side,
-            metadata: {'change': 'style', 'value': style.name});
+          minute: minute,
+          type: MatchEventType.tacticalChange,
+          side: command.side,
+          metadata: {'change': 'style', 'value': style.name},
+        );
       case ChangeMentalityCommand(:final mentality):
         rt.mentality = mentality;
         event = _event(
-            minute: minute,
-            type: MatchEventType.tacticalChange,
-            side: command.side,
-            metadata: {'change': 'mentality', 'value': mentality.name});
+          minute: minute,
+          type: MatchEventType.tacticalChange,
+          side: command.side,
+          metadata: {'change': 'mentality', 'value': mentality.name},
+        );
       case SubstitutionCommand(:final outPlayerId, :final inPlayerId):
         rt.substitute(outPlayerId, inPlayerId, config.maxSubstitutions);
         event = _event(
-            minute: minute,
-            type: MatchEventType.substitution,
-            side: command.side,
-            primaryPlayerId: outPlayerId,
-            secondaryPlayerId: inPlayerId);
+          minute: minute,
+          type: MatchEventType.substitution,
+          side: command.side,
+          primaryPlayerId: outPlayerId,
+          secondaryPlayerId: inPlayerId,
+        );
       case LiveActionCommand(:final action):
         rt.activeAction = action;
         rt.actionExpiresMinute = minute + config.liveActionDuration;
         event = _event(
-            minute: minute,
-            type: MatchEventType.liveAction,
-            side: command.side,
-            metadata: {'action': action.name});
+          minute: minute,
+          type: MatchEventType.liveAction,
+          side: command.side,
+          metadata: {'action': action.name},
+        );
       case PepTalkCommand(:final talk):
         rt.pepTalkModifiers = talk.modifiers;
         event = _event(
-            minute: minute,
-            type: MatchEventType.tacticalChange,
-            side: command.side,
-            metadata: {'change': 'pepTalk', 'value': talk.id});
+          minute: minute,
+          type: MatchEventType.tacticalChange,
+          side: command.side,
+          metadata: {'change': 'pepTalk', 'value': talk.id},
+        );
     }
     if (event != null) _events.add(event);
     _applied.add(command);
@@ -1133,7 +1294,9 @@ class MatchEngine {
     if (minute - rt.lastAiChangeMinute < config.aiMinMinutesBetweenChanges) {
       return produced;
     }
-    final diff = side == MatchSide.home ? _scoreHome - _scoreAway : _scoreAway - _scoreHome;
+    final diff = side == MatchSide.home
+        ? _scoreHome - _scoreAway
+        : _scoreAway - _scoreHome;
     final index = rt.mentality.index;
     final last = Mentality.values.length - 1;
     String? reason;
@@ -1153,10 +1316,16 @@ class MatchEngine {
     rt.aiChanges++;
     rt.lastAiChangeMinute = minute;
     final event = _event(
-        minute: minute,
-        type: MatchEventType.tacticalChange,
-        side: side,
-        metadata: {'change': 'mentality', 'value': next.name, 'ai': true, 'reason': reason});
+      minute: minute,
+      type: MatchEventType.tacticalChange,
+      side: side,
+      metadata: {
+        'change': 'mentality',
+        'value': next.name,
+        'ai': true,
+        'reason': reason,
+      },
+    );
     _events.add(event);
     produced.add(event);
     return produced;
@@ -1167,7 +1336,10 @@ class MatchEngine {
   /// drains), the substitute drains only from his entrance — the engine
   /// runtime already models this; here the AI just decides WHEN.
   List<MatchEvent> _maybeAiSubstitutions(
-      MatchSide side, _TeamRuntime rt, int minute) {
+    MatchSide side,
+    _TeamRuntime rt,
+    int minute,
+  ) {
     if (rt.substitutionsUsed >= config.maxSubstitutions) return const [];
     if (rt.bench.isEmpty) return const [];
     if (minute < 55) return const [];
@@ -1179,9 +1351,13 @@ class MatchEngine {
       ..sort((a, b) => a.stamina.compareTo(b.stamina));
     for (final tired in onPitch) {
       if (rt.substitutionsUsed >= config.maxSubstitutions) break;
-      if (tired.stamina >= threshold) break; // sorted ascending: nobody left is tired
+      if (tired.stamina >= threshold) {
+        break; // sorted ascending: nobody left is tired
+      }
       // Best compatible remaining bench player for the outgoing slot.
-      final slotIndex = rt.onPitch.indexWhere((p) => p?.playerId == tired.playerId);
+      final slotIndex = rt.onPitch.indexWhere(
+        (p) => p?.playerId == tired.playerId,
+      );
       if (slotIndex == -1) continue;
       final slotPosition = slotIndex < rt.formation.slots.length
           ? rt.formation.slots[slotIndex].position
@@ -1189,10 +1365,13 @@ class MatchEngine {
       MatchPlayer? bestIn;
       var bestScore = -1.0;
       for (final candidate in rt.bench) {
-        final compat = const SquadEngine()
-            .compatibilityOf(candidate.position, slotPosition);
+        final compat = const SquadEngine().compatibilityOf(
+          candidate.position,
+          slotPosition,
+        );
         if (compat <= 0.1) continue;
-        final score = compat *
+        final score =
+            compat *
             (candidate.attack + candidate.support + candidate.defence) *
             (0.75 + 0.25 * (candidate.stamina / 100));
         if (score > bestScore) {
@@ -1203,12 +1382,13 @@ class MatchEngine {
       if (bestIn == null) continue;
       rt.substitute(tired.playerId, bestIn.playerId, config.maxSubstitutions);
       final event = _event(
-          minute: minute,
-          type: MatchEventType.substitution,
-          side: side,
-          primaryPlayerId: tired.playerId,
-          secondaryPlayerId: bestIn.playerId,
-          metadata: {'ai': true, 'reason': 'tired'});
+        minute: minute,
+        type: MatchEventType.substitution,
+        side: side,
+        primaryPlayerId: tired.playerId,
+        secondaryPlayerId: bestIn.playerId,
+        metadata: {'ai': true, 'reason': 'tired'},
+      );
       _events.add(event);
       produced.add(event);
     }
@@ -1228,7 +1408,8 @@ class MatchEngine {
   // Plumbing
   // -------------------------------------------------------------------------
 
-  _TeamRuntime _runtimeOf(MatchSide side) => side == MatchSide.home ? _home : _away;
+  _TeamRuntime _runtimeOf(MatchSide side) =>
+      side == MatchSide.home ? _home : _away;
 
   _TeamRuntime _oppositeRuntime(MatchSide side) =>
       side == MatchSide.home ? _away : _home;
@@ -1248,7 +1429,9 @@ class MatchEngine {
     Map<String, dynamic> metadata = const {},
   }) {
     // Second-half minutes are displayed relative to 45 (GDD 13.3 timeline).
-    final displayMinute = minute <= _halfTimeMinute ? minute : minute - _firstHalfStoppage;
+    final displayMinute = minute <= _halfTimeMinute
+        ? minute
+        : minute - _firstHalfStoppage;
     return MatchEvent(
       eventId: _eventId++,
       minute: displayMinute,
@@ -1265,26 +1448,28 @@ class MatchEngine {
     );
   }
 
-  MatchEvent _emit(
-          {required int minute,
-          required MatchEventType type,
-          required MatchSide side,
-          int? primaryPlayerId,
-          int? secondaryPlayerId,
-          ShotOutcome? shotOutcome,
-          ChanceQuality? quality,
-          double? xg,
-          Map<String, dynamic> metadata = const {}}) {
+  MatchEvent _emit({
+    required int minute,
+    required MatchEventType type,
+    required MatchSide side,
+    int? primaryPlayerId,
+    int? secondaryPlayerId,
+    ShotOutcome? shotOutcome,
+    ChanceQuality? quality,
+    double? xg,
+    Map<String, dynamic> metadata = const {},
+  }) {
     final event = _event(
-        minute: minute,
-        type: type,
-        side: side,
-        primaryPlayerId: primaryPlayerId,
-        secondaryPlayerId: secondaryPlayerId,
-        shotOutcome: shotOutcome,
-        quality: quality,
-        xg: xg,
-        metadata: metadata);
+      minute: minute,
+      type: type,
+      side: side,
+      primaryPlayerId: primaryPlayerId,
+      secondaryPlayerId: secondaryPlayerId,
+      shotOutcome: shotOutcome,
+      quality: quality,
+      xg: xg,
+      metadata: metadata,
+    );
     _events.add(event);
     return event;
   }
@@ -1315,15 +1500,15 @@ class MatchRandom {
 /// Per-team mutable match runtime.
 class _TeamRuntime {
   _TeamRuntime.from(MatchTeamInput input)
-      : teamId = input.teamId,
-        teamName = input.teamName,
-        formation = formationByCode(input.formationCode),
-        style = input.style,
-        mentality = input.mentality,
-        aiControlled = input.aiControlled,
-        onPitch = [for (final p in input.starters) p.clone()],
-        bench = [for (final p in input.bench) p.clone()],
-        offPitch = [];
+    : teamId = input.teamId,
+      teamName = input.teamName,
+      formation = formationByCode(input.formationCode),
+      style = input.style,
+      mentality = input.mentality,
+      aiControlled = input.aiControlled,
+      onPitch = [for (final p in input.starters) p.clone()],
+      bench = [for (final p in input.bench) p.clone()],
+      offPitch = [];
 
   final int teamId;
   final String teamName;
@@ -1345,8 +1530,11 @@ class _TeamRuntime {
 
   /// Active pep talk (GDD 15): persistent multipliers, at most one at a
   /// time — a later talk replaces the earlier one.
-  ActionModifiers pepTalkModifiers =
-      const ActionModifiers(attack: 1, defence: 1, stamina: 1);
+  ActionModifiers pepTalkModifiers = const ActionModifiers(
+    attack: 1,
+    defence: 1,
+    stamina: 1,
+  );
 
   /// Team totals (GDD 12.2): 1. stamina scaling per player, 2. mentality,
   /// 3. playing style, 4. home advantage — in this order.
@@ -1365,8 +1553,10 @@ class _TeamRuntime {
           ? formation.slots[slot].position
           : player.position;
       // Out-of-position penalty via squad compatibility (GDD 6.3).
-      final compat = const SquadEngine()
-          .compatibilityOf(player.position, slotPosition);
+      final compat = const SquadEngine().compatibilityOf(
+        player.position,
+        slotPosition,
+      );
       final stamina = player.stamina / 100;
       final aw = _MatchEngineRole.attack[slotPosition]! * compat;
       final sw = _MatchEngineRole.support[slotPosition]! * compat;
@@ -1379,20 +1569,21 @@ class _TeamRuntime {
       defenceW += dw;
       if (slotPosition == Position.gk) gkEff = player.goalkeeping * stamina;
     }
-    final attack = (attackW > 0 ? attackSum / attackW : 0) *
+    final attack =
+        (attackW > 0 ? attackSum / attackW : 0) *
         mentality.attackMod *
         style.modifiers.attack *
         actionModifiers.attack *
         pepTalkModifiers.attack;
-    final support = (supportW > 0 ? supportSum / supportW : 0) *
-        style.modifiers.possession;
-    final defence = (defenceW > 0 ? defenceSum / defenceW : 0) *
+    final support =
+        (supportW > 0 ? supportSum / supportW : 0) * style.modifiers.possession;
+    final defence =
+        (defenceW > 0 ? defenceSum / defenceW : 0) *
         mentality.defenceMod *
         style.modifiers.defence *
         actionModifiers.defence *
         pepTalkModifiers.defence;
-    final goalkeeping =
-        gkEff * mentality.defenceMod * style.modifiers.defence;
+    final goalkeeping = gkEff * mentality.defenceMod * style.modifiers.defence;
     final homeFactor = isHome ? homeAdvantage : 1.0;
     return TeamTotals(
       attack: attack * homeFactor,
@@ -1422,8 +1613,10 @@ class _TeamRuntime {
       var bestScore = -1.0;
       for (final id in available) {
         final p = players.firstWhere((x) => x.playerId == id);
-        final compat = const SquadEngine()
-            .compatibilityOf(p.position, slot.position);
+        final compat = const SquadEngine().compatibilityOf(
+          p.position,
+          slot.position,
+        );
         final score = compat * (p.attack + p.support + p.defence);
         if (score > bestScore) {
           bestScore = score;
@@ -1441,11 +1634,12 @@ class _TeamRuntime {
     }
   }
 
-  int _naturalFits(Position slotPosition, List<MatchPlayer> players) =>
-      players
-          .where((p) => const SquadEngine()
-              .compatibilityOf(p.position, slotPosition) > 0.5)
-          .length;
+  int _naturalFits(Position slotPosition, List<MatchPlayer> players) => players
+      .where(
+        (p) =>
+            const SquadEngine().compatibilityOf(p.position, slotPosition) > 0.5,
+      )
+      .length;
 
   /// Substitution (GDD 10.5): the substitute takes the outgoing player's
   /// slot; totals, stamina, statistics and ratings update from this point.
@@ -1473,23 +1667,45 @@ class _TeamRuntime {
 /// class body for readability).
 class _MatchEngineRole {
   static const Map<Position, double> attack = {
-    Position.st: 1.0, Position.lw: 0.85, Position.rw: 0.85,
-    Position.cam: 0.85, Position.lm: 0.6, Position.rm: 0.6,
-    Position.cm: 0.6, Position.cdm: 0.4,
-    Position.lb: 0.35, Position.rb: 0.35,
-    Position.cb: 0.25, Position.gk: 0.05,
+    Position.st: 1.0,
+    Position.lw: 0.85,
+    Position.rw: 0.85,
+    Position.cam: 0.85,
+    Position.lm: 0.6,
+    Position.rm: 0.6,
+    Position.cm: 0.6,
+    Position.cdm: 0.4,
+    Position.lb: 0.35,
+    Position.rb: 0.35,
+    Position.cb: 0.25,
+    Position.gk: 0.05,
   };
   static const Map<Position, double> support = {
-    Position.cam: 1.0, Position.cm: 1.0,
-    Position.lw: 0.85, Position.rw: 0.85, Position.lm: 0.85, Position.rm: 0.85,
-    Position.cdm: 0.8, Position.st: 0.7,
-    Position.lb: 0.7, Position.rb: 0.7,
-    Position.cb: 0.6, Position.gk: 0.1,
+    Position.cam: 1.0,
+    Position.cm: 1.0,
+    Position.lw: 0.85,
+    Position.rw: 0.85,
+    Position.lm: 0.85,
+    Position.rm: 0.85,
+    Position.cdm: 0.8,
+    Position.st: 0.7,
+    Position.lb: 0.7,
+    Position.rb: 0.7,
+    Position.cb: 0.6,
+    Position.gk: 0.1,
   };
   static const Map<Position, double> defence = {
-    Position.cb: 1.0, Position.lb: 0.9, Position.rb: 0.9, Position.cdm: 0.9,
-    Position.cm: 0.7, Position.lm: 0.6, Position.rm: 0.6,
-    Position.cam: 0.5, Position.lw: 0.4, Position.rw: 0.4,
-    Position.st: 0.4, Position.gk: 0.05,
+    Position.cb: 1.0,
+    Position.lb: 0.9,
+    Position.rb: 0.9,
+    Position.cdm: 0.9,
+    Position.cm: 0.7,
+    Position.lm: 0.6,
+    Position.rm: 0.6,
+    Position.cam: 0.5,
+    Position.lw: 0.4,
+    Position.rw: 0.4,
+    Position.st: 0.4,
+    Position.gk: 0.05,
   };
 }

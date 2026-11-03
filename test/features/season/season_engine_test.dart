@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/season/season_engine.dart';
 
-
 /// A realistic pool for real-player generation tests: every position
 /// stocked across the overall ladder (mirrors the shipped dataset's
 /// shape — thousands of players from ~40 OVR to ~94).
@@ -15,16 +14,19 @@ List<AiPoolPlayer> buildPool() {
   for (final position in Position.values) {
     for (var overall = 36; overall <= 94; overall++) {
       for (var copy = 0; copy < 6; copy++) {
-        pool.add(AiPoolPlayer(
-          playerId: id,
-          name: '${position.code.toUpperCase()} ${overall.toString().padLeft(2, '0')} $copy',
-          position: position,
-          overall: overall,
-          attack: overall,
-          support: overall,
-          defence: overall,
-          goalkeeping: overall,
-        ));
+        pool.add(
+          AiPoolPlayer(
+            playerId: id,
+            name:
+                '${position.code.toUpperCase()} ${overall.toString().padLeft(2, '0')} $copy',
+            position: position,
+            overall: overall,
+            attack: overall,
+            support: overall,
+            defence: overall,
+            goalkeeping: overall,
+          ),
+        );
         id++;
       }
     }
@@ -35,7 +37,6 @@ List<AiPoolPlayer> buildPool() {
 math.Random _rand(int seed) => math.Random(seed);
 
 void main() {
-
   group('Round-robin fixtures (FR-036, GDD 9.2)', () {
     test('20 teams produce 38 rounds of 10 matches = 380 fixtures', () {
       const engine = SeasonEngine();
@@ -61,7 +62,8 @@ void main() {
         final b = p.homeIndex < p.awayIndex ? p.awayIndex : p.homeIndex;
         final key = a * 100 + b;
         seen[key] = (seen[key] ?? 0) + 1;
-        homes['$a-$b-${p.homeIndex}'] = (homes['$a-$b-${p.homeIndex}'] ?? 0) + 1;
+        homes['$a-$b-${p.homeIndex}'] =
+            (homes['$a-$b-${p.homeIndex}'] ?? 0) + 1;
       }
       // 190 distinct pairs, each twice.
       expect(seen.length, 190);
@@ -81,18 +83,23 @@ void main() {
       final byRound = <int, Set<int>>{};
       for (final p in pairings) {
         byRound.putIfAbsent(p.round, () => <int>{});
-        expect(byRound[p.round]!.add(p.homeIndex), isTrue,
-            reason: 'round ${p.round} home dup');
-        expect(byRound[p.round]!.add(p.awayIndex), isTrue,
-            reason: 'round ${p.round} away dup');
+        expect(
+          byRound[p.round]!.add(p.homeIndex),
+          isTrue,
+          reason: 'round ${p.round} home dup',
+        );
+        expect(
+          byRound[p.round]!.add(p.awayIndex),
+          isTrue,
+          reason: 'round ${p.round} away dup',
+        );
       }
     });
 
     test('the anchor team has a reasonable home/away balance', () {
       const engine = SeasonEngine();
       final pairings = engine.generateFixtures(20, anchorIndex: 0);
-      final homeGames =
-          pairings.where((p) => p.homeIndex == 0).length;
+      final homeGames = pairings.where((p) => p.homeIndex == 0).length;
       expect(homeGames, 19); // half of 38
     });
 
@@ -141,11 +148,14 @@ void main() {
       expect(standings.map((e) => e.position).toList(), [1, 2, 3, 4]);
       // total goals for == total goals against.
       expect(
-          standings.fold<int>(0, (a, e) => a + e.goalsFor),
-          standings.fold<int>(0, (a, e) => a + e.goalsAgainst));
+        standings.fold<int>(0, (a, e) => a + e.goalsFor),
+        standings.fold<int>(0, (a, e) => a + e.goalsAgainst),
+      );
       // every team's played matches sum consistently.
-      expect(standings.every((e) => e.played == e.won + e.drawn + e.lost),
-          isTrue);
+      expect(
+        standings.every((e) => e.played == e.won + e.drawn + e.lost),
+        isTrue,
+      );
     });
 
     test('tiebreak: goal difference then goals for', () {
@@ -173,8 +183,11 @@ void main() {
       expect(engine.outcomeForPosition(2), SeasonOutcome.promoted);
       expect(engine.outcomeForPosition(3), SeasonOutcome.promoted);
       for (var pos = 4; pos <= 17; pos++) {
-        expect(engine.outcomeForPosition(pos), SeasonOutcome.stayed,
-            reason: 'position $pos');
+        expect(
+          engine.outcomeForPosition(pos),
+          SeasonOutcome.stayed,
+          reason: 'position $pos',
+        );
       }
       expect(engine.outcomeForPosition(18), SeasonOutcome.relegated);
       expect(engine.outcomeForPosition(19), SeasonOutcome.relegated);
@@ -238,8 +251,10 @@ void main() {
       // the target.
       for (final division in [1, 5, 10]) {
         final target = engine.config.targetAverageOverall(division);
-        final clubs =
-            engine.generateAiClubs(division, random: _rand(7 + division));
+        final clubs = engine.generateAiClubs(
+          division,
+          random: _rand(7 + division),
+        );
         final ratings = <int>[];
         for (final club in clubs) {
           for (final p in club.players) {
@@ -252,22 +267,28 @@ void main() {
         final mean = ratings.reduce((a, b) => a + b) / ratings.length;
         // The ±3 spread and position weighting keep the mean within a few
         // points of the division target.
-        expect((mean - target).abs(), lessThan(6),
-            reason: 'division $division mean $mean vs target $target');
+        expect(
+          (mean - target).abs(),
+          lessThan(6),
+          reason: 'division $division mean $mean vs target $target',
+        );
       }
     });
 
     test('difficulty scales between divisions (GDD 9.6)', () {
       expect(
-          engine.config.targetAverageOverall(5),
-          greaterThan(engine.config.targetAverageOverall(1)));
+        engine.config.targetAverageOverall(5),
+        greaterThan(engine.config.targetAverageOverall(1)),
+      );
       expect(
-          engine.config.targetAverageOverall(10),
-          greaterThan(engine.config.targetAverageOverall(5)));
+        engine.config.targetAverageOverall(10),
+        greaterThan(engine.config.targetAverageOverall(5)),
+      );
       expect(
-          engine.config.targetAverageOverall(2) -
-              engine.config.targetAverageOverall(1),
-          engine.config.overallPerDivision);
+        engine.config.targetAverageOverall(2) -
+            engine.config.targetAverageOverall(1),
+        engine.config.overallPerDivision,
+      );
     });
 
     test('AI squads mirror real-player attribute structure', () {
@@ -293,8 +314,11 @@ void main() {
       final poolById = {for (final p in pool) p.playerId: p};
       for (final club in clubs) {
         for (final p in club.players) {
-          expect(p.realPlayerId, isNotNull,
-              reason: '${club.name} has a synthetic player');
+          expect(
+            p.realPlayerId,
+            isNotNull,
+            reason: '${club.name} has a synthetic player',
+          );
           final real = poolById[p.realPlayerId]!;
           expect(p.name, real.name);
           expect(p.position, real.position);
@@ -308,8 +332,11 @@ void main() {
       final seen = <int>{};
       for (final club in clubs) {
         for (final p in club.players) {
-          expect(seen.contains(p.realPlayerId), isFalse,
-              reason: 'player ${p.realPlayerId} signed twice');
+          expect(
+            seen.contains(p.realPlayerId),
+            isFalse,
+            reason: 'player ${p.realPlayerId} signed twice',
+          );
           seen.add(p.realPlayerId!);
         }
       }
@@ -318,8 +345,12 @@ void main() {
     test('players the user owns are never signed', () {
       final pool = buildPool();
       final owned = {for (final p in pool.take(50)) p.playerId};
-      final clubs = engine.generateAiClubs(3,
-          random: _rand(9), pool: pool, excludePlayerIds: owned);
+      final clubs = engine.generateAiClubs(
+        3,
+        random: _rand(9),
+        pool: pool,
+        excludePlayerIds: owned,
+      );
       for (final club in clubs) {
         for (final p in club.players) {
           expect(owned.contains(p.realPlayerId), isFalse);
@@ -327,36 +358,38 @@ void main() {
       }
     });
 
-    test('Division 1 is the easiest, later divisions field stronger squads',
-        () {
-      final pool = buildPool();
-      double meanOverall(int division) {
-        final clubs =
-            engine.generateAiClubs(division, random: _rand(31), pool: pool);
-        final ratings = [
-          for (final c in clubs)
-            for (final p in c.players)
-              (p.attack + p.support + p.defence) / 3
-        ];
-        return ratings.reduce((a, b) => a + b) / ratings.length;
-      }
+    test(
+      'Division 1 is the easiest, later divisions field stronger squads',
+      () {
+        final pool = buildPool();
+        double meanOverall(int division) {
+          final clubs = engine.generateAiClubs(
+            division,
+            random: _rand(31),
+            pool: pool,
+          );
+          final ratings = [
+            for (final c in clubs)
+              for (final p in c.players) (p.attack + p.support + p.defence) / 3,
+          ];
+          return ratings.reduce((a, b) => a + b) / ratings.length;
+        }
 
-      final d1 = meanOverall(1);
-      final d3 = meanOverall(3);
-      final d5 = meanOverall(5);
-      // Division 1 sits near the new-user difficulty (~54), not the old 66.
-      expect(d1, inInclusiveRange(50, 58));
-      expect(d3, greaterThan(d1 + 3));
-      expect(d5, greaterThan(d3 + 3));
-    });
+        final d1 = meanOverall(1);
+        final d3 = meanOverall(3);
+        final d5 = meanOverall(5);
+        // Division 1 sits near the new-user difficulty (~54), not the old 66.
+        expect(d1, inInclusiveRange(50, 58));
+        expect(d3, greaterThan(d1 + 3));
+        expect(d5, greaterThan(d3 + 3));
+      },
+    );
 
-    test('thin pools fall back to synthetic squads (graceful degradation)',
-        () {
+    test('thin pools fall back to synthetic squads (graceful degradation)', () {
       // A pool with only a handful of players cannot fill 19×18 squads:
       // clubs must still be produced, with synthetic players.
       final tinyPool = buildPool().take(30).toList();
-      final clubs =
-          engine.generateAiClubs(1, random: _rand(3), pool: tinyPool);
+      final clubs = engine.generateAiClubs(1, random: _rand(3), pool: tinyPool);
       expect(clubs.length, 19);
       for (final c in clubs) {
         expect(c.players.length, 18);
@@ -364,7 +397,7 @@ void main() {
       final synthetic = [
         for (final c in clubs)
           for (final p in c.players)
-            if (p.realPlayerId == null) p
+            if (p.realPlayerId == null) p,
       ];
       expect(synthetic, isNotEmpty);
     });
@@ -373,18 +406,21 @@ void main() {
   group('AI lineup rotation (GDD 11)', () {
     const engine = SeasonEngine();
 
-    AiSquadPlayer mk(Position position, int rating, double stamina,
-            {String name = 'P'}) =>
-        AiSquadPlayer(
-          realPlayerId: position.index * 100 + rating,
-          name: '$name $rating ${position.code}',
-          position: position,
-          attack: position == Position.gk ? 20 : rating,
-          support: rating,
-          defence: position == Position.gk ? 20 : rating,
-          goalkeeping: position == Position.gk ? rating : 20,
-          stamina: stamina,
-        );
+    AiSquadPlayer mk(
+      Position position,
+      int rating,
+      double stamina, {
+      String name = 'P',
+    }) => AiSquadPlayer(
+      realPlayerId: position.index * 100 + rating,
+      name: '$name $rating ${position.code}',
+      position: position,
+      attack: position == Position.gk ? 20 : rating,
+      support: rating,
+      defence: position == Position.gk ? 20 : rating,
+      goalkeeping: position == Position.gk ? rating : 20,
+      stamina: stamina,
+    );
 
     test('fresh starters keep their place at full stamina', () {
       final squad = [
@@ -393,8 +429,7 @@ void main() {
           mk(p, 70, 100),
         for (final p in [Position.cdm, Position.cm, Position.cam])
           mk(p, 70, 100),
-        for (final p in [Position.lw, Position.rw, Position.st])
-          mk(p, 70, 100),
+        for (final p in [Position.lw, Position.rw, Position.st]) mk(p, 70, 100),
         for (var i = 0; i < 7; i++) mk(Position.cb, 40, 100, name: 'B$i'),
       ];
       final lineup = engine.pickAiLineup(squad, '4-3-3');
@@ -415,20 +450,21 @@ void main() {
         mk(Position.rb, 70, 100),
         for (final p in [Position.cdm, Position.cm, Position.cam])
           mk(p, 70, 100),
-        for (final p in [Position.lw, Position.rw, Position.st])
-          mk(p, 70, 100),
+        for (final p in [Position.lw, Position.rw, Position.st]) mk(p, 70, 100),
         mk(Position.cb, 68, 100, name: 'Backup'), // near-quality cover
         for (var i = 0; i < 6; i++) mk(Position.cm, 40, 100, name: 'B$i'),
       ];
       final lineup = engine.pickAiLineup(squad, '4-3-3');
       final tired = squad[1];
-      expect(lineup.starters.contains(tired), isFalse,
-          reason: '30-stamina starter must be rotated out');
+      expect(
+        lineup.starters.contains(tired),
+        isFalse,
+        reason: '30-stamina starter must be rotated out',
+      );
       expect(lineup.bench.contains(tired), isTrue);
     });
 
-    test('a tired STAR still starts over a weak backup (quality wins)',
-        () {
+    test('a tired STAR still starts over a weak backup (quality wins)', () {
       final squad = [
         mk(Position.gk, 70, 100),
         mk(Position.st, 85, 35), // tired but a superstar
@@ -443,17 +479,27 @@ void main() {
       ];
       final lineup = engine.pickAiLineup(squad, '4-3-3');
       final star = squad[1];
-      expect(lineup.starters.contains(star), isTrue,
-          reason: '85-rated at 35 stamina beats a 50-rated fresh backup');
+      expect(
+        lineup.starters.contains(star),
+        isTrue,
+        reason: '85-rated at 35 stamina beats a 50-rated fresh backup',
+      );
     });
 
     test('lineup returns XI in formation slot order and a bench', () {
       final squad = [
         mk(Position.gk, 70, 100),
         for (final p in [
-          Position.lb, Position.cb, Position.cb, Position.rb,
-          Position.cam, Position.cm, Position.cm,
-          Position.lw, Position.st, Position.rw,
+          Position.lb,
+          Position.cb,
+          Position.cb,
+          Position.rb,
+          Position.cam,
+          Position.cm,
+          Position.cm,
+          Position.lw,
+          Position.st,
+          Position.rw,
         ])
           mk(p, 70, 100),
         for (var i = 0; i < 7; i++) mk(Position.cm, 50, 100, name: 'B$i'),

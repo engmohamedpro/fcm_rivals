@@ -12,21 +12,23 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/match/match_engine.dart';
 import 'package:fcm_rivals/features/match/match_forecast.dart';
 
-
 const _generator = BaseStatsGenerator();
 
-MatchPlayer _player(int id, Position pos, int marketValueEur,
-        {double stamina = 100}) =>
-    MatchPlayer(
-      playerId: id,
-      name: 'Player $id',
-      position: pos,
-      attack: _generator.generate(pos, marketValueEur).attack,
-      support: _generator.generate(pos, marketValueEur).support,
-      defence: _generator.generate(pos, marketValueEur).defence,
-      goalkeeping: _generator.generate(pos, marketValueEur).goalkeeping,
-      stamina: stamina,
-    );
+MatchPlayer _player(
+  int id,
+  Position pos,
+  int marketValueEur, {
+  double stamina = 100,
+}) => MatchPlayer(
+  playerId: id,
+  name: 'Player $id',
+  position: pos,
+  attack: _generator.generate(pos, marketValueEur).attack,
+  support: _generator.generate(pos, marketValueEur).support,
+  defence: _generator.generate(pos, marketValueEur).defence,
+  goalkeeping: _generator.generate(pos, marketValueEur).goalkeeping,
+  stamina: stamina,
+);
 
 /// A 23-man squad: XI, bench and reserves, positions spread like a real
 /// squad list.
@@ -67,8 +69,9 @@ void main() {
     );
     expect(forecast.samples, greaterThan(0));
     expect(
-        forecast.winPercent + forecast.drawPercent + forecast.lossPercent,
-        100);
+      forecast.winPercent + forecast.drawPercent + forecast.lossPercent,
+      100,
+    );
     expect(forecast.winPercent, greaterThan(0));
     expect(forecast.drawPercent, greaterThan(0));
     expect(forecast.lossPercent, greaterThan(0));
@@ -87,13 +90,14 @@ void main() {
     );
     expect(forecast.winPercent, greaterThan(forecast.lossPercent));
     expect(forecast.winPercent, greaterThan(55));
-    expect(forecast.strength(forecast.userTotals),
-        greaterThan(forecast.strength(forecast.opponentTotals)));
+    expect(
+      forecast.strength(forecast.userTotals),
+      greaterThan(forecast.strength(forecast.opponentTotals)),
+    );
     expect(forecast.attackAdvantage, greaterThan(0));
   });
 
-  test('every player of the squad list counts, not just the starting XI',
-      () {
+  test('every player of the squad list counts, not just the starting XI', () {
     // IDENTICAL starting XI everywhere; only the bench and reserves
     // differ in quality. If the forecast were XI-only, both runs would
     // be exactly the same.
@@ -112,12 +116,16 @@ void main() {
     final opponent = _squad(200, 20_000_000);
     final weak = forecastMatch(
       input: ForecastInput(
-          userSquad: [...xi, ...weakTail], opponentSquad: opponent),
+        userSquad: [...xi, ...weakTail],
+        opponentSquad: opponent,
+      ),
       forecastSeed: 424242,
     );
     final strong = forecastMatch(
       input: ForecastInput(
-          userSquad: [...xi, ...strongTail], opponentSquad: opponent),
+        userSquad: [...xi, ...strongTail],
+        opponentSquad: opponent,
+      ),
       forecastSeed: 424242,
     );
     expect(strong.attackAdvantage, greaterThan(weak.attackAdvantage));
@@ -131,30 +139,34 @@ void main() {
     // Stamina worn down to half: raw attributes, so identical totals.
     final tired = [
       for (var i = 0; i < base.length; i++)
-        _player(base[i].playerId, base[i].position, 20_000_000,
-            stamina: 50),
+        _player(base[i].playerId, base[i].position, 20_000_000, stamina: 50),
     ];
-    expect(squadQualityTotals(tired).attack,
-        squadQualityTotals(base).attack);
-    expect(squadQualityTotals(tired).goalkeeping,
-        squadQualityTotals(base).goalkeeping);
+    expect(squadQualityTotals(tired).attack, squadQualityTotals(base).attack);
+    expect(
+      squadQualityTotals(tired).goalkeeping,
+      squadQualityTotals(base).goalkeeping,
+    );
 
     // A red card (sent off) or a booked player is still squad paper
     // quality: the forecast ignores match state entirely.
     final booked = [...base];
     booked[3].yellowCards = 1;
     booked[4].sentOff = true;
-    expect(squadQualityTotals(booked).defence,
-        squadQualityTotals(base).defence);
+    expect(
+      squadQualityTotals(booked).defence,
+      squadQualityTotals(base).defence,
+    );
 
     // The forecast input itself has no style/mentality/venue fields at
     // all — nothing tactical can enter the run.
     final a = forecastMatch(
-        input: ForecastInput(userSquad: base, opponentSquad: opponent),
-        forecastSeed: 99);
+      input: ForecastInput(userSquad: base, opponentSquad: opponent),
+      forecastSeed: 99,
+    );
     final b = forecastMatch(
-        input: ForecastInput(userSquad: base, opponentSquad: opponent),
-        forecastSeed: 99);
+      input: ForecastInput(userSquad: base, opponentSquad: opponent),
+      forecastSeed: 99,
+    );
     expect(a.winPercent, b.winPercent);
     expect(a.drawPercent, b.drawPercent);
     expect(a.avgUserGoals, b.avgUserGoals);
@@ -162,12 +174,12 @@ void main() {
 
   test('same seed reproduces the identical forecast', () {
     MatchForecast run() => forecastMatch(
-          input: ForecastInput(
-            userSquad: _squad(100, 20_000_000),
-            opponentSquad: _squad(200, 20_000_000),
-          ),
-          forecastSeed: 424242,
-        );
+      input: ForecastInput(
+        userSquad: _squad(100, 20_000_000),
+        opponentSquad: _squad(200, 20_000_000),
+      ),
+      forecastSeed: 424242,
+    );
     final a = run();
     final b = run();
     expect(a.winPercent, b.winPercent);
@@ -181,12 +193,11 @@ void main() {
       userSquad: _squad(100, 20_000_000),
       opponentSquad: _squad(200, 20_000_000),
     );
-    final a = forecastMatch(
-        input: input, random: math.Random(1), samples: 40);
-    final b = forecastMatch(
-        input: input, random: math.Random(2), samples: 40);
+    final a = forecastMatch(input: input, random: math.Random(1), samples: 40);
+    final b = forecastMatch(input: input, random: math.Random(2), samples: 40);
     // Overwhelmingly likely to differ somewhere with different seeds.
-    final differs = a.winPercent != b.winPercent ||
+    final differs =
+        a.winPercent != b.winPercent ||
         a.drawPercent != b.drawPercent ||
         a.avgUserGoals != b.avgUserGoals;
     expect(differs, isTrue);

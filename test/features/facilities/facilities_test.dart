@@ -23,7 +23,10 @@ void main() {
       expect(costs.upgradeCost(2), 9_600);
       // Every later level costs strictly more than the one before.
       for (var level = 0; level + 1 < costs.maxLevel; level++) {
-        expect(costs.upgradeCost(level + 1), greaterThan(costs.upgradeCost(level)));
+        expect(
+          costs.upgradeCost(level + 1),
+          greaterThan(costs.upgradeCost(level)),
+        );
       }
       // Level 10 is the ceiling — nothing more to buy.
       expect(costs.upgradeCost(costs.maxLevel), 0);
@@ -34,16 +37,14 @@ void main() {
       expect(costs.investedAt(0), 0);
       expect(costs.investedAt(1), costs.upgradeCost(0));
       expect(
-          costs.investedAt(3),
-          costs.upgradeCost(0) +
-              costs.upgradeCost(1) +
-              costs.upgradeCost(2));
+        costs.investedAt(3),
+        costs.upgradeCost(0) + costs.upgradeCost(1) + costs.upgradeCost(2),
+      );
     });
   });
 
   group('Facility effects', () {
-    test('training facilities describe their attribute bonus per level',
-        () {
+    test('training facilities describe their attribute bonus per level', () {
       final attack = Facility.attack.effect;
       expect(attack.attributeFractionAt(0), 0);
       expect(attack.attributeFractionAt(4), closeTo(0.036, 1e-9));
@@ -89,7 +90,10 @@ void main() {
       db = memoryDb();
       store = CollectionStore(db: db);
       await store.createClub(
-          clubName: 'FC Rivals', managerName: 'Mohamed', crestIndex: 0);
+        clubName: 'FC Rivals',
+        managerName: 'Mohamed',
+        crestIndex: 0,
+      );
     });
 
     tearDown(() async => db.close());
@@ -101,25 +105,27 @@ void main() {
       final level1 = await store.upgradeFacility(Facility.attack);
       expect(level1, 1);
       final clubAfter = (await store.getClub())!;
-      expect(clubAfter.coins,
-          clubBefore.coins - defaultFacilitiesCosts.upgradeCost(0));
+      expect(
+        clubAfter.coins,
+        clubBefore.coins - defaultFacilitiesCosts.upgradeCost(0),
+      );
 
       // Second level costs more than the first.
       final level2 = await store.upgradeFacility(Facility.attack);
       expect(level2, 2);
       final clubAfter2 = (await store.getClub())!;
       expect(
-          clubAfter2.coins,
-          clubAfter.coins -
-              defaultFacilitiesCosts.upgradeCost(1));
+        clubAfter2.coins,
+        clubAfter.coins - defaultFacilitiesCosts.upgradeCost(1),
+      );
       expect((await store.getCampus()).levelOf(Facility.attack), 2);
       // Other facilities untouched.
       expect((await store.getCampus()).levelOf(Facility.recovery), 0);
 
       // The upgrade writes a ledger row (FR-016).
-      final ledger = await (db.select(db.coinTransactions)
-            ..where((t) => t.reason.equals('facility_upgrade')))
-          .get();
+      final ledger = await (db.select(
+        db.coinTransactions,
+      )..where((t) => t.reason.equals('facility_upgrade'))).get();
       expect(ledger.length, 2);
       expect(ledger.last.detail, contains('attack academy level 2'));
     });

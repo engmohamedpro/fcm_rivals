@@ -45,10 +45,10 @@ enum PackTier {
   /// renaming stored the medal metals ('bronze'/'silver'/'gold'); they
   /// map onto the same tiers. Unknown values fall back to rare.
   static PackTier fromName(String? name) => switch (name) {
-        'epic' || 'silver' => PackTier.epic,
-        'legendary' || 'gold' => PackTier.legendary,
-        _ => PackTier.rare, // 'rare', legacy 'bronze', anything else
-      };
+    'epic' || 'silver' => PackTier.epic,
+    'legendary' || 'gold' => PackTier.legendary,
+    _ => PackTier.rare, // 'rare', legacy 'bronze', anything else
+  };
 }
 
 /// Pack-rarity accent colours — the same jewel palette as the player-card
@@ -58,18 +58,18 @@ enum PackTier {
 /// cards it draws.
 extension PackTierColor on PackTier {
   Color get accent => switch (this) {
-        PackTier.rare => const Color(0xFF8B5CF6),
-        PackTier.epic => const Color(0xFF3B82F6),
-        PackTier.legendary => const Color(0xFFF7C948),
-      };
+    PackTier.rare => const Color(0xFF8B5CF6),
+    PackTier.epic => const Color(0xFF3B82F6),
+    PackTier.legendary => const Color(0xFFF7C948),
+  };
 
   /// Rarity stars stamped on the foil: rare 3, epic 4, legendary 5 —
   /// the shelf and the reveal agree on the count.
   int get stars => switch (this) {
-        PackTier.rare => 3,
-        PackTier.epic => 4,
-        PackTier.legendary => 5,
-      };
+    PackTier.rare => 3,
+    PackTier.epic => 4,
+    PackTier.legendary => 5,
+  };
 }
 
 /// Filter describing which players a pack draws from.
@@ -189,18 +189,19 @@ class PackEngine {
     this.tierWeights = const [1.0, 1.0, 1.0],
     required this.random,
     this.economy = const EconomyEngine(),
-  })  : assert(
-          tierBoundaries.length == 2 &&
-              0 < tierBoundaries[0] &&
-              tierBoundaries[0] < tierBoundaries[1] &&
-              tierBoundaries[1] < 1,
-          'tier boundaries must be increasing fractions in (0, 1)',
-        ),
-        assert(
-          tierWeights.length == 3 && tierWeights.every((w) => w >= 0) &&
-              tierWeights.any((w) => w > 0),
-          'tier weights need three non-negative values, at least one > 0',
-        );
+  }) : assert(
+         tierBoundaries.length == 2 &&
+             0 < tierBoundaries[0] &&
+             tierBoundaries[0] < tierBoundaries[1] &&
+             tierBoundaries[1] < 1,
+         'tier boundaries must be increasing fractions in (0, 1)',
+       ),
+       assert(
+         tierWeights.length == 3 &&
+             tierWeights.every((w) => w >= 0) &&
+             tierWeights.any((w) => w > 0),
+         'tier weights need three non-negative values, at least one > 0',
+       );
 
   /// Relative chance that the pack's single player comes from the low, mid
   /// or high tier. Equal by default.
@@ -229,7 +230,10 @@ class PackEngine {
   /// Returns the draw info for [scope] over [pool] at [smoothing],
   /// building and caching it on first use.
   _PoolDrawInfo _drawInfoFor(
-      PackScope scope, List<BasePlayer> pool, double smoothing) {
+    PackScope scope,
+    List<BasePlayer> pool,
+    double smoothing,
+  ) {
     if (_poolCache.length >= _maxCachedEntries) _poolCache.clear();
     return _poolCache.putIfAbsent(
       _CacheKey(pool, scope, smoothing),
@@ -240,7 +244,10 @@ class PackEngine {
   /// Computes the uncached draw info: filter by scope, sort by value,
   /// split into tiers, then weight each tier's players.
   _PoolDrawInfo _buildDrawInfo(
-      PackScope scope, List<BasePlayer> pool, double smoothing) {
+    PackScope scope,
+    List<BasePlayer> pool,
+    double smoothing,
+  ) {
     final eligible = pool.where(scope.matches).toList()..sort(_byValue);
     final tiers = _splitIntoTiers(eligible);
     final weights = <List<double>>[];
@@ -248,9 +255,14 @@ class PackEngine {
     final cumulative = <List<double>>[];
     for (final tier in tiers) {
       final w = tier
-          .map((p) => 1.0 /
-              math.pow(
-                  economy.economicValueOf(p.marketValueEur).toDouble(), smoothing))
+          .map(
+            (p) =>
+                1.0 /
+                math.pow(
+                  economy.economicValueOf(p.marketValueEur).toDouble(),
+                  smoothing,
+                ),
+          )
           .toList();
       weights.add(w);
       var sum = 0.0;
@@ -263,7 +275,11 @@ class PackEngine {
       cumulative.add(cum);
     }
     return _PoolDrawInfo(
-        tiers: tiers, weights: weights, totals: totals, cumulative: cumulative);
+      tiers: tiers,
+      weights: weights,
+      totals: totals,
+      cumulative: cumulative,
+    );
   }
 
   /// Splits a value-sorted eligible pool into low/mid/high tiers on the
@@ -281,8 +297,8 @@ class PackEngine {
     final logMax = math.log(maxV);
     final low = <BasePlayer>[], mid = <BasePlayer>[], high = <BasePlayer>[];
     for (final p in sorted) {
-      final t = (math.log(p.marketValueEur.toDouble()) - logMin) /
-          (logMax - logMin);
+      final t =
+          (math.log(p.marketValueEur.toDouble()) - logMin) / (logMax - logMin);
       if (t < tierBoundaries[0]) {
         low.add(p);
       } else if (t < tierBoundaries[1]) {
@@ -347,8 +363,11 @@ class PackEngine {
   /// an empty draw list. The reported tier is the ROLLED tier, matching
   /// the odds display, which also books fallback-tier players under the
   /// rolled tier's probability share.
-  List<PackDraw> open(PackScope scope, List<BasePlayer> pool,
-      {double? oddsSmoothing}) {
+  List<PackDraw> open(
+    PackScope scope,
+    List<BasePlayer> pool, {
+    double? oddsSmoothing,
+  }) {
     final smoothing = oddsSmoothing ?? economy.config.packOddsSmoothing;
     final info = _drawInfoFor(scope, pool, smoothing);
     if (info.tiers.every((tier) => tier.isEmpty)) return const [];
@@ -396,8 +415,9 @@ class PackEngine {
       final tierShare = rollWeights[t] / rollTotal;
       final probs = <int, double>{};
       for (var i = 0; i < tier.length; i++) {
-        probs[tier[i].playerId] =
-            total > 0 ? tierShare * info.weights[tierIndex][i] / total : 0;
+        probs[tier[i].playerId] = total > 0
+            ? tierShare * info.weights[tierIndex][i] / total
+            : 0;
       }
       result[t] = probs;
     }
@@ -423,8 +443,8 @@ class PackEngine {
       if (tier.length <= 1) {
         // Single (or empty) tier: value is deterministic.
         if (tier.isNotEmpty) {
-          total += tierShare *
-              economy.economicValueOf(tier.single.marketValueEur);
+          total +=
+              tierShare * economy.economicValueOf(tier.single.marketValueEur);
         }
         continue;
       }
@@ -432,7 +452,8 @@ class PackEngine {
       if (wSum <= 0) continue;
       var tierEv = 0.0;
       for (var i = 0; i < tier.length; i++) {
-        tierEv += economy.economicValueOf(tier[i].marketValueEur) *
+        tierEv +=
+            economy.economicValueOf(tier[i].marketValueEur) *
             (info.weights[tierIndex][i] / wSum);
       }
       total += tierShare * tierEv;

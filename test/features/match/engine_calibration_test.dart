@@ -26,9 +26,17 @@ import 'package:fcm_rivals/features/match/match_report.dart';
 import 'package:fcm_rivals/features/match/tactics.dart';
 
 const _positions = [
-  Position.gk, Position.lb, Position.cb, Position.cb, Position.rb,
-  Position.lm, Position.cm, Position.cm, Position.rm,
-  Position.st, Position.st,
+  Position.gk,
+  Position.lb,
+  Position.cb,
+  Position.cb,
+  Position.rb,
+  Position.lm,
+  Position.cm,
+  Position.cm,
+  Position.rm,
+  Position.st,
+  Position.st,
 ];
 
 List<MatchPlayer> makeTeam(int base, String name, {required int value}) {
@@ -47,30 +55,33 @@ List<MatchPlayer> makeTeam(int base, String name, {required int value}) {
   ];
 }
 
-MatchEngine engine(int seed, {required int homeValue, required int awayValue}) =>
-    MatchEngine(
-      seed: seed,
-      home: MatchTeamInput(
-        teamId: 1,
-        teamName: 'Home',
-        formationCode: '4-4-2',
-        style: PlayingStyle.balanced,
-        mentality: Mentality.balanced,
-        starters: makeTeam(100, 'Home', value: homeValue),
-        bench: const [],
-        aiControlled: true,
-      ),
-      away: MatchTeamInput(
-        teamId: 2,
-        teamName: 'Away',
-        formationCode: '4-3-3',
-        style: PlayingStyle.balanced,
-        mentality: Mentality.balanced,
-        starters: makeTeam(300, 'Away', value: awayValue),
-        bench: const [],
-        aiControlled: true,
-      ),
-    );
+MatchEngine engine(
+  int seed, {
+  required int homeValue,
+  required int awayValue,
+}) => MatchEngine(
+  seed: seed,
+  home: MatchTeamInput(
+    teamId: 1,
+    teamName: 'Home',
+    formationCode: '4-4-2',
+    style: PlayingStyle.balanced,
+    mentality: Mentality.balanced,
+    starters: makeTeam(100, 'Home', value: homeValue),
+    bench: const [],
+    aiControlled: true,
+  ),
+  away: MatchTeamInput(
+    teamId: 2,
+    teamName: 'Away',
+    formationCode: '4-3-3',
+    style: PlayingStyle.balanced,
+    mentality: Mentality.balanced,
+    starters: makeTeam(300, 'Away', value: awayValue),
+    bench: const [],
+    aiControlled: true,
+  ),
+);
 
 /// One scenario's aggregate over [n] seeds.
 // ignore: library_private_types_in_public_api
@@ -92,6 +103,7 @@ class _Scenario {
     final fav = scores.where((s) => s.$1 > s.$2).length;
     return fav / matches;
   }
+
   double get avgShotsPerTeam =>
       statsList.fold<int>(0, (a, s) => a + s.home.shots + s.away.shots) /
       (matches * 2);
@@ -111,8 +123,12 @@ class _Scenario {
   }
 }
 
-Future<_Scenario> runScenario(
-    String label, int matches, int homeValue, int awayValue) async {
+Future<_Scenario> _runScenario(
+  String label,
+  int matches,
+  int homeValue,
+  int awayValue,
+) async {
   final scores = <(int, int)>[];
   final statsList = <MatchStatsReport>[];
   for (var m = 0; m < matches; m++) {
@@ -133,7 +149,7 @@ void main() {
   group('engine calibration vs real football (even strength)', () {
     late _Scenario even;
     setUpAll(() async {
-      even = await runScenario('even', matches, 20_000_000, 20_000_000);
+      even = await _runScenario('even', matches, 20_000_000, 20_000_000);
     });
 
     test('average goals per match lands in the real band 2.4–2.9', () {
@@ -141,16 +157,14 @@ void main() {
       expect(even.avgGoals, lessThan(2.9));
     });
 
-    test('goalless/low-scoring matches stay common (real ~30% under 2)',
-        () {
+    test('goalless/low-scoring matches stay common (real ~30% under 2)', () {
       final under2 = even.scores
           .where((s) => s.$1 + s.$2 <= 1)
           .length; // 0-0, 1-0, 0-1
       expect(under2 / even.matches, greaterThan(0.18));
     });
 
-    test('6+ goal thrillers are rare (real ~4%) and 9+ never at even',
-        () {
+    test('6+ goal thrillers are rare (real ~4%) and 9+ never at even', () {
       expect(even.share6Plus, lessThan(0.065));
       expect(even.maxGoals, lessThan(9));
     });
@@ -170,8 +184,11 @@ void main() {
     test('fouls 16–24 and corners 3.5–6.5 per match', () {
       expect(even.foulsPerMatch, greaterThan(16));
       expect(even.foulsPerMatch, lessThan(24));
-      final corners = even.statsList.fold<int>(
-              0, (a, s) => a + s.home.corners + s.away.corners) /
+      final corners =
+          even.statsList.fold<int>(
+            0,
+            (a, s) => a + s.home.corners + s.away.corners,
+          ) /
           even.matches;
       expect(corners, greaterThan(3.5));
       expect(corners, lessThan(6.5));
@@ -182,8 +199,7 @@ void main() {
       expect(even.favouriteWins, lessThan(0.52));
     });
 
-    test('possession stays in a plausible band (48–56%) at even strength',
-        () {
+    test('possession stays in a plausible band (48–56%) at even strength', () {
       expect(even.avgPossessionHome, greaterThan(48));
       expect(even.avgPossessionHome, lessThan(56));
     });
@@ -194,7 +210,7 @@ void main() {
     setUpAll(() async {
       // €100M squad (OVR ~88) vs €5M squad (OVR ~71): a 17-point class
       // difference — title winner vs relegation fodder.
-      gap = await runScenario('gap', matches, 100_000_000, 5_000_000);
+      gap = await _runScenario('gap', matches, 100_000_000, 5_000_000);
     });
 
     test('the favourite dominates: 72–88% wins', () {
@@ -202,16 +218,14 @@ void main() {
       expect(gap.favouriteWins, lessThan(0.88));
     });
 
-    test('but scorelines stay REAL: avg under 3.9, 6+ goals under 15%',
-        () {
+    test('but scorelines stay REAL: avg under 3.9, 6+ goals under 15%', () {
       expect(gap.avgGoals, greaterThan(2.9));
       expect(gap.avgGoals, lessThan(3.9));
       expect(gap.share6Plus, lessThan(0.15));
       expect(gap.maxGoals, lessThan(10));
     });
 
-    test('the favourite outshoots the underdog, not out-scores-per-shot',
-        () {
+    test('the favourite outshoots the underdog, not out-scores-per-shot', () {
       final favShots = gap.statsList.fold<int>(0, (a, s) => a + s.home.shots);
       final dogShots = gap.statsList.fold<int>(0, (a, s) => a + s.away.shots);
       expect(favShots, greaterThan(dogShots * 1.15));
@@ -224,8 +238,7 @@ void main() {
       expect(favRate / dogRate, lessThan(1.9));
     });
 
-    test('possession dominance is strong but bounded (max ~65% average)',
-        () {
+    test('possession dominance is strong but bounded (max ~65% average)', () {
       expect(gap.avgPossessionHome, greaterThan(56));
       expect(gap.avgPossessionHome, lessThan(66));
     });
@@ -236,22 +249,20 @@ void main() {
     setUpAll(() async {
       // €180M galacticos vs €2M minnows: the widest gap the game can
       // field (OVR ~91 vs ~65). Still must not produce basketball.
-      huge = await runScenario('huge', matches ~/ 2, 180_000_000, 2_000_000);
+      huge = await _runScenario('huge', matches ~/ 2, 180_000_000, 2_000_000);
     });
 
-    test('avg goals stay under 4.4 and 8+ blowouts stay exceptional',
-        () {
+    test('avg goals stay under 4.4 and 8+ blowouts stay exceptional', () {
       expect(huge.avgGoals, lessThan(4.4));
       expect(
-          huge.scores.where((s) => s.$1 + s.$2 >= 8).length / huge.matches,
-          lessThan(0.06));
+        huge.scores.where((s) => s.$1 + s.$2 >= 8).length / huge.matches,
+        lessThan(0.06),
+      );
       expect(huge.maxGoals, lessThan(11));
     });
 
-    test('the minnow still creates chances of its own (shots > 5/team)',
-        () {
-      final dogShots =
-          huge.statsList.fold<int>(0, (a, s) => a + s.away.shots);
+    test('the minnow still creates chances of its own (shots > 5/team)', () {
+      final dogShots = huge.statsList.fold<int>(0, (a, s) => a + s.away.shots);
       expect(dogShots / huge.matches, greaterThan(5));
     });
   });

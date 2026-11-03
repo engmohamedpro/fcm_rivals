@@ -46,7 +46,7 @@ class FcmFullLogo extends StatelessWidget {
           filterQuality: FilterQuality.medium,
           // A missing asset must never break the store: fall back to the
           // transparent wordmark.
-          errorBuilder: (_, __, ___) => FcmWordmark(size: size * 0.3),
+          errorBuilder: (_, _, _) => FcmWordmark(size: size * 0.3),
         ),
       ),
     );
@@ -79,7 +79,7 @@ class FcmLogoLoading extends StatelessWidget {
           cacheWidth: 600,
           fit: BoxFit.contain,
           // Never let a missing/undecodable asset break startup.
-          errorBuilder: (_, __, ___) => const FcmWordmark(size: 40),
+          errorBuilder: (_, _, _) => const FcmWordmark(size: 40),
         ),
       ),
     );
@@ -102,7 +102,7 @@ class FcmWordmark extends StatelessWidget {
       kFcmWordmarkAsset,
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => _FcmTextWordmark(size: size),
+      errorBuilder: (_, _, _) => _FcmTextWordmark(size: size),
     );
   }
 }

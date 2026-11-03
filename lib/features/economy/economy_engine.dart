@@ -106,7 +106,8 @@ class EconomyEngine {
   int economicValueOf(int marketValueEur) {
     if (marketValueEur <= 0) return config.minEconomicValue;
     final logRatio =
-        config.valueGrowthExponent * math.log(marketValueEur / config.valueReferenceEur);
+        config.valueGrowthExponent *
+        math.log(marketValueEur / config.valueReferenceEur);
     final ev = config.economicValueAtReference * math.exp(logRatio);
     return ev.round().clamp(config.minEconomicValue, config.maxEconomicValue);
   }
@@ -130,7 +131,8 @@ class EconomyEngine {
   /// Coin cost of the next upgrade for an owned copy (GDD 8.4).
   int upgradeCostOf(BasePlayer player, int currentUpgradeLevel) {
     final ev = economicValueOf(player.marketValueEur);
-    final cost = ev *
+    final cost =
+        ev *
         config.upgradeValueMultiplier *
         math.pow(config.upgradeLevelGrowth, currentUpgradeLevel + 1);
     return cost.round().clamp(50, config.maxEconomicValue);

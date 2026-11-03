@@ -42,7 +42,9 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e'.replaceFirst('CollectionException: ', ''))),
+          SnackBar(
+            content: Text('$e'.replaceFirst('CollectionException: ', '')),
+          ),
         );
       }
     } finally {
@@ -66,7 +68,8 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
             index: i,
             child: Padding(
               padding: EdgeInsets.only(
-                  bottom: i == Facility.values.length - 1 ? 0 : 16),
+                bottom: i == Facility.values.length - 1 ? 0 : 16,
+              ),
               child: FacilityCard(
                 facility: Facility.values[i],
                 level: campus.levelOf(Facility.values[i]),

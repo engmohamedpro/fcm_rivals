@@ -9,16 +9,20 @@ BasePlayer player({
   int id = 1,
   Position position = Position.st,
   int marketValueEur = 1_000_000,
-}) =>
-    BasePlayer(
-      playerId: id,
-      name: 'Test $id',
-      position: position,
-      nationality: 'Egypt',
-      marketValueEur: marketValueEur,
-      baseStats: const BaseStats(
-          overall: 50, attack: 55, support: 50, defence: 45, goalkeeping: 0),
-    );
+}) => BasePlayer(
+  playerId: id,
+  name: 'Test $id',
+  position: position,
+  nationality: 'Egypt',
+  marketValueEur: marketValueEur,
+  baseStats: const BaseStats(
+    overall: 50,
+    attack: 55,
+    support: 50,
+    defence: 45,
+    goalkeeping: 0,
+  ),
+);
 
 void main() {
   group('EconomyEngine economic value', () {
@@ -95,8 +99,14 @@ void main() {
     });
 
     test('cost grows with market value', () {
-      final cheap = eco.upgradeCostOf(player(id: 1, marketValueEur: 500_000), 0);
-      final star = eco.upgradeCostOf(player(id: 2, marketValueEur: 100_000_000), 0);
+      final cheap = eco.upgradeCostOf(
+        player(id: 1, marketValueEur: 500_000),
+        0,
+      );
+      final star = eco.upgradeCostOf(
+        player(id: 2, marketValueEur: 100_000_000),
+        0,
+      );
       expect(star, greaterThan(cheap));
     });
   });

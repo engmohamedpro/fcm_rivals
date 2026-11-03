@@ -13,18 +13,23 @@ import 'package:fcm_rivals/features/squad/squad_swap.dart';
 import 'package:fcm_rivals/features/squad/squad_view.dart';
 
 PlayerCard _card(int id, Position position) => PlayerCard(
-      ownedId: id,
-      upgradeLevel: 0,
-      base: BasePlayer(
-        playerId: 1000 + id,
-        name: 'First Surn$id',
-        position: position,
-        nationality: 'Egypt',
-        marketValueEur: 5_000_000,
-        baseStats: const BaseStats(
-            overall: 80, attack: 82, support: 75, defence: 40, goalkeeping: 0),
-      ),
-    );
+  ownedId: id,
+  upgradeLevel: 0,
+  base: BasePlayer(
+    playerId: 1000 + id,
+    name: 'First Surn$id',
+    position: position,
+    nationality: 'Egypt',
+    marketValueEur: 5_000_000,
+    baseStats: const BaseStats(
+      overall: 80,
+      attack: 82,
+      support: 75,
+      defence: 40,
+      goalkeeping: 0,
+    ),
+  ),
+);
 
 final _f433 = formationByCode('4-3-3');
 
@@ -34,14 +39,23 @@ Map<int, PlayerCard> _squad() {
     squad[i] = _card(i, _f433.slots[i].position);
   }
   const bench = [
-    Position.gk, Position.cb, Position.lb, Position.cm,
-    Position.st, Position.rw, Position.cdm,
+    Position.gk,
+    Position.cb,
+    Position.lb,
+    Position.cm,
+    Position.st,
+    Position.rw,
+    Position.cdm,
   ];
   for (var i = 0; i < 7; i++) {
     squad[11 + i] = _card(11 + i, bench[i]);
   }
   const reserves = [
-    Position.st, Position.cam, Position.rb, Position.lw, Position.cb,
+    Position.st,
+    Position.cam,
+    Position.rb,
+    Position.lw,
+    Position.cb,
   ];
   for (var i = 0; i < 5; i++) {
     squad[18 + i] = _card(18 + i, reserves[i]);
@@ -51,7 +65,11 @@ Map<int, PlayerCard> _squad() {
 
 typedef _Drop = ({PlayerCard dragged, SquadDropTarget target});
 
-Widget _host(Map<int, PlayerCard> squad, {List<_Drop>? drops, bool swap = true}) {
+Widget _host(
+  Map<int, PlayerCard> squad, {
+  List<_Drop>? drops,
+  bool swap = true,
+}) {
   final xi = {for (var i = 0; i < 11; i++) i: squad[i]!};
   final bench = [for (var i = 11; i < 18; i++) squad[i]!];
   final reserves = [for (var i = 18; i < 23; i++) squad[i]!];
@@ -110,30 +128,37 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  testWidgets('with swapping on, every card is a hold-to-drag card',
-      (WidgetTester tester) async {
+  testWidgets('with swapping on, every card is a hold-to-drag card', (
+    WidgetTester tester,
+  ) async {
     bigScreen(tester);
     await tester.pumpWidget(_host(_squad()));
     await tester.pump(const Duration(seconds: 2));
     // 11 starters + 7 bench + 5 reserves.
     expect(find.byType(LongPressDraggable<PlayerCard>), findsNWidgets(23));
-    expect(find.text('Hold a player and drop him on another to swap'),
-        findsOneWidget);
+    expect(
+      find.text('Hold a player and drop him on another to swap'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('without swapping there is nothing to drag',
-      (WidgetTester tester) async {
+  testWidgets('without swapping there is nothing to drag', (
+    WidgetTester tester,
+  ) async {
     bigScreen(tester);
     await tester.pumpWidget(_host(_squad(), swap: false));
     await tester.pump(const Duration(seconds: 2));
     expect(find.byType(LongPressDraggable<PlayerCard>), findsNothing);
     expect(find.byType(DragTarget<PlayerCard>), findsNothing);
-    expect(find.text('Hold a player and drop him on another to swap'),
-        findsNothing);
+    expect(
+      find.text('Hold a player and drop him on another to swap'),
+      findsNothing,
+    );
   });
 
-  testWidgets('dropping a bench player on a starter reports the swap',
-      (WidgetTester tester) async {
+  testWidgets('dropping a bench player on a starter reports the swap', (
+    WidgetTester tester,
+  ) async {
     bigScreen(tester);
     final squad = _squad();
     final drops = <_Drop>[];
@@ -147,8 +172,9 @@ void main() {
     expect(drops.single.target.card?.ownedId, 9);
   });
 
-  testWidgets('a pitch player can be dropped on the reserves too',
-      (WidgetTester tester) async {
+  testWidgets('a pitch player can be dropped on the reserves too', (
+    WidgetTester tester,
+  ) async {
     bigScreen(tester);
     final drops = <_Drop>[];
     await tester.pumpWidget(_host(_squad(), drops: drops));
@@ -182,8 +208,9 @@ void main() {
     expect(verdict.rejection, contains('needs a ST'));
   });
 
-  testWidgets('dropping a card on itself does nothing',
-      (WidgetTester tester) async {
+  testWidgets('dropping a card on itself does nothing', (
+    WidgetTester tester,
+  ) async {
     bigScreen(tester);
     final drops = <_Drop>[];
     await tester.pumpWidget(_host(_squad(), drops: drops));
@@ -192,36 +219,39 @@ void main() {
     expect(drops, isEmpty);
   });
 
-  testWidgets('a quick tap still works — only a long press drags',
-      (WidgetTester tester) async {
+  testWidgets('a quick tap still works — only a long press drags', (
+    WidgetTester tester,
+  ) async {
     bigScreen(tester);
     final drops = <_Drop>[];
     final tapped = <int>[];
     final squad = _squad();
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: TacticsSetupView(
-            formationCode: '4-3-3',
-            style: PlayingStyle.balanced,
-            mentality: Mentality.balanced,
-            xi: {for (var i = 0; i < 11; i++) i: squad[i]!},
-            bench: [for (var i = 11; i < 18; i++) squad[i]!],
-            reserves: [for (var i = 18; i < 23; i++) squad[i]!],
-            onFormation: (_) {},
-            onStyle: (_) {},
-            onMentality: (_) {},
-            showStamina: false,
-            showStats: false,
-            onPlayerTap: (c) => tapped.add(c.ownedId),
-            swapping: SquadSwapping(
-              rejection: (_, __) => null,
-              onSwap: (d, t) => drops.add((dragged: d, target: t)),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TacticsSetupView(
+              formationCode: '4-3-3',
+              style: PlayingStyle.balanced,
+              mentality: Mentality.balanced,
+              xi: {for (var i = 0; i < 11; i++) i: squad[i]!},
+              bench: [for (var i = 11; i < 18; i++) squad[i]!],
+              reserves: [for (var i = 18; i < 23; i++) squad[i]!],
+              onFormation: (_) {},
+              onStyle: (_) {},
+              onMentality: (_) {},
+              showStamina: false,
+              showStats: false,
+              onPlayerTap: (c) => tapped.add(c.ownedId),
+              swapping: SquadSwapping(
+                rejection: (_, _) => null,
+                onSwap: (d, t) => drops.add((dragged: d, target: t)),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump(const Duration(seconds: 2));
     await tester.tap(find.text('SURN15'));
     await tester.pump(const Duration(milliseconds: 100));

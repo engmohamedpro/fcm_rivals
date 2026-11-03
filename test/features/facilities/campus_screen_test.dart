@@ -38,31 +38,39 @@ void main() {
   });
 
   Future<void> seedStore(WidgetTester tester, {int coins = 50_000}) async {
-    final jsonText = await tester
-        .runAsync(() => rootBundle.loadString('assets/data/players_v1.json'));
+    final jsonText = await tester.runAsync(
+      () => rootBundle.loadString('assets/data/players_v1.json'),
+    );
     await tester.runAsync(() => store.importBundledDataset(jsonText!));
-    await tester.runAsync(() => store.createClub(
-        clubName: 'Pyramid United', managerName: 'Mohamed', crestIndex: 0));
+    await tester.runAsync(
+      () => store.createClub(
+        clubName: 'Pyramid United',
+        managerName: 'Mohamed',
+        crestIndex: 0,
+      ),
+    );
     if (coins != 0) {
       // createClub starts the wallet at 0; top it up for upgrade tests.
       await tester.runAsync(() async {
         final club = await store.getClub();
-        await (db.update(db.clubs)..where((c) => c.id.equals(club!.id)))
-            .write(ClubsCompanion(coins: Value(coins)));
+        await (db.update(db.clubs)..where((c) => c.id.equals(club!.id))).write(
+          ClubsCompanion(coins: Value(coins)),
+        );
       });
     }
   }
 
   Future<void> pumpScreen(WidgetTester tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        collectionStoreProvider.overrideWith((ref) => store),
-      ],
-      child: const MaterialApp(home: Scaffold(body: CampusScreen())),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [collectionStoreProvider.overrideWith((ref) => store)],
+        child: const MaterialApp(home: Scaffold(body: CampusScreen())),
+      ),
+    );
     // Real drift I/O: let the club/campus providers resolve.
-    await tester
-        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -100,8 +108,10 @@ void main() {
     // No header at all: the tab jumps straight into the facility list
     // (the shell's masthead already names the game).
     expect(find.text('Club campus'), findsNothing);
-    expect(find.text('Permanent boosts — every level costs more.'),
-        findsNothing);
+    expect(
+      find.text('Permanent boosts — every level costs more.'),
+      findsNothing,
+    );
     expect(find.textContaining('shopping spree'), findsNothing);
     expect(find.textContaining('across seasons'), findsNothing);
   });
@@ -119,13 +129,16 @@ void main() {
     expect(find.text('+1.8%'), findsNothing);
 
     // Tap the Attack Academy's price button (first card in the list).
-    final card = tester.widgetList<FacilityCard>(find.byType(FacilityCard)).first;
+    final card = tester
+        .widgetList<FacilityCard>(find.byType(FacilityCard))
+        .first;
     expect(card.facility, Facility.attack);
     await tester.tap(find.byType(FcmButton).first);
     await tester.pumpAndSettle();
     // Real I/O for the upgrade write + provider invalidation.
-    await tester
-        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
     await tester.pumpAndSettle();
 
     // Now level 1: live effect with the gold '+1.8%' next-level delta.
@@ -135,8 +148,9 @@ void main() {
     expect(campus!.levelOf(Facility.attack), 1);
   });
 
-  testWidgets('a maxed facility shows MAX instead of a price button',
-      (WidgetTester tester) async {
+  testWidgets('a maxed facility shows MAX instead of a price button', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -145,11 +159,15 @@ void main() {
     await seedStore(tester);
     await tester.runAsync(() async {
       final club = await store.getClub();
-      await db.into(db.facilityLevels).insert(FacilityLevelsCompanion.insert(
-            clubId: club!.id,
-            facility: Facility.attack.name,
-            level: const Value(10),
-          ));
+      await db
+          .into(db.facilityLevels)
+          .insert(
+            FacilityLevelsCompanion.insert(
+              clubId: club!.id,
+              facility: Facility.attack.name,
+              level: const Value(10),
+            ),
+          );
     });
     await pumpScreen(tester);
 

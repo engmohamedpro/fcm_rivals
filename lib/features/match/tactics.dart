@@ -19,16 +19,116 @@ library;
 /// and High Press sit below 50% by design: their 1.30/1.22 stamina
 /// multipliers are the real cost.
 enum PlayingStyle {
-  possession('Possession', StyleModifiers(attack: 1.00, defence: 1.00, possession: 1.06, chance: 0.95, stamina: 1.00, passAccuracy: 1.06)),
-  tikiTaka('Tiki-Taka', StyleModifiers(attack: 0.95, defence: 1.02, possession: 1.08, chance: 0.92, stamina: 0.95, passAccuracy: 1.10)),
-  directPlay('Direct Play', StyleModifiers(attack: 1.08, defence: 0.96, possession: 0.94, chance: 1.08, stamina: 1.02, passAccuracy: 0.92)),
-  counterAttack('Counter Attack', StyleModifiers(attack: 1.12, defence: 1.05, possession: 0.88, chance: 1.15, stamina: 0.92, passAccuracy: 0.90)),
-  gegenpressing('Gegenpressing', StyleModifiers(attack: 1.10, defence: 0.94, possession: 1.03, chance: 1.10, stamina: 1.30, passAccuracy: 0.94)),
-  highPress('High Press', StyleModifiers(attack: 1.06, defence: 0.92, possession: 1.03, chance: 1.06, stamina: 1.22, passAccuracy: 0.94)),
-  wingPlay('Wing Play', StyleModifiers(attack: 1.06, defence: 1.00, possession: 0.98, chance: 1.05, stamina: 1.05, passAccuracy: 0.98)),
-  longBall('Long Ball', StyleModifiers(attack: 1.02, defence: 1.03, possession: 0.90, chance: 1.02, stamina: 0.94, passAccuracy: 0.84)),
-  lowBlock('Low Block', StyleModifiers(attack: 0.88, defence: 1.14, possession: 0.88, chance: 0.88, stamina: 0.85, passAccuracy: 0.92)),
-  balanced('Balanced', StyleModifiers(attack: 1.00, defence: 1.00, possession: 1.00, chance: 1.00, stamina: 1.00, passAccuracy: 1.00));
+  possession(
+    'Possession',
+    StyleModifiers(
+      attack: 1.00,
+      defence: 1.00,
+      possession: 1.06,
+      chance: 0.95,
+      stamina: 1.00,
+      passAccuracy: 1.06,
+    ),
+  ),
+  tikiTaka(
+    'Tiki-Taka',
+    StyleModifiers(
+      attack: 0.95,
+      defence: 1.02,
+      possession: 1.08,
+      chance: 0.92,
+      stamina: 0.95,
+      passAccuracy: 1.10,
+    ),
+  ),
+  directPlay(
+    'Direct Play',
+    StyleModifiers(
+      attack: 1.08,
+      defence: 0.96,
+      possession: 0.94,
+      chance: 1.08,
+      stamina: 1.02,
+      passAccuracy: 0.92,
+    ),
+  ),
+  counterAttack(
+    'Counter Attack',
+    StyleModifiers(
+      attack: 1.12,
+      defence: 1.05,
+      possession: 0.88,
+      chance: 1.15,
+      stamina: 0.92,
+      passAccuracy: 0.90,
+    ),
+  ),
+  gegenpressing(
+    'Gegenpressing',
+    StyleModifiers(
+      attack: 1.10,
+      defence: 0.94,
+      possession: 1.03,
+      chance: 1.10,
+      stamina: 1.30,
+      passAccuracy: 0.94,
+    ),
+  ),
+  highPress(
+    'High Press',
+    StyleModifiers(
+      attack: 1.06,
+      defence: 0.92,
+      possession: 1.03,
+      chance: 1.06,
+      stamina: 1.22,
+      passAccuracy: 0.94,
+    ),
+  ),
+  wingPlay(
+    'Wing Play',
+    StyleModifiers(
+      attack: 1.06,
+      defence: 1.00,
+      possession: 0.98,
+      chance: 1.05,
+      stamina: 1.05,
+      passAccuracy: 0.98,
+    ),
+  ),
+  longBall(
+    'Long Ball',
+    StyleModifiers(
+      attack: 1.02,
+      defence: 1.03,
+      possession: 0.90,
+      chance: 1.02,
+      stamina: 0.94,
+      passAccuracy: 0.84,
+    ),
+  ),
+  lowBlock(
+    'Low Block',
+    StyleModifiers(
+      attack: 0.88,
+      defence: 1.14,
+      possession: 0.88,
+      chance: 0.88,
+      stamina: 0.85,
+      passAccuracy: 0.92,
+    ),
+  ),
+  balanced(
+    'Balanced',
+    StyleModifiers(
+      attack: 1.00,
+      defence: 1.00,
+      possession: 1.00,
+      chance: 1.00,
+      stamina: 1.00,
+      passAccuracy: 1.00,
+    ),
+  );
 
   const PlayingStyle(this.displayName, this.modifiers);
 
@@ -108,7 +208,12 @@ enum Mentality {
   attacking('Attacking', 1.10, 0.95, 1.08),
   veryAttacking('Very Attacking', 1.18, 0.93, 1.15);
 
-  const Mentality(this.displayName, this.attackMod, this.defenceMod, this.staminaMod);
+  const Mentality(
+    this.displayName,
+    this.attackMod,
+    this.defenceMod,
+    this.staminaMod,
+  );
 
   final String displayName;
 
@@ -123,7 +228,8 @@ enum Mentality {
   final double staminaMod;
 
   /// Shifts one step towards attacking; clamps at the range ends.
-  Mentality moreAttacking() => index == values.length - 1 ? this : values[index + 1];
+  Mentality moreAttacking() =>
+      index == values.length - 1 ? this : values[index + 1];
 
   /// Shifts one step towards defensive; clamps at the range ends.
   Mentality moreDefensive() => index == 0 ? this : values[index - 1];
@@ -164,11 +270,26 @@ int mentalityToScale(Mentality mentality) =>
 /// percentage modifiers. One active per team at a time; a new action
 /// replaces the previous one.
 enum LiveMatchAction {
-  pushForward('Push Forward', ActionModifiers(attack: 1.15, defence: 0.90, stamina: 1.05)),
-  defendDeep('Defend Deep', ActionModifiers(attack: 0.88, defence: 1.14, stamina: 0.95)),
-  pressMore('Press More', ActionModifiers(attack: 1.02, defence: 1.04, stamina: 1.25)),
-  stayCalm('Stay Calm', ActionModifiers(attack: 1.00, defence: 1.02, stamina: 0.90)),
-  playMoreDirect('Play More Direct', ActionModifiers(attack: 1.08, defence: 0.98, stamina: 1.00));
+  pushForward(
+    'Push Forward',
+    ActionModifiers(attack: 1.15, defence: 0.90, stamina: 1.05),
+  ),
+  defendDeep(
+    'Defend Deep',
+    ActionModifiers(attack: 0.88, defence: 1.14, stamina: 0.95),
+  ),
+  pressMore(
+    'Press More',
+    ActionModifiers(attack: 1.02, defence: 1.04, stamina: 1.25),
+  ),
+  stayCalm(
+    'Stay Calm',
+    ActionModifiers(attack: 1.00, defence: 1.02, stamina: 0.90),
+  ),
+  playMoreDirect(
+    'Play More Direct',
+    ActionModifiers(attack: 1.08, defence: 0.98, stamina: 1.00),
+  );
 
   const LiveMatchAction(this.displayName, this.modifiers);
 

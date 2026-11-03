@@ -28,14 +28,19 @@ void main() {
     test('canMerge respects the level cap', () {
       expect(engine.canMerge(targetLevel: 0, duplicateLevel: 0), isTrue);
       expect(
-          engine.canMerge(
-              targetLevel: UpgradeEngine.maxUpgradeLevel - 1,
-              duplicateLevel: 0),
-          isTrue);
+        engine.canMerge(
+          targetLevel: UpgradeEngine.maxUpgradeLevel - 1,
+          duplicateLevel: 0,
+        ),
+        isTrue,
+      );
       expect(
-          engine.canMerge(
-              targetLevel: UpgradeEngine.maxUpgradeLevel, duplicateLevel: 0),
-          isFalse);
+        engine.canMerge(
+          targetLevel: UpgradeEngine.maxUpgradeLevel,
+          duplicateLevel: 0,
+        ),
+        isFalse,
+      );
     });
   });
 
@@ -44,7 +49,10 @@ void main() {
 
     test('grants exactly one point per level gained', () {
       final gain = engine.allocateAttributeGain(
-          position: Position.st, levelsGained: 3, random: math.Random(7));
+        position: Position.st,
+        levelsGained: 3,
+        random: math.Random(7),
+      );
       final total = gain.values.fold(0, (a, b) => a + b);
       expect(total, 3);
     });
@@ -52,26 +60,44 @@ void main() {
     test('goalkeepers never gain Attack or outfield attributes only', () {
       for (var seed = 0; seed < 50; seed++) {
         final gain = engine.allocateAttributeGain(
-            position: Position.gk, levelsGained: 4, random: math.Random(seed));
-        expect(gain.containsKey(PlayerAttribute.attack), isFalse,
-            reason: 'seed $seed');
+          position: Position.gk,
+          levelsGained: 4,
+          random: math.Random(seed),
+        );
+        expect(
+          gain.containsKey(PlayerAttribute.attack),
+          isFalse,
+          reason: 'seed $seed',
+        );
       }
     });
 
     test('strikers never gain Goalkeeping', () {
       for (var seed = 0; seed < 50; seed++) {
         final gain = engine.allocateAttributeGain(
-            position: Position.st, levelsGained: 4, random: math.Random(seed));
-        expect(gain.containsKey(PlayerAttribute.goalkeeping), isFalse,
-            reason: 'seed $seed');
+          position: Position.st,
+          levelsGained: 4,
+          random: math.Random(seed),
+        );
+        expect(
+          gain.containsKey(PlayerAttribute.goalkeeping),
+          isFalse,
+          reason: 'seed $seed',
+        );
       }
     });
 
     test('deterministic with the same seed (development rule 7)', () {
       final a = engine.allocateAttributeGain(
-          position: Position.cam, levelsGained: 5, random: math.Random(42));
+        position: Position.cam,
+        levelsGained: 5,
+        random: math.Random(42),
+      );
       final b = engine.allocateAttributeGain(
-          position: Position.cam, levelsGained: 5, random: math.Random(42));
+        position: Position.cam,
+        levelsGained: 5,
+        random: math.Random(42),
+      );
       expect(a, b);
     });
 
@@ -81,7 +107,10 @@ void main() {
       const samples = 2000;
       for (var s = 0; s < samples; s++) {
         final gain = engine.allocateAttributeGain(
-            position: Position.cb, levelsGained: 1, random: math.Random(s));
+          position: Position.cb,
+          levelsGained: 1,
+          random: math.Random(s),
+        );
         if (gain.containsKey(PlayerAttribute.defence)) defencePicks++;
       }
       expect(defencePicks / samples, greaterThan(0.55));
@@ -101,9 +130,13 @@ void main() {
 
     test('zero levels gained grants nothing', () {
       expect(
-          engine.allocateAttributeGain(
-              position: Position.st, levelsGained: 0, random: math.Random(1)),
-          isEmpty);
+        engine.allocateAttributeGain(
+          position: Position.st,
+          levelsGained: 0,
+          random: math.Random(1),
+        ),
+        isEmpty,
+      );
     });
   });
 }

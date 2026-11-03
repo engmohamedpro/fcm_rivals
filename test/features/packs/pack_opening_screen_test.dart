@@ -21,14 +21,19 @@ import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 
 BasePlayer _player({int overall = 75}) => BasePlayer(
-      playerId: 1,
-      name: 'Test Striker',
-      position: Position.st,
-      nationality: 'Brazil',
-      marketValueEur: 90000000,
-      baseStats: BaseStats(
-          overall: overall, attack: 91, support: 72, defence: 40, goalkeeping: 0),
-    );
+  playerId: 1,
+  name: 'Test Striker',
+  position: Position.st,
+  nationality: 'Brazil',
+  marketValueEur: 90000000,
+  baseStats: BaseStats(
+    overall: overall,
+    attack: 91,
+    support: 72,
+    defence: 40,
+    goalkeeping: 0,
+  ),
+);
 
 /// One frame so the first-build controller kick renders — the sequence
 /// starts with it, so tests simply pump the time they need.
@@ -48,19 +53,21 @@ Future<void> _revealAll(WidgetTester tester) async {
 BasePlayer _legend() => _player(overall: 91);
 
 void main() {
-  testWidgets('the pack tears itself open immediately — no tap, no wait',
-      (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_player()]),
-    ));
+  testWidgets('the pack tears itself open immediately — no tap, no wait', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: PackOpeningScreen(players: [_player()])),
+    );
     // The sequence starts with the first frame: no prompt, no close
     // control, and the timeline is already moving (the walkout lands
     // exactly on the schedule the timeline defines, with no 1100ms
     // beat in front of it).
     expect(find.text('TAP TO OPEN'), findsNothing);
     expect(find.byIcon(Icons.close), findsNothing);
-    final idle = tester
-        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    final idle = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('keep-fade')),
+    );
     expect(idle.opacity, 0);
     expect(find.text(flagEmojiFor('Brazil')), findsNothing);
 
@@ -71,14 +78,17 @@ void main() {
     expect(find.text('ST'), findsOneWidget);
   });
 
-  testWidgets('the sealed pack wears the store cell tier metal',
-      (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(
-        players: [_player()],
-        packTint: const Color(0xFF8B5CF6), // rare amethyst
+  testWidgets('the sealed pack wears the store cell tier metal', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PackOpeningScreen(
+          players: [_player()],
+          packTint: const Color(0xFF8B5CF6), // rare amethyst
+        ),
       ),
-    ));
+    );
     // Painting with a tint must not throw; the close control is gone
     // throughout — there is no sealed-pause to escape anymore.
     await tester.pump(const Duration(milliseconds: 200));
@@ -87,16 +97,18 @@ void main() {
     expect(find.byIcon(Icons.close), findsNothing);
   });
 
-  testWidgets('sequence runs from sealed pack to the revealed stat card',
-      (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_player()]),
-    ));
+  testWidgets('sequence runs from sealed pack to the revealed stat card', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: PackOpeningScreen(players: [_player()])),
+    );
 
     // The action row is never offered before the timeline's done mark.
     expect(find.text('TAP TO OPEN'), findsNothing);
-    final keepOpacity = tester
-        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    final keepOpacity = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('keep-fade')),
+    );
     expect(keepOpacity.opacity, 0);
 
     // The sequence is underway from the first frame — no tap needed.
@@ -132,27 +144,32 @@ void main() {
     expect(find.text('EPIC'), findsOneWidget);
     // The fade-in itself takes 300ms after the done mark.
     await tester.pump(const Duration(milliseconds: 400));
-    final done = tester
-        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    final done = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('keep-fade')),
+    );
     expect(done.opacity, 1);
   });
 
-  testWidgets('no skip control — the reveal always plays in full',
-      (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(
-        players: [_player(overall: 55)],
-        ownedIds: const [77],
-        onSell: (ownedId) async {},
+  testWidgets('no skip control — the reveal always plays in full', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PackOpeningScreen(
+          players: [_player(overall: 55)],
+          ownedIds: const [77],
+          onSell: (ownedId) async {},
+        ),
       ),
-    ));
+    );
     await _autoOpen(tester);
     // Halfway through the timeline there is still no way to skip.
     await tester.pump(const Duration(seconds: 4));
     expect(find.text('SKIP'), findsNothing);
     // The action row exists but stays invisible until the done mark.
-    final mid = tester
-        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    final mid = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('keep-fade')),
+    );
     expect(mid.opacity, 0);
     await tester.pump(const Duration(seconds: 4));
     await tester.pump(const Duration(milliseconds: 400));
@@ -161,25 +178,27 @@ void main() {
     // SELL carries the player's coin value (overall 55 → the economy's
     // sell price of a 90M-market-value player) behind the same C coin
     // glyph as the top-bar balance.
-    final sellValue =
-        const EconomyEngine().sellPriceOf(_player(overall: 55));
+    final sellValue = const EconomyEngine().sellPriceOf(_player(overall: 55));
     expect(find.text('SELL'), findsOneWidget);
     expect(find.text(FcmCoinChip.compact(sellValue)), findsOneWidget);
     expect(find.byType(FcmCoinGlyph), findsOneWidget);
-    final done = tester
-        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    final done = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('keep-fade')),
+    );
     expect(done.opacity, 1);
   });
 
   testWidgets('SELL sells the revealed player and moves on', (tester) async {
     final sold = <int>[];
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(
-        players: [_player(), _player(overall: 60)],
-        ownedIds: const [501, 502],
-        onSell: (ownedId) async => sold.add(ownedId),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PackOpeningScreen(
+          players: [_player(), _player(overall: 60)],
+          ownedIds: const [501, 502],
+          onSell: (ownedId) async => sold.add(ownedId),
+        ),
       ),
-    ));
+    );
     await _revealAll(tester);
 
     await tester.tap(find.textContaining('SELL'));
@@ -195,13 +214,15 @@ void main() {
 
   testWidgets('KEEP advances without selling', (tester) async {
     final sold = <int>[];
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(
-        players: [_player(), _player(overall: 60)],
-        ownedIds: const [501, 502],
-        onSell: (ownedId) async => sold.add(ownedId),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PackOpeningScreen(
+          players: [_player(), _player(overall: 60)],
+          ownedIds: const [501, 502],
+          onSell: (ownedId) async => sold.add(ownedId),
+        ),
       ),
-    ));
+    );
     await _revealAll(tester);
 
     await tester.tap(find.text('NEXT PLAYER  1/2'));
@@ -212,22 +233,26 @@ void main() {
     expect(find.text('KEEP PLAYER'), findsOneWidget);
   });
 
-  testWidgets('no onSell callback — SELL is hidden, KEEP works alone',
-      (tester) async {
+  testWidgets('no onSell callback — SELL is hidden, KEEP works alone', (
+    tester,
+  ) async {
     // Pushed like the store does (a pop on MaterialApp's home route
     // would be a no-op, so the reveal is always tested as a route).
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(
-        builder: (context) => FilledButton(
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => FilledButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
                 fullscreenDialog: true,
-                builder: (_) =>
-                    PackOpeningScreen(players: [_player()]),
-              )),
-          child: const Text('PUSH'),
+                builder: (_) => PackOpeningScreen(players: [_player()]),
+              ),
+            ),
+            child: const Text('PUSH'),
+          ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('PUSH'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -246,22 +271,26 @@ void main() {
     expect(find.text('PUSH'), findsOneWidget);
   });
 
-  testWidgets('a legendary pull runs a much longer, special timeline',
-      (tester) async {
+  testWidgets('a legendary pull runs a much longer, special timeline', (
+    tester,
+  ) async {
     // The standard reveal is 8s; the legendary one is more than double.
-    expect(kLegendaryRevealDuration.inMilliseconds,
-        greaterThan(2 * kStandardRevealDuration.inMilliseconds));
+    expect(
+      kLegendaryRevealDuration.inMilliseconds,
+      greaterThan(2 * kStandardRevealDuration.inMilliseconds),
+    );
 
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_legend()]),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(home: PackOpeningScreen(players: [_legend()])),
+    );
     await _autoOpen(tester);
 
     // Where an epic pull would already be done (8s), the legend is
     // still building: no buttons, no name, no stat card yet.
     await tester.pump(const Duration(seconds: 8));
-    final mid = tester
-        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
+    final mid = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('keep-fade')),
+    );
     expect(mid.opacity, 0);
     expect(find.text('TEST STRIKER'), findsNothing);
     expect(find.text('LEGENDARY PULL!'), findsNothing);
@@ -270,56 +299,63 @@ void main() {
   });
 
   testWidgets(
-      'legendary walkout lands flag then position — the RATING and the NAME '
-      'only appear on the card', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_legend()]),
-    ));
-    await _autoOpen(tester);
+    'legendary walkout lands flag then position — the RATING and the NAME '
+    'only appear on the card',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: PackOpeningScreen(players: [_legend()])),
+      );
+      await _autoOpen(tester);
 
-    // Clue 1 (~0.30–0.37 of 17s): the flag, and nothing else yet.
-    await tester.pump(const Duration(milliseconds: 5600));
-    expect(find.text(flagEmojiFor('Brazil')), findsOneWidget);
-    expect(find.text('TEST STRIKER'), findsNothing);
+      // Clue 1 (~0.30–0.37 of 17s): the flag, and nothing else yet.
+      await tester.pump(const Duration(milliseconds: 5600));
+      expect(find.text(flagEmojiFor('Brazil')), findsOneWidget);
+      expect(find.text('TEST STRIKER'), findsNothing);
 
-    // Clue 2 (~0.385–0.455): the position.
-    await tester.pump(const Duration(milliseconds: 1500));
-    expect(find.text('ST'), findsOneWidget);
+      // Clue 2 (~0.385–0.455): the position.
+      await tester.pump(const Duration(milliseconds: 1500));
+      expect(find.text('ST'), findsOneWidget);
 
-    // Right up to the flip (0.60 = 10.2s) NO rating is on screen: the
-    // overall must not be spoiled before the card is revealed.
-    await tester.pump(const Duration(milliseconds: 2500)); // ~9.6s
-    expect(find.text('91'), findsNothing);
-    expect(find.text('TEST STRIKER'), findsNothing);
+      // Right up to the flip (0.60 = 10.2s) NO rating is on screen: the
+      // overall must not be spoiled before the card is revealed.
+      await tester.pump(const Duration(milliseconds: 2500)); // ~9.6s
+      expect(find.text('91'), findsNothing);
+      expect(find.text('TEST STRIKER'), findsNothing);
 
-    // Card flipped, stats counting up — the rating shows for the first
-    // time, on the card — and the name is still redacted
-    // (name starts at 0.89 = 15.1s).
-    await tester.pump(const Duration(milliseconds: 4900)); // ~14.5s
-    expect(find.text('ATT'), findsOneWidget);
-    expect(find.text('WHO IS IT?'), findsOneWidget);
-    expect(find.text('TEST STRIKER'), findsNothing);
-    final stillHidden = tester
-        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
-    expect(stillHidden.opacity, 0);
+      // Card flipped, stats counting up — the rating shows for the first
+      // time, on the card — and the name is still redacted
+      // (name starts at 0.89 = 15.1s).
+      await tester.pump(const Duration(milliseconds: 4900)); // ~14.5s
+      expect(find.text('ATT'), findsOneWidget);
+      expect(find.text('WHO IS IT?'), findsOneWidget);
+      expect(find.text('TEST STRIKER'), findsNothing);
+      final stillHidden = tester.widget<AnimatedOpacity>(
+        find.byKey(const ValueKey('keep-fade')),
+      );
+      expect(stillHidden.opacity, 0);
 
-    // The name types in, then the finale banner and the action row.
-    await tester.pump(const Duration(milliseconds: 2000)); // ~16.5s
-    expect(find.text('TEST STRIKER'), findsOneWidget);
-    expect(find.text('LEGENDARY PULL!'), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 1000));
-    await tester.pump(const Duration(milliseconds: 400));
-    final done = tester
-        .widget<AnimatedOpacity>(find.byKey(const ValueKey('keep-fade')));
-    expect(done.opacity, 1);
-    expect(find.text('KEEP PLAYER'), findsOneWidget);
-  });
+      // The name types in, then the finale banner and the action row.
+      await tester.pump(const Duration(milliseconds: 2000)); // ~16.5s
+      expect(find.text('TEST STRIKER'), findsOneWidget);
+      expect(find.text('LEGENDARY PULL!'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1000));
+      await tester.pump(const Duration(milliseconds: 400));
+      final done = tester.widget<AnimatedOpacity>(
+        find.byKey(const ValueKey('keep-fade')),
+      );
+      expect(done.opacity, 1);
+      expect(find.text('KEEP PLAYER'), findsOneWidget);
+    },
+  );
 
-  testWidgets('after a legend, the next player plays his own timeline',
-      (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: PackOpeningScreen(players: [_legend(), _player(overall: 60)]),
-    ));
+  testWidgets('after a legend, the next player plays his own timeline', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PackOpeningScreen(players: [_legend(), _player(overall: 60)]),
+      ),
+    );
     await _autoOpen(tester);
     await tester.pump(kLegendaryRevealDuration);
     await tester.pump(const Duration(milliseconds: 400));

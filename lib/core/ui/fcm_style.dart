@@ -110,74 +110,74 @@ enum CardRarity {
 
   /// Legacy pack-tier mapping (0 low .. 2 high).
   static CardRarity fromTier(int tier) => switch (tier) {
-        0 => CardRarity.rare,
-        1 => CardRarity.epic,
-        _ => CardRarity.legendary,
-      };
+    0 => CardRarity.rare,
+    1 => CardRarity.epic,
+    _ => CardRarity.legendary,
+  };
 
   String get label => switch (this) {
-        CardRarity.rare => 'RARE',
-        CardRarity.epic => 'EPIC',
-        CardRarity.legendary => 'LEGENDARY',
-      };
+    CardRarity.rare => 'RARE',
+    CardRarity.epic => 'EPIC',
+    CardRarity.legendary => 'LEGENDARY',
+  };
 
   /// Main accent colour (glow, rays, particles): a jewel ladder — royal
   /// amethyst, royal sapphire, radiant champion gold. Saturated enough
   /// to read at a glance on the charcoal night, three clearly distinct
   /// hues, and legendary still crowns the brand's own gold.
   Color get accent => switch (this) {
-        CardRarity.rare => const Color(0xFF8B5CF6),
-        CardRarity.epic => const Color(0xFF3B82F6),
-        CardRarity.legendary => const Color(0xFFF7C948),
-      };
+    CardRarity.rare => const Color(0xFF8B5CF6),
+    CardRarity.epic => const Color(0xFF3B82F6),
+    CardRarity.legendary => const Color(0xFFF7C948),
+  };
 
   /// Card face gradient, top-left → bottom-right: each gem cast as a
   /// metal — light jewel sheen into the royal tone into its deep shade.
   List<Color> get faceGradient => switch (this) {
-        CardRarity.rare => const [
-            Color(0xFFCDB8FA),
-            Color(0xFF8B5CF6),
-            Color(0xFF36206B),
-          ],
-        CardRarity.epic => const [
-            Color(0xFFBFD6FD),
-            Color(0xFF3B82F6),
-            Color(0xFF14315E),
-          ],
-        CardRarity.legendary => const [
-            Color(0xFFFFF3C4),
-            Color(0xFFE9B93F),
-            Color(0xFF7A4E00),
-          ],
-      };
+    CardRarity.rare => const [
+      Color(0xFFCDB8FA),
+      Color(0xFF8B5CF6),
+      Color(0xFF36206B),
+    ],
+    CardRarity.epic => const [
+      Color(0xFFBFD6FD),
+      Color(0xFF3B82F6),
+      Color(0xFF14315E),
+    ],
+    CardRarity.legendary => const [
+      Color(0xFFFFF3C4),
+      Color(0xFFE9B93F),
+      Color(0xFF7A4E00),
+    ],
+  };
 
   /// Text colour that stays readable on [faceGradient].
   Color get ink => switch (this) {
-        CardRarity.legendary => const Color(0xFF2B1B00),
-        CardRarity.epic => const Color(0xFF0D1B36),
-        CardRarity.rare => const Color(0xFF1F0F45),
-      };
+    CardRarity.legendary => const Color(0xFF2B1B00),
+    CardRarity.epic => const Color(0xFF0D1B36),
+    CardRarity.rare => const Color(0xFF1F0F45),
+  };
 
   /// 1.0 for rare, up to 2.0 for legendary — scales particles, ray length
   /// and glow so the better the pull, the bigger the show.
   double get intensity => switch (this) {
-        CardRarity.rare => 1.0,
-        CardRarity.epic => 1.5,
-        CardRarity.legendary => 2.0,
-      };
+    CardRarity.rare => 1.0,
+    CardRarity.epic => 1.5,
+    CardRarity.legendary => 2.0,
+  };
 }
 
 /// 1st, 2nd, 3rd, 4th… with the 11th/12th/13th exceptions handled —
 /// used for league positions on the Season and pre-match screens.
 String ordinalOf(int n) => switch (n % 100) {
-      11 || 12 || 13 => '${n}th',
-      _ => switch (n % 10) {
-          1 => '${n}st',
-          2 => '${n}nd',
-          3 => '${n}rd',
-          _ => '${n}th',
-        },
-    };
+  11 || 12 || 13 => '${n}th',
+  _ => switch (n % 10) {
+    1 => '${n}st',
+    2 => '${n}nd',
+    3 => '${n}rd',
+    _ => '${n}th',
+  },
+};
 
 /// Fade + gentle rise for every route (replaces the platform default).
 class FcmPageTransitions extends PageTransitionsBuilder {
@@ -199,8 +199,10 @@ class FcmPageTransitions extends PageTransitionsBuilder {
     return FadeTransition(
       opacity: curved,
       child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
-            .animate(curved),
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.04),
+          end: Offset.zero,
+        ).animate(curved),
         child: child,
       ),
     );
@@ -209,18 +211,19 @@ class FcmPageTransitions extends PageTransitionsBuilder {
 
 /// Premium dark Material theme used by the whole app.
 ThemeData buildFcmTheme() {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: FcmColors.gold,
-    brightness: Brightness.dark,
-  ).copyWith(
-    primary: FcmColors.gold,
-    onPrimary: FcmColors.ink,
-    secondary: FcmColors.bronze,
-    surface: FcmColors.surface,
-    surfaceContainerHighest: FcmColors.surfaceHigh,
-    error: FcmColors.danger,
-    onSurfaceVariant: FcmColors.textDim,
-  );
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: FcmColors.gold,
+        brightness: Brightness.dark,
+      ).copyWith(
+        primary: FcmColors.gold,
+        onPrimary: FcmColors.ink,
+        secondary: FcmColors.bronze,
+        surface: FcmColors.surface,
+        surfaceContainerHighest: FcmColors.surfaceHigh,
+        error: FcmColors.danger,
+        onSurfaceVariant: FcmColors.textDim,
+      );
   final base = ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
@@ -229,24 +232,32 @@ ThemeData buildFcmTheme() {
   final text = base.textTheme;
   return base.copyWith(
     scaffoldBackgroundColor: FcmColors.night,
-    pageTransitionsTheme: const PageTransitionsTheme(builders: {
-      TargetPlatform.android: FcmPageTransitions(),
-      TargetPlatform.iOS: FcmPageTransitions(),
-      TargetPlatform.macOS: FcmPageTransitions(),
-      TargetPlatform.windows: FcmPageTransitions(),
-      TargetPlatform.linux: FcmPageTransitions(),
-      TargetPlatform.fuchsia: FcmPageTransitions(),
-    }),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: FcmPageTransitions(),
+        TargetPlatform.iOS: FcmPageTransitions(),
+        TargetPlatform.macOS: FcmPageTransitions(),
+        TargetPlatform.windows: FcmPageTransitions(),
+        TargetPlatform.linux: FcmPageTransitions(),
+        TargetPlatform.fuchsia: FcmPageTransitions(),
+      },
+    ),
     textTheme: text.copyWith(
-      headlineMedium: text.headlineMedium
-          ?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5),
-      headlineSmall: text.headlineSmall
-          ?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.3),
+      headlineMedium: text.headlineMedium?.copyWith(
+        fontWeight: FontWeight.w900,
+        letterSpacing: -0.5,
+      ),
+      headlineSmall: text.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w900,
+        letterSpacing: -0.3,
+      ),
       titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
       titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
       titleSmall: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-      labelLarge: text.labelLarge
-          ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.6),
+      labelLarge: text.labelLarge?.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.6,
+      ),
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
@@ -302,7 +313,9 @@ ThemeData buildFcmTheme() {
       behavior: SnackBarBehavior.floating,
       backgroundColor: FcmColors.surfaceHigh,
       contentTextStyle: const TextStyle(
-          color: Colors.white, fontWeight: FontWeight.w600),
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: const BorderSide(color: Color(0x33FFFFFF)),
@@ -318,9 +331,13 @@ ThemeData buildFcmTheme() {
       selectedColor: FcmColors.gold,
       secondarySelectedColor: FcmColors.gold,
       labelStyle: const TextStyle(
-          color: Colors.white, fontWeight: FontWeight.w700),
+        color: Colors.white,
+        fontWeight: FontWeight.w700,
+      ),
       secondaryLabelStyle: const TextStyle(
-          color: FcmColors.ink, fontWeight: FontWeight.w800),
+        color: FcmColors.ink,
+        fontWeight: FontWeight.w800,
+      ),
       checkmarkColor: FcmColors.ink,
       side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -333,17 +350,20 @@ ThemeData buildFcmTheme() {
       iconColor: FcmColors.gold,
       textColor: Colors.white,
     ),
-    progressIndicatorTheme:
-        const ProgressIndicatorThemeData(color: FcmColors.gold),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: FcmColors.gold,
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: FcmColors.gold,
         foregroundColor: FcmColors.ink,
         textStyle: const TextStyle(
-            fontWeight: FontWeight.w900, letterSpacing: 1.0, fontSize: 15),
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.0,
+          fontSize: 15,
+        ),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -351,10 +371,12 @@ ThemeData buildFcmTheme() {
         foregroundColor: Colors.white,
         side: BorderSide(color: Colors.white.withValues(alpha: 0.28)),
         textStyle: const TextStyle(
-            fontWeight: FontWeight.w800, letterSpacing: 0.6, fontSize: 14),
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.6,
+          fontSize: 14,
+        ),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(

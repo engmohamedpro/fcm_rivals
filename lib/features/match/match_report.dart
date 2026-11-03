@@ -209,8 +209,11 @@ double computeMomentum(
   required int awayTeamId,
   int window = 15,
 }) {
-  final pressure =
-      _momentumPressure(events, homeTeamId: homeTeamId, awayTeamId: awayTeamId);
+  final pressure = _momentumPressure(
+    events,
+    homeTeamId: homeTeamId,
+    awayTeamId: awayTeamId,
+  );
   if (pressure.lastMinute == 0) return 0.5;
   final start = pressure.lastMinute - window < 0
       ? 0
@@ -239,8 +242,11 @@ List<double> computeMomentumSeries(
   required int awayTeamId,
   int window = 15,
 }) {
-  final pressure =
-      _momentumPressure(events, homeTeamId: homeTeamId, awayTeamId: awayTeamId);
+  final pressure = _momentumPressure(
+    events,
+    homeTeamId: homeTeamId,
+    awayTeamId: awayTeamId,
+  );
   if (pressure.lastMinute == 0) return const [];
   final series = List<double>.filled(pressure.lastMinute, 0.5);
   var home = 0.0;
@@ -260,8 +266,11 @@ List<double> computeMomentumSeries(
 }
 
 /// Derives per-team statistics from the event timeline (FR-032).
-MatchStatsReport computeStats(List<MatchEvent> events,
-    {required int homeTeamId, required int awayTeamId}) {
+MatchStatsReport computeStats(
+  List<MatchEvent> events, {
+  required int homeTeamId,
+  required int awayTeamId,
+}) {
   final home = TeamMatchStats();
   final away = TeamMatchStats();
 
@@ -391,76 +400,208 @@ class PlayerMatchRating {
 /// worth a different amount of rating delta per position group.
 const Map<Position, Map<String, double>> _ratingWeights = {
   Position.gk: {
-    'save': 0.22, 'goalConceded': -0.18, 'cleanSheet': 0.35,
-    'goal': 0.5, 'assist': 0.2, 'pass': 0.004, 'tackle': 0.05,
-    'interception': 0.05, 'shot': 0.02, 'keyPass': 0.05, 'foul': -0.06,
-    'yellow': -0.25, 'red': -1.4, 'teamGoal': 0.06, 'teamConceded': -0.08,
+    'save': 0.22,
+    'goalConceded': -0.18,
+    'cleanSheet': 0.35,
+    'goal': 0.5,
+    'assist': 0.2,
+    'pass': 0.004,
+    'tackle': 0.05,
+    'interception': 0.05,
+    'shot': 0.02,
+    'keyPass': 0.05,
+    'foul': -0.06,
+    'yellow': -0.25,
+    'red': -1.4,
+    'teamGoal': 0.06,
+    'teamConceded': -0.08,
   },
   Position.cb: {
-    'save': 0.0, 'goalConceded': -0.10, 'cleanSheet': 0.30,
-    'goal': 0.5, 'assist': 0.3, 'pass': 0.006, 'tackle': 0.16,
-    'interception': 0.14, 'shot': 0.02, 'keyPass': 0.06, 'foul': -0.08,
-    'yellow': -0.3, 'red': -1.4, 'teamGoal': 0.05, 'teamConceded': -0.12,
+    'save': 0.0,
+    'goalConceded': -0.10,
+    'cleanSheet': 0.30,
+    'goal': 0.5,
+    'assist': 0.3,
+    'pass': 0.006,
+    'tackle': 0.16,
+    'interception': 0.14,
+    'shot': 0.02,
+    'keyPass': 0.06,
+    'foul': -0.08,
+    'yellow': -0.3,
+    'red': -1.4,
+    'teamGoal': 0.05,
+    'teamConceded': -0.12,
   },
   Position.lb: {
-    'save': 0.0, 'goalConceded': -0.09, 'cleanSheet': 0.24,
-    'goal': 0.5, 'assist': 0.4, 'pass': 0.007, 'tackle': 0.15,
-    'interception': 0.12, 'shot': 0.02, 'keyPass': 0.08, 'foul': -0.07,
-    'yellow': -0.3, 'red': -1.4, 'teamGoal': 0.05, 'teamConceded': -0.10,
+    'save': 0.0,
+    'goalConceded': -0.09,
+    'cleanSheet': 0.24,
+    'goal': 0.5,
+    'assist': 0.4,
+    'pass': 0.007,
+    'tackle': 0.15,
+    'interception': 0.12,
+    'shot': 0.02,
+    'keyPass': 0.08,
+    'foul': -0.07,
+    'yellow': -0.3,
+    'red': -1.4,
+    'teamGoal': 0.05,
+    'teamConceded': -0.10,
   },
   Position.rb: {
-    'save': 0.0, 'goalConceded': -0.09, 'cleanSheet': 0.24,
-    'goal': 0.5, 'assist': 0.4, 'pass': 0.007, 'tackle': 0.15,
-    'interception': 0.12, 'shot': 0.02, 'keyPass': 0.08, 'foul': -0.07,
-    'yellow': -0.3, 'red': -1.4, 'teamGoal': 0.05, 'teamConceded': -0.10,
+    'save': 0.0,
+    'goalConceded': -0.09,
+    'cleanSheet': 0.24,
+    'goal': 0.5,
+    'assist': 0.4,
+    'pass': 0.007,
+    'tackle': 0.15,
+    'interception': 0.12,
+    'shot': 0.02,
+    'keyPass': 0.08,
+    'foul': -0.07,
+    'yellow': -0.3,
+    'red': -1.4,
+    'teamGoal': 0.05,
+    'teamConceded': -0.10,
   },
   Position.cdm: {
-    'save': 0.0, 'goalConceded': -0.08, 'cleanSheet': 0.20,
-    'goal': 0.5, 'assist': 0.35, 'pass': 0.008, 'tackle': 0.18,
-    'interception': 0.16, 'shot': 0.03, 'keyPass': 0.08, 'foul': -0.08,
-    'yellow': -0.3, 'red': -1.4, 'teamGoal': 0.05, 'teamConceded': -0.09,
+    'save': 0.0,
+    'goalConceded': -0.08,
+    'cleanSheet': 0.20,
+    'goal': 0.5,
+    'assist': 0.35,
+    'pass': 0.008,
+    'tackle': 0.18,
+    'interception': 0.16,
+    'shot': 0.03,
+    'keyPass': 0.08,
+    'foul': -0.08,
+    'yellow': -0.3,
+    'red': -1.4,
+    'teamGoal': 0.05,
+    'teamConceded': -0.09,
   },
   Position.cm: {
-    'save': 0.0, 'goalConceded': -0.06, 'cleanSheet': 0.12,
-    'goal': 0.55, 'assist': 0.45, 'pass': 0.010, 'tackle': 0.12,
-    'interception': 0.12, 'shot': 0.05, 'keyPass': 0.10, 'foul': -0.07,
-    'yellow': -0.28, 'red': -1.4, 'teamGoal': 0.06, 'teamConceded': -0.06,
+    'save': 0.0,
+    'goalConceded': -0.06,
+    'cleanSheet': 0.12,
+    'goal': 0.55,
+    'assist': 0.45,
+    'pass': 0.010,
+    'tackle': 0.12,
+    'interception': 0.12,
+    'shot': 0.05,
+    'keyPass': 0.10,
+    'foul': -0.07,
+    'yellow': -0.28,
+    'red': -1.4,
+    'teamGoal': 0.06,
+    'teamConceded': -0.06,
   },
   Position.cam: {
-    'save': 0.0, 'goalConceded': -0.04, 'cleanSheet': 0.06,
-    'goal': 0.6, 'assist': 0.55, 'pass': 0.010, 'tackle': 0.06,
-    'interception': 0.06, 'shot': 0.08, 'keyPass': 0.14, 'foul': -0.06,
-    'yellow': -0.26, 'red': -1.4, 'teamGoal': 0.07, 'teamConceded': -0.04,
+    'save': 0.0,
+    'goalConceded': -0.04,
+    'cleanSheet': 0.06,
+    'goal': 0.6,
+    'assist': 0.55,
+    'pass': 0.010,
+    'tackle': 0.06,
+    'interception': 0.06,
+    'shot': 0.08,
+    'keyPass': 0.14,
+    'foul': -0.06,
+    'yellow': -0.26,
+    'red': -1.4,
+    'teamGoal': 0.07,
+    'teamConceded': -0.04,
   },
   Position.lm: {
-    'save': 0.0, 'goalConceded': -0.05, 'cleanSheet': 0.08,
-    'goal': 0.55, 'assist': 0.5, 'pass': 0.009, 'tackle': 0.08,
-    'interception': 0.08, 'shot': 0.06, 'keyPass': 0.12, 'foul': -0.06,
-    'yellow': -0.26, 'red': -1.4, 'teamGoal': 0.06, 'teamConceded': -0.05,
+    'save': 0.0,
+    'goalConceded': -0.05,
+    'cleanSheet': 0.08,
+    'goal': 0.55,
+    'assist': 0.5,
+    'pass': 0.009,
+    'tackle': 0.08,
+    'interception': 0.08,
+    'shot': 0.06,
+    'keyPass': 0.12,
+    'foul': -0.06,
+    'yellow': -0.26,
+    'red': -1.4,
+    'teamGoal': 0.06,
+    'teamConceded': -0.05,
   },
   Position.rm: {
-    'save': 0.0, 'goalConceded': -0.05, 'cleanSheet': 0.08,
-    'goal': 0.55, 'assist': 0.5, 'pass': 0.009, 'tackle': 0.08,
-    'interception': 0.08, 'shot': 0.06, 'keyPass': 0.12, 'foul': -0.06,
-    'yellow': -0.26, 'red': -1.4, 'teamGoal': 0.06, 'teamConceded': -0.05,
+    'save': 0.0,
+    'goalConceded': -0.05,
+    'cleanSheet': 0.08,
+    'goal': 0.55,
+    'assist': 0.5,
+    'pass': 0.009,
+    'tackle': 0.08,
+    'interception': 0.08,
+    'shot': 0.06,
+    'keyPass': 0.12,
+    'foul': -0.06,
+    'yellow': -0.26,
+    'red': -1.4,
+    'teamGoal': 0.06,
+    'teamConceded': -0.05,
   },
   Position.lw: {
-    'save': 0.0, 'goalConceded': -0.03, 'cleanSheet': 0.04,
-    'goal': 0.6, 'assist': 0.55, 'pass': 0.008, 'tackle': 0.04,
-    'interception': 0.04, 'shot': 0.09, 'keyPass': 0.14, 'foul': -0.05,
-    'yellow': -0.26, 'red': -1.4, 'teamGoal': 0.07, 'teamConceded': -0.03,
+    'save': 0.0,
+    'goalConceded': -0.03,
+    'cleanSheet': 0.04,
+    'goal': 0.6,
+    'assist': 0.55,
+    'pass': 0.008,
+    'tackle': 0.04,
+    'interception': 0.04,
+    'shot': 0.09,
+    'keyPass': 0.14,
+    'foul': -0.05,
+    'yellow': -0.26,
+    'red': -1.4,
+    'teamGoal': 0.07,
+    'teamConceded': -0.03,
   },
   Position.rw: {
-    'save': 0.0, 'goalConceded': -0.03, 'cleanSheet': 0.04,
-    'goal': 0.6, 'assist': 0.55, 'pass': 0.008, 'tackle': 0.04,
-    'interception': 0.04, 'shot': 0.09, 'keyPass': 0.14, 'foul': -0.05,
-    'yellow': -0.26, 'red': -1.4, 'teamGoal': 0.07, 'teamConceded': -0.03,
+    'save': 0.0,
+    'goalConceded': -0.03,
+    'cleanSheet': 0.04,
+    'goal': 0.6,
+    'assist': 0.55,
+    'pass': 0.008,
+    'tackle': 0.04,
+    'interception': 0.04,
+    'shot': 0.09,
+    'keyPass': 0.14,
+    'foul': -0.05,
+    'yellow': -0.26,
+    'red': -1.4,
+    'teamGoal': 0.07,
+    'teamConceded': -0.03,
   },
   Position.st: {
-    'save': 0.0, 'goalConceded': -0.02, 'cleanSheet': 0.02,
-    'goal': 0.7, 'assist': 0.45, 'pass': 0.005, 'tackle': 0.03,
-    'interception': 0.03, 'shot': 0.10, 'keyPass': 0.12, 'foul': -0.05,
-    'yellow': -0.24, 'red': -1.4, 'teamGoal': 0.08, 'teamConceded': -0.02,
+    'save': 0.0,
+    'goalConceded': -0.02,
+    'cleanSheet': 0.02,
+    'goal': 0.7,
+    'assist': 0.45,
+    'pass': 0.005,
+    'tackle': 0.03,
+    'interception': 0.03,
+    'shot': 0.10,
+    'keyPass': 0.12,
+    'foul': -0.05,
+    'yellow': -0.24,
+    'red': -1.4,
+    'teamGoal': 0.08,
+    'teamConceded': -0.02,
   },
 };
 
@@ -511,7 +652,8 @@ List<PlayerMatchRating> computePlayerRatings({
       case MatchEventType.dispossessed:
         if (e.primaryPlayerId != null) {
           if (e.metadata['tackle'] == true) {
-            tackles[e.primaryPlayerId!] = (tackles[e.primaryPlayerId!] ?? 0) + 1;
+            tackles[e.primaryPlayerId!] =
+                (tackles[e.primaryPlayerId!] ?? 0) + 1;
           } else {
             interceptions[e.primaryPlayerId!] =
                 (interceptions[e.primaryPlayerId!] ?? 0) + 1;
@@ -561,31 +703,35 @@ List<PlayerMatchRating> computePlayerRatings({
       score += isKeeper ? w['cleanSheet']! : w['cleanSheet']! * 0.6;
     }
     if (concededWhilePlaying) {
-      score += teamGoalsConceded * (isKeeper ? w['goalConceded']! : w['goalConceded']! * 0.7);
+      score +=
+          teamGoalsConceded *
+          (isKeeper ? w['goalConceded']! : w['goalConceded']! * 0.7);
     }
     if (p.minutesPlayed == 0) {
       // Unused players keep the neutral baseline.
       score = 6.0;
     }
-    ratings.add(PlayerMatchRating(
-      playerId: p.playerId,
-      name: p.name,
-      position: p.position,
-      rating: score.clamp(1.0, 10.0).toDouble(),
-      minutesPlayed: p.minutesPlayed,
-      goals: goals[p.playerId] ?? 0,
-      assists: assists[p.playerId] ?? 0,
-      saves: saves[p.playerId] ?? 0,
-      goalsConceded: p.minutesPlayed > 0 && isKeeper ? teamGoalsConceded : 0,
-      shots: shots[p.playerId] ?? 0,
-      keyPasses: keyPasses[p.playerId] ?? 0,
-      tackles: tackles[p.playerId] ?? 0,
-      interceptions: interceptions[p.playerId] ?? 0,
-      yellowCards: yellows[p.playerId] ?? 0,
-      redCard: reds.contains(p.playerId),
-      teamGoals: teamGoals,
-      teamGoalsConceded: teamGoalsConceded,
-    ));
+    ratings.add(
+      PlayerMatchRating(
+        playerId: p.playerId,
+        name: p.name,
+        position: p.position,
+        rating: score.clamp(1.0, 10.0).toDouble(),
+        minutesPlayed: p.minutesPlayed,
+        goals: goals[p.playerId] ?? 0,
+        assists: assists[p.playerId] ?? 0,
+        saves: saves[p.playerId] ?? 0,
+        goalsConceded: p.minutesPlayed > 0 && isKeeper ? teamGoalsConceded : 0,
+        shots: shots[p.playerId] ?? 0,
+        keyPasses: keyPasses[p.playerId] ?? 0,
+        tackles: tackles[p.playerId] ?? 0,
+        interceptions: interceptions[p.playerId] ?? 0,
+        yellowCards: yellows[p.playerId] ?? 0,
+        redCard: reds.contains(p.playerId),
+        teamGoals: teamGoals,
+        teamGoalsConceded: teamGoalsConceded,
+      ),
+    );
   }
   ratings.sort((a, b) => b.rating.compareTo(a.rating));
   return ratings;
@@ -608,8 +754,10 @@ List<CommentaryLine> generateCommentary(
   bool keyEventsOnly = false,
 }) {
   final lines = <CommentaryLine>[];
-  String name(int? id) => id == null ? 'a player' : (playerNames[id] ?? 'an opponent');
-  String team(MatchEvent e) => e.side == MatchSide.home ? homeTeamName : awayTeamName;
+  String name(int? id) =>
+      id == null ? 'a player' : (playerNames[id] ?? 'an opponent');
+  String team(MatchEvent e) =>
+      e.side == MatchSide.home ? homeTeamName : awayTeamName;
 
   // Running score, so every goal line can carry the broadcast detail
   // 'Rivers United 1 - 0 Al Ahly' — the moment needs the scoreline.
@@ -619,109 +767,154 @@ List<CommentaryLine> generateCommentary(
   for (final e in events) {
     switch (e.type) {
       case MatchEventType.kickoff:
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text: e.metadata['secondHalf'] == true
                 ? 'The second half is under way.'
                 : 'Kick-off! $homeTeamName vs $awayTeamName.',
             importance: 1,
-            kind: CommentaryKind.kickoff));
+            kind: CommentaryKind.kickoff,
+          ),
+        );
       case MatchEventType.halfTime:
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: 45,
             second: e.second,
-            text: 'Half time. $homeTeamName and $awayTeamName head to the dressing rooms.',
+            text:
+                'Half time. $homeTeamName and $awayTeamName head to the dressing rooms.',
             importance: 1,
-            kind: CommentaryKind.halfTime));
+            kind: CommentaryKind.halfTime,
+          ),
+        );
       case MatchEventType.fullTime:
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: 90,
             second: e.second,
             text: 'Full time! The referee blows the final whistle.',
             importance: 1,
-            kind: CommentaryKind.fullTime));
+            kind: CommentaryKind.fullTime,
+          ),
+        );
       case MatchEventType.possession:
         // Filler possession lines only for the first ones — avoids spam.
         if (lines.where((l) => l.importance == 0).length < 12) {
-          lines.add(CommentaryLine(
+          lines.add(
+            CommentaryLine(
               minute: e.minute,
               second: e.second,
               text: '${team(e)} keep the ball and look for an opening.',
-              importance: 0));
+              importance: 0,
+            ),
+          );
         }
       case MatchEventType.passMove:
         final extras = <String>[];
         if (e.metadata['cross'] == true) extras.add('whips in a cross');
         if (e.metadata['dribble'] == true) extras.add('beats his man');
         if (extras.isEmpty) break;
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
-            text: '${name(e.primaryPlayerId)} ${extras.join(' and ')} for ${team(e)}.',
-            importance: 0));
+            text:
+                '${name(e.primaryPlayerId)} ${extras.join(' and ')} for ${team(e)}.',
+            importance: 0,
+          ),
+        );
       case MatchEventType.dispossessed:
         final action = e.metadata['interception'] == true
             ? 'reads the pass and intercepts'
             : 'wins the ball with a firm tackle';
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
-            text: '${name(e.primaryPlayerId)} $action against ${name(e.secondaryPlayerId)}.',
-            importance: 0));
+            text:
+                '${name(e.primaryPlayerId)} $action against ${name(e.secondaryPlayerId)}.',
+            importance: 0,
+          ),
+        );
       case MatchEventType.offside:
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text: '${name(e.primaryPlayerId)} is caught offside.',
             importance: 0,
-            kind: CommentaryKind.offside));
+            kind: CommentaryKind.offside,
+          ),
+        );
       case MatchEventType.foul:
         final inBox = e.metadata['inBox'] == true;
         final where = inBox
             ? 'in the box — the referee points to the spot!'
-            : (e.metadata['finalThird'] == true ? 'in a dangerous area' : 'in midfield');
-        lines.add(CommentaryLine(
+            : (e.metadata['finalThird'] == true
+                  ? 'in a dangerous area'
+                  : 'in midfield');
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
-            text: '${name(e.primaryPlayerId)} brings down ${name(e.secondaryPlayerId)} $where.',
+            text:
+                '${name(e.primaryPlayerId)} brings down ${name(e.secondaryPlayerId)} $where.',
             importance: inBox ? 2 : 0,
-            kind: inBox ? CommentaryKind.penalty : CommentaryKind.foul));
+            kind: inBox ? CommentaryKind.penalty : CommentaryKind.foul,
+          ),
+        );
       case MatchEventType.penaltyAwarded:
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text: 'PENALTY to ${team(e)}! ${name(e.primaryPlayerId)} steps up.',
             importance: 2,
-            kind: CommentaryKind.penalty));
+            kind: CommentaryKind.penalty,
+          ),
+        );
       case MatchEventType.corner:
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text: 'Corner for ${team(e)}, taken by ${name(e.primaryPlayerId)}.',
             importance: 0,
-            kind: CommentaryKind.corner));
+            kind: CommentaryKind.corner,
+          ),
+        );
       case MatchEventType.shot:
         if (e.shotOutcome == ShotOutcome.offTarget) {
-          lines.add(CommentaryLine(
+          lines.add(
+            CommentaryLine(
               minute: e.minute,
               second: e.second,
               text: '${name(e.primaryPlayerId)} shoots — off target.',
-              importance: 0));
+              importance: 0,
+            ),
+          );
         } else if (e.shotOutcome == ShotOutcome.blocked) {
-          lines.add(CommentaryLine(
+          lines.add(
+            CommentaryLine(
               minute: e.minute,
               second: e.second,
               text: '${name(e.primaryPlayerId)}\u2019s effort is blocked.',
-              importance: 0));
+              importance: 0,
+            ),
+          );
         } else if (e.shotOutcome == ShotOutcome.saved) {
-          lines.add(CommentaryLine(
+          lines.add(
+            CommentaryLine(
               minute: e.minute,
               second: e.second,
               text:
                   'Save! ${name(e.primaryPlayerId)} forces a stop from ${name(e.metadata['gkPlayerId'] as int?)}${e.metadata['isBigChance'] == true ? ' from a big chance' : ''}.',
               importance: 1,
-              kind: CommentaryKind.save));
+              kind: CommentaryKind.save,
+            ),
+          );
         }
       case MatchEventType.goal:
         if (e.side == MatchSide.home) {
@@ -738,51 +931,66 @@ List<CommentaryLine> generateCommentary(
           ChanceQuality.header => ' with a header',
           _ => '',
         };
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text:
                 'GOAL! ${name(e.primaryPlayerId)} scores$qualityNote for ${team(e)}!$assist',
             importance: 2,
             kind: CommentaryKind.goal,
-            detail: '$homeTeamName $goalsHome - $goalsAway $awayTeamName'));
+            detail: '$homeTeamName $goalsHome - $goalsAway $awayTeamName',
+          ),
+        );
       case MatchEventType.card:
         final red = e.metadata['card'] == 'red';
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text: red
                 ? 'RED CARD! ${name(e.primaryPlayerId)} is sent off${e.metadata['secondYellow'] == true ? ' (second yellow)' : ''}!'
                 : '${name(e.primaryPlayerId)} is booked.',
             importance: red ? 2 : 1,
-            kind: red ? CommentaryKind.redCard : CommentaryKind.yellowCard));
+            kind: red ? CommentaryKind.redCard : CommentaryKind.yellowCard,
+          ),
+        );
       case MatchEventType.substitution:
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text:
                 'Substitution for ${team(e)}: ${name(e.secondaryPlayerId)} replaces ${name(e.primaryPlayerId)}.',
             importance: 1,
-            kind: CommentaryKind.substitution));
+            kind: CommentaryKind.substitution,
+          ),
+        );
       case MatchEventType.tacticalChange:
         final change = e.metadata['change'] as String;
         final value = e.metadata['value'] as String;
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text: e.metadata['ai'] == true
                 ? '${team(e)} react — their manager switches to $value (${e.metadata['reason']}).'
                 : '${team(e)} change their $change to $value.',
             importance: 1,
-            kind: CommentaryKind.tactical));
+            kind: CommentaryKind.tactical,
+          ),
+        );
       case MatchEventType.liveAction:
         final action = e.metadata['action'] as String;
-        lines.add(CommentaryLine(
+        lines.add(
+          CommentaryLine(
             minute: e.minute,
             second: e.second,
             text: '${team(e)} are told to $action.',
             importance: 1,
-            kind: CommentaryKind.order));
+            kind: CommentaryKind.order,
+          ),
+        );
     }
   }
   if (keyEventsOnly) {

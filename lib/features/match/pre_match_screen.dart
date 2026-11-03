@@ -112,11 +112,13 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
 
   void _kickOff() {
     HapticFeedback.heavyImpact();
-    widget.onTacticsSelected?.call(PreMatchTacticSelection(
-      formationCode: _formationCode,
-      style: _style,
-      mentality: _mentality,
-    ));
+    widget.onTacticsSelected?.call(
+      PreMatchTacticSelection(
+        formationCode: _formationCode,
+        style: _style,
+        mentality: _mentality,
+      ),
+    );
     widget.onKickOff(_selectedTalk);
   }
 
@@ -140,32 +142,33 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                     opacity: anim,
                     child: SlideTransition(
                       position: Tween<Offset>(
-                              begin: const Offset(0, 0.03), end: Offset.zero)
-                          .animate(anim),
+                        begin: const Offset(0, 0.03),
+                        end: Offset.zero,
+                      ).animate(anim),
                       child: child,
                     ),
                   ),
                   child: switch (phase) {
                     0 => _AnalysisPhase(
-                        key: const ValueKey('analysis'),
-                        data: d,
-                      ),
+                      key: const ValueKey('analysis'),
+                      data: d,
+                    ),
                     1 => _TacticsPhase(
-                        key: const ValueKey('tactics'),
-                        data: d,
-                        formationCode: _formationCode,
-                        style: _style,
-                        mentality: _mentality,
-                        onFormation: (code) =>
-                            setState(() => _formationCode = code),
-                        onStyle: (s) => setState(() => _style = s),
-                        onMentality: (m) => setState(() => _mentality = m),
-                      ),
+                      key: const ValueKey('tactics'),
+                      data: d,
+                      formationCode: _formationCode,
+                      style: _style,
+                      mentality: _mentality,
+                      onFormation: (code) =>
+                          setState(() => _formationCode = code),
+                      onStyle: (s) => setState(() => _style = s),
+                      onMentality: (m) => setState(() => _mentality = m),
+                    ),
                     _ => _PepTalkPhase(
-                        key: const ValueKey('pep'),
-                        selected: _selectedTalk,
-                        onSelect: _selectTalk,
-                      ),
+                      key: const ValueKey('pep'),
+                      selected: _selectedTalk,
+                      onSelect: _selectTalk,
+                    ),
                   },
                 ),
               ),
@@ -184,8 +187,7 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                         HapticFeedback.selectionClick();
                         setState(() => _phase--);
                       }
-                    : (widget.onExit ??
-                        () => Navigator.of(context).maybePop()),
+                    : (widget.onExit ?? () => Navigator.of(context).maybePop()),
               ),
             ],
           ),
@@ -212,20 +214,11 @@ class _AnalysisPhase extends StatelessWidget {
       children: [
         _OpponentHeader(data: data),
         const SizedBox(height: 14),
-        FcmEntrance(
-          index: 1,
-          child: _ForecastCard(forecast: f),
-        ),
+        FcmEntrance(index: 1, child: _ForecastCard(forecast: f)),
         const SizedBox(height: 12),
-        FcmEntrance(
-          index: 2,
-          child: _StrengthCard(forecast: f),
-        ),
+        FcmEntrance(index: 2, child: _StrengthCard(forecast: f)),
         const SizedBox(height: 12),
-        FcmEntrance(
-          index: 3,
-          child: _TopPlayersCard(data: data),
-        ),
+        FcmEntrance(index: 3, child: _TopPlayersCard(data: data)),
       ],
     );
   }
@@ -297,7 +290,8 @@ class _OpponentHeader extends StatelessWidget {
                 ],
               ),
               border: Border.all(
-                  color: FcmColors.bronze.withValues(alpha: 0.35)),
+                color: FcmColors.bronze.withValues(alpha: 0.35),
+              ),
             ),
             child: Row(
               children: [
@@ -309,8 +303,9 @@ class _OpponentHeader extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: FcmColors.steelGradient,
                     border: Border.all(
-                        color: FcmColors.bronze.withValues(alpha: 0.7),
-                        width: 1.5),
+                      color: FcmColors.bronze.withValues(alpha: 0.7),
+                      width: 1.5,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: FcmColors.bronze.withValues(alpha: 0.35),
@@ -318,12 +313,15 @@ class _OpponentHeader extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: FitText(initials,
-                      align: Alignment.center,
-                      style: const TextStyle(
-                          color: FcmColors.goldSoft,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 17)),
+                  child: FitText(
+                    initials,
+                    align: Alignment.center,
+                    style: const TextStyle(
+                      color: FcmColors.goldSoft,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 17,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -357,11 +355,12 @@ class _OpponentHeader extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 if (d.opponentForm.isEmpty)
-                  const Text('First round',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          TextStyle(color: FcmColors.textDim, fontSize: 11))
+                  const Text(
+                    'First round',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: FcmColors.textDim, fontSize: 11),
+                  )
                 else
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -374,11 +373,13 @@ class _OpponentHeader extends StatelessWidget {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: formPip[d.opponentForm[i]]!
-                                .withValues(alpha: 0.18),
+                            color: formPip[d.opponentForm[i]]!.withValues(
+                              alpha: 0.18,
+                            ),
                             border: Border.all(
-                              color: formPip[d.opponentForm[i]]!
-                                  .withValues(alpha: 0.7),
+                              color: formPip[d.opponentForm[i]]!.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                           child: FcmEntrance(
@@ -604,13 +605,19 @@ class _StrengthCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          row('OVERALL', f.strength(f.userTotals).toDouble(),
-              f.strength(f.opponentTotals).toDouble()),
+          row(
+            'OVERALL',
+            f.strength(f.userTotals).toDouble(),
+            f.strength(f.opponentTotals).toDouble(),
+          ),
           row('ATTACK', f.userTotals.attack, f.opponentTotals.attack),
           row('SUPPORT', f.userTotals.support, f.opponentTotals.support),
           row('DEFENCE', f.userTotals.defence, f.opponentTotals.defence),
-          row('GOALKEEPING', f.userTotals.goalkeeping,
-              f.opponentTotals.goalkeeping),
+          row(
+            'GOALKEEPING',
+            f.userTotals.goalkeeping,
+            f.opponentTotals.goalkeeping,
+          ),
         ],
       ),
     );
@@ -643,15 +650,15 @@ class _MirrorBar extends StatelessWidget {
               duration: const Duration(milliseconds: 1000),
               curve: Curves.easeOutCubic,
               builder: (context, v, _) => FractionallySizedBox(
-                alignment:
-                    mirror ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: mirror
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 widthFactor: v,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      color.withValues(alpha: 0.5),
-                      color,
-                    ]),
+                    gradient: LinearGradient(
+                      colors: [color.withValues(alpha: 0.5), color],
+                    ),
                   ),
                 ),
               ),
@@ -704,7 +711,8 @@ class _TopPlayersCard extends StatelessWidget {
                     child: FcmPlayerCard(
                       player: _basePlayerOf(d.opponentKeyMen[i]),
                       rarity: CardRarity.fromOverall(
-                          d.opponentKeyMen[i].overall),
+                        d.opponentKeyMen[i].overall,
+                      ),
                       overall: d.opponentKeyMen[i].overall,
                       width: width,
                     ),
@@ -722,8 +730,17 @@ class _TopPlayersCard extends StatelessWidget {
   /// card face renders it; identity fields the analysis does not know
   /// stay neutral (the flag falls back to a football glyph).
   static BasePlayer _basePlayerOf(
-      ({String name, String position, int overall, int attack, int support,
-              int defence, int goalkeeping}) m) {
+    ({
+      String name,
+      String position,
+      int overall,
+      int attack,
+      int support,
+      int defence,
+      int goalkeeping,
+    })
+    m,
+  ) {
     final stats = BaseStats(
       overall: m.overall,
       attack: m.attack,
@@ -837,10 +854,14 @@ class _TacticsPhase extends StatelessWidget {
 /// positions land in their slots, the rest rank the bench and reserves
 /// best-first, so what the user sees is the team that will kick off.
 (Map<int, PlayerCard>, List<PlayerCard>, List<PlayerCard>) _squadFor(
-    String formationCode, Map<int, PlayerCard> squad) {
+  String formationCode,
+  Map<int, PlayerCard> squad,
+) {
   final cards = squad.values.toList();
-  final assignment =
-      const SquadEngine().autoPick(cards, formationByCode(formationCode));
+  final assignment = const SquadEngine().autoPick(
+    cards,
+    formationByCode(formationCode),
+  );
   final byId = {for (final c in cards) c.ownedId: c};
 
   final xi = <int, PlayerCard>{};
@@ -961,9 +982,7 @@ class _PepTalkTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = talk;
-    final effects = t == null
-        ? 'No modifiers'
-        : t.effectSummary;
+    final effects = t == null ? 'No modifiers' : t.effectSummary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: FcmPressable(
@@ -983,10 +1002,7 @@ class _PepTalkTile extends StatelessWidget {
                       Color.lerp(FcmColors.surfaceHigh, FcmColors.gold, 0.22)!,
                       FcmColors.surface,
                     ]
-                  : [
-                      FcmColors.surfaceHigh,
-                      FcmColors.surface,
-                    ],
+                  : [FcmColors.surfaceHigh, FcmColors.surface],
             ),
             border: Border.all(
               color: selected
@@ -1022,10 +1038,16 @@ class _PepTalkTile extends StatelessWidget {
                   ),
                 ),
                 child: selected
-                    ? const Icon(Icons.check_rounded,
-                        color: FcmColors.ink, size: 20)
-                    : const Icon(Icons.record_voice_over_rounded,
-                        color: FcmColors.textDim, size: 17),
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: FcmColors.ink,
+                        size: 20,
+                      )
+                    : const Icon(
+                        Icons.record_voice_over_rounded,
+                        color: FcmColors.textDim,
+                        size: 17,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(

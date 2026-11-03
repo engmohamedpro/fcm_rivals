@@ -37,8 +37,14 @@ class UserSettingsStore {
     if (speed < 1 || speed > maxMatchSpeed) return;
     final row = await _row();
     if (row == null) {
-      await database.into(database.userSettings)
-          .insert(db.UserSettingsCompanion.insert(id: _rowId, matchSpeed: Value(speed)));
+      await database
+          .into(database.userSettings)
+          .insert(
+            db.UserSettingsCompanion.insert(
+              id: _rowId,
+              matchSpeed: Value(speed),
+            ),
+          );
       return;
     }
     await (database.update(database.userSettings)

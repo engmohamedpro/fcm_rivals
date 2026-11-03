@@ -17,59 +17,63 @@ import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
 import 'package:fcm_rivals/features/squad/squad_view.dart';
 
-PlayerCard _card(int id, Position position, {int stamina = 100}) =>
-    PlayerCard(
-      ownedId: id,
-      upgradeLevel: 0,
-      staminaPercent: stamina,
-      base: BasePlayer(
-        playerId: 1000 + id,
-        name: 'Player $id',
-        position: position,
-        nationality: 'Egypt',
-        marketValueEur: 5_000_000,
-        baseStats: const BaseStats(
-            overall: 80, attack: 82, support: 75, defence: 40, goalkeeping: 0),
-      ),
-    );
+PlayerCard _card(int id, Position position, {int stamina = 100}) => PlayerCard(
+  ownedId: id,
+  upgradeLevel: 0,
+  staminaPercent: stamina,
+  base: BasePlayer(
+    playerId: 1000 + id,
+    name: 'Player $id',
+    position: position,
+    nationality: 'Egypt',
+    marketValueEur: 5_000_000,
+    baseStats: const BaseStats(
+      overall: 80,
+      attack: 82,
+      support: 75,
+      defence: 40,
+      goalkeeping: 0,
+    ),
+  ),
+);
 
 Widget _host({
   bool showStamina = true,
   bool showStats = true,
   List<PlayerCard>? bench,
-}) =>
-    MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        body: SingleChildScrollView(
-          child: TacticsSetupView(
-            formationCode: '4-3-3',
-            style: PlayingStyle.balanced,
-            mentality: Mentality.balanced,
-            xi: const {},
-            bench: bench ?? const [],
-            reserves: const [],
-            onFormation: (_) {},
-            onStyle: (_) {},
-            onMentality: (_) {},
-            onAutoPick: () {},
-            showStamina: showStamina,
-            showStats: showStats,
-          ),
-        ),
+}) => MaterialApp(
+  home: Scaffold(
+    backgroundColor: Colors.black,
+    body: SingleChildScrollView(
+      child: TacticsSetupView(
+        formationCode: '4-3-3',
+        style: PlayingStyle.balanced,
+        mentality: Mentality.balanced,
+        xi: const {},
+        bench: bench ?? const [],
+        reserves: const [],
+        onFormation: (_) {},
+        onStyle: (_) {},
+        onMentality: (_) {},
+        onAutoPick: () {},
+        showStamina: showStamina,
+        showStats: showStats,
       ),
-    );
+    ),
+  ),
+);
 
 /// Number of 5px-tall decorated boxes under the mini cards: the stamina
 /// track (and its fill) — zero means no stamina bar is rendered.
 int _staminaTracks() {
   var count = 0;
-  for (final e in find
-      .descendant(
-        of: find.byType(FcmMiniCard),
-        matching: find.byType(DecoratedBox),
-      )
-      .evaluate()) {
+  for (final e
+      in find
+          .descendant(
+            of: find.byType(FcmMiniCard),
+            matching: find.byType(DecoratedBox),
+          )
+          .evaluate()) {
     if ((e.renderObject as RenderBox).size.height == 5) count++;
   }
   return count;
@@ -79,8 +83,11 @@ void main() {
   test('mentality scale mapping is exact at every named step', () {
     // Round-trip: each mentality's scale position maps back to itself.
     for (final m in Mentality.values) {
-      expect(mentalityFromScale(mentalityToScale(m)), m,
-          reason: '${m.displayName} round-trips');
+      expect(
+        mentalityFromScale(mentalityToScale(m)),
+        m,
+        reason: '${m.displayName} round-trips',
+      );
     }
     // The poles and the centre.
     expect(mentalityFromScale(0), Mentality.veryDefensive);
@@ -95,8 +102,9 @@ void main() {
     expect(mentalityFromScale(59), Mentality.positive);
   });
 
-  testWidgets('setup row closes with the team rating, actions below',
-      (WidgetTester tester) async {
+  testWidgets('setup row closes with the team rating, actions below', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(340, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -134,8 +142,9 @@ void main() {
     expect((tactics.dy - autoPick.dy).abs(), lessThan(8));
   });
 
-  testWidgets('bench and reserves always show their full quota of slots',
-      (WidgetTester tester) async {
+  testWidgets('bench and reserves always show their full quota of slots', (
+    WidgetTester tester,
+  ) async {
     // One bench player, no reserves: 6 bench placeholders + all 5
     // reserve placeholders render after the real card.
     await tester.pumpWidget(_host(bench: [_card(1, Position.st)]));
@@ -151,8 +160,7 @@ void main() {
     // The bench placeholders sit after the real bench card in the bench
     // strip: its surname reads '1' (from 'Player 1').
     final cardLeft = tester.getTopLeft(find.text('1'));
-    final firstEmpty =
-        tester.getTopLeft(find.byType(FcmMiniCard).at(1 + 11));
+    final firstEmpty = tester.getTopLeft(find.byType(FcmMiniCard).at(1 + 11));
     expect(firstEmpty.dx, greaterThan(cardLeft.dx));
 
     // Even a completely empty squad keeps both sections visible.
@@ -163,25 +171,31 @@ void main() {
     expect(find.byType(FcmMiniCard), findsNWidgets(11 + 7 + 5));
   });
 
-  testWidgets('stamina bars render only when shown',
-      (WidgetTester tester) async {
+  testWidgets('stamina bars render only when shown', (
+    WidgetTester tester,
+  ) async {
     final bench = [_card(1, Position.st, stamina: 50)];
 
     await tester.pumpWidget(_host(bench: bench));
     await tester.pumpAndSettle();
     // Ghost placeholders render no stamina bar, so tracks come only
     // from the one real card.
-    expect(_staminaTracks(), greaterThan(0),
-        reason: 'stamina bar shown when enabled');
+    expect(
+      _staminaTracks(),
+      greaterThan(0),
+      reason: 'stamina bar shown when enabled',
+    );
 
     await tester.pumpWidget(_host(bench: bench, showStamina: false));
     await tester.pumpAndSettle();
-    expect(_staminaTracks(), 0,
-        reason: 'no stamina bar when showStamina is false');
+    expect(
+      _staminaTracks(),
+      0,
+      reason: 'no stamina bar when showStamina is false',
+    );
   });
 
-  testWidgets('stat rows render only when shown',
-      (WidgetTester tester) async {
+  testWidgets('stat rows render only when shown', (WidgetTester tester) async {
     final bench = [_card(1, Position.st)];
 
     await tester.pumpWidget(_host(bench: bench));
@@ -193,7 +207,8 @@ void main() {
     // The Tactics tab's shape: no stats, no stamina — just the shield
     // and the surname.
     await tester.pumpWidget(
-        _host(bench: bench, showStamina: false, showStats: false));
+      _host(bench: bench, showStamina: false, showStats: false),
+    );
     await tester.pumpAndSettle();
     expect(find.text('ATT'), findsNothing);
     expect(find.text('SUP'), findsNothing);
@@ -201,28 +216,33 @@ void main() {
   });
 
   testWidgets('tactic options sheet: formation absent, mentality is the '
-      '0-100 scale slider with a floating step label',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        body: Builder(builder: (context) {
-          return Center(
-            child: FcmButton(
-              compact: true,
-              label: 'TACTICS',
-              onPressed: () => showTacticsOptionsSheet(
-                context,
-                style: PlayingStyle.balanced,
-                mentality: Mentality.balanced,
-                onStyle: (_) {},
-                onMentality: (_) {},
-              ),
-            ),
-          );
-        }),
+      '0-100 scale slider with a floating step label', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Builder(
+            builder: (context) {
+              return Center(
+                child: FcmButton(
+                  compact: true,
+                  label: 'TACTICS',
+                  onPressed: () => showTacticsOptionsSheet(
+                    context,
+                    style: PlayingStyle.balanced,
+                    mentality: Mentality.balanced,
+                    onStyle: (_) {},
+                    onMentality: (_) {},
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pump();
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
@@ -254,26 +274,30 @@ void main() {
       'once per gesture', (WidgetTester tester) async {
     // The committed steps, in drag order.
     final committed = <Mentality>[];
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        body: Builder(builder: (context) {
-          return Center(
-            child: FcmButton(
-              compact: true,
-              label: 'TACTICS',
-              onPressed: () => showTacticsOptionsSheet(
-                context,
-                style: PlayingStyle.balanced,
-                mentality: Mentality.balanced,
-                onStyle: (_) {},
-                onMentality: committed.add,
-              ),
-            ),
-          );
-        }),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Builder(
+            builder: (context) {
+              return Center(
+                child: FcmButton(
+                  compact: true,
+                  label: 'TACTICS',
+                  onPressed: () => showTacticsOptionsSheet(
+                    context,
+                    style: PlayingStyle.balanced,
+                    mentality: Mentality.balanced,
+                    onStyle: (_) {},
+                    onMentality: committed.add,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
-    ));
+    );
     await tester.pump();
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
@@ -285,8 +309,10 @@ void main() {
     // Drag from centre to ~100 (Very Attacking): ONE commit at the end
     // of the gesture, never per intermediate tick. The drag path
     // crosses other steps on the way.
-    final center = Offset(track.left + track.width / 2,
-        track.top + track.height / 2);
+    final center = Offset(
+      track.left + track.width / 2,
+      track.top + track.height / 2,
+    );
     await tester.dragFrom(center, Offset(track.width / 2 - 8, 0));
     await tester.pumpAndSettle();
     expect(committed, [Mentality.veryAttacking]);
@@ -296,12 +322,12 @@ void main() {
     // No mentality pill still reads Balanced (the STYLE dropdown's
     // 'Balanced' label is unrelated and stays).
     expect(
-        find.descendant(of: slider, matching: find.text('Balanced')),
-        findsNothing);
+      find.descendant(of: slider, matching: find.text('Balanced')),
+      findsNothing,
+    );
 
     // A drag that lands back on the same step never re-commits it.
-    final right = Offset(
-        track.right - 12, track.top + track.height / 2);
+    final right = Offset(track.right - 12, track.top + track.height / 2);
     await tester.dragFrom(right, const Offset(6, 0));
     await tester.pumpAndSettle();
     expect(committed, [Mentality.veryAttacking]);
@@ -309,7 +335,6 @@ void main() {
     // Drag to the far left (0): Very Defensive commits.
     await tester.dragFrom(right, Offset(-(track.width - 24), 0));
     await tester.pumpAndSettle();
-    expect(committed,
-        [Mentality.veryAttacking, Mentality.veryDefensive]);
+    expect(committed, [Mentality.veryAttacking, Mentality.veryDefensive]);
   });
 }

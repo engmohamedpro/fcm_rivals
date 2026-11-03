@@ -42,8 +42,8 @@ class PlayerCard {
   int get overall => math.min(99, base.baseStats.overall + upgradeLevel);
 
   /// Upgraded attribute value, capped at 99.
-  int attribute(PlayerAttribute a) => math
-      .min(99, base.baseStats.valueOf(a) + _upgradeValueOf(a));
+  int attribute(PlayerAttribute a) =>
+      math.min(99, base.baseStats.valueOf(a) + _upgradeValueOf(a));
 
   int _upgradeValueOf(PlayerAttribute a) {
     switch (a) {
@@ -76,87 +76,171 @@ class PlayerCard {
 const Map<Position, Map<Position, double>> _compatibility = {
   Position.gk: {
     Position.gk: 1.0,
-    Position.st: 0.05, Position.lw: 0.05, Position.rw: 0.05,
-    Position.cam: 0.05, Position.lm: 0.05, Position.rm: 0.05,
-    Position.cm: 0.05, Position.cdm: 0.05, Position.cb: 0.05,
-    Position.rb: 0.05, Position.lb: 0.05,
+    Position.st: 0.05,
+    Position.lw: 0.05,
+    Position.rw: 0.05,
+    Position.cam: 0.05,
+    Position.lm: 0.05,
+    Position.rm: 0.05,
+    Position.cm: 0.05,
+    Position.cdm: 0.05,
+    Position.cb: 0.05,
+    Position.rb: 0.05,
+    Position.lb: 0.05,
   },
   Position.st: {
     Position.st: 1.0,
-    Position.lw: 0.9, Position.rw: 0.9, Position.cam: 0.88,
-    Position.lm: 0.7, Position.rm: 0.7, Position.cm: 0.68,
-    Position.cdm: 0.55, Position.cb: 0.5, Position.rb: 0.5, Position.lb: 0.5,
+    Position.lw: 0.9,
+    Position.rw: 0.9,
+    Position.cam: 0.88,
+    Position.lm: 0.7,
+    Position.rm: 0.7,
+    Position.cm: 0.68,
+    Position.cdm: 0.55,
+    Position.cb: 0.5,
+    Position.rb: 0.5,
+    Position.lb: 0.5,
     Position.gk: 0.05,
   },
   Position.lw: {
     Position.lw: 1.0,
-    Position.rw: 0.9, Position.st: 0.88, Position.lm: 0.88,
-    Position.cam: 0.82, Position.rm: 0.72, Position.cm: 0.7,
-    Position.lb: 0.68, Position.cdm: 0.58, Position.rb: 0.52,
-    Position.cb: 0.5, Position.gk: 0.05,
+    Position.rw: 0.9,
+    Position.st: 0.88,
+    Position.lm: 0.88,
+    Position.cam: 0.82,
+    Position.rm: 0.72,
+    Position.cm: 0.7,
+    Position.lb: 0.68,
+    Position.cdm: 0.58,
+    Position.rb: 0.52,
+    Position.cb: 0.5,
+    Position.gk: 0.05,
   },
   Position.rw: {
     Position.rw: 1.0,
-    Position.lw: 0.9, Position.st: 0.88, Position.rm: 0.88,
-    Position.cam: 0.82, Position.lm: 0.72, Position.cm: 0.7,
-    Position.rb: 0.68, Position.cdm: 0.58, Position.lb: 0.52,
-    Position.cb: 0.5, Position.gk: 0.05,
+    Position.lw: 0.9,
+    Position.st: 0.88,
+    Position.rm: 0.88,
+    Position.cam: 0.82,
+    Position.lm: 0.72,
+    Position.cm: 0.7,
+    Position.rb: 0.68,
+    Position.cdm: 0.58,
+    Position.lb: 0.52,
+    Position.cb: 0.5,
+    Position.gk: 0.05,
   },
   Position.cam: {
     Position.cam: 1.0,
-    Position.cm: 0.9, Position.st: 0.86, Position.lw: 0.8, Position.rw: 0.8,
-    Position.lm: 0.8, Position.rm: 0.8, Position.cdm: 0.7,
-    Position.cb: 0.5, Position.rb: 0.5, Position.lb: 0.5,
+    Position.cm: 0.9,
+    Position.st: 0.86,
+    Position.lw: 0.8,
+    Position.rw: 0.8,
+    Position.lm: 0.8,
+    Position.rm: 0.8,
+    Position.cdm: 0.7,
+    Position.cb: 0.5,
+    Position.rb: 0.5,
+    Position.lb: 0.5,
     Position.gk: 0.05,
   },
   Position.lm: {
     Position.lm: 1.0,
-    Position.lw: 0.9, Position.rm: 0.85, Position.cm: 0.82,
-    Position.cam: 0.76, Position.lb: 0.74, Position.rw: 0.7,
-    Position.cdm: 0.62, Position.rb: 0.55, Position.st: 0.62,
-    Position.cb: 0.5, Position.gk: 0.05,
+    Position.lw: 0.9,
+    Position.rm: 0.85,
+    Position.cm: 0.82,
+    Position.cam: 0.76,
+    Position.lb: 0.74,
+    Position.rw: 0.7,
+    Position.cdm: 0.62,
+    Position.rb: 0.55,
+    Position.st: 0.62,
+    Position.cb: 0.5,
+    Position.gk: 0.05,
   },
   Position.rm: {
     Position.rm: 1.0,
-    Position.rw: 0.9, Position.lm: 0.85, Position.cm: 0.82,
-    Position.cam: 0.76, Position.rb: 0.74, Position.lw: 0.7,
-    Position.cdm: 0.62, Position.lb: 0.55, Position.st: 0.62,
-    Position.cb: 0.5, Position.gk: 0.05,
+    Position.rw: 0.9,
+    Position.lm: 0.85,
+    Position.cm: 0.82,
+    Position.cam: 0.76,
+    Position.rb: 0.74,
+    Position.lw: 0.7,
+    Position.cdm: 0.62,
+    Position.lb: 0.55,
+    Position.st: 0.62,
+    Position.cb: 0.5,
+    Position.gk: 0.05,
   },
   Position.cm: {
     Position.cm: 1.0,
-    Position.cdm: 0.9, Position.cam: 0.86, Position.lm: 0.8, Position.rm: 0.8,
-    Position.st: 0.6, Position.lw: 0.6, Position.rw: 0.6,
-    Position.cb: 0.58, Position.rb: 0.58, Position.lb: 0.58,
+    Position.cdm: 0.9,
+    Position.cam: 0.86,
+    Position.lm: 0.8,
+    Position.rm: 0.8,
+    Position.st: 0.6,
+    Position.lw: 0.6,
+    Position.rw: 0.6,
+    Position.cb: 0.58,
+    Position.rb: 0.58,
+    Position.lb: 0.58,
     Position.gk: 0.05,
   },
   Position.cdm: {
     Position.cdm: 1.0,
-    Position.cm: 0.9, Position.cb: 0.76, Position.rb: 0.62, Position.lb: 0.62,
-    Position.lm: 0.68, Position.rm: 0.68, Position.cam: 0.64,
-    Position.st: 0.5, Position.lw: 0.5, Position.rw: 0.5,
+    Position.cm: 0.9,
+    Position.cb: 0.76,
+    Position.rb: 0.62,
+    Position.lb: 0.62,
+    Position.lm: 0.68,
+    Position.rm: 0.68,
+    Position.cam: 0.64,
+    Position.st: 0.5,
+    Position.lw: 0.5,
+    Position.rw: 0.5,
     Position.gk: 0.05,
   },
   Position.cb: {
     Position.cb: 1.0,
-    Position.rb: 0.72, Position.lb: 0.72, Position.cdm: 0.7,
-    Position.cm: 0.55, Position.rm: 0.45, Position.lm: 0.45,
-    Position.st: 0.4, Position.lw: 0.4, Position.rw: 0.4,
-    Position.cam: 0.4, Position.gk: 0.05,
+    Position.rb: 0.72,
+    Position.lb: 0.72,
+    Position.cdm: 0.7,
+    Position.cm: 0.55,
+    Position.rm: 0.45,
+    Position.lm: 0.45,
+    Position.st: 0.4,
+    Position.lw: 0.4,
+    Position.rw: 0.4,
+    Position.cam: 0.4,
+    Position.gk: 0.05,
   },
   Position.rb: {
     Position.rb: 1.0,
-    Position.lb: 0.72, Position.cb: 0.7, Position.rm: 0.74,
-    Position.rw: 0.7, Position.cdm: 0.6, Position.cm: 0.6,
-    Position.lm: 0.45, Position.lw: 0.45, Position.st: 0.4,
-    Position.cam: 0.4, Position.gk: 0.05,
+    Position.lb: 0.72,
+    Position.cb: 0.7,
+    Position.rm: 0.74,
+    Position.rw: 0.7,
+    Position.cdm: 0.6,
+    Position.cm: 0.6,
+    Position.lm: 0.45,
+    Position.lw: 0.45,
+    Position.st: 0.4,
+    Position.cam: 0.4,
+    Position.gk: 0.05,
   },
   Position.lb: {
     Position.lb: 1.0,
-    Position.rb: 0.72, Position.cb: 0.7, Position.lm: 0.74,
-    Position.lw: 0.7, Position.cdm: 0.6, Position.cm: 0.6,
-    Position.rm: 0.45, Position.rw: 0.45, Position.st: 0.4,
-    Position.cam: 0.4, Position.gk: 0.05,
+    Position.rb: 0.72,
+    Position.cb: 0.7,
+    Position.lm: 0.74,
+    Position.lw: 0.7,
+    Position.cdm: 0.6,
+    Position.cm: 0.6,
+    Position.rm: 0.45,
+    Position.rw: 0.45,
+    Position.st: 0.4,
+    Position.cam: 0.4,
+    Position.gk: 0.05,
   },
 };
 
@@ -280,9 +364,11 @@ class SquadEngine {
         return a.ownedId.compareTo(b.ownedId);
       });
     var next = 0;
-    for (var slot = Formation.startingXiSize;
-        slot < Formation.squadSize && next < remaining.length;
-        slot++) {
+    for (
+      var slot = Formation.startingXiSize;
+      slot < Formation.squadSize && next < remaining.length;
+      slot++
+    ) {
       assignment[slot] = remaining[next++].ownedId;
     }
     return assignment;
@@ -310,7 +396,9 @@ class SquadEngine {
   /// Squad validity (GDD 6.1): complete XI, a goalkeeper in goal, all
   /// distinct, bench and reserves within capacity.
   List<String> validateSquad(
-      Formation formation, Map<int, PlayerCard> slotAssignments) {
+    Formation formation,
+    Map<int, PlayerCard> slotAssignments,
+  ) {
     final problems = <String>[];
     final xi = {
       for (final e in slotAssignments.entries)

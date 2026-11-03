@@ -41,8 +41,10 @@ class FcmRivalsApp extends StatelessWidget {
       // web) get a centred phone-width column instead of a stretched UI.
       builder: (context, child) {
         final mq = MediaQuery.of(context);
-        final scaler =
-            mq.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.2);
+        final scaler = mq.textScaler.clamp(
+          minScaleFactor: 0.9,
+          maxScaleFactor: 1.2,
+        );
         return MediaQuery(
           data: mq.copyWith(textScaler: scaler),
           child: ColoredBox(
@@ -119,12 +121,12 @@ class _GameShellBodyState extends State<_GameShellBody> {
   final Set<int> _visited = {0};
 
   Widget _page(int i) => switch (i) {
-        0 => const SeasonScreen(),
-        1 => const SquadScreen(),
-        2 => const CollectionScreen(),
-        3 => const CampusScreen(),
-        _ => const PacksScreen(),
-      };
+    0 => const SeasonScreen(),
+    1 => const SquadScreen(),
+    2 => const CollectionScreen(),
+    3 => const CampusScreen(),
+    _ => const PacksScreen(),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -187,15 +189,9 @@ class _AppBarChrome extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           stops: [0, 0.55, 1],
-          colors: [
-            FcmColors.surfaceHigh,
-            FcmColors.surface,
-            FcmColors.night,
-          ],
+          colors: [FcmColors.surfaceHigh, FcmColors.surface, FcmColors.night],
         ),
-        border: Border(
-          top: BorderSide(color: Color(0x0FFFFFFF)),
-        ),
+        border: Border(top: BorderSide(color: Color(0x0FFFFFFF))),
       ),
       // A faint warm sheen behind the wordmark, painted over the
       // gradient (full-bleed via foregroundDecoration).
@@ -203,10 +199,7 @@ class _AppBarChrome extends StatelessWidget {
         gradient: RadialGradient(
           center: Alignment(-0.7, -1.2),
           radius: 1.4,
-          colors: [
-            Color(0x14D9B871),
-            Colors.transparent,
-          ],
+          colors: [Color(0x14D9B871), Colors.transparent],
         ),
       ),
     );

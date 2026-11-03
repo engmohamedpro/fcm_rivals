@@ -123,8 +123,7 @@ class MatchHeader extends StatelessWidget {
                               end: fullTime ? 1.0 : progress,
                             ),
                             duration: const Duration(milliseconds: 400),
-                            builder: (context, f, _) =>
-                                FractionallySizedBox(
+                            builder: (context, f, _) => FractionallySizedBox(
                               alignment: Alignment.centerLeft,
                               widthFactor: f,
                               child: const DecoratedBox(
@@ -162,9 +161,7 @@ class MatchHeader extends StatelessWidget {
             Row(
               children: [
                 _HeaderIconButton(
-                  icon: paused
-                      ? Icons.play_arrow_rounded
-                      : Icons.pause_rounded,
+                  icon: paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
                   gold: !paused,
                   tooltip: paused ? 'Resume' : 'Pause',
                   onTap: onTogglePause,
@@ -215,8 +212,7 @@ class _TeamChip extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient:
-                isUser ? FcmColors.goldGradient : FcmColors.steelGradient,
+            gradient: isUser ? FcmColors.goldGradient : FcmColors.steelGradient,
             border: Border.all(color: Colors.white24),
           ),
           child: FitText(
@@ -410,6 +406,7 @@ class _LiveDot extends StatefulWidget {
   @override
   State<_LiveDot> createState() => _LiveDotState();
 }
+
 class _LiveDotState extends State<_LiveDot>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
@@ -435,8 +432,7 @@ class _LiveDotState extends State<_LiveDot>
           color: FcmColors.danger,
           boxShadow: [
             BoxShadow(
-              color: FcmColors.danger
-                  .withValues(alpha: 0.3 + 0.5 * _c.value),
+              color: FcmColors.danger.withValues(alpha: 0.3 + 0.5 * _c.value),
               blurRadius: 4 + 8 * _c.value,
             ),
           ],
@@ -547,73 +543,73 @@ class _HeaderIconButton extends StatelessWidget {
 /// and its accent colour. Goals and penalties burn gold, cards carry
 /// their colour, saves cool green — the feed reads at a glance.
 _KindStyle _styleOf(CommentaryKind kind) => switch (kind) {
-      CommentaryKind.goal => _KindStyle(
-          icon: Icons.sports_soccer_rounded,
-          color: FcmColors.gold,
-          label: 'GOAL',
-          big: true,
-        ),
-      CommentaryKind.penalty => _KindStyle(
-          icon: Icons.adjust_rounded,
-          color: FcmColors.gold,
-          label: 'PENALTY',
-          big: true,
-        ),
-      CommentaryKind.redCard => _KindStyle(
-          icon: Icons.style_rounded,
-          color: FcmColors.danger,
-          label: 'RED CARD',
-          big: true,
-        ),
-      CommentaryKind.yellowCard => _KindStyle(
-          icon: Icons.style_rounded,
-          color: FcmColors.goldSoft,
-        ),
-      CommentaryKind.save => _KindStyle(
-          icon: Icons.sports_handball_rounded,
-          color: FcmColors.success,
-        ),
-      CommentaryKind.substitution => _KindStyle(
-          icon: Icons.swap_horiz_rounded,
-          color: FcmColors.silver,
-        ),
-      CommentaryKind.tactical => _KindStyle(
-          icon: Icons.tune_rounded,
-          color: FcmColors.silver,
-        ),
-      CommentaryKind.order => _KindStyle(
-          icon: Icons.campaign_rounded,
-          color: FcmColors.gold,
-        ),
-      CommentaryKind.kickoff => _KindStyle(
-          icon: Icons.sports_rounded,
-          color: FcmColors.silver,
-        ),
-      CommentaryKind.halfTime => _KindStyle(
-          icon: Icons.sports_rounded,
-          color: FcmColors.gold,
-        ),
-      CommentaryKind.fullTime => _KindStyle(
-          icon: Icons.flag_rounded,
-          color: FcmColors.gold,
-        ),
-      CommentaryKind.foul => _KindStyle(
-          icon: Icons.sports_rounded,
-          color: FcmColors.textDim,
-        ),
-      CommentaryKind.offside => _KindStyle(
-          icon: Icons.flag_rounded,
-          color: FcmColors.textDim,
-        ),
-      CommentaryKind.corner => _KindStyle(
-          icon: Icons.sports_soccer_rounded,
-          color: FcmColors.textDim,
-        ),
-      CommentaryKind.none => _KindStyle(
-          icon: Icons.circle_rounded,
-          color: FcmColors.textDim,
-        ),
-    };
+  CommentaryKind.goal => _KindStyle(
+    icon: Icons.sports_soccer_rounded,
+    color: FcmColors.gold,
+    label: 'GOAL',
+    big: true,
+  ),
+  CommentaryKind.penalty => _KindStyle(
+    icon: Icons.adjust_rounded,
+    color: FcmColors.gold,
+    label: 'PENALTY',
+    big: true,
+  ),
+  CommentaryKind.redCard => _KindStyle(
+    icon: Icons.style_rounded,
+    color: FcmColors.danger,
+    label: 'RED CARD',
+    big: true,
+  ),
+  CommentaryKind.yellowCard => _KindStyle(
+    icon: Icons.style_rounded,
+    color: FcmColors.goldSoft,
+  ),
+  CommentaryKind.save => _KindStyle(
+    icon: Icons.sports_handball_rounded,
+    color: FcmColors.success,
+  ),
+  CommentaryKind.substitution => _KindStyle(
+    icon: Icons.swap_horiz_rounded,
+    color: FcmColors.silver,
+  ),
+  CommentaryKind.tactical => _KindStyle(
+    icon: Icons.tune_rounded,
+    color: FcmColors.silver,
+  ),
+  CommentaryKind.order => _KindStyle(
+    icon: Icons.campaign_rounded,
+    color: FcmColors.gold,
+  ),
+  CommentaryKind.kickoff => _KindStyle(
+    icon: Icons.sports_rounded,
+    color: FcmColors.silver,
+  ),
+  CommentaryKind.halfTime => _KindStyle(
+    icon: Icons.sports_rounded,
+    color: FcmColors.gold,
+  ),
+  CommentaryKind.fullTime => _KindStyle(
+    icon: Icons.flag_rounded,
+    color: FcmColors.gold,
+  ),
+  CommentaryKind.foul => _KindStyle(
+    icon: Icons.sports_rounded,
+    color: FcmColors.textDim,
+  ),
+  CommentaryKind.offside => _KindStyle(
+    icon: Icons.flag_rounded,
+    color: FcmColors.textDim,
+  ),
+  CommentaryKind.corner => _KindStyle(
+    icon: Icons.sports_soccer_rounded,
+    color: FcmColors.textDim,
+  ),
+  CommentaryKind.none => _KindStyle(
+    icon: Icons.circle_rounded,
+    color: FcmColors.textDim,
+  ),
+};
 
 class _KindStyle {
   const _KindStyle({
@@ -705,7 +701,9 @@ class _KeyMomentCard extends StatelessWidget {
               color: accent == FcmColors.gold ? null : accent,
               borderRadius: BorderRadius.circular(11),
               border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.25), width: 1),
+                color: Colors.white.withValues(alpha: 0.25),
+                width: 1,
+              ),
             ),
             child: Icon(
               style.icon,
@@ -755,7 +753,9 @@ class _KeyMomentCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: accent.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(6),
@@ -812,7 +812,9 @@ class _EventRow extends StatelessWidget {
               color: accent.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                  color: accent.withValues(alpha: 0.45), width: 1),
+                color: accent.withValues(alpha: 0.45),
+                width: 1,
+              ),
             ),
             child: Icon(style.icon, color: accent, size: 17),
           ),
@@ -991,8 +993,11 @@ class TouchlinePepTalkCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.record_voice_over_rounded,
-                      color: FcmColors.gold, size: 20),
+                  const Icon(
+                    Icons.record_voice_over_rounded,
+                    color: FcmColors.gold,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: FitText(
@@ -1010,14 +1015,19 @@ class TouchlinePepTalkCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: FcmColors.gold.withValues(alpha: 0.10),
                     border: Border(
-                        top: BorderSide(
-                            color: FcmColors.gold.withValues(alpha: 0.5)),
-                        bottom: BorderSide(
-                            color: FcmColors.gold.withValues(alpha: 0.5))),
+                      top: BorderSide(
+                        color: FcmColors.gold.withValues(alpha: 0.5),
+                      ),
+                      bottom: BorderSide(
+                        color: FcmColors.gold.withValues(alpha: 0.5),
+                      ),
+                    ),
                   ),
                   child: Text(
                     scoreHeader!,
@@ -1063,8 +1073,7 @@ class TouchlinePepTalkCard extends StatelessWidget {
                 onPressed: onSkip,
                 child: const Text(
                   'Say nothing — back to the match',
-                  style:
-                      TextStyle(color: FcmColors.textDim, fontSize: 12),
+                  style: TextStyle(color: FcmColors.textDim, fontSize: 12),
                 ),
               ),
             ],
@@ -1121,8 +1130,11 @@ class _PepTalkOption extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: FcmColors.textDim, size: 20),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: FcmColors.textDim,
+              size: 20,
+            ),
           ],
         ),
       ),

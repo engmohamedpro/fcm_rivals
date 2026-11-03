@@ -57,7 +57,8 @@ class Clubs extends Table {
   TextColumn get managerName => text()();
   IntColumn get crestIndex => integer().withDefault(const Constant(0))();
   TextColumn get formationCode => text().withDefault(const Constant('4-3-3'))();
-  TextColumn get playingStyle => text().withDefault(const Constant('balanced'))();
+  TextColumn get playingStyle =>
+      text().withDefault(const Constant('balanced'))();
   TextColumn get mentality => text().withDefault(const Constant('balanced'))();
   IntColumn get coins => integer()();
   BoolColumn get isUser => boolean().withDefault(const Constant(true))();
@@ -81,14 +82,16 @@ class OwnedPlayers extends Table {
   IntColumn get upgradedAttack => integer().withDefault(const Constant(0))();
   IntColumn get upgradedSupport => integer().withDefault(const Constant(0))();
   IntColumn get upgradedDefence => integer().withDefault(const Constant(0))();
-  IntColumn get upgradedGoalkeeping => integer().withDefault(const Constant(0))();
+  IntColumn get upgradedGoalkeeping =>
+      integer().withDefault(const Constant(0))();
 
   IntColumn get staminaPercent => integer().withDefault(const Constant(100))();
   IntColumn get squadSlot => integer().nullable()();
 
   /// owned | sold | merged (sold/merged rows kept for history).
   TextColumn get status => text().withDefault(const Constant('owned'))();
-  TextColumn get acquisitionSource => text().withDefault(const Constant('pack'))();
+  TextColumn get acquisitionSource =>
+      text().withDefault(const Constant('pack'))();
   DateTimeColumn get acquiredAt => dateTime()();
 }
 
@@ -150,8 +153,7 @@ class LeagueTeams extends Table {
 
   /// GDD 9.5: the club was carried over into this season from the
   /// previous one (promoted/relegated AI club with a retained squad).
-  BoolColumn get carriedOver =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get carriedOver => boolean().withDefault(const Constant(false))();
 }
 
 /// Match schedule (SRS 25: Fixtures): double round-robin, 38 rounds
@@ -247,22 +249,24 @@ class UserSettings extends Table {
   IntColumn get matchSpeed => integer().withDefault(const Constant(1))();
 }
 
-@DriftDatabase(tables: [
-  Players,
-  DatasetVersions,
-  Clubs,
-  OwnedPlayers,
-  Packs,
-  CoinTransactions,
-  Seasons,
-  LeagueTeams,
-  Fixtures,
-  MatchResults,
-  AiPlayers,
-  AdUsages,
-  FacilityLevels,
-  UserSettings,
-])
+@DriftDatabase(
+  tables: [
+    Players,
+    DatasetVersions,
+    Clubs,
+    OwnedPlayers,
+    Packs,
+    CoinTransactions,
+    Seasons,
+    LeagueTeams,
+    Fixtures,
+    MatchResults,
+    AiPlayers,
+    AdUsages,
+    FacilityLevels,
+    UserSettings,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -271,63 +275,67 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.createTable(seasons);
-            await m.createTable(leagueTeams);
-            await m.createTable(fixtures);
-            await m.createTable(matchResults);
-            await m.createTable(aiPlayers);
-          }
-          if (from < 3) {
-            await m.createTable(adUsages);
-          }
-          if (from < 4) {
-            await m.addColumn(leagueTeams, leagueTeams.carriedOver);
-          }
-          if (from < 5) {
-            // Core player data slimmed to name/nationality/position/value:
-            // age, club and leagueCode dropped. TableMigration rebuilds the
-            // table, preserving every remaining row and column.
-            await m.alterTable(TableMigration(players));
-          }
-          if (from < 6) {
-            // Packs gained the store tier (bronze/silver/gold variety).
-            await m.addColumn(packs, packs.tier);
-            // Base stats move to the position-weighted distribution: every
-            // existing player row is regenerated from its market value and
-            // position so the collection reflects the new curve (GDD 4.6).
-            final generator = const BaseStatsGenerator();
-            final rows = await select(players).get();
-            for (final row in rows) {
-              final stats = generator.generate(
-                  Position.fromCode(row.position), row.marketValueEur,
-                  seed: row.playerId);
-              await (update(players)
-                    ..where((p) => p.playerId.equals(row.playerId)))
-                  .write(PlayersCompanion(
-                attack: Value(stats.attack),
-                support: Value(stats.support),
-                defence: Value(stats.defence),
-                goalkeeping: Value(stats.goalkeeping),
-              ));
-            }
-          }
-          if (from < 7) {
-            // Club campus facilities (GDD 3.5): the upgrade tab's state.
-            await m.createTable(facilityLevels);
-          }
-          if (from < 8) {
-            // App-level preferences (match playback speed, GDD 26.2).
-            await m.createTable(userSettings);
-          }
-          if (from < 9) {
-            // AI squads drawn from the real player database: each squad
-            // entry carries the dataset player it represents. Existing
-            // rows predate real-player generation and stay null.
-            await m.addColumn(aiPlayers, aiPlayers.realPlayerId);
-          }
-        },
-      );
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(seasons);
+        await m.createTable(leagueTeams);
+        await m.createTable(fixtures);
+        await m.createTable(matchResults);
+        await m.createTable(aiPlayers);
+      }
+      if (from < 3) {
+        await m.createTable(adUsages);
+      }
+      if (from < 4) {
+        await m.addColumn(leagueTeams, leagueTeams.carriedOver);
+      }
+      if (from < 5) {
+        // Core player data slimmed to name/nationality/position/value:
+        // age, club and leagueCode dropped. TableMigration rebuilds the
+        // table, preserving every remaining row and column.
+        await m.alterTable(TableMigration(players));
+      }
+      if (from < 6) {
+        // Packs gained the store tier (bronze/silver/gold variety).
+        await m.addColumn(packs, packs.tier);
+        // Base stats move to the position-weighted distribution: every
+        // existing player row is regenerated from its market value and
+        // position so the collection reflects the new curve (GDD 4.6).
+        final generator = const BaseStatsGenerator();
+        final rows = await select(players).get();
+        for (final row in rows) {
+          final stats = generator.generate(
+            Position.fromCode(row.position),
+            row.marketValueEur,
+            seed: row.playerId,
+          );
+          await (update(
+            players,
+          )..where((p) => p.playerId.equals(row.playerId))).write(
+            PlayersCompanion(
+              attack: Value(stats.attack),
+              support: Value(stats.support),
+              defence: Value(stats.defence),
+              goalkeeping: Value(stats.goalkeeping),
+            ),
+          );
+        }
+      }
+      if (from < 7) {
+        // Club campus facilities (GDD 3.5): the upgrade tab's state.
+        await m.createTable(facilityLevels);
+      }
+      if (from < 8) {
+        // App-level preferences (match playback speed, GDD 26.2).
+        await m.createTable(userSettings);
+      }
+      if (from < 9) {
+        // AI squads drawn from the real player database: each squad
+        // entry carries the dataset player it represents. Existing
+        // rows predate real-player generation and stay null.
+        await m.addColumn(aiPlayers, aiPlayers.realPlayerId);
+      }
+    },
+  );
 }

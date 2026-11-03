@@ -80,8 +80,14 @@ void main() {
     final minV = values.reduce(math.min);
     final maxV = values.reduce(math.max);
 
-    expect(eco.economicValueOf(minV), greaterThanOrEqualTo(eco.config.minEconomicValue));
-    expect(eco.economicValueOf(maxV), lessThanOrEqualTo(eco.config.maxEconomicValue));
+    expect(
+      eco.economicValueOf(minV),
+      greaterThanOrEqualTo(eco.config.minEconomicValue),
+    );
+    expect(
+      eco.economicValueOf(maxV),
+      lessThanOrEqualTo(eco.config.maxEconomicValue),
+    );
     // 10k vs 200M must not be a 20,000x spread — the curve compresses it.
     final ratio = eco.economicValueOf(maxV) / eco.economicValueOf(minV);
     expect(ratio, lessThan(500));
@@ -93,18 +99,25 @@ void main() {
     final pool = db.all.toList();
 
     // Global pack: exactly one player.
-    final global = engine.open(const PackScope(category: PackCategory.global), pool);
+    final global = engine.open(
+      const PackScope(category: PackCategory.global),
+      pool,
+    );
     expect(global.length, 1);
 
     // Nationality pack (Egypt).
     final egypt = engine.open(
-        const PackScope(category: PackCategory.nationality, nationality: 'Egypt'), pool);
+      const PackScope(category: PackCategory.nationality, nationality: 'Egypt'),
+      pool,
+    );
     expect(egypt.length, 1);
     expect(egypt.every((d) => d.player.nationality == 'Egypt'), isTrue);
 
     // Position pack (GK) and price sanity.
     final gkPack = engine.open(
-        const PackScope(category: PackCategory.position, position: Position.gk), pool);
+      const PackScope(category: PackCategory.position, position: Position.gk),
+      pool,
+    );
     expect(gkPack.every((d) => d.player.position == Position.gk), isTrue);
   });
 
@@ -116,7 +129,9 @@ void main() {
 
     final gkPool = pool.where((p) => p.position == Position.gk).toList();
     final gkPrice = engine.packPriceFor(
-        const PackScope(category: PackCategory.position, position: Position.gk), gkPool);
+      const PackScope(category: PackCategory.position, position: Position.gk),
+      gkPool,
+    );
 
     expect(globalPrice, greaterThan(0));
     expect(gkPrice, greaterThan(0));
@@ -124,9 +139,7 @@ void main() {
   });
 
   test('GDD 4.6/4.7: re-import identical dataset changes nothing', () {
-    final before = {
-      for (final p in db.all) p.playerId: p.baseStats,
-    };
+    final before = {for (final p in db.all) p.playerId: p.baseStats};
     final result = db.importDatasetFromJson(jsonText);
     expect(result.added, isEmpty);
     expect(result.removed, isEmpty);
@@ -144,7 +157,9 @@ void main() {
 
     // Dataset update with a new market value for Haaland (id unchanged).
     final map = json.decode(jsonText) as Map<String, dynamic>;
-    final rows = (map['players'] as List).map((r) => List<dynamic>.from(r as List)).toList();
+    final rows = (map['players'] as List)
+        .map((r) => List<dynamic>.from(r as List))
+        .toList();
     final haalandRow = rows.firstWhere((r) => r[0] == 418560);
     final oldMv = haalandRow[4] as int;
     haalandRow[4] = oldMv + 20_000_000; // value change => regenerate stats
@@ -155,14 +170,19 @@ void main() {
     final haalandAfter = db[418560]!;
     expect(result.regenerated.any((p) => p.playerId == 418560), isTrue);
     expect(haalandAfter.playerId, haalandBefore.playerId); // same identity
-    expect(haalandAfter.baseStats.overall,
-        greaterThanOrEqualTo(haalandBefore.baseStats.overall));
+    expect(
+      haalandAfter.baseStats.overall,
+      greaterThanOrEqualTo(haalandBefore.baseStats.overall),
+    );
     // owned upgrade level is user data — untouched by the import (simulated).
     expect(ownedUpgradeLevel, 3);
 
     // FR-008: compensation for a removed player uses the selling formula.
     const eco = EconomyEngine();
-    final compensation = eco.sellPriceOfUpgraded(haalandAfter, ownedUpgradeLevel);
+    final compensation = eco.sellPriceOfUpgraded(
+      haalandAfter,
+      ownedUpgradeLevel,
+    );
     expect(compensation, greaterThan(eco.sellPriceOf(haalandAfter)));
   });
 
@@ -172,11 +192,17 @@ void main() {
     var highTierTop10Count = 0;
     const opens = 200;
     final top100Ids = {
-      for (final p in (pool..sort((a, b) => b.marketValueEur.compareTo(a.marketValueEur))).take(100))
-        p.playerId
+      for (final p
+          in (pool
+                ..sort((a, b) => b.marketValueEur.compareTo(a.marketValueEur)))
+              .take(100))
+        p.playerId,
     };
     for (var i = 0; i < opens * 3; i++) {
-      final draws = engine.open(const PackScope(category: PackCategory.global), pool);
+      final draws = engine.open(
+        const PackScope(category: PackCategory.global),
+        pool,
+      );
       for (final d in draws) {
         if (top100Ids.contains(d.player.playerId)) highTierTop10Count++;
       }

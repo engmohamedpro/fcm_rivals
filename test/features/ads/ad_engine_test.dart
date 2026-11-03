@@ -7,14 +7,24 @@ import 'package:fcm_rivals/features/match/match_engine.dart';
 import 'package:fcm_rivals/features/match/tactics.dart';
 
 /// Builds an XI with generator-derived attributes at [marketValueEur].
-List<MatchPlayer> makeTeam(int base, String name,
-    {int marketValueEur = 20_000_000}) {
+List<MatchPlayer> makeTeam(
+  int base,
+  String name, {
+  int marketValueEur = 20_000_000,
+}) {
   const gen = BaseStatsGenerator();
   final positions = [
     Position.gk,
-    Position.lb, Position.cb, Position.cb, Position.rb,
-    Position.lm, Position.cm, Position.cm, Position.rm,
-    Position.st, Position.st,
+    Position.lb,
+    Position.cb,
+    Position.cb,
+    Position.rb,
+    Position.lm,
+    Position.cm,
+    Position.cm,
+    Position.rm,
+    Position.st,
+    Position.st,
   ];
   return [
     for (var i = 0; i < positions.length; i++)
@@ -60,10 +70,13 @@ void main() {
     test('a pre-match talk changes team totals from kick-off', () {
       final engine = buildEngine(7);
       final before = engine.totalsOf(MatchSide.home);
-      engine.queueCommand(PepTalkCommand(
+      engine.queueCommand(
+        PepTalkCommand(
           atMinute: 0,
           side: MatchSide.home,
-          talk: preMatchPepTalks.firstWhere((t) => t.id == 'allOutAttack')));
+          talk: preMatchPepTalks.firstWhere((t) => t.id == 'allOutAttack'),
+        ),
+      );
       engine.simulateToEnd();
       // The talk's attack multiplier (1.08) was active: the applied
       // command list records it in order.
@@ -80,7 +93,8 @@ void main() {
         final engine = buildEngine(42);
         if (talk != null) {
           engine.queueCommand(
-              PepTalkCommand(atMinute: 0, side: MatchSide.home, talk: talk));
+            PepTalkCommand(atMinute: 0, side: MatchSide.home, talk: talk),
+          );
         }
         engine.simulateToEnd();
         return engine.state.scoreHome * 100 + engine.state.scoreAway;
@@ -93,12 +107,20 @@ void main() {
 
     test('a half-time talk replaces the pre-match talk, no stacking', () {
       final engine = buildEngine(9);
-      engine.queueCommand(PepTalkCommand(
-          atMinute: 0, side: MatchSide.home, talk: preMatchPepTalks.first));
-      engine.queueCommand(PepTalkCommand(
+      engine.queueCommand(
+        PepTalkCommand(
+          atMinute: 0,
+          side: MatchSide.home,
+          talk: preMatchPepTalks.first,
+        ),
+      );
+      engine.queueCommand(
+        PepTalkCommand(
           atMinute: 46,
           side: MatchSide.home,
-          talk: halfTimePepTalks.first));
+          talk: halfTimePepTalks.first,
+        ),
+      );
       engine.simulateToEnd();
       final pepCommands = engine.appliedCommands.whereType<PepTalkCommand>();
       expect(pepCommands.length, 2);
@@ -109,8 +131,10 @@ void main() {
           .where((e) => e.type == MatchEventType.tacticalChange)
           .where((e) => e.metadata['change'] == 'pepTalk')
           .toList();
-      expect(talkEvents.map((e) => e.metadata['value']).toList(),
-          [preMatchPepTalks.first.id, halfTimePepTalks.first.id]);
+      expect(talkEvents.map((e) => e.metadata['value']).toList(), [
+        preMatchPepTalks.first.id,
+        halfTimePepTalks.first.id,
+      ]);
     });
 
     test('every talk exposes visible percentage effects (GDD 15)', () {
@@ -127,11 +151,14 @@ void main() {
     });
 
     test('talks have unique ids within their stage', () {
-      expect(preMatchPepTalks.map((t) => t.id).toSet().length,
-          preMatchPepTalks.length);
       expect(
-          halfTimePepTalks.map((t) => t.id).toSet().length,
-          halfTimePepTalks.length);
+        preMatchPepTalks.map((t) => t.id).toSet().length,
+        preMatchPepTalks.length,
+      );
+      expect(
+        halfTimePepTalks.map((t) => t.id).toSet().length,
+        halfTimePepTalks.length,
+      );
     });
 
     test('a stamina-heavy talk drains measurably less over 90 minutes', () {
@@ -139,7 +166,8 @@ void main() {
         final engine = buildEngine(21);
         if (talk != null) {
           engine.queueCommand(
-              PepTalkCommand(atMinute: 0, side: MatchSide.home, talk: talk));
+            PepTalkCommand(atMinute: 0, side: MatchSide.home, talk: talk),
+          );
         }
         engine.simulateToEnd();
         return engine
@@ -148,9 +176,11 @@ void main() {
       }
 
       final calm = totalStamina(
-          preMatchPepTalks.firstWhere((t) => t.id == 'calmMinds'));
+        preMatchPepTalks.firstWhere((t) => t.id == 'calmMinds'),
+      );
       final allOut = totalStamina(
-          preMatchPepTalks.firstWhere((t) => t.id == 'allOutAttack'));
+        preMatchPepTalks.firstWhere((t) => t.id == 'allOutAttack'),
+      );
       expect(calm, greaterThan(allOut));
     });
   });
@@ -161,17 +191,24 @@ void main() {
     test('rewards granted only after successful completion (FR-041)', () {
       final now = DateTime(2026, 11, 1, 15);
       final ad = CompletedAd(
-          kind: AdRewardKind.boostedRecovery,
-          rewardKey: 'match:1',
-          clubId: 1,
-          completedAt: now);
-      final notCompleted =
-          engine.validateReward(ad: ad, usageToday: const [], playbackCompleted: false);
+        kind: AdRewardKind.boostedRecovery,
+        rewardKey: 'match:1',
+        clubId: 1,
+        completedAt: now,
+      );
+      final notCompleted = engine.validateReward(
+        ad: ad,
+        usageToday: const [],
+        playbackCompleted: false,
+      );
       expect(notCompleted.allowed, isFalse);
       expect(notCompleted.reason, contains('did not complete'));
 
-      final completed =
-          engine.validateReward(ad: ad, usageToday: const [], playbackCompleted: true);
+      final completed = engine.validateReward(
+        ad: ad,
+        usageToday: const [],
+        playbackCompleted: true,
+      );
       expect(completed.allowed, isTrue);
       expect(completed.rewardKind, AdRewardKind.boostedRecovery);
     });
@@ -179,16 +216,23 @@ void main() {
     test('duplicate callbacks are rejected (FR-042)', () {
       final now = DateTime(2026, 11, 1, 15);
       final ad = CompletedAd(
-          kind: AdRewardKind.matchReplay,
-          rewardKey: 'match:5',
-          clubId: 1,
-          completedAt: now);
+        kind: AdRewardKind.matchReplay,
+        rewardKey: 'match:5',
+        clubId: 1,
+        completedAt: now,
+      );
       final usage = [
         AdUsageRecord(
-            rewardKind: 'matchReplay', rewardKey: 'match:5', completedAt: now),
+          rewardKind: 'matchReplay',
+          rewardKey: 'match:5',
+          completedAt: now,
+        ),
       ];
-      final result =
-          engine.validateReward(ad: ad, usageToday: usage, playbackCompleted: true);
+      final result = engine.validateReward(
+        ad: ad,
+        usageToday: usage,
+        playbackCompleted: true,
+      );
       expect(result.allowed, isFalse);
       expect(result.reason, contains('already granted'));
     });
@@ -196,21 +240,26 @@ void main() {
     test('daily limits are enforced per kind and globally', () {
       final now = DateTime(2026, 11, 1, 15);
       final ad = CompletedAd(
-          kind: AdRewardKind.boostedRecovery,
-          rewardKey: 'match:9',
-          clubId: 1,
-          completedAt: now);
+        kind: AdRewardKind.boostedRecovery,
+        rewardKey: 'match:9',
+        clubId: 1,
+        completedAt: now,
+      );
 
       // Per-kind limit: 3 boosted-recovery ads already used today.
       final usageSameKind = [
         for (var i = 0; i < 3; i++)
           AdUsageRecord(
-              rewardKind: 'boostedRecovery',
-              rewardKey: 'match:$i',
-              completedAt: now),
+            rewardKind: 'boostedRecovery',
+            rewardKey: 'match:$i',
+            completedAt: now,
+          ),
       ];
       final kindLimit = engine.validateReward(
-          ad: ad, usageToday: usageSameKind, playbackCompleted: true);
+        ad: ad,
+        usageToday: usageSameKind,
+        playbackCompleted: true,
+      );
       expect(kindLimit.allowed, isFalse);
       expect(kindLimit.reason, contains('Daily limit reached for'));
 
@@ -220,12 +269,16 @@ void main() {
       final usageMixed = [
         for (var i = 0; i < 8; i++)
           AdUsageRecord(
-              rewardKind: 'matchReplay',
-              rewardKey: 'k:$i',
-              completedAt: now),
+            rewardKind: 'matchReplay',
+            rewardKey: 'k:$i',
+            completedAt: now,
+          ),
       ];
       final globalLimit = engine.validateReward(
-          ad: ad, usageToday: usageMixed, playbackCompleted: true);
+        ad: ad,
+        usageToday: usageMixed,
+        playbackCompleted: true,
+      );
       expect(globalLimit.allowed, isFalse);
       expect(globalLimit.reason, contains('Daily ad limit reached'));
     });
@@ -236,47 +289,71 @@ void main() {
       final beyond = fullTime.add(const Duration(hours: 30));
 
       expect(
-          engine
-              .validateMatchReplayOffer(
-                  won: true, fullTimeAt: fullTime, now: within)
-              .allowed,
-          isFalse);
+        engine
+            .validateMatchReplayOffer(
+              won: true,
+              fullTimeAt: fullTime,
+              now: within,
+            )
+            .allowed,
+        isFalse,
+      );
       expect(
-          engine
-              .validateMatchReplayOffer(
-                  won: false, fullTimeAt: fullTime, now: within)
-              .allowed,
-          isTrue);
+        engine
+            .validateMatchReplayOffer(
+              won: false,
+              fullTimeAt: fullTime,
+              now: within,
+            )
+            .allowed,
+        isTrue,
+      );
       expect(
-          engine
-              .validateMatchReplayOffer(
-                  won: false, fullTimeAt: fullTime, now: beyond)
-              .allowed,
-          isFalse);
+        engine
+            .validateMatchReplayOffer(
+              won: false,
+              fullTimeAt: fullTime,
+              now: beyond,
+            )
+            .allowed,
+        isFalse,
+      );
     });
 
     test('boosted recovery adds +15% of natural recovery, capped at 100', () {
       // Natural recovery of 20 from 60 → boosted 63 (60 + 20*0.15).
       expect(
-          engine.boostedRecovery(
-              staminaAfterNaturalRecovery: 80, naturalRecovery: 20),
-          83);
+        engine.boostedRecovery(
+          staminaAfterNaturalRecovery: 80,
+          naturalRecovery: 20,
+        ),
+        83,
+      );
       // Cap: 95 + 20 natural → 98 → capped at 100? 95+3=98 < 100; make a
       // case that clearly exceeds: 90 + 15 recovery → 92.25, fine; and a
       // hard cap case:
       expect(
-          engine.boostedRecovery(
-              staminaAfterNaturalRecovery: 99, naturalRecovery: 10),
-          lessThanOrEqualTo(100));
+        engine.boostedRecovery(
+          staminaAfterNaturalRecovery: 99,
+          naturalRecovery: 10,
+        ),
+        lessThanOrEqualTo(100),
+      );
       expect(
-          engine.boostedRecovery(
-              staminaAfterNaturalRecovery: 99, naturalRecovery: 10),
-          greaterThan(99));
+        engine.boostedRecovery(
+          staminaAfterNaturalRecovery: 99,
+          naturalRecovery: 10,
+        ),
+        greaterThan(99),
+      );
       // No natural recovery → no bonus.
       expect(
-          engine.boostedRecovery(
-              staminaAfterNaturalRecovery: 70, naturalRecovery: 0),
-          70);
+        engine.boostedRecovery(
+          staminaAfterNaturalRecovery: 70,
+          naturalRecovery: 0,
+        ),
+        70,
+      );
     });
 
     test('config exposes the GDD 19.3 proposed values', () {

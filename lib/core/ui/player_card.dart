@@ -130,25 +130,24 @@ class FcmPlayerCard extends StatelessWidget {
         const Shadow(color: Colors.black, blurRadius: 6),
         if (letters != null)
           Shadow(
-              color: rarity.accent.withValues(alpha: 0.9),
-              blurRadius: w * 0.05),
+            color: rarity.accent.withValues(alpha: 0.9),
+            blurRadius: w * 0.05,
+          ),
       ],
     );
 
     Widget nameWidget() {
       final full = player.name.toUpperCase();
       if (letters == null) {
-        return Text(
-          nameHidden ? '' : full,
-          maxLines: 1,
-          style: nameStyle,
-        );
+        return Text(nameHidden ? '' : full, maxLines: 1, style: nameStyle);
       }
       // Nothing at all (not even an invisible name) until the first
       // letter lands — the identity must not leak to screen readers.
       if (nameHidden) return Text('', maxLines: 1, style: nameStyle);
       final shown = math.min(
-          full.length, math.max(0, (full.length * letters).ceil()));
+        full.length,
+        math.max(0, (full.length * letters).ceil()),
+      );
       return Text.rich(
         TextSpan(
           style: nameStyle,
@@ -157,7 +156,9 @@ class FcmPlayerCard extends StatelessWidget {
             TextSpan(
               text: full.substring(shown),
               style: const TextStyle(
-                  color: Colors.transparent, shadows: <Shadow>[]),
+                color: Colors.transparent,
+                shadows: <Shadow>[],
+              ),
             ),
           ],
         ),
@@ -176,7 +177,10 @@ class FcmPlayerCard extends StatelessWidget {
             Positioned.fill(
               child: CustomPaint(
                 painter: _CardFacePainter(
-                    rarity: rarity, shine: shine, glow: glow),
+                  rarity: rarity,
+                  shine: shine,
+                  glow: glow,
+                ),
               ),
             ),
             // Rating, position, flag.
@@ -225,8 +229,10 @@ class FcmPlayerCard extends StatelessWidget {
                     width: w * 0.12,
                     color: ink.withValues(alpha: 0.4),
                   ),
-                  Text(flagEmojiFor(player.nationality),
-                      style: TextStyle(fontSize: w * 0.095)),
+                  Text(
+                    flagEmojiFor(player.nationality),
+                    style: TextStyle(fontSize: w * 0.095),
+                  ),
                   SizedBox(height: w * 0.015),
                   // Nationality name under the flag — always visible like
                   // the flag itself (the walkout already told the country).
@@ -272,7 +278,9 @@ class FcmPlayerCard extends StatelessWidget {
                 top: h * 0.125,
                 child: Container(
                   padding: EdgeInsets.symmetric(
-                      horizontal: w * 0.03, vertical: w * 0.008),
+                    horizontal: w * 0.03,
+                    vertical: w * 0.008,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.62),
                     borderRadius: BorderRadius.circular(w * 0.03),
@@ -304,7 +312,8 @@ class FcmPlayerCard extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: light.withValues(
-                        alpha: 0.14 + 0.20 * maskPulse.clamp(0.0, 1.0)),
+                      alpha: 0.14 + 0.20 * maskPulse.clamp(0.0, 1.0),
+                    ),
                     borderRadius: BorderRadius.circular(h * 0.017),
                   ),
                 ),
@@ -322,10 +331,7 @@ class FcmPlayerCard extends StatelessWidget {
                     ? (nameHidden ? 0.0 : 1.0)
                     : nameProgress.clamp(0.0, 1.0),
                 child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: nameWidget(),
-                  ),
+                  child: FittedBox(fit: BoxFit.scaleDown, child: nameWidget()),
                 ),
               ),
             ),
@@ -409,7 +415,7 @@ class FcmPlayerCardBack extends StatelessWidget {
             fit: BoxFit.contain,
             filterQuality: FilterQuality.medium,
             // The back is still a card without its wordmark.
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -437,28 +443,40 @@ Path cardPath(Size s) {
 /// lands [inset] pixels inside the full outline on every side.
 void _insetCanvas(Canvas canvas, Size size, double inset) {
   canvas.translate(size.width / 2, size.height / 2);
-  canvas.scale((size.width - 2 * inset) / size.width,
-      (size.height - 2 * inset) / size.height);
+  canvas.scale(
+    (size.width - 2 * inset) / size.width,
+    (size.height - 2 * inset) / size.height,
+  );
   canvas.translate(-size.width / 2, -size.height / 2);
 }
 
 /// Tapered rays fanning out of [c] — the legendary face's sunburst.
-void _paintRays(Canvas canvas, Offset c, double radius, Color color,
-    double alpha, int rays) {
+void _paintRays(
+  Canvas canvas,
+  Offset c,
+  double radius,
+  Color color,
+  double alpha,
+  int rays,
+) {
   final slice = 2 * math.pi / rays;
   final paint = Paint()
-    ..shader = RadialGradient(colors: [
-      color.withValues(alpha: alpha),
-      color.withValues(alpha: 0.0),
-    ]).createShader(Rect.fromCircle(center: c, radius: radius));
+    ..shader = RadialGradient(
+      colors: [
+        color.withValues(alpha: alpha),
+        color.withValues(alpha: 0.0),
+      ],
+    ).createShader(Rect.fromCircle(center: c, radius: radius));
   for (var i = 0; i < rays; i++) {
     final a = i * slice;
     canvas.drawPath(
       Path()
         ..moveTo(c.dx, c.dy)
         ..lineTo(c.dx + math.cos(a) * radius, c.dy + math.sin(a) * radius)
-        ..lineTo(c.dx + math.cos(a + slice * 0.45) * radius,
-            c.dy + math.sin(a + slice * 0.45) * radius)
+        ..lineTo(
+          c.dx + math.cos(a + slice * 0.45) * radius,
+          c.dy + math.sin(a + slice * 0.45) * radius,
+        )
         ..close(),
       paint,
     );
@@ -513,10 +531,10 @@ class _CardFacePainter extends CustomPainter {
       canvas.drawPath(
         path,
         Paint()
-          ..color = (glowColor ?? rarity.accent)
-              .withValues(alpha: (0.65 * glow).clamp(0.0, 1.0))
-          ..maskFilter =
-              MaskFilter.blur(BlurStyle.normal, w * 0.10 * glow + 2),
+          ..color = (glowColor ?? rarity.accent).withValues(
+            alpha: (0.65 * glow).clamp(0.0, 1.0),
+          )
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.10 * glow + 2),
       );
     }
 
@@ -565,8 +583,15 @@ class _CardFacePainter extends CustomPainter {
       case CardRarity.legendary:
         _paintRays(canvas, mc, h * 0.62, Colors.white, 0.26, 22);
       case CardRarity.epic:
-        void tri(double x1, double y1, double x2, double y2, double x3,
-            double y3, Color color) {
+        void tri(
+          double x1,
+          double y1,
+          double x2,
+          double y2,
+          double x3,
+          double y3,
+          Color color,
+        ) {
           canvas.drawPath(
             Path()
               ..moveTo(w * x1, h * y1)
@@ -625,9 +650,17 @@ class _CardFacePainter extends CustomPainter {
       Path()
         ..moveTo(cx - w * 0.32, h * 0.57)
         ..quadraticBezierTo(
-            cx - w * 0.30, headY + headR * 1.25, cx, headY + headR * 1.2)
+          cx - w * 0.30,
+          headY + headR * 1.25,
+          cx,
+          headY + headR * 1.2,
+        )
         ..quadraticBezierTo(
-            cx + w * 0.30, headY + headR * 1.25, cx + w * 0.32, h * 0.57)
+          cx + w * 0.30,
+          headY + headR * 1.25,
+          cx + w * 0.32,
+          h * 0.57,
+        )
         ..close(),
       sil,
     );
@@ -651,19 +684,24 @@ class _CardFacePainter extends CustomPainter {
     canvas.drawRect(
       edge,
       Paint()
-        ..shader = LinearGradient(colors: [
-          g[0].withValues(alpha: 0.0),
-          g[0],
-          g[0].withValues(alpha: 0.0),
-        ]).createShader(edge),
+        ..shader = LinearGradient(
+          colors: [
+            g[0].withValues(alpha: 0.0),
+            g[0],
+            g[0].withValues(alpha: 0.0),
+          ],
+        ).createShader(edge),
     );
 
     // Name bar and the three attribute cells.
     final nameBar = RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.07, h * 0.553, w * 0.86, h * 0.088),
-        Radius.circular(h * 0.012));
+      Rect.fromLTWH(w * 0.07, h * 0.553, w * 0.86, h * 0.088),
+      Radius.circular(h * 0.012),
+    );
     canvas.drawRRect(
-        nameBar, Paint()..color = Colors.white.withValues(alpha: 0.07));
+      nameBar,
+      Paint()..color = Colors.white.withValues(alpha: 0.07),
+    );
     canvas.drawRRect(
       nameBar,
       Paint()
@@ -674,11 +712,18 @@ class _CardFacePainter extends CustomPainter {
     final cellW = w * 0.84 / 3;
     for (var i = 0; i < 3; i++) {
       final cell = RRect.fromRectAndRadius(
-          Rect.fromLTWH(w * 0.08 + i * cellW + w * 0.012, h * 0.70,
-              cellW - w * 0.024, h * 0.125),
-          Radius.circular(h * 0.014));
+        Rect.fromLTWH(
+          w * 0.08 + i * cellW + w * 0.012,
+          h * 0.70,
+          cellW - w * 0.024,
+          h * 0.125,
+        ),
+        Radius.circular(h * 0.014),
+      );
       canvas.drawRRect(
-          cell, Paint()..color = Colors.white.withValues(alpha: 0.06));
+        cell,
+        Paint()..color = Colors.white.withValues(alpha: 0.06),
+      );
       canvas.drawRRect(
         cell,
         Paint()
@@ -697,7 +742,10 @@ class _CardFacePainter extends CustomPainter {
       ..lineTo(gem.dx, gem.dy + gr)
       ..lineTo(gem.dx - gr, gem.dy)
       ..close();
-    canvas.drawPath(gemPath, Paint()..color = Colors.white.withValues(alpha: 0.92));
+    canvas.drawPath(
+      gemPath,
+      Paint()..color = Colors.white.withValues(alpha: 0.92),
+    );
     canvas.drawPath(
       gemPath,
       Paint()
@@ -718,8 +766,10 @@ class _CardFacePainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    brand.paint(canvas,
-        Offset(w / 2 - brand.width / 2, h * 0.915 - brand.height / 2));
+    brand.paint(
+      canvas,
+      Offset(w / 2 - brand.width / 2, h * 0.915 - brand.height / 2),
+    );
 
     // Foil sweep.
     final s = shine;
@@ -947,8 +997,7 @@ class FcmMiniCard extends StatelessWidget {
                         glow: ghost ? 0.0 : 0.8,
                         glowColor: warn ? FcmColors.danger : null,
                       ),
-                      foregroundPainter:
-                          ghost ? _GhostPainter() : null,
+                      foregroundPainter: ghost ? _GhostPainter() : null,
                     ),
                   ),
                   if (warn)
@@ -966,24 +1015,30 @@ class FcmMiniCard extends StatelessWidget {
                         children: [
                           FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text('$overall',
-                                maxLines: 1,
-                                softWrap: false,
-                                style: TextStyle(
-                                    color: ink,
-                                    fontSize: width * 0.36,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1)),
+                            child: Text(
+                              '$overall',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                color: ink,
+                                fontSize: width * 0.36,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
+                            ),
                           ),
                           FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text(position,
-                                maxLines: 1,
-                                softWrap: false,
-                                style: TextStyle(
-                                    color: ink.withValues(alpha: 0.9),
-                                    fontSize: width * 0.2,
-                                    fontWeight: FontWeight.w800)),
+                            child: Text(
+                              position,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                color: ink.withValues(alpha: 0.9),
+                                fontSize: width * 0.2,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
                         ],
                       ),

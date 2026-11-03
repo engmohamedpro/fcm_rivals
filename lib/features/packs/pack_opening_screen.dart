@@ -307,13 +307,11 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   /// The timeline the current player runs on: legendary pulls get the
   /// long, dramatic one.
-  _Tl get _tl =>
-      _rarity == CardRarity.legendary ? _Tl.legendary : _Tl.normal;
+  _Tl get _tl => _rarity == CardRarity.legendary ? _Tl.legendary : _Tl.normal;
 
   /// SELL exists only when the caller wired the sale and this draw has an
   /// owned id — preview draws (key men) have nothing to sell.
-  bool get _canSell =>
-      widget.onSell != null && _index < widget.ownedIds.length;
+  bool get _canSell => widget.onSell != null && _index < widget.ownedIds.length;
 
   /// Sells the revealed player, then advances exactly like KEEP.
   Future<void> _sell() async {
@@ -356,8 +354,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   /// Balance the capsule shows and judges: the fresh figure after a sale,
   /// the push-time snapshot otherwise.
-  int get _chainBalance =>
-      _liveBalance ?? widget.chainInfo?.balance ?? 0;
+  int get _chainBalance => _liveBalance ?? widget.chainInfo?.balance ?? 0;
 
   bool get _chainAffordable {
     final info = widget.chainInfo;
@@ -367,8 +364,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   /// Same rating → rarity rule as the collection and squad, so a card looks
   /// identical everywhere in the game.
-  CardRarity get _rarity =>
-      CardRarity.fromOverall(_player.baseStats.overall);
+  CardRarity get _rarity => CardRarity.fromOverall(_player.baseStats.overall);
 
   @override
   void initState() {
@@ -376,11 +372,13 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     _seq = AnimationController(vsync: this, duration: _tl.duration)
       ..addListener(_onTick);
     _idle = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2600))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat();
     _spin = AnimationController(
-        vsync: this, duration: const Duration(seconds: 30))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(seconds: 30),
+    )..repeat();
     _makeSparks();
     // The pack tears itself open immediately: the timeline runs from the
     // first frame, so the sealed foil is on screen for exactly that one
@@ -472,8 +470,10 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     double flash = 0;
     if (isFirst) {
       flash = t < tl.flashPeak
-          ? ((t - tl.flashStart) / (tl.flashPeak - tl.flashStart))
-              .clamp(0.0, 1.0)
+          ? ((t - tl.flashStart) / (tl.flashPeak - tl.flashStart)).clamp(
+              0.0,
+              1.0,
+            )
           : (1 - (t - tl.flashPeak) / tl.flashFade).clamp(0.0, 1.0);
     }
     if (legend && fin > 0 && fin < 1) {
@@ -493,18 +493,25 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     }
     // The charge glow starts from the pack's own tier metal and moves
     // toward the drawn card's rarity colour as the pack heats up.
-    final glowTint = Color.lerp(widget.packTint ?? FcmColors.goldSoft,
-        rarity.accent, math.min(1.0, charge * 1.2))!;
+    final glowTint = Color.lerp(
+      widget.packTint ?? FcmColors.goldSoft,
+      rarity.accent,
+      math.min(1.0, charge * 1.2),
+    )!;
 
-    final burst =
-        ((t - tl.burstStart) / (tl.burstEnd - tl.burstStart)).clamp(0.0, 1.0);
+    final burst = ((t - tl.burstStart) / (tl.burstEnd - tl.burstStart)).clamp(
+      0.0,
+      1.0,
+    );
 
     final done = t >= tl.done;
     final flipT = tl.flip.transform(t);
     final infoFade = 1 - tl.infoOut.transform(t);
 
-    final cardWidth = math.min(math.min(size.width * 0.74, 320.0),
-        size.height * 0.52 * kPlayerCardAspect);
+    final cardWidth = math.min(
+      math.min(size.width * 0.74, 320.0),
+      size.height * 0.52 * kPlayerCardAspect,
+    );
 
     // Legendary stagecraft: a vignette that closes in while the mystery
     // builds and lifts as the name lands, plus the shock rings.
@@ -521,8 +528,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final push = legend ? 1.0 + 0.10 * Interval(0.73, 0.95).transform(t) : 1.0;
     final edge = math.sin(flipT * math.pi);
 
-    final bannerT =
-        legend ? tl.bannerIn!.transform(t) : tl.stats.transform(t);
+    final bannerT = legend ? tl.bannerIn!.transform(t) : tl.stats.transform(t);
 
     return Stack(
       fit: StackFit.expand,
@@ -534,8 +540,11 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
               center: const Alignment(0, -0.1),
               radius: 1.1,
               colors: [
-                Color.lerp(FcmColors.surface, rarity.accent,
-                    0.30 * (isFirst ? charge : 1.0))!,
+                Color.lerp(
+                  FcmColors.surface,
+                  rarity.accent,
+                  0.30 * (isFirst ? charge : 1.0),
+                )!,
                 FcmColors.night,
               ],
             ),
@@ -582,7 +591,10 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
           IgnorePointer(
             child: CustomPaint(
               painter: ShockwavePainter(
-                  progress: fin, color: rarity.accent, rings: 4),
+                progress: fin,
+                color: rarity.accent,
+                rings: 4,
+              ),
             ),
           ),
 
@@ -659,10 +671,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
         // Legendary suspense captions, above the card.
         if (legend)
-          Align(
-            alignment: const Alignment(0, -0.86),
-            child: _buildCaption(t),
-          ),
+          Align(alignment: const Alignment(0, -0.86), child: _buildCaption(t)),
 
         // Pull banner for epic / legendary cards.
         if (rarity != CardRarity.rare && bannerT > 0)
@@ -671,7 +680,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             child: Opacity(
               opacity: bannerT.clamp(0.0, 1.0),
               child: Transform.scale(
-                scale: (0.8 + 0.2 * bannerT) *
+                scale:
+                    (0.8 + 0.2 * bannerT) *
                     (legend ? 1.0 + 0.04 * pulse(_idle.value, cycles: 2) : 1.0),
                 child: Text(
                   rarity == CardRarity.legendary
@@ -684,8 +694,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                     letterSpacing: 4,
                     shadows: [
                       Shadow(
-                          color: rarity.accent.withValues(alpha: 0.9),
-                          blurRadius: legend ? 30 : 22),
+                        color: rarity.accent.withValues(alpha: 0.9),
+                        blurRadius: legend ? 30 : 22,
+                      ),
                     ],
                   ),
                 ),
@@ -697,8 +708,11 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         if (flash > 0)
           IgnorePointer(
             child: ColoredBox(
-              color: Color.lerp(FcmColors.goldSoft, rarity.accent, 0.25)!
-                  .withValues(alpha: flash),
+              color: Color.lerp(
+                FcmColors.goldSoft,
+                rarity.accent,
+                0.25,
+              )!.withValues(alpha: flash),
             ),
           ),
 
@@ -738,8 +752,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                                         // player — a fresh pack draw is unupgraded —
                                         // shown with the same C coin as the top bar.
                                         label: 'SELL',
-                                        coinValue:
-                                            EconomyEngine().sellPriceOf(_player),
+                                        coinValue: EconomyEngine().sellPriceOf(
+                                          _player,
+                                        ),
                                         loading: _selling,
                                         onPressed: _selling ? null : _sell,
                                       ),
@@ -784,18 +799,21 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   }
 
   Widget _buildPack(
-      double t, double charge, Color glowTint, Size size, _Tl tl) {
+    double t,
+    double charge,
+    Color glowTint,
+    Size size,
+    _Tl tl,
+  ) {
     final legend = tl.isLegend;
     final packW = math.min(size.width * 0.52, 230.0);
     final packH = packW / kPackAspect;
     // Violent shake while charging — harder and faster for a legendary
     // heartbeat.
-    final shake = math.sin(charge * (legend ? 150 : 90)) *
-        (legend ? 13 : 9) *
-        charge;
+    final shake =
+        math.sin(charge * (legend ? 150 : 90)) * (legend ? 13 : 9) * charge;
     final tilt = math.sin(charge * 70) * (legend ? 0.07 : 0.05) * charge;
-    final scale =
-        1 + 0.14 * charge + 0.45 * tl.packBurst.transform(t);
+    final scale = 1 + 0.14 * charge + 0.45 * tl.packBurst.transform(t);
     final fade = 1 - tl.packFade.transform(t);
     return Opacity(
       opacity: fade.clamp(0.0, 1.0),
@@ -839,7 +857,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   /// closes in, and melts into the flip when the card turns.
   Widget _buildMystery(double t, double cardWidth, CardRarity rarity, _Tl tl) {
     final rise = tl.mysteryIn!.transform(t);
-    final fadeOut = 1 - Interval(tl.flip.begin, tl.flip.begin + 0.03).transform(t);
+    final fadeOut =
+        1 - Interval(tl.flip.begin, tl.flip.begin + 0.03).transform(t);
     final opacity = (rise.clamp(0.0, 1.0) * fadeOut).clamp(0.0, 1.0);
     final scale = 0.7 + 0.3 * rise;
     return Opacity(
@@ -867,24 +886,29 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   Widget _buildCaption(double t) {
     // 'A LEGEND IS COMING…' while the silhouette rises and the first
     // clues land; 'WHO IS IT?' while the stats count and the name waits.
-    final a = Interval(0.21, 0.25).transform(t) *
+    final a =
+        Interval(0.21, 0.25).transform(t) *
         (1 - Interval(0.56, 0.60).transform(t));
-    final b = Interval(0.76, 0.80).transform(t) *
-        (1 - Interval(kLegendaryNameStart - 0.015, kLegendaryNameStart + 0.01)
-            .transform(t));
+    final b =
+        Interval(0.76, 0.80).transform(t) *
+        (1 -
+            Interval(
+              kLegendaryNameStart - 0.015,
+              kLegendaryNameStart + 0.01,
+            ).transform(t));
     Widget line(String text, double opacity) => Opacity(
-          opacity: opacity.clamp(0.0, 1.0),
-          child: Text(
-            text,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 4,
-              shadows: const [Shadow(color: Colors.black, blurRadius: 8)],
-            ),
-          ),
-        );
+      opacity: opacity.clamp(0.0, 1.0),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 4,
+          shadows: const [Shadow(color: Colors.black, blurRadius: 8)],
+        ),
+      ),
+    );
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -900,12 +924,12 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final pos = tl.posIn.transform(t);
 
     Widget pop(double v, Widget child, {double dy = 30}) => Opacity(
-          opacity: v.clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: Offset(0, (1 - v) * dy),
-            child: Transform.scale(scale: 0.6 + 0.4 * v, child: child),
-          ),
-        );
+      opacity: v.clamp(0.0, 1.0),
+      child: Transform.translate(
+        offset: Offset(0, (1 - v) * dy),
+        child: Transform.scale(scale: 0.6 + 0.4 * v, child: child),
+      ),
+    );
 
     // No name and no rating here: the identity and the overall land on
     // the card itself, after the flip (GDD 5.6 suspense) — the walkout
@@ -913,8 +937,13 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        pop(flag, Text(flagEmojiFor(p.nationality),
-            style: const TextStyle(fontSize: 88))),
+        pop(
+          flag,
+          Text(
+            flagEmojiFor(p.nationality),
+            style: const TextStyle(fontSize: 88),
+          ),
+        ),
         const SizedBox(height: 4),
         pop(
           flag,
@@ -939,7 +968,10 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
               fontWeight: FontWeight.w900,
               fontStyle: FontStyle.italic,
               shadows: [
-                Shadow(color: rarity.accent.withValues(alpha: 0.8), blurRadius: 24),
+                Shadow(
+                  color: rarity.accent.withValues(alpha: 0.8),
+                  blurRadius: 24,
+                ),
               ],
             ),
           ),
@@ -949,12 +981,18 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     );
   }
 
-  Widget _buildCard(double t, double flipT, double cardWidth,
-      CardRarity rarity, _Tl tl) {
+  Widget _buildCard(
+    double t,
+    double flipT,
+    double cardWidth,
+    CardRarity rarity,
+    _Tl tl,
+  ) {
     final legend = tl.isLegend;
     final angle = (1 - flipT) * math.pi; // π (back) → 0 (front)
     final showBack = angle >= math.pi / 2;
-    final scale = 0.55 + 0.45 * Curves.easeOutBack.transform(flipT.clamp(0.0, 1.0));
+    final scale =
+        0.55 + 0.45 * Curves.easeOutBack.transform(flipT.clamp(0.0, 1.0));
     final stats = tl.stats.transform(t);
     // Identity lands only after the stats have counted up.
     final name = tl.nameIn.transform(t);
@@ -990,7 +1028,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                   maskName: legend,
                   maskPulse: pulse(_idle.value, cycles: 2),
                   shine: shine,
-                  glow: (0.55 + 0.45 * pulse(_idle.value)) *
+                  glow:
+                      (0.55 + 0.45 * pulse(_idle.value)) *
                       flipT.clamp(0.0, 1.0) *
                       (0.6 + 0.2 * rarity.intensity),
                 ),
@@ -1057,9 +1096,10 @@ class _MysteryPainter extends CustomPainter {
 }
 
 /// Thousands separator for the chain capsule, e.g. 12500 → 12,500.
-String _groupPrice(int value) => value
-    .toString()
-    .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
+String _groupPrice(int value) => value.toString().replaceAllMapped(
+  RegExp(r'\B(?=(\d{3})+(?!\d))'),
+  (match) => ',',
+);
 
 /// The OPEN ANOTHER capsule under the revealed card: a tier-metal glow
 /// pill that keeps the streak going — bolt mark, price (or the success
@@ -1104,14 +1144,17 @@ class _ChainButton extends StatelessWidget {
             height: 52,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                Colors.black.withValues(alpha: 0.55),
-                metal.withValues(alpha: affordable ? 0.16 : 0.07),
-                Colors.black.withValues(alpha: 0.55),
-              ]),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.black.withValues(alpha: 0.55),
+                  metal.withValues(alpha: affordable ? 0.16 : 0.07),
+                  Colors.black.withValues(alpha: 0.55),
+                ],
+              ),
               borderRadius: BorderRadius.circular(100),
               border: Border.all(
-                  color: metal.withValues(alpha: affordable ? 0.65 : 0.25)),
+                color: metal.withValues(alpha: affordable ? 0.65 : 0.25),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: metal.withValues(alpha: affordable ? 0.28 : 0.08),
@@ -1171,9 +1214,10 @@ class _ChainButton extends StatelessWidget {
                   ),
                 const SizedBox(width: 10),
                 Container(
-                    width: 1,
-                    height: 18,
-                    color: Colors.white.withValues(alpha: 0.18)),
+                  width: 1,
+                  height: 18,
+                  color: Colors.white.withValues(alpha: 0.18),
+                ),
                 const SizedBox(width: 10),
                 Text(
                   FcmCoinChip.compact(balance),
@@ -1209,7 +1253,9 @@ class _ChainHandoffLine extends StatelessWidget {
           width: 16,
           height: 16,
           child: CircularProgressIndicator(
-              strokeWidth: 2, color: FcmColors.gold),
+            strokeWidth: 2,
+            color: FcmColors.gold,
+          ),
         ),
         const SizedBox(width: 10),
         Flexible(

@@ -108,7 +108,11 @@ class SeasonCompletion {
 
 /// AI opponent squad loaded for a fixture.
 class AiOpponentSquad {
-  const AiOpponentSquad({required this.club, required this.starters, required this.bench});
+  const AiOpponentSquad({
+    required this.club,
+    required this.starters,
+    required this.bench,
+  });
 
   final Club club;
   final List<MatchPlayer> starters;
@@ -147,8 +151,9 @@ class SeasonStore {
 
     final ordinal = (await (db.select(db.seasons)).get()).length + 1;
     final count = aiCount ?? engine.config.clubsPerDivision - 1;
-    final carriedCount =
-        carriedClubIds.isEmpty ? 0 : carriedClubIds.length.clamp(0, 6);
+    final carriedCount = carriedClubIds.isEmpty
+        ? 0
+        : carriedClubIds.length.clamp(0, 6);
     final pool = await _realPlayerPool();
     final ownedIds = await _userOwnedPlayerIds();
     final definitions = engine.generateAiClubs(
@@ -162,19 +167,27 @@ class SeasonStore {
 
     final now = DateTime.now();
     return db.transaction(() async {
-      final seasonId = await db.into(db.seasons).insert(SeasonsCompanion.insert(
-            division: division,
-            ordinal: ordinal,
-            userClubId: club.id,
-            startedAt: now,
-          ));
+      final seasonId = await db
+          .into(db.seasons)
+          .insert(
+            SeasonsCompanion.insert(
+              division: division,
+              ordinal: ordinal,
+              userClubId: club.id,
+              startedAt: now,
+            ),
+          );
 
       // User participates as league team index 0 (the rotation anchor).
-      await db.into(db.leagueTeams).insert(LeagueTeamsCompanion.insert(
-            seasonId: seasonId,
-            clubId: club.id,
-            isUser: const Value(true),
-          ));
+      await db
+          .into(db.leagueTeams)
+          .insert(
+            LeagueTeamsCompanion.insert(
+              seasonId: seasonId,
+              clubId: club.id,
+              isUser: const Value(true),
+            ),
+          );
 
       final clubIds = [club.id];
       final names = [club.name];
@@ -183,51 +196,64 @@ class SeasonStore {
       // WITH the user re-signs into the new division with its squad kept
       // — same real players, same identity, fresh condition.
       if (carriedCount > 0) {
-        final carried = await (db.select(db.clubs)
-              ..where((c) => c.id.isIn(carriedClubIds.toList())))
-            .get();
+        final carried = await (db.select(
+          db.clubs,
+        )..where((c) => c.id.isIn(carriedClubIds.toList()))).get();
         for (final c in carried) {
           clubIds.add(c.id);
           names.add(c.name);
-          await db.into(db.leagueTeams).insert(LeagueTeamsCompanion.insert(
-                seasonId: seasonId,
-                clubId: c.id,
-                carriedOver: const Value(true),
-              ));
+          await db
+              .into(db.leagueTeams)
+              .insert(
+                LeagueTeamsCompanion.insert(
+                  seasonId: seasonId,
+                  clubId: c.id,
+                  carriedOver: const Value(true),
+                ),
+              );
         }
       }
 
       for (final def in definitions) {
-        final aiClubId = await db.into(db.clubs).insert(ClubsCompanion.insert(
-              name: def.name,
-              managerName: def.managerName,
-              crestIndex: Value(def.crestIndex),
-              formationCode: Value(def.formationCode),
-              playingStyle: Value(def.style.name),
-              mentality: Value(def.mentality.name),
-              coins: 0,
-              isUser: const Value(false),
-              createdAt: now,
-            ));
+        final aiClubId = await db
+            .into(db.clubs)
+            .insert(
+              ClubsCompanion.insert(
+                name: def.name,
+                managerName: def.managerName,
+                crestIndex: Value(def.crestIndex),
+                formationCode: Value(def.formationCode),
+                playingStyle: Value(def.style.name),
+                mentality: Value(def.mentality.name),
+                coins: 0,
+                isUser: const Value(false),
+                createdAt: now,
+              ),
+            );
         clubIds.add(aiClubId);
         names.add(def.name);
-        await db.into(db.leagueTeams).insert(LeagueTeamsCompanion.insert(
-              seasonId: seasonId,
-              clubId: aiClubId,
-            ));
+        await db
+            .into(db.leagueTeams)
+            .insert(
+              LeagueTeamsCompanion.insert(seasonId: seasonId, clubId: aiClubId),
+            );
         // Persist the AI squad (GDD 9.4): XI in slot order, bench after —
         // real dataset players carry their playerId.
         for (final p in def.players) {
-          await db.into(db.aiPlayers).insert(AiPlayersCompanion.insert(
-                clubId: aiClubId,
-                playerName: p.name,
-                position: p.position.code,
-                attack: p.attack,
-                support: p.support,
-                defence: p.defence,
-                goalkeeping: p.goalkeeping,
-                realPlayerId: Value(p.realPlayerId),
-              ));
+          await db
+              .into(db.aiPlayers)
+              .insert(
+                AiPlayersCompanion.insert(
+                  clubId: aiClubId,
+                  playerName: p.name,
+                  position: p.position.code,
+                  attack: p.attack,
+                  support: p.support,
+                  defence: p.defence,
+                  goalkeeping: p.goalkeeping,
+                  realPlayerId: Value(p.realPlayerId),
+                ),
+              );
         }
       }
 
@@ -235,12 +261,16 @@ class SeasonStore {
       // pattern; store rounds 1-based.
       final pairings = engine.generateFixtures(clubIds.length, anchorIndex: 0);
       for (final p in pairings) {
-        await db.into(db.fixtures).insert(FixturesCompanion.insert(
-              seasonId: seasonId,
-              round: p.round + 1,
-              homeClubId: clubIds[p.homeIndex],
-              awayClubId: clubIds[p.awayIndex],
-            ));
+        await db
+            .into(db.fixtures)
+            .insert(
+              FixturesCompanion.insert(
+                seasonId: seasonId,
+                round: p.round + 1,
+                homeClubId: clubIds[p.homeIndex],
+                awayClubId: clubIds[p.awayIndex],
+              ),
+            );
       }
       return seasonId;
     });
@@ -248,15 +278,16 @@ class SeasonStore {
 
   /// The active season summary, or the latest completed one.
   Future<SeasonSummary?> getSeasonSummary() async {
-    final rows = await (db.select(db.seasons)
-          ..orderBy([(s) => OrderingTerm.desc(s.id)]))
-        .get();
+    final rows = await (db.select(
+      db.seasons,
+    )..orderBy([(s) => OrderingTerm.desc(s.id)])).get();
     if (rows.isEmpty) return null;
     final s = rows.first;
     final played = await _resultsFor(s.id);
     final userRounds = played
-        .where((r) =>
-            r.homeClubId == s.userClubId || r.awayClubId == s.userClubId)
+        .where(
+          (r) => r.homeClubId == s.userClubId || r.awayClubId == s.userClubId,
+        )
         .length;
     return SeasonSummary(
       seasonId: s.id,
@@ -271,10 +302,11 @@ class SeasonStore {
   }
 
   Future<Season?> getActiveSeason() async {
-    final rows = await (db.select(db.seasons)
-          ..where((s) => s.status.equals('active'))
-          ..orderBy([(s) => OrderingTerm.desc(s.id)]))
-        .get();
+    final rows =
+        await (db.select(db.seasons)
+              ..where((s) => s.status.equals('active'))
+              ..orderBy([(s) => OrderingTerm.desc(s.id)]))
+            .get();
     return rows.isEmpty ? null : rows.first;
   }
 
@@ -283,18 +315,22 @@ class SeasonStore {
   Future<NextFixture?> getNextFixture() async {
     final season = await getActiveSeason();
     if (season == null) return null;
-    final playedIds = (await _resultsFor(season.id)).map((r) => r.fixtureId).toSet();
-    final fixtures = await (db.select(db.fixtures)
-          ..where((f) => f.seasonId.equals(season.id))
-          ..orderBy([
-            (f) => OrderingTerm.asc(f.round),
-            (f) => OrderingTerm.asc(f.id),
-          ]))
-        .get();
+    final playedIds = (await _resultsFor(season.id))
+        .map((r) => r.fixtureId)
+        .toSet();
+    final fixtures =
+        await (db.select(db.fixtures)
+              ..where((f) => f.seasonId.equals(season.id))
+              ..orderBy([
+                (f) => OrderingTerm.asc(f.round),
+                (f) => OrderingTerm.asc(f.id),
+              ]))
+            .get();
     Fixture? next;
     for (final f in fixtures) {
       if (playedIds.contains(f.id)) continue;
-      if (f.homeClubId != season.userClubId && f.awayClubId != season.userClubId) {
+      if (f.homeClubId != season.userClubId &&
+          f.awayClubId != season.userClubId) {
         continue;
       }
       next = f;
@@ -303,9 +339,9 @@ class SeasonStore {
     if (next == null) return null;
     final isHome = next.homeClubId == season.userClubId;
     final opponentId = isHome ? next.awayClubId : next.homeClubId;
-    final opponent = await (db.select(db.clubs)
-          ..where((c) => c.id.equals(opponentId)))
-        .getSingle();
+    final opponent = await (db.select(
+      db.clubs,
+    )..where((c) => c.id.equals(opponentId))).getSingle();
     return NextFixture(
       fixtureId: next.id,
       round: next.round,
@@ -323,11 +359,12 @@ class SeasonStore {
   /// The persisted row order is no longer the XI: [AiOpponentSquad] is
   /// whatever the AI actually fields today.
   Future<AiOpponentSquad> loadOpponent(int clubId) async {
-    final club = await (db.select(db.clubs)..where((c) => c.id.equals(clubId)))
-        .getSingle();
-    final rows = await (db.select(db.aiPlayers)
-          ..where((p) => p.clubId.equals(clubId)))
-        .get();
+    final club = await (db.select(
+      db.clubs,
+    )..where((c) => c.id.equals(clubId))).getSingle();
+    final rows = await (db.select(
+      db.aiPlayers,
+    )..where((p) => p.clubId.equals(clubId))).get();
     if (rows.isEmpty) {
       throw const SeasonException('AI club has no squad');
     }
@@ -386,7 +423,9 @@ class SeasonStore {
       }
     }
     return rows
-        .firstWhere((r) => r.playerName == p.name && r.position == p.position.code)
+        .firstWhere(
+          (r) => r.playerName == p.name && r.position == p.position.code,
+        )
         .id;
   }
 
@@ -402,12 +441,10 @@ class SeasonStore {
     required Iterable<MatchPlayer> players,
     required int restDays,
   }) async {
-    final byEngineId = {
-      for (final p in players) p.playerId: p,
-    };
-    final rows = await (db.select(db.aiPlayers)
-          ..where((a) => a.clubId.equals(aiClubId)))
-        .get();
+    final byEngineId = {for (final p in players) p.playerId: p};
+    final rows = await (db.select(
+      db.aiPlayers,
+    )..where((a) => a.clubId.equals(aiClubId))).get();
     for (final row in rows) {
       final match = byEngineId[-10_000 - row.id];
       final currentStamina = match?.stamina ?? row.staminaPercent.toDouble();
@@ -418,9 +455,11 @@ class SeasonStore {
         minutesPlayed: minutes,
         restDays: restDays,
       );
-      await (db.update(db.aiPlayers)..where((a) => a.id.equals(row.id)))
-          .write(AiPlayersCompanion(
-              staminaPercent: Value(recovered.round().clamp(0, 100))));
+      await (db.update(db.aiPlayers)..where((a) => a.id.equals(row.id))).write(
+        AiPlayersCompanion(
+          staminaPercent: Value(recovered.round().clamp(0, 100)),
+        ),
+      );
     }
   }
 
@@ -441,15 +480,18 @@ class SeasonStore {
     final squad = await store.getSquad();
     if (squad.length < Formation.startingXiSize) {
       throw const CollectionException(
-          'A full starting XI is required to play a match');
+        'A full starting XI is required to play a match',
+      );
     }
 
     final style = PlayingStyle.values.firstWhere(
-        (s) => s.name == club.playingStyle,
-        orElse: () => PlayingStyle.balanced);
+      (s) => s.name == club.playingStyle,
+      orElse: () => PlayingStyle.balanced,
+    );
     final mentality = Mentality.values.firstWhere(
-        (m) => m.name == club.mentality,
-        orElse: () => Mentality.balanced);
+      (m) => m.name == club.mentality,
+      orElse: () => Mentality.balanced,
+    );
     // The user's FULL squad list: starting XI, bench and reserves — every
     // owned player counts toward the forecast, not just the selected XI.
     final userSquadList = [
@@ -476,30 +518,37 @@ class SeasonStore {
     }
 
     final season = await getActiveSeason();
-    final results = season == null
-        ? <MatchResult>[]
-        : await (db.select(db.matchResults)
-              ..where((r) =>
-                  r.seasonId.equals(season.id) &
-                  (r.homeClubId.equals(opponent.club.id) |
-                      r.awayClubId.equals(opponent.club.id))))
-            .get()
+    final results =
+        season == null
+              ? <MatchResult>[]
+              : await (db.select(db.matchResults)..where(
+                      (r) =>
+                          r.seasonId.equals(season.id) &
+                          (r.homeClubId.equals(opponent.club.id) |
+                              r.awayClubId.equals(opponent.club.id)),
+                    ))
+                    .get()
           ..sort((a, b) => a.round.compareTo(b.round));
     final form = [
-      for (final r in results.length <= 5 ? results : results.sublist(results.length - 5))
+      for (final r
+          in results.length <= 5
+              ? results
+              : results.sublist(results.length - 5))
         () {
           final home = r.homeClubId == opponent.club.id;
           final gf = home ? r.homeGoals : r.awayGoals;
           final ga = home ? r.awayGoals : r.homeGoals;
           return gf > ga ? 'W' : (gf < ga ? 'L' : 'D');
-        }()
+        }(),
     ];
 
     // Top-3 rated players of the whole squad (starters and bench), with
     // full attributes for the collection-style analysis cards.
     final keyMen = [
-      for (final p in [...opponent.starters, ...opponent.bench]
-          ..sort((a, b) => _overallOf(b).compareTo(_overallOf(a))))
+      for (final p in [
+        ...opponent.starters,
+        ...opponent.bench,
+      ]..sort((a, b) => _overallOf(b).compareTo(_overallOf(a))))
         (
           name: p.name,
           position: p.position.code,
@@ -528,18 +577,19 @@ class SeasonStore {
     );
   }
 
-  static int _overallOf(MatchPlayer p) => ((p.attack + p.support + p.defence) / 3).round();
+  static int _overallOf(MatchPlayer p) =>
+      ((p.attack + p.support + p.defence) / 3).round();
 
   static MatchPlayer _userMatchPlayer(PlayerCard card) => MatchPlayer(
-        playerId: card.ownedId,
-        name: card.base.name,
-        position: card.position,
-        attack: card.attribute(PlayerAttribute.attack),
-        support: card.attribute(PlayerAttribute.support),
-        defence: card.attribute(PlayerAttribute.defence),
-        goalkeeping: card.attribute(PlayerAttribute.goalkeeping),
-        stamina: card.staminaPercent.toDouble(),
-      );
+    playerId: card.ownedId,
+    name: card.base.name,
+    position: card.position,
+    attack: card.attribute(PlayerAttribute.attack),
+    support: card.attribute(PlayerAttribute.support),
+    defence: card.attribute(PlayerAttribute.defence),
+    goalkeeping: card.attribute(PlayerAttribute.goalkeeping),
+    stamina: card.staminaPercent.toDouble(),
+  );
 
   /// Creates a live match session for the user's next fixture. The UI
   /// drives it; call [commitFixtureResult] with the finished session.
@@ -547,8 +597,11 @@ class SeasonStore {
   /// [tactics] carries the MATCH-ONLY setup chosen on the pre-match
   /// screen (formation, style, mentality — GDD 10.4): the session is
   /// built from it and the club's saved default setup stays untouched.
-  Future<MatchSession> startNextFixture(CollectionStore store,
-      {MatchPepTalk? preMatchTalk, PreMatchTacticSelection? tactics}) async {
+  Future<MatchSession> startNextFixture(
+    CollectionStore store, {
+    MatchPepTalk? preMatchTalk,
+    PreMatchTacticSelection? tactics,
+  }) async {
     final next = await getNextFixture();
     if (next == null) {
       throw const SeasonException('No fixture to play');
@@ -572,7 +625,10 @@ class SeasonStore {
   /// The engine's home/away orientation follows the fixture (user home =
   /// user is MatchSide.home), so goals map straight through: the club
   /// listed as home is the side the engine tracked as home.
-  Future<void> commitFixtureResult(MatchSession session, NextFixture fixture) async {
+  Future<void> commitFixtureResult(
+    MatchSession session,
+    NextFixture fixture,
+  ) async {
     final state = session.engine.state;
     final season = await getActiveSeason();
     if (season == null) {
@@ -589,8 +645,7 @@ class SeasonStore {
       seed: session.engine.seed,
     );
     // The AI opponent's squad also tires and recovers (GDD 11 symmetry).
-    final aiSide =
-        fixture.isHome ? MatchSide.away : MatchSide.home;
+    final aiSide = fixture.isHome ? MatchSide.away : MatchSide.home;
     await _persistAiStamina(
       aiClubId: fixture.opponentClubId,
       players: session.engine.playersOf(aiSide),
@@ -611,31 +666,38 @@ class SeasonStore {
     required int rewardCoinsToRefund,
     required int userClubId,
   }) async {
-    final existing = await (db.select(db.matchResults)
-          ..where((r) => r.fixtureId.equals(fixtureId)))
-        .get();
+    final existing = await (db.select(
+      db.matchResults,
+    )..where((r) => r.fixtureId.equals(fixtureId))).get();
     if (existing.isEmpty) {
       throw const SeasonException('Fixture has no result to replay');
     }
     final now = DateTime.now();
     await db.transaction(() async {
-      await (db.delete(db.matchResults)
-            ..where((r) => r.fixtureId.equals(fixtureId)))
-          .go();
+      await (db.delete(
+        db.matchResults,
+      )..where((r) => r.fixtureId.equals(fixtureId))).go();
       if (rewardCoinsToRefund > 0) {
-        final club = await (db.select(db.clubs)
-              ..where((c) => c.id.equals(userClubId)))
-            .getSingle();
-        await (db.update(db.clubs)..where((c) => c.id.equals(userClubId)))
-            .write(ClubsCompanion(coins: Value(club.coins - rewardCoinsToRefund)));
-        await db.into(db.coinTransactions).insert(CoinTransactionsCompanion.insert(
-              clubId: userClubId,
-              amount: -rewardCoinsToRefund,
-              balanceAfter: club.coins - rewardCoinsToRefund,
-              reason: 'match_replay_refund',
-              detail: Value('Refund before replay of fixture $fixtureId'),
-              createdAt: now,
-            ));
+        final club = await (db.select(
+          db.clubs,
+        )..where((c) => c.id.equals(userClubId))).getSingle();
+        await (db.update(
+          db.clubs,
+        )..where((c) => c.id.equals(userClubId))).write(
+          ClubsCompanion(coins: Value(club.coins - rewardCoinsToRefund)),
+        );
+        await db
+            .into(db.coinTransactions)
+            .insert(
+              CoinTransactionsCompanion.insert(
+                clubId: userClubId,
+                amount: -rewardCoinsToRefund,
+                balanceAfter: club.coins - rewardCoinsToRefund,
+                reason: 'match_replay_refund',
+                detail: Value('Refund before replay of fixture $fixtureId'),
+                createdAt: now,
+              ),
+            );
       }
     });
     return fixtureId;
@@ -651,20 +713,24 @@ class SeasonStore {
     if (season == null) {
       throw const SeasonException('No active season');
     }
-    final playedIds = (await _resultsFor(season.id)).map((r) => r.fixtureId).toSet();
-    final fixtures = await (db.select(db.fixtures)
-          ..where((f) => f.seasonId.equals(season.id))
-          ..orderBy([
-            (f) => OrderingTerm.asc(f.round),
-            (f) => OrderingTerm.asc(f.id),
-          ]))
-        .get();
+    final playedIds = (await _resultsFor(season.id))
+        .map((r) => r.fixtureId)
+        .toSet();
+    final fixtures =
+        await (db.select(db.fixtures)
+              ..where((f) => f.seasonId.equals(season.id))
+              ..orderBy([
+                (f) => OrderingTerm.asc(f.round),
+                (f) => OrderingTerm.asc(f.id),
+              ]))
+            .get();
 
     var simulated = 0;
     for (final f in fixtures) {
       if (playedIds.contains(f.id)) continue;
       final involvesUser =
-          f.homeClubId == season.userClubId || f.awayClubId == season.userClubId;
+          f.homeClubId == season.userClubId ||
+          f.awayClubId == season.userClubId;
       if (involvesUser) {
         final isHome = f.homeClubId == season.userClubId;
         final opponentId = isHome ? f.awayClubId : f.homeClubId;
@@ -714,19 +780,21 @@ class SeasonStore {
     if (userRounds.isEmpty) return 0;
     final lastUserRound = userRounds.reduce(math.max);
 
-    final fixtures = await (db.select(db.fixtures)
-          ..where((f) => f.seasonId.equals(season.id))
-          ..orderBy([
-            (f) => OrderingTerm.asc(f.round),
-            (f) => OrderingTerm.asc(f.id),
-          ]))
-        .get();
+    final fixtures =
+        await (db.select(db.fixtures)
+              ..where((f) => f.seasonId.equals(season.id))
+              ..orderBy([
+                (f) => OrderingTerm.asc(f.round),
+                (f) => OrderingTerm.asc(f.id),
+              ]))
+            .get();
 
     var simulated = 0;
     for (final f in fixtures) {
       if (f.round > lastUserRound) continue;
       final involvesUser =
-          f.homeClubId == season.userClubId || f.awayClubId == season.userClubId;
+          f.homeClubId == season.userClubId ||
+          f.awayClubId == season.userClubId;
       if (involvesUser) continue; // user fixtures are played by the user
       if (playedIds.contains(f.id)) continue;
       await _simulateAiFixture(season, f);
@@ -774,13 +842,15 @@ class SeasonStore {
     );
     // Both AI squads tire and recover symmetrically (GDD 11).
     await _persistAiStamina(
-        aiClubId: f.homeClubId,
-        players: match.playersOf(MatchSide.home),
-        restDays: 3);
+      aiClubId: f.homeClubId,
+      players: match.playersOf(MatchSide.home),
+      restDays: 3,
+    );
     await _persistAiStamina(
-        aiClubId: f.awayClubId,
-        players: match.playersOf(MatchSide.away),
-        restDays: 3);
+      aiClubId: f.awayClubId,
+      players: match.playersOf(MatchSide.away),
+      restDays: 3,
+    );
   }
 
   Future<void> _insertResult(
@@ -794,32 +864,36 @@ class SeasonStore {
     required int seed,
   }) async {
     await db.transaction(() async {
-      await db.into(db.matchResults).insert(MatchResultsCompanion.insert(
-            fixtureId: fixtureId,
-            seasonId: season.id,
-            round: round,
-            homeClubId: homeClubId,
-            awayClubId: awayClubId,
-            homeGoals: homeGoals,
-            awayGoals: awayGoals,
-            seed: seed,
-            engineVersion: matchEngineVersion,
-            playedAt: DateTime.now(),
-          ));
+      await db
+          .into(db.matchResults)
+          .insert(
+            MatchResultsCompanion.insert(
+              fixtureId: fixtureId,
+              seasonId: season.id,
+              round: round,
+              homeClubId: homeClubId,
+              awayClubId: awayClubId,
+              homeGoals: homeGoals,
+              awayGoals: awayGoals,
+              seed: seed,
+              engineVersion: matchEngineVersion,
+              playedAt: DateTime.now(),
+            ),
+          );
     });
   }
 
   /// Current standings of the active season (GDD 9.3).
   Future<List<StandingEntry>> getStandings() async {
-    final season = await getActiveSeason() ??
-        (await (db.select(db.seasons)
-              ..orderBy([(s) => OrderingTerm.desc(s.id)]))
-            .get())
-            .firstOrNull;
+    final season =
+        await getActiveSeason() ??
+        (await (db.select(
+          db.seasons,
+        )..orderBy([(s) => OrderingTerm.desc(s.id)])).get()).firstOrNull;
     if (season == null) return const [];
-    final teams = await (db.select(db.leagueTeams)
-          ..where((t) => t.seasonId.equals(season.id)))
-        .get();
+    final teams = await (db.select(
+      db.leagueTeams,
+    )..where((t) => t.seasonId.equals(season.id))).get();
     final clubRows = await db.select(db.clubs).get();
     final clubNames = {for (final c in clubRows) c.id: c.name};
     final clubIds = [for (final t in teams) t.clubId];
@@ -837,10 +911,13 @@ class SeasonStore {
           awayIndex: indexByClub[r.awayClubId]!,
           homeGoals: r.homeGoals,
           awayGoals: r.awayGoals,
-        )
+        ),
     ];
     return engine.computeStandings(
-        clubIds: clubIds, names: names, results: tuples);
+      clubIds: clubIds,
+      names: names,
+      results: tuples,
+    );
   }
 
   /// Recent user results (FR-038 history), newest first.
@@ -848,15 +925,19 @@ class SeasonStore {
     final seasons = await db.select(db.seasons).get();
     if (seasons.isEmpty) return const [];
     final userClubId = seasons.first.userClubId;
-    final results = await (db.select(db.matchResults)
-          ..where((r) => r.homeClubId.equals(userClubId) |
-              r.awayClubId.equals(userClubId))
-          ..orderBy([
-            (r) => OrderingTerm.desc(r.playedAt),
-            (r) => OrderingTerm.desc(r.id),
-          ])
-          ..limit(limit))
-        .get();
+    final results =
+        await (db.select(db.matchResults)
+              ..where(
+                (r) =>
+                    r.homeClubId.equals(userClubId) |
+                    r.awayClubId.equals(userClubId),
+              )
+              ..orderBy([
+                (r) => OrderingTerm.desc(r.playedAt),
+                (r) => OrderingTerm.desc(r.id),
+              ])
+              ..limit(limit))
+            .get();
     return results;
   }
 
@@ -883,8 +964,10 @@ class SeasonStore {
     );
     final outcome = engine.outcomeForPosition(userEntry.position);
     final nextDivision = engine.nextDivisionFor(season.division, outcome);
-    final baseRewardCoins =
-        engine.seasonRewardCoins(division: season.division, position: userEntry.position);
+    final baseRewardCoins = engine.seasonRewardCoins(
+      division: season.division,
+      position: userEntry.position,
+    );
 
     // GDD 19.3 'Season reward multiplier': one ad watched during the
     // season boosts this payout by +25%; the boost is consumed here.
@@ -898,7 +981,10 @@ class SeasonStore {
 
     // GDD 18 pack rewards.
     final packCategory = switch (outcome) {
-      SeasonOutcome.promoted => userEntry.position == 1 ? 'premium' : (userEntry.position <= 3 ? 'normal' : 'choice'),
+      SeasonOutcome.promoted =>
+        userEntry.position == 1
+            ? 'premium'
+            : (userEntry.position <= 3 ? 'normal' : 'choice'),
       _ => null,
     };
 
@@ -906,18 +992,19 @@ class SeasonStore {
     await db.transaction(() async {
       // Final positions for every league team (FR-038).
       for (final e in standings) {
-        await (db.update(db.leagueTeams)
-              ..where((t) =>
-                  t.seasonId.equals(season.id) & t.clubId.equals(e.clubId)))
+        await (db.update(db.leagueTeams)..where(
+              (t) => t.seasonId.equals(season.id) & t.clubId.equals(e.clubId),
+            ))
             .write(LeagueTeamsCompanion(finalPosition: Value(e.position)));
       }
-      await (db.update(db.seasons)..where((s) => s.id.equals(season.id)))
-          .write(SeasonsCompanion(
-        status: const Value('completed'),
-        endedAt: Value(now),
-        finalPosition: Value(userEntry.position),
-        outcome: Value(outcome.name),
-      ));
+      await (db.update(db.seasons)..where((s) => s.id.equals(season.id))).write(
+        SeasonsCompanion(
+          status: const Value('completed'),
+          endedAt: Value(now),
+          finalPosition: Value(userEntry.position),
+          outcome: Value(outcome.name),
+        ),
+      );
 
       // Retire AI squads (GDD 9.5) — EXCEPT clubs that move divisions WITH
       // the user: when the user is promoted, the other promoted clubs of
@@ -927,11 +1014,15 @@ class SeasonStore {
       // for its division; historical RESULTS always stay (FR-038), only
       // squads go. The carried band shrinks to make room for the user's
       // own promotion/relegation slot.
-      final teams = await (db.select(db.leagueTeams)
-            ..where((t) => t.seasonId.equals(season.id) & t.isUser.equals(false)))
-          .get();
+      final teams =
+          await (db.select(db.leagueTeams)..where(
+                (t) => t.seasonId.equals(season.id) & t.isUser.equals(false),
+              ))
+              .get();
       final sorted = teams.toList()
-        ..sort((a, b) => (a.finalPosition ?? 99).compareTo(b.finalPosition ?? 99));
+        ..sort(
+          (a, b) => (a.finalPosition ?? 99).compareTo(b.finalPosition ?? 99),
+        );
       // Carried clubs travel with the user's own outcome (GDD 9.5):
       // promoted → the other top clubs go up with him, relegated → the
       // other bottom clubs go down. Staying means a fresh division.
@@ -953,36 +1044,41 @@ class SeasonStore {
         if (carryIds.contains(t.clubId)) {
           // Carried over: flag the league row and rest the squad to full
           // freshness for the new campaign — SAME players, no retuning.
-          await (db.update(db.leagueTeams)
-                ..where((l) => l.id.equals(t.id)))
+          await (db.update(db.leagueTeams)..where((l) => l.id.equals(t.id)))
               .write(const LeagueTeamsCompanion(carriedOver: Value(true)));
           await (db.update(db.aiPlayers)
                 ..where((p) => p.clubId.equals(t.clubId)))
-              .write(const AiPlayersCompanion(
-                  staminaPercent: Value(100)));
+              .write(const AiPlayersCompanion(staminaPercent: Value(100)));
         } else {
-          await (db.delete(db.aiPlayers)
-                ..where((p) => p.clubId.equals(t.clubId)))
-              .go();
+          await (db.delete(
+            db.aiPlayers,
+          )..where((p) => p.clubId.equals(t.clubId))).go();
         }
       }
 
       // Season rewards (GDD 18): coins + ledger row.
-      final club = await (db.select(db.clubs)
-            ..where((c) => c.id.equals(season.userClubId)))
-          .getSingle();
-      await (db.update(db.clubs)..where((c) => c.id.equals(club.id)))
-          .write(ClubsCompanion(coins: Value(club.coins + rewardCoins)));
-      await db.into(db.coinTransactions).insert(CoinTransactionsCompanion.insert(
-            clubId: club.id,
-            amount: rewardCoins,
-            balanceAfter: club.coins + rewardCoins,
-            reason: 'season_reward',
-            detail: Value('Season ${season.ordinal} · division ${season.division} · '
+      final club = await (db.select(
+        db.clubs,
+      )..where((c) => c.id.equals(season.userClubId))).getSingle();
+      await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+        ClubsCompanion(coins: Value(club.coins + rewardCoins)),
+      );
+      await db
+          .into(db.coinTransactions)
+          .insert(
+            CoinTransactionsCompanion.insert(
+              clubId: club.id,
+              amount: rewardCoins,
+              balanceAfter: club.coins + rewardCoins,
+              reason: 'season_reward',
+              detail: Value(
+                'Season ${season.ordinal} · division ${season.division} · '
                 'finished ${userEntry.position} (${outcome.name})'
-                '${seasonMultiplierUsed ? ' · ad season multiplier' : ''}'),
-            createdAt: now,
-          ));
+                '${seasonMultiplierUsed ? ' · ad season multiplier' : ''}',
+              ),
+              createdAt: now,
+            ),
+          );
       if (seasonMultiplierUsed) {
         await ads.consumeSeasonMultiplier(club.id, now: now);
       }
@@ -991,12 +1087,16 @@ class SeasonStore {
       // other promotions = a pack of the user's choice (stored with a
       // 'season_choice' source the UI scopes when opening).
       if (packCategory != null) {
-        await db.into(db.packs).insert(PacksCompanion.insert(
-              clubId: club.id,
-              category: 'global',
-              source: Value('season_$packCategory'),
-              createdAt: now,
-            ));
+        await db
+            .into(db.packs)
+            .insert(
+              PacksCompanion.insert(
+                clubId: club.id,
+                category: 'global',
+                source: Value('season_$packCategory'),
+                createdAt: now,
+              ),
+            );
       }
     });
 
@@ -1029,7 +1129,8 @@ class SeasonStore {
         ? SeasonOutcome.stayed
         : SeasonOutcome.values.firstWhere(
             (o) => o.name == summary.outcome,
-            orElse: () => SeasonOutcome.stayed);
+            orElse: () => SeasonOutcome.stayed,
+          );
     final division = engine.nextDivisionFor(summary.division, outcome);
 
     // Carried-over clubs (GDD 9.5): the AI clubs that moved divisions
@@ -1038,12 +1139,15 @@ class SeasonStore {
     // minus the user's own slot — NOT from the carriedOver flag, which
     // marks how a club entered this season and would double-count.
     final seasonId = summary.seasonId;
-    final teams = await (db.select(db.leagueTeams)
-          ..where((t) => t.seasonId.equals(seasonId) & t.isUser.equals(false)))
-        .get();
+    final teams =
+        await (db.select(db.leagueTeams)..where(
+              (t) => t.seasonId.equals(seasonId) & t.isUser.equals(false),
+            ))
+            .get();
     final sorted = teams.toList()
-      ..sort((a, b) =>
-          (a.finalPosition ?? 99).compareTo(b.finalPosition ?? 99));
+      ..sort(
+        (a, b) => (a.finalPosition ?? 99).compareTo(b.finalPosition ?? 99),
+      );
     final carriedIds = <int>{};
     if (outcome != SeasonOutcome.stayed && sorted.length >= 6) {
       final slots = engine.config.promotionSlots;
@@ -1062,10 +1166,12 @@ class SeasonStore {
     // Retire the club rows of squads that were deleted at completion:
     // their league rows are history, but an empty club would otherwise
     // linger forever in the clubs table.
-    final retiredClubs = teams.map((t) => t.clubId).where((id) => !carriedIds.contains(id)).toList();
+    final retiredClubs = teams
+        .map((t) => t.clubId)
+        .where((id) => !carriedIds.contains(id))
+        .toList();
     if (retiredClubs.isNotEmpty) {
-      await (db.delete(db.clubs)..where((c) => c.id.isIn(retiredClubs)))
-          .go();
+      await (db.delete(db.clubs)..where((c) => c.id.isIn(retiredClubs))).go();
     }
 
     return startSeason(division: division, carriedClubIds: carriedIds);
@@ -1094,29 +1200,33 @@ class SeasonStore {
   /// Dataset player ids the user already owns — AI squads never sign a
   /// player the user's collection holds (one identity per club, GDD 9.4).
   Future<Set<int>> _userOwnedPlayerIds() async {
-    final rows = await (db.select(db.ownedPlayers)
-          ..where((o) => o.status.equals('owned')))
-        .get();
+    final rows = await (db.select(
+      db.ownedPlayers,
+    )..where((o) => o.status.equals('owned'))).get();
     return {for (final r in rows) r.playerId};
   }
 
   Future<Club> _userClub() async {
-    final rows = await (db.select(db.clubs)
-          ..where((c) => c.isUser.equals(true)))
-        .get();
+    final rows = await (db.select(
+      db.clubs,
+    )..where((c) => c.isUser.equals(true))).get();
     if (rows.isEmpty) {
       throw const SeasonException('No user club');
     }
     return rows.first;
   }
 
-  Future<List<MatchResult>> _resultsFor(int seasonId) =>
-      (db.select(db.matchResults)..where((r) => r.seasonId.equals(seasonId)))
-          .get();
+  Future<List<MatchResult>> _resultsFor(int seasonId) => (db.select(
+    db.matchResults,
+  )..where((r) => r.seasonId.equals(seasonId))).get();
 
-  PlayingStyle _styleOf(String name) => PlayingStyle.values
-      .firstWhere((s) => s.name == name, orElse: () => PlayingStyle.balanced);
+  PlayingStyle _styleOf(String name) => PlayingStyle.values.firstWhere(
+    (s) => s.name == name,
+    orElse: () => PlayingStyle.balanced,
+  );
 
-  Mentality _mentalityOf(String name) => Mentality.values
-      .firstWhere((m) => m.name == name, orElse: () => Mentality.balanced);
+  Mentality _mentalityOf(String name) => Mentality.values.firstWhere(
+    (m) => m.name == name,
+    orElse: () => Mentality.balanced,
+  );
 }

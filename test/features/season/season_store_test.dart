@@ -15,17 +15,26 @@ import 'package:fcm_rivals/features/season/season_store.dart';
 AppDatabase memoryDb() => AppDatabase(NativeDatabase.memory());
 
 String datasetJson(List<List<dynamic>> rows, {int version = 1}) => json.encode({
-      'format': 'fcm-rivals-players',
-      'version': version,
-      'asOf': '2026-11-01',
-      'digest': 'test',
-      'players': rows,
-    });
+  'format': 'fcm-rivals-players',
+  'version': version,
+  'asOf': '2026-11-01',
+  'digest': 'test',
+  'players': rows,
+});
 
 const List<List<String>> _seedPositions = [
-  ['GK', 'Keeper'], ['CB', 'Back'], ['CM', 'Midfield'], ['RW', 'Wing'],
-  ['ST', 'Striker'], ['CDM', 'Anchor'], ['LW', 'Winger'], ['CAM', 'Playmaker'],
-  ['LB', 'Leftback'], ['RB', 'Rightback'], ['LM', 'Leftmid'], ['RM', 'Rightmid'],
+  ['GK', 'Keeper'],
+  ['CB', 'Back'],
+  ['CM', 'Midfield'],
+  ['RW', 'Wing'],
+  ['ST', 'Striker'],
+  ['CDM', 'Anchor'],
+  ['LW', 'Winger'],
+  ['CAM', 'Playmaker'],
+  ['LB', 'Leftback'],
+  ['RB', 'Rightback'],
+  ['LM', 'Leftmid'],
+  ['RM', 'Rightmid'],
 ];
 
 final List<List<dynamic>> seedRows = [
@@ -45,7 +54,10 @@ Future<CollectionStore> seededSquadStore(AppDatabase db) async {
   final store = CollectionStore(db: db);
   await store.applyDatasetUpdate(PlayerDataset.fromJson(datasetJson(seedRows)));
   await store.createClub(
-      clubName: 'FC Rivals', managerName: 'Mohamed', crestIndex: 0);
+    clubName: 'FC Rivals',
+    managerName: 'Mohamed',
+    crestIndex: 0,
+  );
   for (final pack in await store.getAvailablePacks()) {
     await store.openPack(packId: pack.id, random: math.Random(17));
   }
@@ -77,9 +89,9 @@ void main() {
       expect(clubs.length, 20); // 1 user + 19 AI (FR-035)
       expect(clubs.where((c) => c.isUser).length, 1);
 
-      final fixtures = await (db.select(db.fixtures)
-            ..where((f) => f.seasonId.equals(seasonId)))
-          .get();
+      final fixtures = await (db.select(
+        db.fixtures,
+      )..where((f) => f.seasonId.equals(seasonId))).get();
       expect(fixtures.length, 380); // 38 rounds × 10 (FR-036)
 
       // Each AI club has an 18-player squad with a valid formation XI.
@@ -91,99 +103,114 @@ void main() {
       expect(summary.status, 'active');
 
       // Every AI club's formation is one of the supported codes.
-      final formationCodes =
-          clubs.where((c) => !c.isUser).map((c) => c.formationCode).toSet();
+      final formationCodes = clubs
+          .where((c) => !c.isUser)
+          .map((c) => c.formationCode)
+          .toSet();
       expect(formationCodes.every((c) => c.isNotEmpty), isTrue);
     });
 
     test('starting a second season while active is rejected', () async {
       await store.startSeason(division: 1);
-      expect(() => store.startSeason(division: 2),
-          throwsA(isA<SeasonException>()));
-    });
-
-    test('getNextFixture returns the user round-1 home fixture first', () async {
-      await store.startSeason(division: 1);
-      final next = await store.getNextFixture();
-      expect(next, isNotNull);
-      expect(next!.round, 1);
-      // The user is the anchor: round 1 is a home game.
-      expect(next.isHome, isTrue);
-      expect(next.opponentName, isNotEmpty);
-    });
-
-    test('pre-match tactics override the engine without touching the club',
-        () async {
-      await store.startSeason(division: 1);
-      final clubBefore = await collection.getClub();
-      final savedFormation = clubBefore!.formationCode;
-      final savedStyle = clubBefore.playingStyle;
-      final savedMentality = clubBefore.mentality;
-
-      // The match-only selection picked on the pre-match screen (GDD
-      // 10.4): different formation, style and mentality than the saved
-      // defaults.
-      const tactics = PreMatchTacticSelection(
-        formationCode: '5-3-2',
-        style: PlayingStyle.counterAttack,
-        mentality: Mentality.attacking,
+      expect(
+        () => store.startSeason(division: 2),
+        throwsA(isA<SeasonException>()),
       );
-      final session = await store.startNextFixture(collection,
-          tactics: tactics);
-      session.simulateToEnd();
-      await session.finish();
-
-      // The session's engine started from the override...
-      final clubAfter = await collection.getClub();
-      expect(clubAfter!.formationCode, savedFormation);
-      expect(clubAfter.playingStyle, savedStyle);
-      expect(clubAfter.mentality, savedMentality);
-      // ...and the persisted squad assignment is still the saved one.
-      final squad = await collection.getSquad();
-      final savedAssignment = {
-        for (final e in squad.entries) e.key: e.value.ownedId,
-      };
-      expect(savedAssignment.length, greaterThanOrEqualTo(11));
     });
 
-    test('a played user fixture is committed and advances the season', () async {
-      await store.startSeason(division: 1);
-      final next = (await store.getNextFixture())!;
-      final session = await store.startNextFixture(collection);
-      session.simulateToEnd();
-      final report = await session.finish();
-      await store.commitFixtureResult(session, next);
+    test(
+      'getNextFixture returns the user round-1 home fixture first',
+      () async {
+        await store.startSeason(division: 1);
+        final next = await store.getNextFixture();
+        expect(next, isNotNull);
+        expect(next!.round, 1);
+        // The user is the anchor: round 1 is a home game.
+        expect(next.isHome, isTrue);
+        expect(next.opponentName, isNotEmpty);
+      },
+    );
 
-      // The result row matches the engine's outcome with correct
-      // home/away orientation (FR-038).
-      final results = await db.select(db.matchResults).get();
-      final userResults =
-          results.where((r) => r.fixtureId == next.fixtureId).toList();
-      expect(userResults, hasLength(1));
-      final r = userResults.first;
-      if (next.isHome) {
-        expect(r.homeGoals, report.state.scoreHome);
-        expect(r.awayGoals, report.state.scoreAway);
-      } else {
-        expect(r.homeGoals, report.state.scoreAway);
-        expect(r.awayGoals, report.state.scoreHome);
-      }
-      expect(r.engineVersion, greaterThan(0));
+    test(
+      'pre-match tactics override the engine without touching the club',
+      () async {
+        await store.startSeason(division: 1);
+        final clubBefore = await collection.getClub();
+        final savedFormation = clubBefore!.formationCode;
+        final savedStyle = clubBefore.playingStyle;
+        final savedMentality = clubBefore.mentality;
 
-      // Lockstep league (GDD 9.2): committing the user's round-1 result
-      // also resolves the round's other nine AI fixtures, so all 20
-      // clubs have played exactly one match.
-      expect(results.length, 10);
-      final roundIds = results.map((row) => row.round).toSet();
-      expect(roundIds, {1});
+        // The match-only selection picked on the pre-match screen (GDD
+        // 10.4): different formation, style and mentality than the saved
+        // defaults.
+        const tactics = PreMatchTacticSelection(
+          formationCode: '5-3-2',
+          style: PlayingStyle.counterAttack,
+          mentality: Mentality.attacking,
+        );
+        final session = await store.startNextFixture(
+          collection,
+          tactics: tactics,
+        );
+        session.simulateToEnd();
+        await session.finish();
 
-      final summary = await store.getSeasonSummary();
-      expect(summary!.roundsPlayed, 1);
+        // The session's engine started from the override...
+        final clubAfter = await collection.getClub();
+        expect(clubAfter!.formationCode, savedFormation);
+        expect(clubAfter.playingStyle, savedStyle);
+        expect(clubAfter.mentality, savedMentality);
+        // ...and the persisted squad assignment is still the saved one.
+        final squad = await collection.getSquad();
+        final savedAssignment = {
+          for (final e in squad.entries) e.key: e.value.ownedId,
+        };
+        expect(savedAssignment.length, greaterThanOrEqualTo(11));
+      },
+    );
 
-      // The next fixture is a different one.
-      final nextAfter = await store.getNextFixture();
-      expect(nextAfter!.fixtureId, isNot(next.fixtureId));
-    });
+    test(
+      'a played user fixture is committed and advances the season',
+      () async {
+        await store.startSeason(division: 1);
+        final next = (await store.getNextFixture())!;
+        final session = await store.startNextFixture(collection);
+        session.simulateToEnd();
+        final report = await session.finish();
+        await store.commitFixtureResult(session, next);
+
+        // The result row matches the engine's outcome with correct
+        // home/away orientation (FR-038).
+        final results = await db.select(db.matchResults).get();
+        final userResults = results
+            .where((r) => r.fixtureId == next.fixtureId)
+            .toList();
+        expect(userResults, hasLength(1));
+        final r = userResults.first;
+        if (next.isHome) {
+          expect(r.homeGoals, report.state.scoreHome);
+          expect(r.awayGoals, report.state.scoreAway);
+        } else {
+          expect(r.homeGoals, report.state.scoreAway);
+          expect(r.awayGoals, report.state.scoreHome);
+        }
+        expect(r.engineVersion, greaterThan(0));
+
+        // Lockstep league (GDD 9.2): committing the user's round-1 result
+        // also resolves the round's other nine AI fixtures, so all 20
+        // clubs have played exactly one match.
+        expect(results.length, 10);
+        final roundIds = results.map((row) => row.round).toSet();
+        expect(roundIds, {1});
+
+        final summary = await store.getSeasonSummary();
+        expect(summary!.roundsPlayed, 1);
+
+        // The next fixture is a different one.
+        final nextAfter = await store.getNextFixture();
+        expect(nextAfter!.fixtureId, isNot(next.fixtureId));
+      },
+    );
 
     test('simulateRemainingFixtures plays out a full season', () async {
       await store.startSeason(division: 1);
@@ -212,80 +239,89 @@ void main() {
       expect(await store.getNextFixture(), isNull);
     }, timeout: const Timeout(Duration(minutes: 4)));
 
-    test('completeSeason pays rewards, records outcome, keeps history',
-        () async {
-      final before = (await collection.getClub())!;
-      await store.startSeason(division: 1);
-      await store.simulateRemainingFixtures(collection);
-      final completion = await store.completeSeason(collection);
+    test(
+      'completeSeason pays rewards, records outcome, keeps history',
+      () async {
+        final before = (await collection.getClub())!;
+        await store.startSeason(division: 1);
+        await store.simulateRemainingFixtures(collection);
+        final completion = await store.completeSeason(collection);
 
-      expect(completion.division, 1);
-      expect(completion.finalPosition, inInclusiveRange(1, 20));
-      expect(
+        expect(completion.division, 1);
+        expect(completion.finalPosition, inInclusiveRange(1, 20));
+        expect(
           ['promoted', 'stayed', 'relegated'].contains(completion.outcome),
-          isTrue);
-      expect(completion.rewardCoins, greaterThan(0));
+          isTrue,
+        );
+        expect(completion.rewardCoins, greaterThan(0));
 
-      // Coins credited exactly once with a ledger row.
-      final after = (await collection.getClub())!;
-      expect(after.coins - before.coins,
-          greaterThanOrEqualTo(completion.rewardCoins));
-      final ledger = await (db.select(db.coinTransactions)
-            ..where((t) => t.reason.equals('season_reward')))
-          .get();
-      expect(ledger.length, 1);
-      expect(ledger.first.amount, completion.rewardCoins);
-      expect(ledger.first.balanceAfter, after.coins);
+        // Coins credited exactly once with a ledger row.
+        final after = (await collection.getClub())!;
+        expect(
+          after.coins - before.coins,
+          greaterThanOrEqualTo(completion.rewardCoins),
+        );
+        final ledger = await (db.select(
+          db.coinTransactions,
+        )..where((t) => t.reason.equals('season_reward'))).get();
+        expect(ledger.length, 1);
+        expect(ledger.first.amount, completion.rewardCoins);
+        expect(ledger.first.balanceAfter, after.coins);
 
-      // Season row completed with the user's final position (FR-038).
-      final summary = await store.getSeasonSummary();
-      expect(summary!.isCompleted, isTrue);
-      expect(summary.finalPosition, completion.finalPosition);
+        // Season row completed with the user's final position (FR-038).
+        final summary = await store.getSeasonSummary();
+        expect(summary!.isCompleted, isTrue);
+        expect(summary.finalPosition, completion.finalPosition);
 
-      // Historical results survive season completion (FR-038).
-      final results = await db.select(db.matchResults).get();
-      expect(results.length, 380);
+        // Historical results survive season completion (FR-038).
+        final results = await db.select(db.matchResults).get();
+        expect(results.length, 380);
 
-      // AI squads retired EXCEPT the clubs moving divisions WITH the user
-      // (GDD 9.5): promotion carries the OTHER top clubs up, relegation
-      // carries the OTHER bottom clubs down, staying means a fresh
-      // division. The user's own slot never occupies a carry spot.
-      final aiSquads = await db.select(db.aiPlayers).get();
-      final teamsWithSquads =
-          aiSquads.map((p) => p.clubId).toSet();
-      final leagueTeams = await (db.select(db.leagueTeams)
-            ..where((t) => t.seasonId.equals(completion.seasonId)))
-          .get();
-      final sortedAi = leagueTeams
-          .where((t) => !t.isUser)
-          .map((t) => (t.clubId, t.finalPosition!))
-          .toList()
-        ..sort((a, b) => a.$2.compareTo(b.$2));
-      final expectedCarryIds = <int>{};
-      if (completion.outcome == 'promoted' && sortedAi.length >= 3) {
-        for (final e in sortedAi.take(3)) {
-          expectedCarryIds.add(e.$1);
+        // AI squads retired EXCEPT the clubs moving divisions WITH the user
+        // (GDD 9.5): promotion carries the OTHER top clubs up, relegation
+        // carries the OTHER bottom clubs down, staying means a fresh
+        // division. The user's own slot never occupies a carry spot.
+        final aiSquads = await db.select(db.aiPlayers).get();
+        final teamsWithSquads = aiSquads.map((p) => p.clubId).toSet();
+        final leagueTeams = await (db.select(
+          db.leagueTeams,
+        )..where((t) => t.seasonId.equals(completion.seasonId))).get();
+        final sortedAi =
+            leagueTeams
+                .where((t) => !t.isUser)
+                .map((t) => (t.clubId, t.finalPosition!))
+                .toList()
+              ..sort((a, b) => a.$2.compareTo(b.$2));
+        final expectedCarryIds = <int>{};
+        if (completion.outcome == 'promoted' && sortedAi.length >= 3) {
+          for (final e in sortedAi.take(3)) {
+            expectedCarryIds.add(e.$1);
+          }
+        } else if (completion.outcome == 'relegated' && sortedAi.length >= 3) {
+          for (final e in sortedAi.skip(sortedAi.length - 3)) {
+            expectedCarryIds.add(e.$1);
+          }
         }
-      } else if (completion.outcome == 'relegated' && sortedAi.length >= 3) {
-        for (final e in sortedAi.skip(sortedAi.length - 3)) {
-          expectedCarryIds.add(e.$1);
-        }
-      }
-      expect(teamsWithSquads, expectedCarryIds,
-          reason: 'outcome ${completion.outcome}');
-      // Carried clubs are flagged on their league row.
-      final flagged = leagueTeams
-          .where((t) => t.carriedOver)
-          .map((t) => t.clubId)
-          .toSet();
-      expect(flagged, expectedCarryIds);
+        expect(
+          teamsWithSquads,
+          expectedCarryIds,
+          reason: 'outcome ${completion.outcome}',
+        );
+        // Carried clubs are flagged on their league row.
+        final flagged = leagueTeams
+            .where((t) => t.carriedOver)
+            .map((t) => t.clubId)
+            .toSet();
+        expect(flagged, expectedCarryIds);
 
-      // Final positions recorded for every league team.
-      final teams = await db.select(db.leagueTeams).get();
-      expect(teams.length, 20);
-      expect(teams.every((t) => t.finalPosition != null), isTrue);
-      expect(teams.map((t) => t.finalPosition).toSet().length, 20);
-    }, timeout: const Timeout(Duration(minutes: 4)));
+        // Final positions recorded for every league team.
+        final teams = await db.select(db.leagueTeams).get();
+        expect(teams.length, 20);
+        expect(teams.every((t) => t.finalPosition != null), isTrue);
+        expect(teams.map((t) => t.finalPosition).toSet().length, 20);
+      },
+      timeout: const Timeout(Duration(minutes: 4)),
+    );
 
     test('startNextSeason follows the division ladder (GDD 9.1/9.5)', () async {
       await store.startSeason(division: 1);
@@ -300,9 +336,9 @@ void main() {
       expect(summary.status, 'active');
 
       // Fresh fixtures for the new season only.
-      final fixtures = await (db.select(db.fixtures)
-            ..where((f) => f.seasonId.equals(season2)))
-          .get();
+      final fixtures = await (db.select(
+        db.fixtures,
+      )..where((f) => f.seasonId.equals(season2))).get();
       expect(fixtures.length, 380);
 
       // Old results still exist (FR-038).
@@ -318,9 +354,11 @@ void main() {
       expect(history.length, 5);
       final userClubId = (await collection.getClub())!.id;
       expect(
-          history.every((r) =>
-              r.homeClubId == userClubId || r.awayClubId == userClubId),
-          isTrue);
+        history.every(
+          (r) => r.homeClubId == userClubId || r.awayClubId == userClubId,
+        ),
+        isTrue,
+      );
     }, timeout: const Timeout(Duration(minutes: 4)));
 
     test('higher divisions field stronger opponents (GDD 9.6)', () async {
@@ -330,7 +368,8 @@ void main() {
         await seededSquadStore(db2);
         await s.startSeason(division: division);
         final players = await db2.select(db2.aiPlayers).get();
-        final avg = players
+        final avg =
+            players
                 .map((p) => (p.attack + p.support + p.defence) / 3)
                 .reduce((a, b) => a + b) /
             players.length;
@@ -351,9 +390,11 @@ void main() {
       // The real migration is exercised by drift's onUpgrade; here we
       // verify a fresh v2 database holds the expected tables.
       final db3 = memoryDb();
-      final tables = await db3.customSelect(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
-      ).get();
+      final tables = await db3
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
+          )
+          .get();
       final names = tables.map((row) => row.read<String>('name')).toSet();
       for (final expected in [
         'seasons',

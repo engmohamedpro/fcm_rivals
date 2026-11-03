@@ -53,35 +53,41 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       },
       child: offers.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ListView(children: [
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: FcmPanel(
-              accent: FcmColors.danger,
-              onTap: () => ref.invalidate(storeOffersProvider),
-              child: Column(
-                children: [
-                  Text('$e', textAlign: TextAlign.center),
-                  const SizedBox(height: 8),
-                  const Text('Tap to retry',
-                      style: TextStyle(color: FcmColors.gold)),
-                ],
-              ),
-            ),
-          ),
-        ]),
-        data: (offers) => packs.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ListView(children: [
+        error: (e, _) => ListView(
+          children: [
             Padding(
               padding: const EdgeInsets.all(14),
               child: FcmPanel(
                 accent: FcmColors.danger,
-                onTap: () => ref.invalidate(availablePacksProvider),
-                child: Text('$e', textAlign: TextAlign.center),
+                onTap: () => ref.invalidate(storeOffersProvider),
+                child: Column(
+                  children: [
+                    Text('$e', textAlign: TextAlign.center),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Tap to retry',
+                      style: TextStyle(color: FcmColors.gold),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ]),
+          ],
+        ),
+        data: (offers) => packs.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => ListView(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: FcmPanel(
+                  accent: FcmColors.danger,
+                  onTap: () => ref.invalidate(availablePacksProvider),
+                  child: Text('$e', textAlign: TextAlign.center),
+                ),
+              ),
+            ],
+          ),
           data: (packs) => _StoreGrid(
             packs: packs,
             offers: offers,
@@ -89,8 +95,8 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             opening: _opening,
             onOpen: (packId, tier) => _open(context, packId, tier),
             onBuy: (offer) => _buy(context, offer),
-          // Opens the scope's contents list — same entry as the cells'
-          // players icon buttons.
+            // Opens the scope's contents list — same entry as the cells'
+            // players icon buttons.
             onInfo: (offer) => _showContents(context, offer),
           ),
         ),
@@ -120,8 +126,13 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ref.invalidate(availablePacksProvider);
       ref.invalidate(collectionProvider);
       if (!context.mounted) return;
-      await _reveal(context, store, result, tier,
-          chain: row == null ? null : _chainTargetForPack(row));
+      await _reveal(
+        context,
+        store,
+        result,
+        tier,
+        chain: row == null ? null : _chainTargetForPack(row),
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
@@ -138,30 +149,36 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   /// ANOTHER: popping with `true` acquires the next pack of the same
   /// shelf slot — free if one is owned, otherwise bought outright with
   /// no YES/NO — and loops straight into the next reveal.
-  Future<void> _reveal(BuildContext context, CollectionStore store,
-      PackOpenResult result, PackTier tier,
-      {_ChainTarget? chain}) async {
+  Future<void> _reveal(
+    BuildContext context,
+    CollectionStore store,
+    PackOpenResult result,
+    PackTier tier, {
+    _ChainTarget? chain,
+  }) async {
     // Captured before the push: the sell callback fires much later,
     // inside the reveal, when this context may already be unmounted.
     final messenger = ScaffoldMessenger.of(context);
-    final sellMessage = (int credit) => SnackBar(
-        content: Text('Sold for ${_groupDigits(credit)} coins'));
-    final chained = await Navigator.of(context).push<bool>(MaterialPageRoute(
-      fullscreenDialog: true,
-      builder: (_) => PackOpeningScreen(
-        players: result.players,
-        ownedIds: result.ownedIds,
-        packTint: tier.accent,
-        packStars: tier.stars,
-        chainInfo: chain == null ? null : _chainInfoFor(chain),
-        queryBalance: () => ref.read(clubProvider).valueOrNull?.coins,
-        onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
-          ref.invalidate(clubProvider);
-          ref.invalidate(collectionProvider);
-          if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
-        }),
+    SnackBar sellMessage(int credit) =>
+        SnackBar(content: Text('Sold for ${_groupDigits(credit)} coins'));
+    final chained = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => PackOpeningScreen(
+          players: result.players,
+          ownedIds: result.ownedIds,
+          packTint: tier.accent,
+          packStars: tier.stars,
+          chainInfo: chain == null ? null : _chainInfoFor(chain),
+          queryBalance: () => ref.read(clubProvider).valueOrNull?.coins,
+          onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
+            ref.invalidate(clubProvider);
+            ref.invalidate(collectionProvider);
+            if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
+          }),
+        ),
       ),
-    ));
+    );
     if (chained != true || chain == null || !context.mounted) return;
     final next = await _openAnotherInChain(context, store, chain);
     if (next != null && context.mounted) {
@@ -173,8 +190,11 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   /// or buy one outright — the reveal's OPEN ANOTHER tap IS the decision
   /// (the capsule is only tappable when the balance covers the price),
   /// so there is no YES/NO here; the store still validates atomically.
-  Future<_ChainReveal?> _openAnotherInChain(BuildContext context,
-      CollectionStore store, _ChainTarget target) async {
+  Future<_ChainReveal?> _openAnotherInChain(
+    BuildContext context,
+    CollectionStore store,
+    _ChainTarget target,
+  ) async {
     try {
       final random = ref.read(randomProvider);
       final packs =
@@ -195,8 +215,9 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         final coins = ref.read(clubProvider).valueOrNull?.coins ?? 0;
         if (coins < offer.price) {
           // A race the capsule can't see (balance changed mid-reveal).
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Not enough coins for another pack')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Not enough coins for another pack')),
+          );
           return null;
         }
         pack = await store.buyPack(
@@ -217,8 +238,11 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       return _ChainReveal(result: result, tier: target.tier);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('$e'.replaceFirst('CollectionException: ', ''))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$e'.replaceFirst('CollectionException: ', '')),
+          ),
+        );
       }
       return null;
     }
@@ -232,8 +256,8 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     // The persisted row stores the category and tier as plain text;
     // the chain target speaks the enums (unknown values fall back the
     // same way the pack engine parses them).
-    final category = PackCategory.values
-        .asNameMap()[pack.category] ?? PackCategory.global;
+    final category =
+        PackCategory.values.asNameMap()[pack.category] ?? PackCategory.global;
     final tier = PackTier.fromName(pack.tier);
     final probe = _ChainTarget(
       category: category,
@@ -241,7 +265,8 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       tier: tier,
     );
     final match = _offerFor(probe);
-    final title = match?.title ??
+    final title =
+        match?.title ??
         (category == PackCategory.position
             ? '${pack.scopeValue} ${tier.label} Pack'
             : '${tier.label} ${category.label}');
@@ -259,8 +284,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   PackChainInfo? _chainInfoFor(_ChainTarget target) {
     final packs =
         ref.read(availablePacksProvider).valueOrNull ?? const <Pack>[];
-    final ownedCount =
-        packs.where((p) => _sameSlot(p, target)).length;
+    final ownedCount = packs.where((p) => _sameSlot(p, target)).length;
     final offer = _offerFor(target);
     if (offer == null && ownedCount == 0) return null;
     return PackChainInfo(
@@ -290,23 +314,29 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   }
 
   /// Shows the pack's obtainable players, highest rated first.
-  Future<void> _showContents(BuildContext context, StorePackOffer offer,
-      {String? title}) async {
+  Future<void> _showContents(
+    BuildContext context,
+    StorePackOffer offer, {
+    String? title,
+  }) async {
     final store = await ref.read(collectionStoreProvider.future);
     if (!context.mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
-      fullscreenDialog: true,
-      builder: (_) => PackContentsScreen(
-        title: title ?? offer.title,
-        category: offer.category,
-        scopeValue: offer.scopeValue,
-        tier: offer.tier,
-        loadPlayers: () => store.getPackPlayers(
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => PackContentsScreen(
+          title: title ?? offer.title,
+          category: offer.category,
+          scopeValue: offer.scopeValue,
+          tier: offer.tier,
+          loadPlayers: () => store.getPackPlayers(
             category: offer.category,
             scopeValue: offer.scopeValue,
-            tier: offer.tier),
+            tier: offer.tier,
+          ),
+        ),
       ),
-    ));
+    );
   }
 
   /// Buy flow: coins are the game's hard currency, so the purchase always
@@ -351,9 +381,13 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             ),
             if (!canAfford) ...[
               const SizedBox(height: 10),
-              const Text('Not enough coins',
-                  style: TextStyle(
-                      color: FcmColors.danger, fontWeight: FontWeight.w800)),
+              const Text(
+                'Not enough coins',
+                style: TextStyle(
+                  color: FcmColors.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ],
         ),
@@ -408,17 +442,25 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ref.invalidate(clubProvider);
       ref.invalidate(collectionProvider);
       if (!context.mounted) return;
-      await _reveal(context, store, result, offer.tier,
-          chain: _ChainTarget(
-            category: offer.category,
-            scopeValue: offer.scopeValue,
-            tier: offer.tier,
-            title: offer.title,
-          ));
+      await _reveal(
+        context,
+        store,
+        result,
+        offer.tier,
+        chain: _ChainTarget(
+          category: offer.category,
+          scopeValue: offer.scopeValue,
+          tier: offer.tier,
+          title: offer.title,
+        ),
+      );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('$e'.replaceFirst('CollectionException: ', ''))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$e'.replaceFirst('CollectionException: ', '')),
+          ),
+        );
       }
     } finally {
       // Without this the store stayed dead after one purchase — the
@@ -430,9 +472,10 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
 }
 
 /// Thousands separator for dialog prices and balances, e.g. 12500 → 12,500.
-String _groupDigits(int value) => value
-    .toString()
-    .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
+String _groupDigits(int value) => value.toString().replaceAllMapped(
+  RegExp(r'\B(?=(\d{3})+(?!\d))'),
+  (match) => ',',
+);
 
 /// What OPEN ANOTHER chains into: the exact shelf slot — category, scope
 /// and tier — of the pack just opened, so the next foil is the same
@@ -495,8 +538,7 @@ class _StoreGrid extends StatelessWidget {
     final owned = <String, List<Pack>>{};
     for (final p in packs) {
       owned
-          .putIfAbsent(
-              _scopeKey(p.category, p.scopeValue, p.tier), () => [])
+          .putIfAbsent(_scopeKey(p.category, p.scopeValue, p.tier), () => [])
           .add(p);
     }
 
@@ -506,10 +548,12 @@ class _StoreGrid extends StatelessWidget {
     final sections = <String, List<StorePackOffer>>{};
     for (final offer in offers) {
       final key = '${offer.category.name}:${offer.scopeValue ?? 'ANY'}';
-      sections.putIfAbsent(key, () {
-        sectionOrder.add(key);
-        return <StorePackOffer>[];
-      }).add(offer);
+      sections
+          .putIfAbsent(key, () {
+            sectionOrder.add(key);
+            return <StorePackOffer>[];
+          })
+          .add(offer);
     }
 
     // The whole store in one eagerly-built column: every section renders
@@ -570,9 +614,7 @@ class _ScopeSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Sort the section's tiers into store order: rare, epic, legendary.
-    final byTier = {
-      for (final o in offers) o.tier: o,
-    };
+    final byTier = {for (final o in offers) o.tier: o};
     final ordered = [
       for (final t in PackTier.values)
         if (byTier.containsKey(t)) byTier[t]!,
@@ -580,7 +622,7 @@ class _ScopeSection extends StatelessWidget {
     final head = ordered.first;
     final scopeLabel = '${head.scopeValue} Pack';
 
-          // One visual group: title, players icon entry and the tier cells
+    // One visual group: title, players icon entry and the tier cells
     // share a single raised surface, so what belongs together reads as
     // together at a glance — sections are separated by the grid's even
     // 14px rhythm, not by a gap of their own.
@@ -604,47 +646,55 @@ class _ScopeSection extends StatelessWidget {
           // shows the same pack height as the full rows instead of
           // stretching giant foils. The short shelf is centred as a
           // group, keeping the same 8px rhythm between cells.
-          LayoutBuilder(builder: (context, rowConstraints) {
-            final shelfCellWidth = (rowConstraints.maxWidth - 2 * 8) / 3;
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < ordered.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  SizedBox(
-                    width: shelfCellWidth,
-                    child: _StorePackCell(
-                      key: ValueKey('store-pack-'
+          LayoutBuilder(
+            builder: (context, rowConstraints) {
+              final shelfCellWidth = (rowConstraints.maxWidth - 2 * 8) / 3;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var i = 0; i < ordered.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    SizedBox(
+                      width: shelfCellWidth,
+                      child: _StorePackCell(
+                        key: ValueKey(
+                          'store-pack-'
                           '${ordered[i].category.name}'
                           '-${ordered[i].scopeValue ?? 'ANY'}'
-                          '-${ordered[i].tier.name}'),
-                      offer: ordered[i],
-                      ownedCount: owned[_scopeKey(
-                              ordered[i].category.name,
-                              ordered[i].scopeValue,
-                              ordered[i].tier.name)]
-                          ?.length ??
-                          0,
-                      coins: coins,
-                      onTap: () {
-                        final ownedHere = (owned[_scopeKey(
+                          '-${ordered[i].tier.name}',
+                        ),
+                        offer: ordered[i],
+                        ownedCount:
+                            owned[_scopeKey(
+                                  ordered[i].category.name,
+                                  ordered[i].scopeValue,
+                                  ordered[i].tier.name,
+                                )]
+                                ?.length ??
+                            0,
+                        coins: coins,
+                        onTap: () {
+                          final ownedHere =
+                              (owned[_scopeKey(
                                 ordered[i].category.name,
                                 ordered[i].scopeValue,
-                                ordered[i].tier.name)] ??
-                            const <Pack>[]);
-                        if (opening) return;
-                        if (ownedHere.isNotEmpty) {
-                          onOpen(ownedHere.first.id, ordered[i].tier);
-                        } else {
-                          onBuy(ordered[i]);
-                        }
-                      },
+                                ordered[i].tier.name,
+                              )] ??
+                              const <Pack>[]);
+                          if (opening) return;
+                          if (ownedHere.isNotEmpty) {
+                            onOpen(ownedHere.first.id, ordered[i].tier);
+                          } else {
+                            onBuy(ordered[i]);
+                          }
+                        },
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
-            );
-          }),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -738,17 +788,15 @@ class _StorePackCellState extends State<_StorePackCell>
                         // t in 0..1 across the full cycle; the shake
                         // occupies the first quarter (~0.55s) only.
                         final t = _nudge.value;
-                        final shakeT =
-                            (t / 0.25).clamp(0.0, 1.0).toDouble();
+                        final shakeT = (t / 0.25).clamp(0.0, 1.0).toDouble();
                         final wobble =
                             math.sin(shakeT * math.pi * 5) *
-                                (1 - shakeT) *
-                                0.034;
+                            (1 - shakeT) *
+                            0.034;
                         return Transform.rotate(
                           angle: wobble,
                           child: Transform.translate(
-                            offset: Offset(
-                                wobble * 34, -wobble.abs() * 10),
+                            offset: Offset(wobble * 34, -wobble.abs() * 10),
                             child: child,
                           ),
                         );
@@ -826,8 +874,9 @@ class _PricePlate extends StatelessWidget {
           border: Border.all(color: FcmColors.success.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
-                color: FcmColors.success.withValues(alpha: 0.25),
-                blurRadius: 10),
+              color: FcmColors.success.withValues(alpha: 0.25),
+              blurRadius: 10,
+            ),
           ],
         ),
         child: Text(
@@ -897,8 +946,11 @@ class _ViewPlayersButton extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
           ),
-          child: const Icon(Icons.people_outline_rounded,
-              size: 16, color: Colors.white70),
+          child: const Icon(
+            Icons.people_outline_rounded,
+            size: 16,
+            color: Colors.white70,
+          ),
         ),
       ),
     );

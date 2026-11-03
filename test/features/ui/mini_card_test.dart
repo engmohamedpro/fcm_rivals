@@ -10,23 +10,28 @@ import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart';
 
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: child),
-      ),
-    );
+  home: Scaffold(
+    backgroundColor: Colors.black,
+    body: Center(child: child),
+  ),
+);
 
 void main() {
-  testWidgets('stamina bar fill renders with real width and height',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(_host(FcmMiniCard(
-      overall: 80,
-      position: 'ST',
-      name: 'Player',
-      rarity: CardRarity.fromOverall(80),
-      width: 56,
-      stamina: 80,
-    )));
+  testWidgets('stamina bar fill renders with real width and height', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        FcmMiniCard(
+          overall: 80,
+          position: 'ST',
+          name: 'Player',
+          rarity: CardRarity.fromOverall(80),
+          width: 56,
+          stamina: 80,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // The fill is a Positioned box of width 0.8 × track width inside a
@@ -40,33 +45,39 @@ void main() {
     var foundFill = false;
     for (final e in fills) {
       final box = e.renderObject as RenderBox;
-      if (box.size.height > 0 &&
-          box.size.width > 0 &&
-          box.size.width < 56) {
+      if (box.size.height > 0 && box.size.width > 0 && box.size.width < 56) {
         // The stamina fill: 0.8 × 56 = 44.8 wide, 5 tall.
         expect(box.size.width, closeTo(44.8, 1.0));
         expect(box.size.height, greaterThan(0));
         foundFill = true;
       }
     }
-    expect(foundFill, isTrue,
-        reason: 'the stamina fill must render with real width and height');
+    expect(
+      foundFill,
+      isTrue,
+      reason: 'the stamina fill must render with real width and height',
+    );
   });
 
-  testWidgets('mini card shows the three stat columns',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(_host(FcmMiniCard(
-      overall: 80,
-      position: 'ST',
-      name: 'Player',
-      rarity: CardRarity.fromOverall(80),
-      width: 64,
-      stats: const [
-        (label: 'ATT', value: 82),
-        (label: 'SUP', value: 75),
-        (label: 'DEF', value: 40),
-      ],
-    )));
+  testWidgets('mini card shows the three stat columns', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        FcmMiniCard(
+          overall: 80,
+          position: 'ST',
+          name: 'Player',
+          rarity: CardRarity.fromOverall(80),
+          width: 64,
+          stats: const [
+            (label: 'ATT', value: 82),
+            (label: 'SUP', value: 75),
+            (label: 'DEF', value: 40),
+          ],
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('ATT'), findsOneWidget);
@@ -78,18 +89,22 @@ void main() {
   });
 
   testWidgets('keeper card shows GK stats', (WidgetTester tester) async {
-    await tester.pumpWidget(_host(FcmMiniCard(
-      overall: 84,
-      position: 'GK',
-      name: 'Keeper',
-      rarity: CardRarity.fromOverall(84),
-      width: 64,
-      stats: const [
-        (label: 'GK', value: 88),
-        (label: 'DEF', value: 60),
-        (label: 'SUP', value: 55),
-      ],
-    )));
+    await tester.pumpWidget(
+      _host(
+        FcmMiniCard(
+          overall: 84,
+          position: 'GK',
+          name: 'Keeper',
+          rarity: CardRarity.fromOverall(84),
+          width: 64,
+          stats: const [
+            (label: 'GK', value: 88),
+            (label: 'DEF', value: 60),
+            (label: 'SUP', value: 55),
+          ],
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // 'GK' appears twice: the position code on the shield and the stat
@@ -98,21 +113,26 @@ void main() {
     expect(find.text('88'), findsOneWidget);
   });
 
-  testWidgets('full card carries name, stats and stamina together',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(_host(FcmMiniCard(
-      overall: 78,
-      position: 'CM',
-      name: 'Midfielder',
-      rarity: CardRarity.fromOverall(78),
-      width: 64,
-      stamina: 45,
-      stats: const [
-        (label: 'ATT', value: 70),
-        (label: 'SUP', value: 80),
-        (label: 'DEF', value: 65),
-      ],
-    )));
+  testWidgets('full card carries name, stats and stamina together', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        FcmMiniCard(
+          overall: 78,
+          position: 'CM',
+          name: 'Midfielder',
+          rarity: CardRarity.fromOverall(78),
+          width: 64,
+          stamina: 45,
+          stats: const [
+            (label: 'ATT', value: 70),
+            (label: 'SUP', value: 80),
+            (label: 'DEF', value: 65),
+          ],
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('MIDFIELDER'), findsOneWidget);

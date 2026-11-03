@@ -18,10 +18,14 @@ void main() {
   test('away fixtures persist engine orientation (no score swap)', () async {
     final db = AppDatabase(NativeDatabase.memory());
     final dataset = SimDataset.generate(
-        band: SimValueBand.medium, size: 160, random: math.Random(5));
+      band: SimValueBand.medium,
+      size: 160,
+      random: math.Random(5),
+    );
     final collection = CollectionStore(db: db);
     await collection.applyDatasetUpdate(
-        PlayerDataset.fromJson(dataset.toJson()));
+      PlayerDataset.fromJson(dataset.toJson()),
+    );
     await collection.createClub(clubName: 'W', managerName: 'W', crestIndex: 0);
     for (final p in await collection.getAvailablePacks()) {
       await collection.openPack(packId: p.id, random: math.Random(1));
@@ -39,16 +43,26 @@ void main() {
       final live = session.engine.state;
       await session.finish();
       await seasonStore.commitFixtureResult(session, next);
-      final row = await (db.select(db.matchResults)
-            ..where((r) => r.fixtureId.equals(next.fixtureId)))
-          .getSingle();
-      expect(row.homeGoals, live.scoreHome,
-          reason: 'home goals must equal engine home goals');
-      expect(row.awayGoals, live.scoreAway,
-          reason: 'away goals must equal engine away goals');
+      final row = await (db.select(
+        db.matchResults,
+      )..where((r) => r.fixtureId.equals(next.fixtureId))).getSingle();
+      expect(
+        row.homeGoals,
+        live.scoreHome,
+        reason: 'home goals must equal engine home goals',
+      );
+      expect(
+        row.awayGoals,
+        live.scoreAway,
+        reason: 'away goals must equal engine away goals',
+      );
       if (!next.isHome) checkedAway++;
     }
-    expect(checkedAway, greaterThan(0), reason: 'sample must include away fixtures');
+    expect(
+      checkedAway,
+      greaterThan(0),
+      reason: 'sample must include away fixtures',
+    );
     await db.close();
   }, timeout: const Timeout(Duration(minutes: 3)));
 }

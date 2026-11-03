@@ -11,24 +11,23 @@ PlayerCard card(
   Position position, {
   int overall = 70,
   int stamina = 100,
-}) =>
-    PlayerCard(
-      ownedId: id,
-      upgradeLevel: 0,
-      staminaPercent: stamina,
-      base: BasePlayer(
-        playerId: 1000 + id,
-        name: 'Player $id',
-        position: position,
-        nationality: 'Egypt',
-        marketValueEur: 5_000_000,
-        // The generator anchors stats to a market value, so its curve
-        // cannot hit an arbitrary overall; tests need the requested
-        // overall to be real. Same deviation formula as the generator
-        // (10 × (w − 0.375)) but around the requested rating.
-        baseStats: _statsFor(position, overall),
-      ),
-    );
+}) => PlayerCard(
+  ownedId: id,
+  upgradeLevel: 0,
+  staminaPercent: stamina,
+  base: BasePlayer(
+    playerId: 1000 + id,
+    name: 'Player $id',
+    position: position,
+    nationality: 'Egypt',
+    marketValueEur: 5_000_000,
+    // The generator anchors stats to a market value, so its curve
+    // cannot hit an arbitrary overall; tests need the requested
+    // overall to be real. Same deviation formula as the generator
+    // (10 × (w − 0.375)) but around the requested rating.
+    baseStats: _statsFor(position, overall),
+  ),
+);
 
 BaseStats _statsFor(Position position, int overall) {
   final weights = positionWeights[position]!;
@@ -96,10 +95,14 @@ void main() {
       final stSlot = formationByCode('4-4-2').slots.last; // ST slot
       final cbSlot = formationByCode('4-4-2').slots[2]; // CB slot
 
-      expect(engine.slotRatingOf(striker, stSlot),
-          greaterThan(engine.slotRatingOf(defender, stSlot)));
-      expect(engine.slotRatingOf(defender, cbSlot),
-          greaterThan(engine.slotRatingOf(striker, cbSlot)));
+      expect(
+        engine.slotRatingOf(striker, stSlot),
+        greaterThan(engine.slotRatingOf(defender, stSlot)),
+      );
+      expect(
+        engine.slotRatingOf(defender, cbSlot),
+        greaterThan(engine.slotRatingOf(striker, cbSlot)),
+      );
     });
   });
 
@@ -123,8 +126,10 @@ void main() {
 
       expect(assignment.length, Formation.squadSize);
       // GK slot gets a goalkeeper
-      expect(players.firstWhere((p) => p.ownedId == assignment[0]).position,
-          Position.gk);
+      expect(
+        players.firstWhere((p) => p.ownedId == assignment[0]).position,
+        Position.gk,
+      );
       // all assignments unique
       expect(assignment.values.toSet().length, assignment.length);
       // every XI slot filled
@@ -144,8 +149,10 @@ void main() {
       expect(assignment.values.toSet().length, assignment.length);
       for (var slot = 1; slot < Formation.startingXiSize; slot++) {
         final id = assignment[slot]!;
-        expect(players.firstWhere((p) => p.ownedId == id).position,
-            isNot(Position.gk));
+        expect(
+          players.firstWhere((p) => p.ownedId == id).position,
+          isNot(Position.gk),
+        );
       }
     });
 
@@ -153,14 +160,14 @@ void main() {
       // LM slot: an LW (compat 0.9) beats an equally-rated CM (compat 0.8).
       // Hand-built stat profiles make the intent independent of the
       // generator's curve.
-      PlayerCard flat(
-          int id, Position position, List<int> attrs) {
+      PlayerCard flat(int id, Position position, List<int> attrs) {
         final stats = BaseStats(
-            overall: attrs[0],
-            attack: attrs[1],
-            support: attrs[2],
-            defence: attrs[3],
-            goalkeeping: 0);
+          overall: attrs[0],
+          attack: attrs[1],
+          support: attrs[2],
+          defence: attrs[3],
+          goalkeeping: 0,
+        );
         return PlayerCard(
           ownedId: id,
           base: BasePlayer(
@@ -191,14 +198,18 @@ void main() {
         flat(13, Position.st, [75, 60, 20, 18]),
       ];
       final assignment = engine.autoPick(players, formation);
-      final lmSlot =
-          formation.slots.indexWhere((s) => s.position == Position.lm);
-      final rmSlot =
-          formation.slots.indexWhere((s) => s.position == Position.rm);
-      final lmPlayer =
-          players.firstWhere((p) => p.ownedId == assignment[lmSlot]);
-      final rmPlayer =
-          players.firstWhere((p) => p.ownedId == assignment[rmSlot]);
+      final lmSlot = formation.slots.indexWhere(
+        (s) => s.position == Position.lm,
+      );
+      final rmSlot = formation.slots.indexWhere(
+        (s) => s.position == Position.rm,
+      );
+      final lmPlayer = players.firstWhere(
+        (p) => p.ownedId == assignment[lmSlot],
+      );
+      final rmPlayer = players.firstWhere(
+        (p) => p.ownedId == assignment[rmSlot],
+      );
       // identical attribute sums: compatibility decides
       expect(lmPlayer.position, Position.lw);
       expect(rmPlayer.position, Position.rw);
@@ -225,18 +236,18 @@ void main() {
         card(12, Position.cm, overall: 93),
       ];
       final assignment = engine.autoPick(players, f433);
-      final lwSlot =
-          f433.slots.indexWhere((s) => s.position == Position.lw);
-      final lwPlayer =
-          players.firstWhere((p) => p.ownedId == assignment[lwSlot]);
+      final lwSlot = f433.slots.indexWhere((s) => s.position == Position.lw);
+      final lwPlayer = players.firstWhere(
+        (p) => p.ownedId == assignment[lwSlot],
+      );
       expect(lwPlayer.position, Position.lw);
       expect(lwPlayer.overall, 55);
 
       // the strongest CM takes a central slot, the spare CM benches
-      final cmSlot =
-          f433.slots.indexWhere((s) => s.position == Position.cm);
-      final cmPlayer =
-          players.firstWhere((p) => p.ownedId == assignment[cmSlot]);
+      final cmSlot = f433.slots.indexWhere((s) => s.position == Position.cm);
+      final cmPlayer = players.firstWhere(
+        (p) => p.ownedId == assignment[cmSlot],
+      );
       expect(cmPlayer.overall, 95);
       expect(assignment[Formation.startingXiSize], players[11].ownedId);
       expect(assignment.values.contains(players[11].ownedId), isTrue);
@@ -247,8 +258,7 @@ void main() {
       expect(inXi, isEmpty, reason: 'the spare CM must sit on the bench');
     });
 
-    test('slots with no natural candidate fall back to compatible players',
-        () {
+    test('slots with no natural candidate fall back to compatible players', () {
       // No LM/RM in the pool at all: the wing slots take the best
       // compatible outsiders instead of staying empty.
       final players = <PlayerCard>[
@@ -258,12 +268,14 @@ void main() {
         for (var i = 0; i < 4; i++) card(50 + i, Position.st),
       ];
       final assignment = engine.autoPick(players, formation);
-      final lmSlot =
-          formation.slots.indexWhere((s) => s.position == Position.lm);
+      final lmSlot = formation.slots.indexWhere(
+        (s) => s.position == Position.lm,
+      );
       expect(assignment.containsKey(lmSlot), isTrue);
       expect(
-          players.firstWhere((p) => p.ownedId == assignment[lmSlot]).position,
-          anyOf(Position.cm, Position.st, Position.lw, Position.rw));
+        players.firstWhere((p) => p.ownedId == assignment[lmSlot]).position,
+        anyOf(Position.cm, Position.st, Position.lw, Position.rw),
+      );
     });
 
     test('small pools leave later slots unassigned gracefully', () {
@@ -298,9 +310,11 @@ void main() {
       // bench (11..17) then reserves (18..22) in slot order; every slot
       // present reads the leftovers 85 → 78 → 72 → 60.
       final ranked = [
-        for (var slot = Formation.startingXiSize;
-            slot < Formation.squadSize;
-            slot++)
+        for (
+          var slot = Formation.startingXiSize;
+          slot < Formation.squadSize;
+          slot++
+        )
           if (assignment.containsKey(slot))
             players.firstWhere((p) => p.ownedId == assignment[slot]),
       ];
@@ -319,19 +333,13 @@ void main() {
         card(1, Position.gk),
         for (var i = 0; i < 10; i++) card(10 + i, Position.cb),
       ];
-      final assignments = {
-        for (var i = 0; i < 11; i++) i: players[i],
-      };
+      final assignments = {for (var i = 0; i < 11; i++) i: players[i]};
       expect(engine.validateSquad(formation, assignments), isEmpty);
     });
 
     test('missing keeper is reported', () {
-      final players = [
-        for (var i = 0; i < 11; i++) card(10 + i, Position.cb),
-      ];
-      final assignments = {
-        for (var i = 0; i < 11; i++) i: players[i],
-      };
+      final players = [for (var i = 0; i < 11; i++) card(10 + i, Position.cb)];
+      final assignments = {for (var i = 0; i < 11; i++) i: players[i]};
       final problems = engine.validateSquad(formation, assignments);
       expect(problems.any((p) => p.contains('goalkeeper')), isTrue);
     });
@@ -353,7 +361,12 @@ void main() {
         nationality: 'Egypt',
         marketValueEur: 50_000_000,
         baseStats: const BaseStats(
-            overall: 84, attack: 90, support: 80, defence: 70, goalkeeping: 0),
+          overall: 84,
+          attack: 90,
+          support: 80,
+          defence: 70,
+          goalkeeping: 0,
+        ),
       );
       final upgraded = PlayerCard(
         ownedId: 1,

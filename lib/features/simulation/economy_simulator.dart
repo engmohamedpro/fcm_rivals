@@ -111,8 +111,9 @@ class EconomySimReport {
   /// GDD 32 'rewards do not cause Coin inflation': average net coins per
   /// season must stay bounded — the harness asserts a generous ceiling
   /// elsewhere; here we just report it.
-  double get avgNetCoinsPerSeason =>
-      seasons.isEmpty ? 0 : seasons.fold<int>(0, (a, s) => a + s.netCoins) / seasons.length;
+  double get avgNetCoinsPerSeason => seasons.isEmpty
+      ? 0
+      : seasons.fold<int>(0, (a, s) => a + s.netCoins) / seasons.length;
 
   /// 'Time needed to obtain stronger players' (GDD 30): the first season
   /// index (0-based) whose best XI overall reaches [target], or null.
@@ -149,24 +150,35 @@ class EconomySimulator {
     final db = AppDatabase(NativeDatabase.memory());
     try {
       final dataset = SimDataset.generate(
-          band: valueBand, size: datasetSize, random: math.Random(_random.nextInt(1 << 31)));
+        band: valueBand,
+        size: datasetSize,
+        random: math.Random(_random.nextInt(1 << 31)),
+      );
       final collection = CollectionStore(db: db);
       await collection.applyDatasetUpdate(
-          PlayerDataset.fromJson(dataset.toJson()));
+        PlayerDataset.fromJson(dataset.toJson()),
+      );
       await collection.createClub(
-          clubName: 'Sim FC', managerName: 'Sim', crestIndex: 0);
+        clubName: 'Sim FC',
+        managerName: 'Sim',
+        crestIndex: 0,
+      );
 
       // Opening packs & assembling the squad before season 1.
       var packOpenings = 0;
       for (final pack in await collection.getAvailablePacks()) {
         await collection.openPack(
-            packId: pack.id, random: math.Random(_random.nextInt(1 << 31)));
+          packId: pack.id,
+          random: math.Random(_random.nextInt(1 << 31)),
+        );
         packOpenings++;
       }
       await collection.autoPickSquad();
 
       final seasonStore = SeasonStore(
-          db: db, random: math.Random(_random.nextInt(1 << 31)));
+        db: db,
+        random: math.Random(_random.nextInt(1 << 31)),
+      );
       final adStore = AdStore(db: db);
       final startingCoins = (await collection.getClub())!.coins;
 
@@ -267,34 +279,42 @@ class EconomySimulator {
         final squad = await collection.getSquad();
         var bestOverall = 0;
         if (squad.isNotEmpty) {
-          final cards = squad.values.toList()..sort((a, b) => b.overall.compareTo(a.overall));
-          bestOverall = cards.take(11).fold<int>(0, (a, c) => a + c.overall) ~/
+          final cards = squad.values.toList()
+            ..sort((a, b) => b.overall.compareTo(a.overall));
+          bestOverall =
+              cards.take(11).fold<int>(0, (a, c) => a + c.overall) ~/
               math.min(11, cards.length);
         }
-        seasons.add(SeasonEconomyReport(
-          seasonIndex: s,
-          division: completion.division,
-          finalPosition: completion.finalPosition,
-          outcome: completion.outcome,
-          // Season 1 ledger includes the starting grant — strip it so
-          // the metric measures the season's own economy (GDD 30).
-          coinsEarned:
-              earnedAfter - earnedBefore - (s == 0 ? startingCoins : 0),
-          coinsSpent: spentAfter - spentBefore,
-          coinsEnd: coinsEnd,
-          packOpenings: packOpenings,
-          merges: mergesThisSeason,
-          collectionSize: (await collection.getCollection()).length,
-          bestSquadOverall: bestOverall,
-        ));
+        seasons.add(
+          SeasonEconomyReport(
+            seasonIndex: s,
+            division: completion.division,
+            finalPosition: completion.finalPosition,
+            outcome: completion.outcome,
+            // Season 1 ledger includes the starting grant — strip it so
+            // the metric measures the season's own economy (GDD 30).
+            coinsEarned:
+                earnedAfter - earnedBefore - (s == 0 ? startingCoins : 0),
+            coinsSpent: spentAfter - spentBefore,
+            coinsEnd: coinsEnd,
+            packOpenings: packOpenings,
+            merges: mergesThisSeason,
+            collectionSize: (await collection.getCollection()).length,
+            bestSquadOverall: bestOverall,
+          ),
+        );
         // Coins balance check at the end of each season.
         final ledgerBalance =
-            coinsStart + (earnedAfter - earnedBefore) - (spentAfter - spentBefore);
+            coinsStart +
+            (earnedAfter - earnedBefore) -
+            (spentAfter - spentBefore);
         if (coinsEnd != ledgerBalance) {
           final rows = await db.select(db.coinTransactions).get();
-          throw StateError('ledger must reconcile with the club balance '
-              '(season $s: coins $coinsEnd vs ledger $ledgerBalance). '
-              'Rows: ${rows.map((r) => '${r.amount}:${r.reason}').join(', ')}');
+          throw StateError(
+            'ledger must reconcile with the club balance '
+            '(season $s: coins $coinsEnd vs ledger $ledgerBalance). '
+            'Rows: ${rows.map((r) => '${r.amount}:${r.reason}').join(', ')}',
+          );
         }
       }
 
@@ -304,7 +324,10 @@ class EconomySimulator {
         useAds: useAds,
         startingCoins: startingCoins,
         finalCoins: (await collection.getClub())!.coins,
-        maxDivisionReached: seasons.fold<int>(1, (a, s) => math.max(a, s.division)),
+        maxDivisionReached: seasons.fold<int>(
+          1,
+          (a, s) => math.max(a, s.division),
+        ),
         promotions: promotions,
         relegations: relegations,
         adsWatched: adsWatched,
@@ -353,7 +376,9 @@ class EconomySimulator {
       for (final tier in [PackTier.legendary, PackTier.epic, PackTier.rare]) {
         try {
           bought = await collection.buyPack(
-              category: PackCategory.global, tier: tier);
+            category: PackCategory.global,
+            tier: tier,
+          );
           break;
         } on CollectionException {
           continue; // this tier is beyond the wallet — try the next down
@@ -363,11 +388,15 @@ class EconomySimulator {
       if (club.coins - bought.price < 2_000) {
         // Bought the last affordable pack — open it, then stop.
         await collection.openPack(
-            packId: bought.id, random: math.Random(_random.nextInt(1 << 31)));
+          packId: bought.id,
+          random: math.Random(_random.nextInt(1 << 31)),
+        );
         return opened + 1;
       }
       await collection.openPack(
-          packId: bought.id, random: math.Random(_random.nextInt(1 << 31)));
+        packId: bought.id,
+        random: math.Random(_random.nextInt(1 << 31)),
+      );
       opened++;
     }
   }
@@ -383,12 +412,14 @@ class EconomySimulator {
     for (final copies in byPlayer.values) {
       if (copies.length < 2) continue;
       final target = copies[0];
-      final duplicate =
-          copies.skip(1).firstWhere((c) => c.ownedId != target.ownedId);
+      final duplicate = copies
+          .skip(1)
+          .firstWhere((c) => c.ownedId != target.ownedId);
       // Capped pairs stay unmerged — a maxed copy is kept, not consumed.
       if (!upgrades.canMerge(
-          targetLevel: target.upgradeLevel,
-          duplicateLevel: duplicate.upgradeLevel)) {
+        targetLevel: target.upgradeLevel,
+        duplicateLevel: duplicate.upgradeLevel,
+      )) {
         continue;
       }
       await collection.mergeDuplicates(

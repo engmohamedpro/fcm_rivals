@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
-import '../match/match_forecast.dart'
-    show PreMatchData;
+import '../match/match_forecast.dart' show PreMatchData;
 import '../match/tactics.dart' show MatchPepTalk;
 import '../match/match_screen.dart';
 import '../match/pre_match_screen.dart'
@@ -45,7 +44,8 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     }
   }
 
-  Future<void> _startSeason() => _run((store) => store.startSeason(division: 1));
+  Future<void> _startSeason() =>
+      _run((store) => store.startSeason(division: 1));
 
   /// Plays the next league fixture as a full matchday (GDD 13/16): the
   /// pre-match analysis screen (opponent form, W/D/L forecast, strength),
@@ -72,7 +72,8 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
         MaterialPageRoute<bool>(
           builder: (_) => _PreMatchRoute(
             loadData: () => store.loadPreMatchData(
-                ref.read(collectionStoreProvider).value!),
+              ref.read(collectionStoreProvider).value!,
+            ),
             onKickOff: (t, selection) {
               talk = t;
               tactics = selection;
@@ -82,18 +83,22 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       );
       if (!mounted || kickedOff != true) return;
       final collection = await ref.read(collectionStoreProvider.future);
-      final session = await store.startNextFixture(collection,
-          preMatchTalk: talk, tactics: tactics);
+      final session = await store.startNextFixture(
+        collection,
+        preMatchTalk: talk,
+        tactics: tactics,
+      );
       if (!mounted) return;
       setState(() => _error = null);
-      await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => MatchScreen(
-          session: session,
-          title: 'League · Round ${next.round}',
-          onFullTime: (report) =>
-              store.commitFixtureResult(session, next),
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => MatchScreen(
+            session: session,
+            title: 'League · Round ${next.round}',
+            onFullTime: (report) => store.commitFixtureResult(session, next),
+          ),
         ),
-      ));
+      );
       ref.invalidate(seasonSummaryProvider);
       ref.invalidate(standingsProvider);
       ref.invalidate(nextFixtureProvider);
@@ -110,8 +115,11 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
   }
 
   Future<void> _showCompletion(SeasonCompletion completion) {
-    final (outcomeLabel, outcomeColor, outcomeIcon) =
-        switch (completion.outcome) {
+    final (
+      outcomeLabel,
+      outcomeColor,
+      outcomeIcon,
+    ) = switch (completion.outcome) {
       'promoted' => ('Promoted!', FcmColors.success, Icons.trending_up),
       'relegated' => ('Relegated', FcmColors.danger, Icons.trending_down),
       _ => ('Stayed up', FcmColors.gold, Icons.shield),
@@ -132,16 +140,20 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                 builder: (context, v, child) =>
                     Transform.scale(scale: v.clamp(0.0, 1.2), child: child),
                 child: FcmIconBadge(
-                    icon: Icons.emoji_events_rounded,
-                    color: outcomeColor,
-                    size: 92),
+                  icon: Icons.emoji_events_rounded,
+                  color: outcomeColor,
+                  size: 92,
+                ),
               ),
               const SizedBox(height: 16),
-              const Text('Season complete',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900)),
+              const Text(
+                'Season complete',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -152,9 +164,10 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                     child: FitText(
                       '$outcomeLabel You finished ${completion.finalPosition} of 20.',
                       style: TextStyle(
-                          color: outcomeColor,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800),
+                        color: outcomeColor,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -166,15 +179,19 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Season reward: ${completion.rewardCoins} coins',
-                        style: const TextStyle(
-                            color: FcmColors.gold,
-                            fontWeight: FontWeight.w800)),
+                    Text(
+                      'Season reward: ${completion.rewardCoins} coins',
+                      style: const TextStyle(
+                        color: FcmColors.gold,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     if (completion.rewardPackCategory != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                            'Reward pack: ${completion.rewardPackCategory}'),
+                          'Reward pack: ${completion.rewardPackCategory}',
+                        ),
                       ),
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
@@ -241,17 +258,22 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const FcmIconBadge(
-                    icon: Icons.stadium_rounded, size: 96),
+                const FcmIconBadge(icon: Icons.stadium_rounded, size: 96),
                 const SizedBox(height: 22),
-                Text('Start your first season',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(color: Colors.white)),
+                Text(
+                  'Start your first season',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text('Division 1 · 20 clubs · 38 matches',
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: FcmColors.textDim)),
+                Text(
+                  'Division 1 · 20 clubs · 38 matches',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: FcmColors.textDim,
+                  ),
+                ),
                 const SizedBox(height: 26),
                 SizedBox(
                   width: 240,
@@ -308,16 +330,20 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                         gradient: FcmColors.goldGradient,
                         boxShadow: [
                           BoxShadow(
-                              color: FcmColors.gold.withValues(alpha: 0.4),
-                              blurRadius: 16),
+                            color: FcmColors.gold.withValues(alpha: 0.4),
+                            blurRadius: 16,
+                          ),
                         ],
                       ),
-                      child: FitText('D${summary.division}',
-                          align: Alignment.center,
-                          style: const TextStyle(
-                              color: FcmColors.ink,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 17)),
+                      child: FitText(
+                        'D${summary.division}',
+                        align: Alignment.center,
+                        style: const TextStyle(
+                          color: FcmColors.ink,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -329,17 +355,19 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                                 ? 'Season ${summary.ordinal} · Division ${summary.division} · finished'
                                 : 'Season ${summary.ordinal} · Division ${summary.division}',
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900),
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             summary.isCompleted
                                 ? 'Final position: ${summary.finalPosition} (${summary.outcome})'
                                 : 'Round ${summary.roundsPlayed + (next != null ? 0 : 1)} of ${summary.roundsTotal}',
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: FcmColors.textDim),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: FcmColors.textDim,
+                            ),
                           ),
                         ],
                       ),
@@ -363,7 +391,8 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                             widthFactor: f,
                             child: const DecoratedBox(
                               decoration: BoxDecoration(
-                                  gradient: FcmColors.goldGradient),
+                                gradient: FcmColors.goldGradient,
+                              ),
                             ),
                           ),
                         ),
@@ -394,17 +423,20 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                         child: Text(
                           'Next fixture · round ${next.round}',
                           style: const TextStyle(
-                              color: FcmColors.gold,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                              fontSize: 11),
+                            color: FcmColors.gold,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
-                      FcmPill(next.isHome ? 'HOME' : 'AWAY',
-                          color: next.isHome
-                              ? FcmColors.success
-                              : FcmColors.bronze,
-                          filled: false),
+                      FcmPill(
+                        next.isHome ? 'HOME' : 'AWAY',
+                        color: next.isHome
+                            ? FcmColors.success
+                            : FcmColors.bronze,
+                        filled: false,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -426,18 +458,20 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                               text:
                                   '  ·  ${ordinalOf(opponentPos)} in the table',
                               style: const TextStyle(
-                                  color: FcmColors.goldSoft,
-                                  fontWeight: FontWeight.w700),
+                                color: FcmColors.goldSoft,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                         ],
                       ),
                       maxLines: 1,
                       softWrap: false,
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                          height: 1.15),
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        height: 1.15,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -475,12 +509,19 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
               child: FcmButton(
                 onPressed: _busy
                     ? null
-                    : () => _run((store) => store.startNextSeason(
-                        ref.read(collectionStoreProvider).value!)),
+                    : () => _run(
+                        (store) => store.startNextSeason(
+                          ref.read(collectionStoreProvider).value!,
+                        ),
+                      ),
                 loading: _busy,
                 icon: Icons.flag_rounded,
                 label:
-                    'Start season in division ${summary.outcome == 'promoted' ? summary.division + 1 : summary.outcome == 'relegated' ? (summary.division > 1 ? summary.division - 1 : 1) : summary.division}',
+                    'Start season in division ${summary.outcome == 'promoted'
+                        ? summary.division + 1
+                        : summary.outcome == 'relegated'
+                        ? (summary.division > 1 ? summary.division - 1 : 1)
+                        : summary.division}',
               ),
             ),
           ),
@@ -489,9 +530,11 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
         const FcmSectionTitle('Standings'),
         if (standings == null || standings.isEmpty)
           const FcmPanel(
-            child: Text('No matches played yet.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: FcmColors.textDim)),
+            child: Text(
+              'No matches played yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: FcmColors.textDim),
+            ),
           )
         else
           FcmPanel(
@@ -538,14 +581,15 @@ class _Hdr extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FitText(
-        text.toUpperCase(),
-        align: end ? Alignment.centerRight : Alignment.centerLeft,
-        style: const TextStyle(
-            color: FcmColors.textDim,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2),
-      );
+    text.toUpperCase(),
+    align: end ? Alignment.centerRight : Alignment.centerLeft,
+    style: const TextStyle(
+      color: FcmColors.textDim,
+      fontSize: 11,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 1.2,
+    ),
+  );
 }
 
 /// One table row: zone-coloured position badge, club, played, GD, points.
@@ -589,10 +633,13 @@ class _StandingRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: FitText('$pos',
-                      style: const TextStyle(
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w800)),
+                  child: FitText(
+                    '$pos',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -601,35 +648,44 @@ class _StandingRow extends StatelessWidget {
             child: FitText(
               e.name,
               style: TextStyle(
-                  color: isUser ? FcmColors.gold : Colors.white,
-                  fontWeight: isUser ? FontWeight.w900 : FontWeight.w600,
-                  fontSize: 14),
+                color: isUser ? FcmColors.gold : Colors.white,
+                fontWeight: isUser ? FontWeight.w900 : FontWeight.w600,
+                fontSize: 14,
+              ),
             ),
           ),
           SizedBox(
             width: 34,
-            child: FitText('${e.played}',
-                align: Alignment.centerRight,
-                style: const TextStyle(color: Colors.white70)),
+            child: FitText(
+              '${e.played}',
+              align: Alignment.centerRight,
+              style: const TextStyle(color: Colors.white70),
+            ),
           ),
           SizedBox(
             width: 38,
-            child: FitText(gd >= 0 ? '+$gd' : '$gd',
-                align: Alignment.centerRight,
-                style: TextStyle(
-                    color: gd > 0
-                        ? FcmColors.success
-                        : (gd < 0 ? FcmColors.danger : Colors.white70),
-                    fontWeight: FontWeight.w700)),
+            child: FitText(
+              gd >= 0 ? '+$gd' : '$gd',
+              align: Alignment.centerRight,
+              style: TextStyle(
+                color: gd > 0
+                    ? FcmColors.success
+                    : (gd < 0 ? FcmColors.danger : Colors.white70),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           SizedBox(
             width: 40,
-            child: FitText('${e.points}',
-                align: Alignment.centerRight,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16)),
+            child: FitText(
+              '${e.points}',
+              align: Alignment.centerRight,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+              ),
+            ),
           ),
         ],
       ),
@@ -644,17 +700,14 @@ class _StandingRow extends StatelessWidget {
 /// unplayed). Nothing is persisted here — the selection lives only for
 /// the match the caller is about to create.
 class _PreMatchRoute extends ConsumerStatefulWidget {
-  const _PreMatchRoute({
-    required this.loadData,
-    required this.onKickOff,
-  });
+  const _PreMatchRoute({required this.loadData, required this.onKickOff});
 
   final Future<PreMatchData> Function() loadData;
 
   /// Receives the chosen pep talk (null = none) and the match-only tactic
   /// selection made in the tactics phase.
   final void Function(MatchPepTalk? talk, PreMatchTacticSelection? tactics)
-      onKickOff;
+  onKickOff;
 
   @override
   ConsumerState<_PreMatchRoute> createState() => _PreMatchRouteState();
@@ -688,17 +741,20 @@ class _PreMatchRouteState extends ConsumerState<_PreMatchRoute> {
             backgroundColor: FcmColors.night,
             appBar: AppBar(
               leading: BackButton(
-                  color: FcmColors.gold,
-                  onPressed: () => Navigator.of(context).pop(false)),
+                color: FcmColors.gold,
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
             ),
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: FcmPanel(
                   accent: FcmColors.danger,
-                  child: Text('${snapshot.error}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white)),
+                  child: Text(
+                    '${snapshot.error}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ),

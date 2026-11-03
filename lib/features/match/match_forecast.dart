@@ -64,10 +64,7 @@ class MatchForecast {
 /// reserves). Attributes are taken raw — stamina is ignored, and there is
 /// no formation, style or mentality to apply.
 class ForecastInput {
-  const ForecastInput({
-    required this.userSquad,
-    required this.opponentSquad,
-  });
+  const ForecastInput({required this.userSquad, required this.opponentSquad});
 
   final List<MatchPlayer> userSquad;
   final List<MatchPlayer> opponentSquad;
@@ -115,15 +112,17 @@ class PreMatchData {
   /// Opponent's three highest-rated players in the whole squad: identity
   /// plus raw attributes, rendered as collection-style cards.
   final List<
-      ({
-        String name,
-        String position,
-        int overall,
-        int attack,
-        int support,
-        int defence,
-        int goalkeeping,
-      })> opponentKeyMen;
+    ({
+      String name,
+      String position,
+      int overall,
+      int attack,
+      int support,
+      int defence,
+      int goalkeeping,
+    })
+  >
+  opponentKeyMen;
 
   /// The club's persisted formation / playing style / mentality (GDD 10) —
   /// the starting point of the pre-match tactics selection.
@@ -167,13 +166,12 @@ MatchForecast forecastMatch({
     for (var minute = 0; minute < 90; minute++) {
       final segments = _drawSegmentCount(rnd, config.segmentWeights);
       for (var s = 0; s < segments; s++) {
-        final userPoss = userTotals.support /
-            (userTotals.support + opponentTotals.support);
+        final userPoss =
+            userTotals.support / (userTotals.support + opponentTotals.support);
         if (rnd.nextDouble() < userPoss) {
           ug += _segmentGoals(rnd, config, userTotals.attack, opponentTotals);
         } else {
-          og +=
-              _segmentGoals(rnd, config, opponentTotals.attack, userTotals);
+          og += _segmentGoals(rnd, config, opponentTotals.attack, userTotals);
         }
       }
     }
@@ -224,22 +222,28 @@ int _drawSegmentCount(math.Random rnd, List<double> weights) {
 /// against the defending squad's keeper quality. No fouls, cards,
 /// penalties or free kicks — nothing but squad quality decides.
 int _segmentGoals(
-    math.Random rnd, MatchEngineConfig c, double attack, TeamTotals def) {
+  math.Random rnd,
+  MatchEngineConfig c,
+  double attack,
+  TeamTotals def,
+) {
   final attackRatio = attack / (attack + def.defence);
-  final chanceP =
-      (c.chanceBase + c.chanceScale * attackRatio).clamp(0.05, c.chanceMax);
+  final chanceP = (c.chanceBase + c.chanceScale * attackRatio).clamp(
+    0.05,
+    c.chanceMax,
+  );
   if (rnd.nextDouble() >= chanceP) return 0;
 
   final big = rnd.nextDouble() < 0.15;
-  final onTargetP = (c.onTargetBase +
-          c.onTargetScale * (attack / 100) +
-          (big ? 0.18 : 0.0))
-      .clamp(0.10, 0.95);
-  final goalP = (c.goalBase +
-          c.goalScale *
-              (attack / (attack + def.goalkeeping * 1.5)) *
-              (big ? 1.25 : 1.0))
-      .clamp(0.04, 0.88);
+  final onTargetP =
+      (c.onTargetBase + c.onTargetScale * (attack / 100) + (big ? 0.18 : 0.0))
+          .clamp(0.10, 0.95);
+  final goalP =
+      (c.goalBase +
+              c.goalScale *
+                  (attack / (attack + def.goalkeeping * 1.5)) *
+                  (big ? 1.25 : 1.0))
+          .clamp(0.04, 0.88);
 
   if (rnd.nextDouble() < c.blockChance) return 0;
   if (rnd.nextDouble() < onTargetP / (1 - c.blockChance) &&

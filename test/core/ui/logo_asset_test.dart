@@ -5,14 +5,17 @@ import 'package:fcm_rivals/core/ui/fcm_logo.dart';
 import 'package:fcm_rivals/core/ui/fcm_style.dart';
 
 void main() {
-  testWidgets('the wordmark asset decodes and renders',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: const Scaffold(
-        backgroundColor: FcmColors.night,
-        body: Center(child: FcmWordmark(size: 32)),
+  testWidgets('the wordmark asset decodes and renders', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: const Scaffold(
+          backgroundColor: FcmColors.night,
+          body: Center(child: FcmWordmark(size: 32)),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     // The wordmark is the transparent logo art (not the text fallback).

@@ -19,10 +19,12 @@ String renderMatchBatches(List<MatchSimBatchReport> batches) {
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 ''');
   for (final b in batches) {
-    buffer.writeln('| ${b.label} | ${b.matches} | ${_f(b.avgGoals)} | '
-        '${_pct(b.homeWinRate)} | ${_pct(b.drawRate)} | ${_pct(b.awayWinRate)} | '
-        '${_f(b.avgShots)} | ${_f(b.avgShotsOnTarget)} | ${_pct(b.goalConversion)} | '
-        '${_f(b.avgYellowCards)} | ${_f(b.avgHomeStaminaEnd)}/${_f(b.avgAwayStaminaEnd)} |');
+    buffer.writeln(
+      '| ${b.label} | ${b.matches} | ${_f(b.avgGoals)} | '
+      '${_pct(b.homeWinRate)} | ${_pct(b.drawRate)} | ${_pct(b.awayWinRate)} | '
+      '${_f(b.avgShots)} | ${_f(b.avgShotsOnTarget)} | ${_pct(b.goalConversion)} | '
+      '${_f(b.avgYellowCards)} | ${_f(b.avgHomeStaminaEnd)}/${_f(b.avgAwayStaminaEnd)} |',
+    );
   }
   return buffer.toString();
 }
@@ -36,10 +38,12 @@ String renderEconomySims(List<EconomySimReport> sims) {
 |---|---:|---|---:|---:|---:|---:|---:|---|
 ''');
   for (final sim in sims) {
-    buffer.writeln('| ${sim.label} | ${sim.seasons.length} | '
-        '${sim.useAds ? 'yes (${sim.adsWatched})' : 'no'} | ${sim.finalCoins} | '
-        '${sim.maxDivisionReached} | ${sim.promotions} | ${sim.relegations} | '
-        '${sim.avgNetCoinsPerSeason.round()} | ${sim.matchWins}/${sim.matchDraws}/${sim.matchLosses} |');
+    buffer.writeln(
+      '| ${sim.label} | ${sim.seasons.length} | '
+      '${sim.useAds ? 'yes (${sim.adsWatched})' : 'no'} | ${sim.finalCoins} | '
+      '${sim.maxDivisionReached} | ${sim.promotions} | ${sim.relegations} | '
+      '${sim.avgNetCoinsPerSeason.round()} | ${sim.matchWins}/${sim.matchDraws}/${sim.matchLosses} |',
+    );
   }
   return buffer.toString();
 }
@@ -53,9 +57,11 @@ String renderSeasonDetail(EconomySimReport sim) {
 |---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
 ''');
   for (final s in sim.seasons) {
-    buffer.writeln('| ${s.seasonIndex + 1} | ${s.division} | ${s.finalPosition} | '
-        '${s.outcome} | ${s.coinsEarned} | ${s.coinsSpent} | ${s.coinsEnd} | '
-        '${s.packOpenings} | ${s.merges} | ${s.collectionSize} | ${s.bestSquadOverall} |');
+    buffer.writeln(
+      '| ${s.seasonIndex + 1} | ${s.division} | ${s.finalPosition} | '
+      '${s.outcome} | ${s.coinsEarned} | ${s.coinsSpent} | ${s.coinsEnd} | '
+      '${s.packOpenings} | ${s.merges} | ${s.collectionSize} | ${s.bestSquadOverall} |',
+    );
   }
   return buffer.toString();
 }
@@ -92,8 +98,9 @@ where marked.
   final anyRelegation = economySims.any((s) => s.relegations > 0);
   // Relegation risk exists structurally (bottom three relegate); whether
   // a strong managed save ever lands there is a play-skill outcome.
-  final boundedInflation =
-      economySims.every((s) => s.avgNetCoinsPerSeason < 60_000);
+  final boundedInflation = economySims.every(
+    (s) => s.avgNetCoinsPerSeason < 60_000,
+  );
   buffer.writeln('''
 ### Progression invariants (GDD 32)
 

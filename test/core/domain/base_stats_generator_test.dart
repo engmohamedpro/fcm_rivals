@@ -56,7 +56,12 @@ void main() {
     test('all attributes within 1..99 and overall equals curve', () {
       for (final pos in Position.values) {
         final stats = gen.generate(pos, 75_000_000);
-        for (final v in [stats.attack, stats.support, stats.defence, stats.goalkeeping]) {
+        for (final v in [
+          stats.attack,
+          stats.support,
+          stats.defence,
+          stats.goalkeeping,
+        ]) {
           expect(v, inInclusiveRange(0, 99));
         }
         expect(stats.overall, gen.baseRatingFor(75_000_000));
@@ -103,8 +108,11 @@ void main() {
       final st = gen.generate(Position.st, 50_000_000);
       final cb = gen.generate(Position.cb, 50_000_000);
       expect(st.overall, cb.overall);
-      expect([st.attack, st.support, st.defence],
-          isNot(equals([cb.attack, cb.support, cb.defence])));
+      expect([
+        st.attack,
+        st.support,
+        st.defence,
+      ], isNot(equals([cb.attack, cb.support, cb.defence])));
     });
   });
 
@@ -131,7 +139,12 @@ void main() {
         nationality: 'Egypt',
         marketValueEur: 1_000_000,
         baseStats: BaseStats(
-            overall: 50, attack: 60, support: 45, defence: 40, goalkeeping: 0),
+          overall: 50,
+          attack: 60,
+          support: 45,
+          defence: 40,
+          goalkeeping: 0,
+        ),
       );
       final b = a.copyWith(name: 'B', marketValueEur: 5_000_000);
       expect(b, a); // same id => equal
@@ -149,10 +162,9 @@ void main() {
     double mean(Position p, PlayerAttribute a) {
       final values = [
         for (var s = 0; s < n; s++)
-          gen.generate(p, value, seed: 1000 + s).valueOf(a)
+          gen.generate(p, value, seed: 1000 + s).valueOf(a),
       ];
-      return values.fold<double>(
-          0, (sum, v) => sum + v) / n;
+      return values.fold<double>(0, (sum, v) => sum + v) / n;
     }
 
     test('ST: attack top, support ordinary, defence least', () {
@@ -163,8 +175,7 @@ void main() {
       expect(s - d, greaterThan(1), reason: 'support ahead of defence');
     });
 
-    test('LW/RW: attack top but below ST, support above ST, defence least',
-        () {
+    test('LW/RW: attack top but below ST, support above ST, defence least', () {
       for (final wing in [Position.lw, Position.rw]) {
         final a = mean(wing, PlayerAttribute.attack);
         final s = mean(wing, PlayerAttribute.support);
@@ -174,16 +185,24 @@ void main() {
         expect(a - s, greaterThan(4));
       }
       // Wingers attack less than strikers but support more.
-      expect(mean(Position.st, PlayerAttribute.attack) -
-          mean(Position.lw, PlayerAttribute.attack), greaterThan(1));
-      expect(mean(Position.lw, PlayerAttribute.support) -
-          mean(Position.st, PlayerAttribute.support), greaterThan(1));
-      expect(mean(Position.rw, PlayerAttribute.support) -
-          mean(Position.st, PlayerAttribute.support), greaterThan(1));
+      expect(
+        mean(Position.st, PlayerAttribute.attack) -
+            mean(Position.lw, PlayerAttribute.attack),
+        greaterThan(1),
+      );
+      expect(
+        mean(Position.lw, PlayerAttribute.support) -
+            mean(Position.st, PlayerAttribute.support),
+        greaterThan(1),
+      );
+      expect(
+        mean(Position.rw, PlayerAttribute.support) -
+            mean(Position.st, PlayerAttribute.support),
+        greaterThan(1),
+      );
     });
 
-    test('CAM: support first, attack second, defence the lowest outfield',
-        () {
+    test('CAM: support first, attack second, defence the lowest outfield', () {
       final a = mean(Position.cam, PlayerAttribute.attack);
       final s = mean(Position.cam, PlayerAttribute.support);
       final d = mean(Position.cam, PlayerAttribute.defence);
@@ -191,11 +210,22 @@ void main() {
       expect(a - d, greaterThan(3));
       // Very low: below EVERY other outfield role's defence, ST included.
       for (final p in [
-        Position.st, Position.lw, Position.rw, Position.lm, Position.rm,
-        Position.cm, Position.cdm, Position.cb, Position.rb, Position.lb,
+        Position.st,
+        Position.lw,
+        Position.rw,
+        Position.lm,
+        Position.rm,
+        Position.cm,
+        Position.cdm,
+        Position.cb,
+        Position.rb,
+        Position.lb,
       ]) {
-        expect(d, lessThan(mean(p, PlayerAttribute.defence)),
-            reason: 'CAM defence must sit below ${p.code}');
+        expect(
+          d,
+          lessThan(mean(p, PlayerAttribute.defence)),
+          reason: 'CAM defence must sit below ${p.code}',
+        );
       }
     });
 
@@ -247,15 +277,27 @@ void main() {
         expect(s, greaterThan(a));
       }
       // Full-backs defend clearly less than centre-backs...
-      expect(mean(Position.cb, PlayerAttribute.defence) -
-          mean(Position.rb, PlayerAttribute.defence), greaterThan(4));
-      expect(mean(Position.cb, PlayerAttribute.defence) -
-          mean(Position.lb, PlayerAttribute.defence), greaterThan(4));
+      expect(
+        mean(Position.cb, PlayerAttribute.defence) -
+            mean(Position.rb, PlayerAttribute.defence),
+        greaterThan(4),
+      );
+      expect(
+        mean(Position.cb, PlayerAttribute.defence) -
+            mean(Position.lb, PlayerAttribute.defence),
+        greaterThan(4),
+      );
       // ...but support clearly more (overlapping runs).
-      expect(mean(Position.rb, PlayerAttribute.support) -
-          mean(Position.cb, PlayerAttribute.support), greaterThan(2));
-      expect(mean(Position.lb, PlayerAttribute.support) -
-          mean(Position.cb, PlayerAttribute.support), greaterThan(2));
+      expect(
+        mean(Position.rb, PlayerAttribute.support) -
+            mean(Position.cb, PlayerAttribute.support),
+        greaterThan(2),
+      );
+      expect(
+        mean(Position.lb, PlayerAttribute.support) -
+            mean(Position.cb, PlayerAttribute.support),
+        greaterThan(2),
+      );
     });
 
     test('GK: goalkeeping towers, attack pinned at 0', () {
@@ -284,16 +326,18 @@ void main() {
       final profiles = <Position, String>{};
       for (final p in Position.values) {
         final s = gen.generate(p, value);
-        profiles[p] =
-            '${s.attack}/${s.support}/${s.defence}/${s.goalkeeping}';
+        profiles[p] = '${s.attack}/${s.support}/${s.defence}/${s.goalkeeping}';
       }
       for (var i = 0; i < Position.values.length; i++) {
         for (var j = i + 1; j < Position.values.length; j++) {
           final a = Position.values[i];
           final b = Position.values[j];
           if (mirrors[a] == b) continue;
-          expect(profiles[a], isNot(profiles[b]),
-              reason: '$a and $b share the same expected profile');
+          expect(
+            profiles[a],
+            isNot(profiles[b]),
+            reason: '$a and $b share the same expected profile',
+          );
         }
       }
     });
@@ -302,23 +346,28 @@ void main() {
   group('probabilistic layer (seeded generation)', () {
     const value = 30_000_000;
 
-    test('same seed reproduces the exact same stats (stable regeneration)',
-        () {
+    test('same seed reproduces the exact same stats (stable regeneration)', () {
       const a = BaseStatsGenerator();
-      expect(a.generate(Position.st, value, seed: 1234),
-          a.generate(Position.st, value, seed: 1234));
-      expect(a.generate(Position.gk, value, seed: 99),
-          a.generate(Position.gk, value, seed: 99));
+      expect(
+        a.generate(Position.st, value, seed: 1234),
+        a.generate(Position.st, value, seed: 1234),
+      );
+      expect(
+        a.generate(Position.gk, value, seed: 99),
+        a.generate(Position.gk, value, seed: 99),
+      );
     });
 
-    test('different seeds give different players (probabilities at work)',
-        () {
+    test('different seeds give different players (probabilities at work)', () {
       final attacks = <int>{
         for (var s = 0; s < 50; s++)
-          gen.generate(Position.st, value, seed: s).attack
+          gen.generate(Position.st, value, seed: s).attack,
       };
-      expect(attacks.length, greaterThan(4),
-          reason: 'one value + position must not stamp out clones');
+      expect(
+        attacks.length,
+        greaterThan(4),
+        reason: 'one value + position must not stamp out clones',
+      );
     });
 
     test('seeded means center on the unseeded expected profile', () {
@@ -329,11 +378,14 @@ void main() {
           final expected = gen.generate(p, value).valueOf(a).toDouble();
           final values = [
             for (var s = 0; s < n; s++)
-              gen.generate(p, value, seed: 7000 + s).valueOf(a)
+              gen.generate(p, value, seed: 7000 + s).valueOf(a),
           ];
           final m = values.fold<int>(0, (sum, v) => sum + v) / n;
-          expect(m, closeTo(expected, 0.6),
-              reason: '$p $a drifts from its expected profile');
+          expect(
+            m,
+            closeTo(expected, 0.6),
+            reason: '$p $a drifts from its expected profile',
+          );
         }
       }
     });
@@ -345,8 +397,11 @@ void main() {
             if (positionWeights[p]![a] == 0) continue;
             final expected = gen.generate(p, value).valueOf(a);
             final drawn = gen.generate(p, value, seed: 20_000 + s).valueOf(a);
-            expect((drawn - expected).abs(), lessThanOrEqualTo(5),
-                reason: '$p $a strayed too far from its profile');
+            expect(
+              (drawn - expected).abs(),
+              lessThanOrEqualTo(5),
+              reason: '$p $a strayed too far from its profile',
+            );
           }
         }
       }
@@ -357,33 +412,93 @@ void main() {
       // every sampled striker out-attacks his own support and defence,
       // every sampled centre-back out-defends his own attack, etc.
       const n = 300;
-      bool holds(Position p, PlayerAttribute hi, PlayerAttribute lo,
-              {double rate = 0.9}) =>
-          ([
-            for (var s = 0; s < n; s++)
-              gen.generate(p, value, seed: 5000 + s),
-          ].where((b) => b.valueOf(hi) > b.valueOf(lo)).length / n) >= rate;
+      bool holds(
+        Position p,
+        PlayerAttribute hi,
+        PlayerAttribute lo, {
+        double rate = 0.9,
+      }) =>
+          ([for (var s = 0; s < n; s++) gen.generate(p, value, seed: 5000 + s)]
+                  .where((b) => b.valueOf(hi) > b.valueOf(lo))
+                  .length /
+              n) >=
+          rate;
 
-      expect(holds(Position.st, PlayerAttribute.attack,
-          PlayerAttribute.support, rate: 0.99), isTrue);
-      expect(holds(Position.st, PlayerAttribute.attack,
-          PlayerAttribute.defence, rate: 0.99), isTrue);
-      expect(holds(Position.lw, PlayerAttribute.attack,
-          PlayerAttribute.defence, rate: 0.95), isTrue);
-      expect(holds(Position.cam, PlayerAttribute.support,
-          PlayerAttribute.defence, rate: 0.95), isTrue);
-      expect(holds(Position.cm, PlayerAttribute.support,
-          PlayerAttribute.defence, rate: 0.9), isTrue);
-      expect(holds(Position.cdm, PlayerAttribute.defence,
-          PlayerAttribute.attack, rate: 0.95), isTrue);
-      expect(holds(Position.cb, PlayerAttribute.defence,
-          PlayerAttribute.attack, rate: 0.99), isTrue);
-      expect(holds(Position.gk, PlayerAttribute.goalkeeping,
-          PlayerAttribute.defence, rate: 0.99), isTrue);
+      expect(
+        holds(
+          Position.st,
+          PlayerAttribute.attack,
+          PlayerAttribute.support,
+          rate: 0.99,
+        ),
+        isTrue,
+      );
+      expect(
+        holds(
+          Position.st,
+          PlayerAttribute.attack,
+          PlayerAttribute.defence,
+          rate: 0.99,
+        ),
+        isTrue,
+      );
+      expect(
+        holds(
+          Position.lw,
+          PlayerAttribute.attack,
+          PlayerAttribute.defence,
+          rate: 0.95,
+        ),
+        isTrue,
+      );
+      expect(
+        holds(
+          Position.cam,
+          PlayerAttribute.support,
+          PlayerAttribute.defence,
+          rate: 0.95,
+        ),
+        isTrue,
+      );
+      expect(
+        holds(
+          Position.cm,
+          PlayerAttribute.support,
+          PlayerAttribute.defence,
+          rate: 0.9,
+        ),
+        isTrue,
+      );
+      expect(
+        holds(
+          Position.cdm,
+          PlayerAttribute.defence,
+          PlayerAttribute.attack,
+          rate: 0.95,
+        ),
+        isTrue,
+      );
+      expect(
+        holds(
+          Position.cb,
+          PlayerAttribute.defence,
+          PlayerAttribute.attack,
+          rate: 0.99,
+        ),
+        isTrue,
+      );
+      expect(
+        holds(
+          Position.gk,
+          PlayerAttribute.goalkeeping,
+          PlayerAttribute.defence,
+          rate: 0.99,
+        ),
+        isTrue,
+      );
     });
 
-    test('all attributes stay in bounds even with noise at extreme values',
-        () {
+    test('all attributes stay in bounds even with noise at extreme values', () {
       for (final v in [0, 10_000, 500_000, 50_000_000, 500_000_000]) {
         for (final p in Position.values) {
           for (var s = 0; s < 30; s++) {
@@ -406,9 +521,11 @@ void main() {
     test('higher market value buys better players (seeded means)', () {
       const n = 200;
       double meanAttack(int v) =>
-          [for (var s = 0; s < n; s++)
-            gen.generate(Position.st, v, seed: 8000 + s).attack]
-              .fold<int>(0, (sum, x) => sum + x) / n;
+          [
+            for (var s = 0; s < n; s++)
+              gen.generate(Position.st, v, seed: 8000 + s).attack,
+          ].fold<int>(0, (sum, x) => sum + x) /
+          n;
       expect(meanAttack(120_000_000) - meanAttack(5_000_000), greaterThan(10));
     });
   });
