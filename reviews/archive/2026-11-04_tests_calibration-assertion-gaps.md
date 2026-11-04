@@ -4,9 +4,9 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: OPEN
-- Completed by: -
-- Completed on: -
+- Status: CLOSED
+- Completed by: Kareem
+- Completed on: 2026-11-04
 
 ## Context
 The calibration suite runs only 400 matches, its reference comments contradict its own assertions (comment at :17 says "corners per match ~9-10" while the assertion at :184-194 accepts 3.5–6.5; comment at :16 says "yellows ~4" with no assertion at all), and README.md:30 claims "five categories, 3-player tier draws" while the engine has three categories and one player per pack. Per-metric assertions are being added by the four engine/match-report reviews dated 2026-11-04; this file covers the suite-level gaps that let all of those drift go unnoticed.
@@ -35,4 +35,4 @@ Task 3: README pack-engine row now reads three categories / one player per pack 
 Localization: tests and docs only — no user-facing strings; the project has no l10n infrastructure (project-level gap, unchanged).
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Sample size verified at 2,000/scenario (`const matches = 2000`); calibration suite runs green in 7.7s wall-clock — well under the 30s AC. Snapshot harness verified by running it: engine_snapshot_test.dart green against the committed engine_snapshot.json (22 metrics, per-metric tolerances, REGEN_SNAPSHOT=1 regeneration step documented in the header — env-var based, justified because --dart-define is not forwarded to the test compile). Docs drift eliminated and re-checked by grep: README now says three categories / one player per pack, 14 formations, 22 free starter packs; collection_store.dart header matches (22); engine header states the post-fix profile (2.7 goals, 33–39% SoT, 8–11 corners, 19–25% late goals); calibration reference comments now carry bands that agree with the assertions (corners 8–11, offsides 3.5–5.5, yellows 3.0–4.8, reds 0.05–0.18, SoT 33–39, big chances 1.3–1.9 at 30–45%). No contradiction found between any comment, assertion, README or header. Full suite 657 green in 2m28s, analyzer clean. All tasks and acceptance criteria verified — CLOSED.
