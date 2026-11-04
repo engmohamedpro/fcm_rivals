@@ -4,7 +4,7 @@
 - Priority: Minor
 - Reviewer: Kareem
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -74,4 +74,45 @@ The codebase is healthy overall (Riverpod-only state, atomic `CoinOps`, transact
   `02:40 +673: All tests passed!` — 0 failing, no skipped.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+- Verified 2026-11-04 by re-running the checks, not reading the notes:
+  `flutter analyze` — No issues found; full `flutter test` suite —
+  `02:49 +673: All tests passed!` (0 failing, 0 skipped). The store,
+  facilities, calibration and balance suites all ran green inside that
+  run with zero test edits — commit `bb39edd` touches no `test/` file
+  at all, stronger than the "construction wiring only" allowance.
+- Task 1: `fcm_widgets.dart` is an 18-line barrel re-exporting the ten
+  family/helper files; the largest family (`fcm_scale_slider.dart`) is
+  294 lines; the locale-aware `FcmCoinChip.compact(coins, {l10n})`
+  overload with its `app_localizations` import lives in
+  `fcm_coin.dart:9,62-64`. The split portion of `bb39edd` touches
+  `core/ui` only; feature imports unchanged.
+- Task 2: `ClubStore` (95), `SquadStore` (184), `CampusStore` (117) —
+  all single-purpose and under 400 lines;
+  `providers.dart:115-129` composes first-class providers beside the
+  facade; `CollectionStore` delegates club/squad/campus through them
+  (`collection_store.dart:1174-1211`) while retaining packs, dataset
+  import and match persistence by design; no schema change.
+- Task 3: `lib/app/routes.dart` (147 lines) owns every
+  `MaterialPageRoute` — `grep -rn MaterialPageRoute lib/` hits
+  `routes.dart` only. All five full-screen call sites route through
+  `AppRoutes` (`season_screen.dart:85,104`, `match_screen.dart:735`,
+  `packs_screen.dart:167,323`). The smoke-test expectation is met
+  through the real screens: `season_live_match_flow_test.dart` pumps
+  `FcmRivalsApp` and walks Play match → pre-match → KICK OFF → match →
+  report → Continue, and the packs suite covers buy → open → contents —
+  both paths execute the new table inside the production code.
+- Task 4: README carries the UI kit, Route table and Focused stores
+  rows plus the five Architecture conventions, matching the tree.
+- One criterion, one caveat — "No file in `lib/` exceeds 1,000 lines"
+  is NOT met and the tick overstates it: nine files exceed 1,000 lines
+  today (`match_engine` 1,970, `match_screen` 1,296,
+  `pack_opening_screen` 1,278, `season_store` 1,263, `player_card`
+  1,247, `collection_store` 1,243, `live_match_views` 1,206,
+  `pre_match_screen` 1,179, `match_report` 1,004). Eight of them
+  already exceeded 1,000 when this review was created (verified at
+  `283aad3`) and were never in its scope, so this cannot block the
+  close — but the README's new ~800-line convention is contradicted by
+  the tree until they are split. Filed as
+  `2026-11-04_app-structure_remaining-oversized-files.md` (Minor,
+  Refactor). Everything the review actually asked for is done and
+  verified.
