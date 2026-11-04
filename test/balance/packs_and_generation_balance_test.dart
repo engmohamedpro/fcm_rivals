@@ -304,7 +304,16 @@ void main() {
         final scope = PackScope(category: PackCategory.global, tier: tier);
         final price = engine.packPriceFor(scope, pool);
         final ev = engine.expectedPackValue(scope, pool);
-        expect(price, (ev * marginFor(tier)).round());
+        // Store prices are whole thousands (see the normalization test
+        // below): the floored value must still sit inside one thousand
+        // under the margin-implied price.
+        expect(price % 1000, 0);
+        expect(price, lessThanOrEqualTo((ev * marginFor(tier)).round()));
+        expect(
+          (ev * marginFor(tier)) - price,
+          lessThan(1000),
+          reason: '$tier price drifted from the margin-implied value',
+        );
         expect(price, greaterThan(0));
       }
       final prices = [
@@ -316,6 +325,29 @@ void main() {
       ];
       expect(prices[0], lessThan(prices[1]));
       expect(prices[1], lessThan(prices[2]));
+    });
+
+    test('store prices normalize to whole thousands (26,344 → 26,000)', () {
+      // The plate shows the compact readout (26K) and the ledger charges
+      // the same number the player saw — so every shelf price must be a
+      // whole thousand. Floored, never rounded up: the charged price can
+      // not exceed the margin-implied one.
+      final engine = PackEngine(random: math.Random(0), economy: economy);
+      final scopes = [
+        for (final tier in PackTier.values)
+          PackScope(category: PackCategory.global, tier: tier),
+        for (final position in [Position.st, Position.cb, Position.gk])
+          PackScope(
+            category: PackCategory.position,
+            position: position,
+            tier: PackTier.epic,
+          ),
+      ];
+      for (final scope in scopes) {
+        final price = engine.packPriceFor(scope, pool);
+        expect(price % 1000, 0, reason: '$scope price is not a whole thousand');
+        expect(price, greaterThan(0), reason: '$scope price collapsed to 0');
+      }
     });
 
     test('regression lock: legendary premium margin, standard elsewhere', () {
@@ -333,14 +365,16 @@ void main() {
       for (final tier in PackTier.values) {
         final scope = PackScope(category: PackCategory.global, tier: tier);
         final ev = engine.expectedPackValue(scope, pool);
-        // Price actually applies the tier's margin over the same EV.
+        // Price actually applies the tier's margin over the same EV —
+        // up to the whole-thousand normalization (26,344 → 26,000), so
+        // the tolerance is one thousand in EV terms.
         expect(
           engine.packPriceFor(scope, pool) / ev,
           closeTo(
             tier == PackTier.legendary
                 ? economy.config.legendaryPackMarginMultiplier
                 : economy.config.packMarginMultiplier,
-            0.01,
+            1000 / ev,
           ),
           reason: '$tier margin not applied',
         );

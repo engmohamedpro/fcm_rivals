@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/routes.dart';
+import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_context.dart';
 import '../../core/database/app_database.dart' show Pack;
 import '../../core/domain/players.dart' show Position;
@@ -161,9 +162,8 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     // inside the reveal, when this context may already be unmounted.
     final messenger = ScaffoldMessenger.of(context);
     final l10n = l10nOf(context);
-    SnackBar sellMessage(int credit) => SnackBar(
-      content: Text(l10n.packsSoldFor(_groupDigits(credit))),
-    );
+    SnackBar sellMessage(int credit) =>
+        SnackBar(content: Text(l10n.packsSoldFor(FcmCoinChip.compact(credit))));
     final chained = await AppRoutes.packReveal(
       context,
       players: result.players,
@@ -214,9 +214,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         if (coins < offer.price) {
           // A race the capsule can't see (balance changed mid-reveal).
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10nOf(context).packsNotEnoughCoins),
-            ),
+            SnackBar(content: Text(l10nOf(context).packsNotEnoughCoins)),
           );
           return null;
         }
@@ -365,7 +363,10 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
                 const FcmCoinGlyph(size: 22),
                 const SizedBox(width: 8),
                 Text(
-                  _groupDigits(offer.price),
+                  FcmCoinChip.compact(
+                    offer.price,
+                    l10n: AppLocalizations.of(dialogContext),
+                  ),
                   style: const TextStyle(
                     color: FcmColors.gold,
                     fontSize: 22,
@@ -463,12 +464,6 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     }
   }
 }
-
-/// Thousands separator for dialog prices and balances, e.g. 12500 → 12,500.
-String _groupDigits(int value) => value.toString().replaceAllMapped(
-  RegExp(r'\B(?=(\d{3})+(?!\d))'),
-  (match) => ',',
-);
 
 /// What OPEN ANOTHER chains into: the exact shelf slot — category, scope
 /// and tier — of the pack just opened, so the next foil is the same
@@ -902,7 +897,7 @@ class _PricePlate extends StatelessWidget {
           FcmCoinGlyph(size: 13, color: affordable ? null : metal),
           const SizedBox(width: 4),
           FitText(
-            _formatCoins(price),
+            FcmCoinChip.compact(price, l10n: AppLocalizations.of(context)),
             style: TextStyle(
               color: metal,
               fontSize: 12.5,
@@ -948,13 +943,4 @@ class _ViewPlayersButton extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatCoins(int value) {
-  if (value >= 1000000) {
-    final m = value / 1000000;
-    return m >= 10 ? '${m.round()}M' : '${m.toStringAsFixed(1)}M';
-  }
-  if (value >= 10000) return '${(value / 1000).round()}K';
-  return '$value';
 }

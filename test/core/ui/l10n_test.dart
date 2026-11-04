@@ -45,6 +45,12 @@ void main() {
     expect(FcmCoinChip.compact(15_000_000), '15M');
     expect(FcmCoinChip.compact(47_000), '47K');
     expect(FcmCoinChip.compact(950), '950');
+    // Whole thousands map 1:1 — every store pack price is one by
+    // construction (packPriceFor floors to 1,000), so the plate, the
+    // buy dialog and the wallet all read the same number.
+    expect(FcmCoinChip.compact(26_000), '26K');
+    expect(FcmCoinChip.compact(4_000), '4K');
+    expect(FcmCoinChip.compact(1_000), '1K');
   });
 
   test('compact coin readout uses ARB units when handed the AR bundle',
@@ -54,5 +60,7 @@ void main() {
     expect(FcmCoinChip.compact(15_000_000, l10n: ar), '15 م');
     expect(FcmCoinChip.compact(47_000, l10n: ar), '47 ألف');
     expect(FcmCoinChip.compact(950, l10n: ar), '950');
+    expect(FcmCoinChip.compact(26_000, l10n: ar), '26 ألف');
+    expect(FcmCoinChip.compact(4_000, l10n: ar), '4 ألف');
   });
 }

@@ -1095,12 +1095,6 @@ class _MysteryPainter extends CustomPainter {
       old.breath != breath || old.accent != accent;
 }
 
-/// Thousands separator for the chain capsule, e.g. 12500 → 12,500.
-String _groupPrice(int value) => value.toString().replaceAllMapped(
-  RegExp(r'\B(?=(\d{3})+(?!\d))'),
-  (match) => ',',
-);
-
 /// The OPEN ANOTHER capsule under the revealed card: a tier-metal glow
 /// pill that keeps the streak going — bolt mark, price (or the success
 /// green FREE ×N when the club owns packs of this slot), then the live
@@ -1195,7 +1189,7 @@ class _ChainButton extends StatelessWidget {
                   const FcmCoinGlyph(size: 14),
                   const SizedBox(width: 4),
                   Text(
-                    _groupPrice(price),
+                    FcmCoinChip.compact(price),
                     style: const TextStyle(
                       color: FcmColors.gold,
                       fontSize: 13,
@@ -1204,7 +1198,7 @@ class _ChainButton extends StatelessWidget {
                   ),
                 ] else
                   Text(
-                    'NEED ${_groupPrice(shortfall)} MORE',
+                    'NEED ${FcmCoinChip.compact(shortfall)} MORE',
                     style: const TextStyle(
                       color: FcmColors.danger,
                       fontSize: 11,

@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
-    show FcmButton, FcmCoinGlyph;
+    show FcmButton, FcmCoinChip, FcmCoinGlyph;
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
@@ -321,12 +321,13 @@ void main() {
     // The fallback bundle copy, verbatim — not a crash, not a key, not
     // null — presented as a snackbar while the reveal is still onstage.
     // The full parameterized ARB string is asserted ('Sold for {coins}
-    // coins' with locale-grouped digits), so a broken l10nOf fails here.
+    // coins' with the compact coin readout), so a broken l10nOf fails
+    // here.
     expect(find.byType(SnackBar), findsWidgets);
     final soldFor = tester.widget<Text>(find.textContaining('Sold for'));
     expect(
       soldFor.data,
-      matches(RegExp(r'^Sold for [\d,]+ coins$')),
+      matches(RegExp(r'^Sold for [\d.]+[KM]? coins$')),
       reason: 'the English fallback copy end-to-end',
     );
 
@@ -689,8 +690,6 @@ void main() {
   );
 }
 
-/// Mirrors the dialog's thousands separator so the test finds real text.
-String _group(int value) => value.toString().replaceAllMapped(
-  RegExp(r'\B(?=(\d{3})+(?!\d))'),
-  (match) => ',',
-);
+/// Mirrors the dialog's compact coin readout so the test finds real
+/// text (prices are whole thousands, e.g. 26,000 → '26K').
+String _group(int value) => FcmCoinChip.compact(value);

@@ -511,11 +511,18 @@ class PackEngine {
   /// pay their own premium margin (rebalance Ch.8): at the flat margin
   /// they were the cheapest power-per-coin purchase in the store, so the
   /// elite tier now costs proportionally more than Rare/Epic.
+  ///
+  /// Store prices are normalized to whole thousands (26,344 → 26,000):
+  /// the value the player sees on a plate is the exact value the ledger
+  /// charges — no hidden rounding between the shelf and the wallet —
+  /// and the compact readout maps to it 1:1 (26k). Rounding goes DOWN
+  /// so the charged price can never exceed the margin-implied one.
   int packPriceFor(PackScope scope, List<BasePlayer> pool) {
     final margin = scope.tier == PackTier.legendary
         ? economy.config.legendaryPackMarginMultiplier
         : economy.config.packMarginMultiplier;
-    return (expectedPackValue(scope, pool) * margin).round();
+    final raw = expectedPackValue(scope, pool) * margin;
+    return (raw / 1000).floor() * 1000;
   }
 
   static int _byValue(BasePlayer a, BasePlayer b) =>

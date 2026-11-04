@@ -6,10 +6,10 @@
 library;
 
 import 'package:flutter/material.dart';
+
 import '../../l10n/app_localizations.dart';
 import 'fcm_style.dart';
 import 'fcm_motion.dart';
-
 
 /// The app's currency glyph: the gold-gradient coin with the 'C' mark,
 /// exactly as it appears in the top bar's balance chip. Reusable
@@ -58,7 +58,9 @@ class FcmCoinChip extends StatelessWidget {
   /// Locale-aware compact readout: the value keeps Western digits (game
   /// HUD convention) while the unit follows the active locale — 'M'/'K'
   /// in English, 'م'/'ألف' in Arabic. Callers without a context use the
-  /// English form.
+  /// English form. Whole thousands (every store pack price, by
+  /// construction) map 1:1 — 4,000 → '4K', 26,000 → '26K'; non-multiples
+  /// keep their shortest faithful readout (27,500 → '27.5K').
   static String compact(int coins, {AppLocalizations? l10n}) {
     String m(String v) => l10n?.coinCompactMillions(v) ?? '${v}M';
     String k(String v) => l10n?.coinCompactThousands(v) ?? '${v}K';
@@ -66,7 +68,10 @@ class FcmCoinChip extends StatelessWidget {
       final v = coins / 1000000;
       return m(v >= 10 ? v.round().toString() : v.toStringAsFixed(1));
     }
-    if (coins >= 10000) return k((coins / 1000).round().toString());
+    if (coins >= 1000) {
+      final v = coins / 1000;
+      return k(coins % 1000 == 0 ? '${coins ~/ 1000}' : v.toStringAsFixed(1));
+    }
     return '$coins';
   }
 
