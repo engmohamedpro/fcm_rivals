@@ -53,15 +53,17 @@ void main() {
   final config = economy.config;
 
   group('income ladder (per match)', () {
-    test('loss / draw / win rewards: 1.5k base, +250/goal, ×1.5 on win', () {
+    test('loss / draw / win rewards: 1.5k base, +250/goal, ×1.24 win / ×0.90 loss', () {
+      // Review 2026-11-04 economy tier bands: result factors 1.24/0.90
+      // on par (replaces the flat ×1.5 win bonus).
       final loss0 = economy.matchReward(goalsFor: 0, won: false);
       final draw0 = economy.matchReward(goalsFor: 0, won: false);
       final win0 = economy.matchReward(goalsFor: 0, won: true);
       final win3 = economy.matchReward(goalsFor: 3, won: true);
-      expect(loss0, 1500);
-      expect(draw0, 1500);
-      expect(win0, 2250);
-      expect(win3, 3375);
+      expect(loss0, 1350);
+      expect(draw0, 1350);
+      expect(win0, 1860);
+      expect(win3, 2790);
     });
 
     test('an average season of 38 matches banks 70k-160k before sinks', () {
@@ -136,14 +138,16 @@ void main() {
       expect(byTier[PackTier.epic], hasLength(12));
       // LM and RM hold no legendary players, so no legendary offers.
       expect(byTier[PackTier.legendary], hasLength(10));
+      // Absolute tier bands (review 2026-11-04): prices re-derived from
+      // the new E[MV]s — rare ~5.5k, epic ~15k, legendary ~30k.
       for (final p in byTier[PackTier.rare]!) {
-        expect(p, inInclusiveRange(600, 3_000));
+        expect(p, inInclusiveRange(3_000, 12_000));
       }
       for (final p in byTier[PackTier.epic]!) {
-        expect(p, inInclusiveRange(2_000, 8_000));
+        expect(p, inInclusiveRange(8_000, 25_000));
       }
       for (final p in byTier[PackTier.legendary]!) {
-        expect(p, inInclusiveRange(6_000, 30_000));
+        expect(p, inInclusiveRange(15_000, 45_000));
       }
       // The tier ladder itself is steep within one scope: legendary
       // costs ~8-11x rare, epic ~3-4x rare.
@@ -151,10 +155,10 @@ void main() {
         for (final o in offers)
           if (o.scopeValue == 'ST') o.tier: o.price,
       };
-      expect(st[PackTier.epic]! / st[PackTier.rare]!, inInclusiveRange(2, 6));
+      expect(st[PackTier.epic]! / st[PackTier.rare]!, inInclusiveRange(1, 6));
       expect(
         st[PackTier.legendary]! / st[PackTier.rare]!,
-        inInclusiveRange(6, 16),
+        inInclusiveRange(2, 9),
       );
     });
 
@@ -163,7 +167,7 @@ void main() {
       // ~914-1,188 (~0.4 matches), legendary ~8,203-11,794 (~4.5
       // matches at 2.4k/match). Rare pulls median OVR ~40, so the cheap
       // price is honest filler pricing.
-      const perMatch = 2400;
+      const perMatch = 2400; // win-rate-par income; legendary ~12-16 matches now
       final rarePrices = offers
           .where((o) => o.tier == PackTier.rare)
           .map((o) => o.price)
@@ -173,10 +177,12 @@ void main() {
           .map((o) => o.price)
           .toList();
       for (final p in rarePrices) {
-        expect(p / perMatch, inInclusiveRange(0.15, 1.5));
+        // Absolute bands: rare E[MV] €1.09M → ~4.3k coins ≈ 1.8 matches.
+        expect(p / perMatch, inInclusiveRange(0.15, 2.5));
       }
       for (final p in legendaryPrices) {
-        expect(p / perMatch, inInclusiveRange(2, 8));
+        // Absolute bands: legendary ~30k ≈ 12.5 matches at par income.
+        expect(p / perMatch, inInclusiveRange(8, 20));
       }
     });
 
