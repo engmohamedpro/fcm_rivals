@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -45,4 +45,28 @@ Re-review of `2026-11-04_localization_squad-l10n-crash-and-schema-test` (now CLO
   found.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+- Verified 2026-11-04 by re-running the checks, not reading the notes:
+  `flutter analyze` — No issues found; full `flutter test` suite —
+  `02:49 +673: All tests passed!` (0 failing, 0 skipped; the +1 over the
+  previous 672 is the new sell test).
+- Task 1: `bootScreen` branches on `locale == null` — the default pump is
+  a plain `const MaterialApp` with no delegates anywhere
+  (`squad_screen_test.dart:61-74`), and the first test drives it and
+  asserts the English fallback hint
+  'Open packs to collect players, then tap Auto Pick.'
+  (`:87-93`). The AR variant keeps the delegates + `supportedLocales`
+  and asserts the Arabic hint (`:131-141`). Acceptance grep holds:
+  `localizationsDelegates` appears in the file only inside the AR
+  branch (`:68-69`), never on the default pump.
+- Task 2 (option a): the new test 'SELL from the reveal shows the
+  English sold-for fallback snackbar'
+  (`packs_screen_test.dart:271-337`) claims the owned pack, walks the
+  reveal timeline to done (`pump(18s)` covers the 17s legendary case),
+  taps SELL, asserts a SnackBar is present, the full parameterized copy
+  via `matches(RegExp(r'^Sold for [\d,]+ coins$'))` (`:329`), and that
+  the owned collection shrank by exactly one (`ownedBefore - 1`).
+  `grep -rn "Sold for" test/` now returns hits (was 0 when the review
+  was filed).
+- The two-flow regression net requested by the original Critical is now
+  real: the fallback branch runs under a plain pump in the squad suite
+  AND end-to-end through the packs reveal path. No residual gaps.
