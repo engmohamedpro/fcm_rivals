@@ -1,9 +1,10 @@
 /// FCM Rivals — collection store (GDD 5/8/17, FR-012..FR-016).
 ///
 /// Orchestrates the engines over the Drift database: club creation with the
-/// 36 starting packs, pack opening, selling, duplicate merging, and dataset
-/// updates with removed-player compensation. Every coin movement runs in a
-/// database transaction and writes a ledger row (FR-016, NFR-003).
+/// 22 starting packs (two per formation slot), pack opening, selling,
+/// duplicate merging, and dataset updates with removed-player compensation.
+/// Every coin movement runs in a database transaction and writes a ledger
+/// row (FR-016, NFR-003).
 ///
 /// Pure domain logic stays in the engines; this class only coordinates
 /// persistence and transactions (SRS 21.1 / NFR-006).

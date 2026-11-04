@@ -27,8 +27,8 @@ engines as pure Dart with no UI dependencies, atomic coin transactions.
 | Base Stats generation | `lib/core/domain/base_stats_generator.dart` | non-linear Market Value curve, position-specific attribute weightings (GDD 4.5) |
 | Player Database Engine | `lib/features/player_database/` | dataset validation, import, update rules, removal detection (GDD 4.6–4.8, FR-002..FR-008) |
 | Economy Engine | `lib/features/economy/` | economic value curve, selling (incl. upgraded), upgrade costs, match rewards (GDD 17) |
-| Pack Engine | `lib/features/packs/` | five categories, 3-player tier draws, value-weighted odds, dynamic pricing (GDD 5) |
-| Squad Engine | `lib/features/squad/` | 10 data-driven formations, compatibility matrix, position-sensitive ratings, Auto Pick (GDD 6/7) |
+| Pack Engine | `lib/features/packs/` | three categories (global / nationality / position), one player per pack from value-weighted tier odds, dynamic pricing (GDD 5) |
+| Squad Engine | `lib/features/squad/` | 14 data-driven formations, compatibility matrix, position-sensitive ratings, Auto Pick (GDD 6/7) |
 | Upgrade Engine | `lib/features/upgrades/` | duplicate-merge progression, controlled attribute allocation (GDD 8) |
 | Match Engine | `lib/features/match/` | deterministic seeded event pipeline, team totals with stamina/mentality/style/home-advantage modifiers, live tactical commands, substitutions, red cards, AI adaptation (GDD 12/26) |
 | Match Reporting | `lib/features/match/` | commentary, statistics and position-sensitive player ratings derived from the same event records (GDD 13/14) |
@@ -39,7 +39,7 @@ engines as pure Dart with no UI dependencies, atomic coin transactions.
 | Simulation Harness | `lib/features/simulation/` | MatchSimulator (GDD 31 metrics + determinism checks) and EconomySimulator (GDD 30/32/33 multi-season saves through the real stores); `tool/simulation_report_test.dart` regenerates the balance report |
 | Season Engine | `lib/features/season/` | division difficulty scaling, AI club + squad generation through the stats curve, double round-robin fixtures, standings, promotion/relegation, position-based rewards (GDD 9/18, FR-035..FR-039) |
 | Season Store | `lib/features/season/` | season lifecycle over Drift: 20-club divisions, fixture play through the MatchEngine, quick simulation, history preservation, rewards with ledger |
-| Collection Store | `lib/features/collection/` | atomic pack open/sell/merge, club creation with 36 starting packs, dataset-update compensation, coin ledger, match result persistence (FR-012..FR-016) |
+| Collection Store | `lib/features/collection/` | atomic pack open/sell/merge, club creation with the 22 free starter packs (two per formation slot), dataset-update compensation, coin ledger, match result persistence (FR-012..FR-016) |
 | Persistence | `lib/core/database/` | Drift/SQLite schema v3: players, dataset versions, clubs (user + AI), owned players, packs, coin transactions, seasons, league teams, fixtures, match results, AI players, ad usages (SRS 25) |
 | App UI | `lib/app/`, `lib/features/*/` screens | Riverpod providers, club creation, pack opening with reveal, pitch squad view, collection management; league fixtures launch the full-screen live match (pep talks, tactics, substitutions, post-match report) from the Season tab |
 
