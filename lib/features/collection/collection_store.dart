@@ -315,6 +315,14 @@ class CollectionStore {
     db.clubs,
   )..where((c) => c.isUser.equals(true))).getSingleOrNull();
 
+  /// Live stream of the user club row: drift re-emits on every write
+  /// to `clubs`, so coin movements land in the UI the moment they
+  /// commit — no manual provider invalidation needed. Emits null until
+  /// onboarding creates the club.
+  Stream<Club?> watchClub() => (db.select(
+    db.clubs,
+  )..where((c) => c.isUser.equals(true))).watchSingleOrNull();
+
   /// TEMPORARY DEV HELPER — remove together with the app-bar "+"
   /// button (main.dart) once testing is done. Credits the user club
   /// with [amount] test coins through the same atomic transaction and
@@ -715,8 +723,8 @@ class CollectionStore {
           reason: 'pack_purchase',
           detail: 'Bought ${tier.label} ${category.name} pack',
         );
-      } on Exception catch (e) {
-        throw CollectionException(e.toString().replaceFirst('Exception: ', ''));
+      } on InsufficientFundsException {
+        throw const CollectionException('Not enough coins');
       }
       return await db
           .into(db.packs)
@@ -1023,8 +1031,8 @@ class CollectionStore {
           detail:
               'Bought upgrade to +${outcome.newUpgradeLevel} for ${base.name}',
         );
-      } on Exception catch (e) {
-        throw CollectionException(e.toString().replaceFirst('Exception: ', ''));
+      } on InsufficientFundsException {
+        throw const CollectionException('Not enough coins');
       }
       await (db.update(
         db.ownedPlayers,
@@ -1232,8 +1240,8 @@ class CollectionStore {
           reason: 'facility_upgrade',
           detail: '${facility.subtitle} level $nextLevel',
         );
-      } on Exception catch (e) {
-        throw CollectionException(e.toString().replaceFirst('Exception: ', ''));
+      } on InsufficientFundsException {
+        throw const CollectionException('Not enough coins');
       }
       final existing =
           await (db.select(db.facilityLevels)..where(

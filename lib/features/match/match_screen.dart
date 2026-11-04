@@ -367,7 +367,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         _pepTalk = talk;
         _usedAdBoost = usedAdBoost;
       });
-      ref.invalidate(clubProvider);
       ref.invalidate(collectionProvider);
       ref.invalidate(squadProvider);
       ref.invalidate(campusProvider);

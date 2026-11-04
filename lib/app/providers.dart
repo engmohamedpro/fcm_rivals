@@ -2,6 +2,7 @@
 /// providers shared by the feature screens.
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
@@ -35,6 +36,43 @@ final databaseProvider = FutureProvider<AppDatabase>((ref) async {
   ref.onDispose(db.close);
   return db;
 });
+
+/// Bridges a drift watch into the provider graph (M1: live club row).
+///
+/// drift cancels the underlying query stream when its LAST listener
+/// goes away, and that cancellation schedules a zero-duration timer
+/// (StreamQueryStore.markAsClosed). In widget tests that timer fires
+/// after the tree is disposed, tripping the binding's `timersPending`
+/// assertion, and cancelling under db.close() races drift's shutdown
+/// ("Cannot add event while adding stream"). The bridge keeps ONE
+/// subscription alive for the database's whole lifetime and fans the
+/// events out on a broadcast stream: Riverpod scopes may come and go
+/// without ever dropping drift to zero listeners, so no cancellation
+/// (and no zero-timer) ever happens. Broadcast relaying is also
+/// memory-safe here — events are small, immutable row snapshots.
+Stream<T> _livedb<T>(AppDatabase db, Stream<T> Function() watch) async* {
+  final controller = StreamController<T>.broadcast();
+  final subscription = watch().listen(
+    controller.add,
+    onError: controller.addError,
+  );
+  db.attachedDatabaseStreamController = controller.sink;
+  try {
+    yield* controller.stream;
+  } finally {
+    await subscription.cancel();
+    await controller.close();
+  }
+}
+
+/// Marker sink so [._livedb]'s subscription lifetime is provably tied
+/// to the database (see databaseProvider's onDispose); kept as an
+/// extension setter to avoid widening the AppDatabase API.
+extension _DbLifetimeSink on AppDatabase {
+  static final Expando<StreamSink<Object?>> _sinks = Expando();
+  set attachedDatabaseStreamController(StreamSink<Object?> sink) =>
+      _sinks[this] = sink;
+}
 
 /// Imports the bundled dataset on first launch; skips when the persisted
 /// version is already current.
@@ -77,10 +115,13 @@ final userSettingsProvider = FutureProvider<UserSettingsStore>((ref) async {
   return UserSettingsStore(database: db);
 });
 
-/// The user club, null until created (FR-001).
-final clubProvider = FutureProvider<Club?>((ref) async {
+/// The user club, null until created (FR-001). A stream over drift's
+/// table watch: every coin movement, rename or crest change re-emits
+/// the row automatically, so the app-bar balance and every screen
+/// reading coins are live without manual invalidation.
+final clubProvider = StreamProvider<Club?>((ref) async* {
   final store = await ref.watch(collectionStoreProvider.future);
-  return store.getClub();
+  yield* _livedb(store.db, store.watchClub);
 });
 
 /// Unopened packs (GDD 5.8: 36 starting position packs).

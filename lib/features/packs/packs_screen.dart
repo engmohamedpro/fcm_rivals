@@ -172,7 +172,6 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
           chainInfo: chain == null ? null : _chainInfoFor(chain),
           queryBalance: () => ref.read(clubProvider).valueOrNull?.coins,
           onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
-            ref.invalidate(clubProvider);
             ref.invalidate(collectionProvider);
             if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
           }),
@@ -230,7 +229,6 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
               ? Position.fromCode(target.scopeValue!)
               : null,
         );
-        ref.invalidate(clubProvider);
       }
       final result = await store.openPack(packId: pack.id, random: random);
       ref.invalidate(availablePacksProvider);
@@ -434,12 +432,10 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             : null,
       );
       ref.invalidate(availablePacksProvider);
-      ref.invalidate(clubProvider);
       if (!context.mounted) return;
       final random = ref.read(randomProvider);
       final result = await store.openPack(packId: pack.id, random: random);
       ref.invalidate(availablePacksProvider);
-      ref.invalidate(clubProvider);
       ref.invalidate(collectionProvider);
       if (!context.mounted) return;
       await _reveal(

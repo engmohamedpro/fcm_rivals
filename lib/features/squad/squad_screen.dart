@@ -182,7 +182,6 @@ class SquadScreen extends ConsumerWidget {
   }) async {
     final store = await ref.read(collectionStoreProvider.future);
     await store.changeTactics(playingStyle: playingStyle, mentality: mentality);
-    ref.invalidate(clubProvider);
     ref.invalidate(squadProvider);
   }
 
@@ -204,7 +203,6 @@ class SquadScreen extends ConsumerWidget {
   ) async {
     final store = await ref.read(collectionStoreProvider.future);
     await store.changeFormation(code);
-    ref.invalidate(clubProvider);
     ref.invalidate(squadProvider);
   }
 }
