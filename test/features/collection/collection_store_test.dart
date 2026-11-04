@@ -763,10 +763,10 @@ void main() {
     test('re-importing the same version is a no-op', () async {
       final db = memoryDb();
       final store = CollectionStore(db: db);
-      await store.importBundledDataset(datasetJson(seedRows));
+      await store.importBundledDataset(PlayerDataset.fromJson(datasetJson(seedRows)));
       expect((await (db.select(db.players)).get()).length, seedRows.length);
 
-      await store.importBundledDataset(datasetJson(seedRows));
+      await store.importBundledDataset(PlayerDataset.fromJson(datasetJson(seedRows)));
       expect((await (db.select(db.players)).get()).length, seedRows.length);
       await db.close();
     });
