@@ -27,6 +27,7 @@ import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/match/live_match_views.dart';
 import 'package:fcm_rivals/features/match/match_screen.dart';
 import 'package:fcm_rivals/features/match/match_session.dart';
+import 'package:fcm_rivals/features/match/stamina.dart' show PepTalk;
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 
 import '../../helpers/audioplayers_mocks.dart';
@@ -311,5 +312,254 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('Player ').evaluate().length, greaterThan(0));
     expect(ratingRows(), shownForClub);
+  });
+
+  // ---------------------------------------------------------------------
+  // Post-match recovery card (GDD 15.3/19.3): the finish flow waits on a
+  // Completer resolved by the card's taps — no polling — and the choice
+  // is committed exactly once. Probed outcomes make the win/loss paths
+  // deterministic: seed 7 + opponent 40 is a WIN, seed 3 + opponent 95
+  // is a LOSS.
+  // ---------------------------------------------------------------------
+
+  /// The store each pumped session was built from, so the provider
+  /// override can hand the SAME store to the screen's club lookups.
+  final Map<MatchSession, CollectionStore> seededStoreCache = {};
+
+  /// The database behind the current test's session — overriding
+  /// databaseProvider keeps the club lookups on the SAME executor
+  /// instead of opening a second drift instance (drift warns and
+  /// races when two instances share one executor).
+  AppDatabase? sessionDb;
+
+  Future<MatchSession> winSession(CollectionStore store) async {
+    final session = await MatchSession.create(
+      store: store,
+      seed: 7,
+      opponentName: 'Al Ahly',
+      opponentAverageOverall: 40,
+    );
+    seededStoreCache[session] = store;
+    return session;
+  }
+
+  Future<MatchSession> lossSession(CollectionStore store) async {
+    final session = await MatchSession.create(
+      store: store,
+      seed: 3,
+      opponentName: 'Al Ahly',
+      opponentAverageOverall: 95,
+    );
+    seededStoreCache[session] = store;
+    return session;
+  }
+
+  Future<void> pumpMatch(WidgetTester tester, MatchSession session) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          collectionStoreProvider.overrideWith(
+            (ref) => seededStoreCache[session]!,
+          ),
+          databaseProvider.overrideWith((ref) => sessionDb!),
+        ],
+        child: MaterialApp(
+          home: MatchScreen(session: session, title: 'League · Round 1'),
+        ),
+      ),
+    );
+    await tester.pump();
+    // Race to full time at 3x (267ms per match minute).
+    await tester.tap(find.text('3x'));
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+
+  /// Bounded pump loop until the recovery card is up, dismissing the
+  /// half-time talk on the way (the same pattern the full-time test
+  /// above uses).
+  Future<void> driveToRecoveryCard(WidgetTester tester) async {
+    for (var i = 0; i < 400; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+      if (find.text('HALF TIME').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Say nothing — back to the match'));
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      if (find.text('Post-match recovery').evaluate().isNotEmpty) return;
+    }
+    fail('The recovery card never came up');
+  }
+
+  Future<void> flushFrames(WidgetTester tester) async {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+  }
+
+  testWidgets('recovery card: pep-talk tap is committed once and shown in '
+      'the report (double tap picks the first)', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    sessionDb = db;
+    final store = await seededSquadStore(db);
+    final session = await winSession(store);
+
+    await pumpMatch(tester, session);
+    await driveToRecoveryCard(tester);
+
+    // Two rapid taps on different options in the same frame: the first
+    // wins, the second is swallowed by the choice guard.
+    await tester.tap(find.text(PepTalk.restEveryone.displayName));
+    await tester.tap(find.text(PepTalk.focusExhausted.displayName));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The card is gone immediately — the report lands after persistence.
+    expect(find.text('Post-match recovery'), findsNothing);
+    await flushFrames(tester);
+    for (var i = 0; i < 5; i++) {
+      if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
+      await flushFrames(tester);
+    }
+
+    expect(find.textContaining('Full time:'), findsOneWidget);
+    // The chosen talk is restated on the report — not the second tap's.
+    expect(
+      find.textContaining(
+        '${PepTalk.restEveryone.displayName} '
+        '(+${(PepTalk.restEveryone.recoveryBonus * 100).round()}% recovery)',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(PepTalk.focusExhausted.displayName),
+      findsNothing,
+    );
+    // A win never offered the ad boost — and none was applied.
+    expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
+  });
+
+  testWidgets('recovery card: ad-boosted recovery after a defeat',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    sessionDb = db;
+    final store = await seededSquadStore(db);
+    final session = await lossSession(store);
+
+    await pumpMatch(tester, session);
+    await driveToRecoveryCard(tester);
+
+    // A defeat offers the ad-boosted recovery row.
+    expect(find.text('Watch ad: boosted recovery'), findsOneWidget);
+    await tester.tap(find.text('Watch ad: boosted recovery'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Post-match recovery'), findsNothing);
+
+    await flushFrames(tester);
+    for (var i = 0; i < 5; i++) {
+      if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
+      await flushFrames(tester);
+    }
+
+    expect(find.textContaining('Full time:'), findsOneWidget);
+    expect(
+      find.textContaining('Ad-boosted recovery applied'),
+      findsOneWidget,
+    );
+    // The boost replaced the pep talk (mutually exclusive, GDD 19.4).
+    expect(
+      find.textContaining(PepTalk.restEveryone.displayName),
+      findsNothing,
+    );
+  });
+
+  testWidgets('recovery card: scrim skip demands a second tap — the '
+      'first only arms the hint', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    sessionDb = db;
+    final store = await seededSquadStore(db);
+    final session = await winSession(store);
+
+    await pumpMatch(tester, session);
+    await driveToRecoveryCard(tester);
+
+    // A stray tap on the dim scrim must NOT skip: it only arms the hint.
+    await tester.tapAt(const Offset(400, 200));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      find.text('Tap outside again to skip without a pep talk'),
+      findsOneWidget,
+    );
+    expect(find.text('Post-match recovery'), findsOneWidget);
+    expect(find.textContaining('Full time:'), findsNothing);
+
+    // The second tap confirms the skip.
+    await tester.tapAt(const Offset(400, 200));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Post-match recovery'), findsNothing);
+
+    await flushFrames(tester);
+    for (var i = 0; i < 5; i++) {
+      if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
+      await flushFrames(tester);
+    }
+
+    expect(find.textContaining('Full time:'), findsOneWidget);
+    // Skipped: neither a pep talk nor the ad boost was applied.
+    expect(
+      find.textContaining(PepTalk.restEveryone.displayName),
+      findsNothing,
+    );
+    expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
+  });
+
+  testWidgets('disposing the screen while the recovery card is up '
+      'surfaces no setState-after-dispose error', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    sessionDb = db;
+    final store = await seededSquadStore(db);
+    final session = await winSession(store);
+
+    await pumpMatch(tester, session);
+    await driveToRecoveryCard(tester);
+
+    // Tear the screen down mid-finish: the parked Completer errors out
+    // in dispose, the finish proceeds with the default recovery and the
+    // mounted guards keep every setState/ref access away.
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 500)),
+    );
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    // The match screen is gone and no framework error surfaced (any
+    // setState() after dispose() or ref use after dispose fails the
+    // test by itself).
+    expect(find.text('Post-match recovery'), findsNothing);
   });
 }

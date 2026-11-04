@@ -1,4 +1,4 @@
-import 'dart:async' show unawaited;
+import 'dart:async' show Completer, unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
@@ -88,8 +88,16 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// scoreboard — the match flow is paused on the manager's decision.
   bool _recoveryPending = false;
 
-  /// The chosen post-match recovery (null until the card is answered).
-  _RecoveryChoice? _postMatchChoice;
+  /// Resolves when the manager answers the post-match recovery card —
+  /// the card's tap handlers complete it instead of polling a field.
+  Completer<_RecoveryChoice>? _recoveryChoice;
+
+  /// Guards double-taps: the card answers exactly once.
+  bool _choiceMade = false;
+
+  /// True after the first scrim tap on the recovery card — the skip
+  /// demands a second, deliberate confirmation.
+  bool _scrimSkipArmed = false;
 
   /// Live momentum timeline (GDD 13.2): the HOME share per minute
   /// (index 0 = minute 1) driving the momentum bar's spikes. Recomputed
@@ -183,6 +191,14 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       ..removeListener(_onFeedScrolled)
       ..dispose();
     unawaited(_audio.dispose());
+    // The screen went away while the recovery card was still up: unblock
+    // the parked finish instead of leaving it awaiting forever.
+    final choice = _recoveryChoice;
+    if (choice != null && !choice.isCompleted) {
+      choice.completeError(
+        StateError('MatchScreen disposed before the recovery choice'),
+      );
+    }
     super.dispose();
   }
 
@@ -337,12 +353,18 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       // recovery (GDD 19.3) — mutually exclusive (GDD 19.4), chosen BEFORE
       // persistence runs so the choice is real this time. Same touchline
       // card design as the half-time talk.
-      _postMatchChoice = null;
+      _choiceMade = false;
+      _scrimSkipArmed = false;
+      final choiceCompleter = Completer<_RecoveryChoice>();
+      _recoveryChoice = choiceCompleter;
       if (mounted) setState(() => _recoveryPending = true);
-      while (_postMatchChoice == null && mounted) {
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+      // The card's tap handlers resolve the completer — no polling.
+      _RecoveryChoice? choice;
+      try {
+        choice = await choiceCompleter.future;
+      } catch (_) {
+        // The screen went away before the card was answered.
       }
-      final choice = _postMatchChoice;
       if (mounted) setState(() => _recoveryPending = false);
       var usedAdBoost = false;
       PepTalk? talk;
@@ -361,20 +383,33 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       // Persistent-competition hook (GDD 9.2): the league fixture is
       // committed with the result, AI stamina and lockstep simulation.
       await widget.onFullTime?.call(report);
-      setState(() {
-        _finished = true;
-        _report = report;
-        _pepTalk = talk;
-        _usedAdBoost = usedAdBoost;
-      });
-      ref.invalidate(collectionProvider);
-      ref.invalidate(squadProvider);
-      ref.invalidate(campusProvider);
+      if (mounted) {
+        setState(() {
+          _finished = true;
+          _report = report;
+          _pepTalk = talk;
+          _usedAdBoost = usedAdBoost;
+        });
+        ref.invalidate(collectionProvider);
+        ref.invalidate(squadProvider);
+        ref.invalidate(campusProvider);
+      }
     } catch (e) {
-      setState(() => _error = '$e');
+      if (mounted) setState(() => _error = '$e');
     } finally {
       _finishing = false;
     }
+  }
+
+  /// Answers the recovery card exactly once: the first tap wins, later
+  /// taps are swallowed while the finish proceeds.
+  void _answerRecovery(_RecoveryChoice choice) {
+    if (_choiceMade) return;
+    _choiceMade = true;
+    _recoveryChoice?.complete(choice);
+    // Feed back immediately: the card steps aside the moment it is
+    // answered, so the report lands without a dead frame.
+    if (mounted) setState(() => _recoveryPending = false);
   }
 
   /// Chooses the post-match recovery path: a normal pep talk (free,
@@ -394,7 +429,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
 
     return Positioned.fill(
       child: GestureDetector(
-        onTap: () => _postMatchChoice = const _RecoveryChoice.none(),
+        // The scrim demands a deliberate double tap to skip: one stray
+        // tap outside the card must NOT throw the boosted option away —
+        // the first tap only arms the hint, the second confirms.
+        onTap: _confirmSkipOnScrim,
         behavior: HitTestBehavior.opaque,
         child: Container(
           color: Colors.black.withValues(alpha: 0.55),
@@ -445,7 +483,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                           '+${(choice.recoveryBonus * 100).round()}% natural '
                           'recovery',
                       onTap: () =>
-                          _postMatchChoice = _RecoveryChoice(pepTalk: choice),
+                          _answerRecovery(_RecoveryChoice(pepTalk: choice)),
                     ),
                   ),
                 if (!won)
@@ -458,23 +496,43 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                           '(GDD 19.3)',
                       gold: true,
                       onTap: () =>
-                          _postMatchChoice = const _RecoveryChoice.boosted(),
+                          _answerRecovery(const _RecoveryChoice.boosted()),
                     ),
                   ),
                 TextButton(
                   onPressed: () =>
-                      _postMatchChoice = const _RecoveryChoice.none(),
+                      _answerRecovery(const _RecoveryChoice.none()),
                   child: const Text(
                     'No pep talk — default recovery',
                     style: TextStyle(color: FcmColors.textDim, fontSize: 12),
                   ),
                 ),
+                // Armed by the first scrim tap: the skip needs a second,
+                // deliberate confirmation before it takes effect.
+                if (_scrimSkipArmed)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Tap outside again to skip without a pep talk',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: FcmColors.gold, fontSize: 11),
+                    ),
+                  ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  /// First scrim tap arms the skip hint; the second confirms the skip.
+  void _confirmSkipOnScrim() {
+    if (_scrimSkipArmed) {
+      _answerRecovery(const _RecoveryChoice.none());
+      return;
+    }
+    setState(() => _scrimSkipArmed = true);
   }
 
   /// The half-time touchline card, shown over the frozen match.
