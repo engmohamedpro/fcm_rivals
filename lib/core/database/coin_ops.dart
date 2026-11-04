@@ -23,10 +23,24 @@ import 'package:drift/drift.dart';
 
 import '../database/app_database.dart';
 
+/// Thrown by [CoinOps.spendCoins] when the conditional update matched
+/// zero rows — the balance cannot cover the amount (or the club row is
+/// gone). Typed so call sites map it to their own user-facing error
+/// instead of parsing message strings.
+class InsufficientFundsException implements Exception {
+  const InsufficientFundsException(this.amount);
+
+  /// The amount that could not be spent.
+  final int amount;
+
+  @override
+  String toString() => 'Not enough coins';
+}
+
 extension CoinOps on AppDatabase {
   /// Atomically debits [amount] coins from [clubId] and writes the
-  /// ledger row. Throws [Exception] with 'Not enough coins' when the
-  /// balance is insufficient — the WHERE clause is the guard, so this is
+  /// ledger row. Throws [InsufficientFundsException] when the balance
+  /// is insufficient — the WHERE clause is the guard, so this is
   /// race-free even under interleaved writes. Returns the new balance.
   Future<int> spendCoins(
     int clubId,
@@ -49,7 +63,7 @@ extension CoinOps on AppDatabase {
       if (updated == 0) {
         // Either the club row is gone or the balance was too low; the
         // distinction does not matter for the caller, both are 'no'.
-        throw Exception('Not enough coins');
+        throw InsufficientFundsException(amount);
       }
       final balance = await _postUpdateBalance(clubId);
       await _ledgerRow(
