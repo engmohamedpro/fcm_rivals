@@ -681,31 +681,42 @@ class SeasonStore {
         // Relative debit — a concurrent coin movement can no longer be
         // overwritten by this refund (see coin_ops.dart). This is a
         // spend, not a credit: the earlier match reward is being taken
-        // back before the replay re-earns it.
-        await db.customUpdate(
-          'UPDATE clubs SET coins = coins - ? WHERE id = ?',
-          variables: [
-            Variable.withInt(rewardCoinsToRefund),
-            Variable.withInt(userClubId),
-          ],
-          updates: {db.clubs},
-          updateKind: UpdateKind.update,
-        );
-        final club = await (db.select(
+        // back before the replay re-earns it. Clamped to the balance
+        // that is actually there: if the user already spent the reward
+        // (bought a pack with it), the refund takes back only what
+        // remains — the balance never goes below zero and the ledger
+        // stays in agreement with it. The replayed match then credits
+        // its fresh reward in full, as usual.
+        final clubBefore = await (db.select(
           db.clubs,
         )..where((c) => c.id.equals(userClubId))).getSingle();
-        await db
-            .into(db.coinTransactions)
-            .insert(
-              CoinTransactionsCompanion.insert(
-                clubId: userClubId,
-                amount: -rewardCoinsToRefund,
-                balanceAfter: club.coins,
-                reason: 'match_replay_refund',
-                detail: Value('Refund before replay of fixture $fixtureId'),
-                createdAt: now,
-              ),
-            );
+        final refund = rewardCoinsToRefund.clamp(0, clubBefore.coins);
+        if (refund > 0) {
+          await db.customUpdate(
+            'UPDATE clubs SET coins = coins - ? WHERE id = ?',
+            variables: [
+              Variable.withInt(refund),
+              Variable.withInt(userClubId),
+            ],
+            updates: {db.clubs},
+            updateKind: UpdateKind.update,
+          );
+          final club = await (db.select(
+            db.clubs,
+          )..where((c) => c.id.equals(userClubId))).getSingle();
+          await db
+              .into(db.coinTransactions)
+              .insert(
+                CoinTransactionsCompanion.insert(
+                  clubId: userClubId,
+                  amount: -refund,
+                  balanceAfter: club.coins,
+                  reason: 'match_replay_refund',
+                  detail: Value('Refund before replay of fixture $fixtureId'),
+                  createdAt: now,
+                ),
+              );
+        }
       }
     });
     return fixtureId;
