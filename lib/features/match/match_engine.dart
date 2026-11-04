@@ -212,6 +212,10 @@ class MatchEngineConfig {
     this.goalScale = 0.13,
     this.goalDiffScale = 0.26,
     this.foulOnTurnover = 0.50,
+    this.inBoxFoulChance = 0.013,
+    this.penaltyOnTarget = 0.93,
+    this.penaltyGoalBase = 0.82,
+    this.penaltyGoalEdgeScale = 0.10,
     this.yellowCardChance = 0.10,
     this.straightRedChance = 0.004,
     this.offsideChance = 0.10,
@@ -268,6 +272,10 @@ class MatchEngineConfig {
   final double goalDiffScale;
 
   final double foulOnTurnover;
+  final double inBoxFoulChance;
+  final double penaltyOnTarget;
+  final double penaltyGoalBase;
+  final double penaltyGoalEdgeScale;
   final double yellowCardChance;
   final double straightRedChance;
   final double offsideChance;
@@ -795,7 +803,10 @@ class MatchEngine {
       // Foul by the defending side (GDD 13.1 free kicks / penalties).
       final fouler = _pickDefender(def)!;
       _involvedThisMinute.add(fouler.playerId);
-      final inBox = _random.chance(0.07);
+      // A foul lands in the box ~1.3% of the time (Europe's top
+      // divisions award 0.25-0.30 penalties/match from ~20 fouls) —
+      // the old 7% produced ~5x the real award rate.
+      final inBox = _random.chance(config.inBoxFoulChance);
       final finalThird = !inBox && _random.chance(0.30);
       produced.add(
         _emit(
@@ -852,7 +863,10 @@ class MatchEngine {
             att,
             def,
             ChanceQuality.penalty,
-            shooterOverride: _pickAttacker(att)!,
+            // The designated taker: a striker's job, not the CAM the
+            // creator weights would hand it to (a CAM was ~2.5x more
+            // likely to take a penalty than an ST).
+            shooterOverride: _pickShooter(att),
           ),
         );
         return produced;
@@ -1027,8 +1041,25 @@ class MatchEngine {
     // xG (GDD 13.2): P(on target) × P(goal | on target).
     final xg = onTargetP * goalPGivenOnTarget;
 
+    // Penalties get a dedicated draw (GDD 13.1): no block layer — a
+    // 28%-blocked penalty is not football — a near-certain on-target
+    // rate and a high, shooter-vs-keeper dependent conversion.
+    final isPenalty = quality == ChanceQuality.penalty;
+    final penaltyOnTargetP = (config.penaltyOnTarget).clamp(0.10, 0.99);
+    final penaltyGoalP =
+        (config.penaltyGoalBase +
+                config.penaltyGoalEdgeScale * ((shooterEff - gkEff) / 100))
+            .clamp(0.30, 0.95);
+    final penaltyXg = penaltyOnTargetP * penaltyGoalP;
+
     ShotOutcome outcome;
-    if (_random.chance(config.blockChance)) {
+    if (isPenalty) {
+      outcome = _random.chance(penaltyOnTargetP)
+          ? (_random.chance(penaltyGoalP)
+                ? ShotOutcome.goal
+                : ShotOutcome.saved)
+          : ShotOutcome.offTarget;
+    } else if (_random.chance(config.blockChance)) {
       outcome = ShotOutcome.blocked;
     } else if (_random.chance(onTargetP / (1 - config.blockChance))) {
       outcome = _random.chance(goalPGivenOnTarget)
@@ -1047,7 +1078,7 @@ class MatchEngine {
         secondaryPlayerId: assister?.playerId,
         shotOutcome: outcome,
         quality: quality,
-        xg: xg,
+        xg: isPenalty ? penaltyXg : xg,
         metadata: {
           'isBigChance':
               quality == ChanceQuality.bigChance ||

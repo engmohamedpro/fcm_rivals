@@ -86,11 +86,12 @@ MatchEngine engine(
 /// One scenario's aggregate over [n] seeds.
 // ignore: library_private_types_in_public_api
 class _Scenario {
-  _Scenario(this.label, this.scores, this.statsList);
+  _Scenario(this.label, this.scores, this.statsList, this.eventsList);
 
   final String label;
   final List<(int, int)> scores;
   final List<MatchStatsReport> statsList;
+  final List<List<MatchEvent>> eventsList;
 
   int get matches => scores.length;
   double get avgGoals =>
@@ -110,6 +111,56 @@ class _Scenario {
   double get foulsPerMatch =>
       statsList.fold<int>(0, (a, s) => a + s.home.fouls + s.away.fouls) /
       matches;
+
+  int get penaltyAwards => eventsList.fold<int>(
+    0,
+    (a, events) =>
+        a +
+        events
+            .where((e) => e.type == MatchEventType.penaltyAwarded)
+            .length,
+  );
+  int get penaltyShots => eventsList.fold<int>(
+    0,
+    (a, events) =>
+        a +
+        events
+            .where(
+              (e) =>
+                  e.type == MatchEventType.shot &&
+                  e.quality == ChanceQuality.penalty,
+            )
+            .length,
+  );
+  int get penaltyGoals => eventsList.fold<int>(
+    0,
+    (a, events) =>
+        a +
+        events
+            .where(
+              (e) =>
+                  e.type == MatchEventType.shot &&
+                  e.quality == ChanceQuality.penalty &&
+                  e.shotOutcome == ShotOutcome.goal,
+            )
+            .length,
+  );
+  int get blockedPenaltyShots => eventsList.fold<int>(
+    0,
+    (a, events) =>
+        a +
+        events
+            .where(
+              (e) =>
+                  e.type == MatchEventType.shot &&
+                  e.quality == ChanceQuality.penalty &&
+                  e.shotOutcome == ShotOutcome.blocked,
+            )
+            .length,
+  );
+  double get penaltyGoalShare =>
+      penaltyGoals > 0 ? penaltyGoals / (avgGoals * matches) : 0;
+
   double get avgPossessionHome {
     var total = 0.0;
     var n = 0;
@@ -131,13 +182,15 @@ Future<_Scenario> _runScenario(
 ) async {
   final scores = <(int, int)>[];
   final statsList = <MatchStatsReport>[];
+  final eventsList = <List<MatchEvent>>[];
   for (var m = 0; m < matches; m++) {
     final eng = engine(m, homeValue: homeValue, awayValue: awayValue);
     final events = eng.simulateToEnd();
     scores.add((eng.state.scoreHome, eng.state.scoreAway));
     statsList.add(computeStats(events, homeTeamId: 1, awayTeamId: 2));
+    eventsList.add(events);
   }
-  return _Scenario(label, scores, statsList);
+  return _Scenario(label, scores, statsList, eventsList);
 }
 
 void main() {
@@ -192,6 +245,20 @@ void main() {
           even.matches;
       expect(corners, greaterThan(3.5));
       expect(corners, lessThan(6.5));
+    });
+
+    test('penalty model: awards 0.18–0.36/match, conversion 68–84%', () {
+      // Real football: 0.25–0.30 penalties/match at 75–78% conversion.
+      expect(even.penaltyAwards / even.matches, greaterThan(0.18));
+      expect(even.penaltyAwards / even.matches, lessThan(0.36));
+      final conversion =
+          even.penaltyShots > 0 ? even.penaltyGoals / even.penaltyShots : 0;
+      expect(conversion, greaterThan(0.68));
+      expect(conversion, lessThan(0.84));
+      // The dedicated penalty path skips the block layer entirely.
+      expect(even.blockedPenaltyShots, 0);
+      // Penalty goals stay a minority of all goals (≤ 12%).
+      expect(even.penaltyGoalShare, lessThan(0.12));
     });
 
     test('home advantage is real but modest (42–52% home wins)', () {
