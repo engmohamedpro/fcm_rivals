@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -336,6 +337,18 @@ void main() {
         final legendSt = offers.firstWhere(
           (o) => o.tier == PackTier.legendary && o.scopeValue == 'ST',
         );
+        // The absolute tier bands raised the legendary price above the
+        // starting 25k (review economy_pack-tier-bands: 'legendary
+        // prices will rise') — top the wallet up so the purchase itself
+        // stays under test.
+        final clubBefore = (await store.getClub())!;
+        if (clubBefore.coins < legendSt.price) {
+          await (db.update(db.clubs)
+                ..where((c) => c.id.equals(clubBefore.id)))
+              .write(ClubsCompanion(
+                coins: Value(clubBefore.coins + 100_000),
+              ));
+        }
         final before = (await store.getClub())!.coins;
         final pack = await store.buyPack(
           category: PackCategory.position,
@@ -481,7 +494,9 @@ void main() {
         random: math.Random(1),
       );
       expect(result.newUpgradeLevel, 1);
-      expect(result.attributeGain.values.fold(0, (a, b) => a + b), 1);
+      // Two attribute points per level (display honesty, review
+      // 2026-11-04_economy_pack-tier-bands-and-elite-ceiling).
+      expect(result.attributeGain.values.fold(0, (a, b) => a + b), 2);
 
       final after = await store.getCollection();
       final mergedCard = after.firstWhere((c) => c.ownedId == target);

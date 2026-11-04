@@ -43,10 +43,14 @@ class UpgradeEngine {
   /// Upper bound on upgrade levels (placeholder pre-balance value).
   static const int maxUpgradeLevel = 5;
 
-  /// Allocates the attribute points granted by a merge: one point per level
-  /// gained, each to a randomly selected attribute under controlled rules
-  /// (GDD 8.2) — selection follows the position's attribute weights, so a
-  /// goalkeeper never gains Attack and a striker rarely gains Goalkeeping.
+  /// Allocates the attribute points granted by a merge: TWO points per
+  /// level gained (review 2026-11-04_economy_pack-tier-bands-and-elite-
+  /// ceiling — the card displays +1 OVR per level but one point was only
+  /// ~+0.5 true position rating for attackers, since an ST converts just
+  /// E[0.66] of a point into attack), each to a randomly selected
+  /// attribute under controlled rules (GDD 8.2) — selection follows the
+  /// position's attribute weights, so a goalkeeper never gains Attack
+  /// and a striker rarely gains Goalkeeping.
   ///
   /// [random] must be supplied by the caller (seeded for deterministic
   /// tests, GDD development rule 7).
@@ -69,7 +73,7 @@ class UpgradeEngine {
       acc += candidates[k]!;
       cumulative.add(acc);
     }
-    for (var i = 0; i < levelsGained; i++) {
+    for (var i = 0; i < levelsGained * pointsPerLevel; i++) {
       final roll = random.nextDouble() * acc;
       var chosen = keys.last;
       for (var j = 0; j < keys.length; j++) {
@@ -82,6 +86,12 @@ class UpgradeEngine {
     }
     return gain;
   }
+
+  /// Attribute points granted per upgrade level (GDD 8.2 display
+  /// honesty: the card shows +1 OVR per level, so each level must be
+  /// worth ~+1 true position rating — two points under the weighted
+  /// allocation).
+  static const int pointsPerLevel = 2;
 
   /// Full merge outcome: new level plus attribute gain for the gained
   /// levels, capped at the maximum attribute value of 99.

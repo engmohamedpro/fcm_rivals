@@ -25,17 +25,16 @@ BasePlayer mkPlayer(
   ),
 );
 
-/// Pool spanning three decades of market value with known structure. Each
-/// decade must stay inside the engine's log-scale tier band (boundaries
-/// 0.15/0.55 of the pool's log-value span) for every pool size used below,
-/// so a player's id always encodes the tier he is drawn from.
+/// Pool spanning three market-value strata with known structure, aligned
+/// with the engine's ABSOLUTE tier floors (low < €3M, mid €3–20M,
+/// high ≥ €20M): a player's id always encodes the tier he is drawn from.
 List<BasePlayer> buildPool(int perDecade) => [
   for (var i = 0; i < perDecade; i++)
-    mkPlayer(1000 + i, 50_000 + i * 5_000), // low tier
+    mkPlayer(1000 + i, 50_000 + i * 5_000), // low tier (< €3M)
   for (var i = 0; i < perDecade; i++)
-    mkPlayer(2000 + i, 500_000 + i * 50_000), // mid tier
+    mkPlayer(2000 + i, 4_000_000 + i * 50_000), // mid tier (€3–20M)
   for (var i = 0; i < perDecade; i++)
-    mkPlayer(3000 + i, 40_000_000 + i * 2_000_000), // high tier
+    mkPlayer(3000 + i, 40_000_000 + i * 2_000_000), // high tier (≥ €20M)
 ];
 
 void main() {
@@ -176,8 +175,10 @@ void main() {
     });
 
     test('GDD 5.4: empirically, cheap players are drawn more often', () {
-      // With inverse-value odds, the cheapest third of tier 0 should win the
-      // tier-0 draw more than half the time.
+      // With inverse-value odds inside a tier, the cheapest third of the
+      // low tier should win the low-tier draw more often than its uniform
+      // share — the wider absolute low band (< €3M) dilutes the edge, so
+      // the bar is 'clearly above uniform' rather than 'over half'.
       final engine = PackEngine(random: math.Random(31));
       final pool = buildPool(30);
       final lowIds = pool.take(10).map((p) => p.playerId).toSet();
@@ -192,8 +193,8 @@ void main() {
         if (lowIds.contains(result.player.playerId)) lowHits++;
       }
       expect(tier0Draws, greaterThan(200));
-      // cheap third should win the tier-0 draw well over half the time
-      expect(lowHits, greaterThan(tier0Draws * 0.55));
+      // cheap third wins clearly more than its uniform 1/3 share
+      expect(lowHits, greaterThan(tier0Draws * 0.40));
     });
 
     test('FR-011: odds respond to value — zero smoothing is uniform', () {

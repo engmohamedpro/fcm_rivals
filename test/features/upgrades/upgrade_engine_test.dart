@@ -47,14 +47,16 @@ void main() {
   group('UpgradeEngine attribute allocation (GDD 8.2)', () {
     const engine = UpgradeEngine();
 
-    test('grants exactly one point per level gained', () {
+    test('grants exactly two points per level gained', () {
+      // Two points per level (display honesty: +1 OVR per level must be
+      // ~+1 true position rating, review 2026-11-04 economy tier bands).
       final gain = engine.allocateAttributeGain(
         position: Position.st,
         levelsGained: 3,
         random: math.Random(7),
       );
       final total = gain.values.fold(0, (a, b) => a + b);
-      expect(total, 3);
+      expect(total, 3 * UpgradeEngine.pointsPerLevel);
     });
 
     test('goalkeepers never gain Attack or outfield attributes only', () {
@@ -102,7 +104,10 @@ void main() {
     });
 
     test('allocation follows position weights statistically', () {
-      // CB: defence weight 0.68 dominates over support 0.22 / attack 0.10
+      // CB: defence weight 0.68 dominates over support 0.22 / attack 0.10.
+      // With 2 points per level the per-sample 'contains defence' bar is
+      // 1-(1-0.68)^2 ≈ 0.90; the sample mean must sit in the no-overlap
+      // zone between the other attributes' reach and that ceiling.
       var defencePicks = 0;
       const samples = 2000;
       for (var s = 0; s < samples; s++) {
@@ -113,8 +118,8 @@ void main() {
         );
         if (gain.containsKey(PlayerAttribute.defence)) defencePicks++;
       }
-      expect(defencePicks / samples, greaterThan(0.55));
-      expect(defencePicks / samples, lessThan(0.8));
+      expect(defencePicks / samples, greaterThan(0.80));
+      expect(defencePicks / samples, lessThan(0.95));
     });
 
     test('merge returns level plus consistent gain', () {
@@ -125,7 +130,10 @@ void main() {
         random: math.Random(3),
       );
       expect(outcome.newUpgradeLevel, 1);
-      expect(outcome.attributeGain.values.fold(0, (a, b) => a + b), 1);
+      expect(
+        outcome.attributeGain.values.fold(0, (a, b) => a + b),
+        UpgradeEngine.pointsPerLevel,
+      );
     });
 
     test('zero levels gained grants nothing', () {

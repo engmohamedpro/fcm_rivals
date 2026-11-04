@@ -121,6 +121,23 @@ void main() {
       expect(win, greaterThan(loss));
       expect(bigWin, greaterThan(win));
     });
+
+    test(
+      'performance-driven income spread: loss 80-90% of par, win 120-135%',
+      () {
+      // Review 2026-11-04_economy_pack-tier-bands-and-elite-ceiling Task 3.
+      // Par = a 1.6-goal draw (1900 coins at defaults); losses with their
+      // ~0.9 goals must land at 80-90% of par, wins with their ~1.8 goals
+      // at 120-135% — a visible answer to the result, end to end.
+      const c = defaultEconomyConfig;
+      final par = c.baseMatchReward + 1.6 * c.matchRewardPerGoal;
+      final loss = eco.matchReward(goalsFor: 1, won: false);
+      final win = eco.matchReward(goalsFor: 2, won: true);
+      expect(loss / par, greaterThan(0.80));
+      expect(loss / par, lessThan(0.90));
+      expect(win / par, greaterThan(1.20));
+      expect(win / par, lessThan(1.35));
+    });
   });
 
   group('formatCoins', () {

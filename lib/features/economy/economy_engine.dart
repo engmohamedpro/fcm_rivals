@@ -40,6 +40,16 @@ class EconomyConfig {
     this.packOddsSmoothing = 0.55,
     this.baseMatchReward = 1_500,
     this.matchRewardPerGoal = 250,
+    // Performance-driven income spread (review
+    // 2026-11-04_economy_pack-tier-bands-and-elite-ceiling): rewards
+    // must visibly answer the result. Losses pay 80-90% of the par
+    // reward, wins 120-135% — a ~±20% band around par measured END-TO-END
+    // (result factor + the goals that come with the result), versus the
+    // old flat draw bonus that moved 30%→60% win rate by only Δ13%.
+    // With winners scoring ~1.8 and losers ~0.9 goals, 0.90/1.24 lands
+    // the total at loss ≈ 88% of par and win ≈ 133%.
+    this.matchRewardLossFactor = 0.90,
+    this.matchRewardWinFactor = 1.24,
     this.startingCoins = 25_000,
   });
 
@@ -82,6 +92,12 @@ class EconomyConfig {
   /// Match rewards (GDD 17.6).
   final int baseMatchReward;
   final int matchRewardPerGoal;
+
+  /// Result multipliers on the par reward (base + goals): losses pay
+  /// [matchRewardLossFactor] of par, wins [matchRewardWinFactor] — the
+  /// performance-driven income spread (see EconomyConfig docs).
+  final double matchRewardLossFactor;
+  final double matchRewardWinFactor;
 
   /// Coins granted to a newly created club (GDD 3 starting state).
   final int startingCoins;
@@ -138,11 +154,17 @@ class EconomyEngine {
     return cost.round().clamp(50, config.maxEconomicValue);
   }
 
-  /// Match reward in Coins (GDD 17.6) — baseline plus goals scored.
+  /// Match reward in Coins (GDD 17.6): a goals-scored baseline (par),
+  /// then the result multiplier — losses hold something back (80–90% of
+  /// par), wins pay a proper bonus (120–135%), draws par. At a 1.6-goal
+  /// average that is ~±20% between losing and winning performances.
   int matchReward({required int goalsFor, required bool won}) {
-    var reward = config.baseMatchReward + goalsFor * config.matchRewardPerGoal;
-    if (won) reward = (reward * 1.5).round();
-    return reward;
+    final par = config.baseMatchReward + goalsFor * config.matchRewardPerGoal;
+    return (par *
+            (won
+                ? config.matchRewardWinFactor
+                : config.matchRewardLossFactor))
+        .round();
   }
 }
 

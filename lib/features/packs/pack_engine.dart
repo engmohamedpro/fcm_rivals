@@ -184,11 +184,22 @@ class _CacheKey {
 
 /// Draws packs from an eligible pool with value-weighted odds.
 class PackEngine {
+  /// Default absolute tier floors (review 2026-11-04
+  /// economy_pack-tier-bands-and-elite-ceiling): low < €3M, mid €3–20M,
+  /// high ≥ €20M — a star is a star in every pool, so a Legendary pack
+  /// can actually contain one (the relative log-scale bands let a
+  /// €0.4–2.6M nationality pool label €2.5M players 'high tier').
+  static const List<double> defaultAbsoluteTierFloorEur = [
+    3_000_000,
+    20_000_000,
+  ];
+
   PackEngine({
     this.tierBoundaries = const [0.15, 0.55],
     this.tierWeights = const [1.0, 1.0, 1.0],
     required this.random,
     this.economy = const EconomyEngine(),
+    this.absoluteTierFloorEur = defaultAbsoluteTierFloorEur,
   }) : assert(
          tierBoundaries.length == 2 &&
              0 < tierBoundaries[0] &&
@@ -201,6 +212,13 @@ class PackEngine {
              tierWeights.every((w) => w >= 0) &&
              tierWeights.any((w) => w > 0),
          'tier weights need three non-negative values, at least one > 0',
+       ),
+       assert(
+         absoluteTierFloorEur == null ||
+             (absoluteTierFloorEur.length == 2 &&
+                 0 < absoluteTierFloorEur[0] &&
+                 absoluteTierFloorEur[0] < absoluteTierFloorEur[1]),
+         'absolute tier floors must be increasing positive EUR values',
        );
 
   /// Relative chance that the pack's single player comes from the low, mid
@@ -210,6 +228,16 @@ class PackEngine {
   /// Fractions of the pool's Market Value range separating low/mid/high
   /// tiers, measured on the log-value scale (GDD 5.3 configurable tiers).
   final List<double> tierBoundaries;
+
+  /// Absolute market-value tier floors in EUR (`[low/mid boundary,
+  /// mid/high boundary]`). When set, they OVERRIDE [tierBoundaries] for
+  /// pools spanning them: the high tier starts at a fixed star price
+  /// (default €20M) instead of 55% down every pool's own log-value range
+  /// — a €0.4–2.6M nationality pool can no longer label a €2.5M player
+  /// 'high tier'. Pools entirely below the first floor collapse into the
+  /// low tier; pools entirely above the second floor put everything in
+  /// the high tier (the engine's fallback keeps every draw reachable).
+  final List<double>? absoluteTierFloorEur;
 
   /// Shared RNG — callers inject a seeded generator for deterministic tests.
   final math.Random random;
@@ -282,10 +310,28 @@ class PackEngine {
     );
   }
 
-  /// Splits a value-sorted eligible pool into low/mid/high tiers on the
-  /// log-value scale.
+  /// Splits a value-sorted eligible pool into low/mid/high tiers. When
+  /// [absoluteTierFloorEur] is set, the bands are absolute market values
+  /// (default low < €3M, mid €3–20M, high ≥ €20M) — the same star is a
+  /// star in every pool; otherwise the legacy log-scale relative bands
+  /// apply.
   List<List<BasePlayer>> _splitIntoTiers(List<BasePlayer> sorted) {
     if (sorted.isEmpty) return const [[], [], []];
+    final low = <BasePlayer>[], mid = <BasePlayer>[], high = <BasePlayer>[];
+    final floors = absoluteTierFloorEur;
+    if (floors != null) {
+      for (final p in sorted) {
+        final v = p.marketValueEur.toDouble();
+        if (v < floors[0]) {
+          low.add(p);
+        } else if (v < floors[1]) {
+          mid.add(p);
+        } else {
+          high.add(p);
+        }
+      }
+      return [low, mid, high];
+    }
     final values = sorted.map((p) => p.marketValueEur).toList();
     final minV = values.reduce(math.min).toDouble();
     final maxV = values.reduce(math.max).toDouble();
@@ -295,7 +341,6 @@ class PackEngine {
     }
     final logMin = math.log(minV);
     final logMax = math.log(maxV);
-    final low = <BasePlayer>[], mid = <BasePlayer>[], high = <BasePlayer>[];
     for (final p in sorted) {
       final t =
           (math.log(p.marketValueEur.toDouble()) - logMin) / (logMax - logMin);
