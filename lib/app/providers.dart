@@ -3,6 +3,7 @@
 library;
 
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:drift/native.dart';
@@ -15,6 +16,7 @@ import '../core/database/app_database.dart';
 import '../features/ads/ad_store.dart';
 import '../features/collection/collection_store.dart';
 import '../features/facilities/facilities.dart';
+import '../features/player_database/player_database.dart';
 import '../features/settings/user_settings_store.dart';
 import '../features/season/season_engine.dart' show StandingEntry;
 import '../features/season/season_store.dart';
@@ -36,11 +38,18 @@ final databaseProvider = FutureProvider<AppDatabase>((ref) async {
 
 /// Imports the bundled dataset on first launch; skips when the persisted
 /// version is already current.
+///
+/// The 1 MB, 20,876-row JSON is decoded on a background isolate
+/// (Isolate.run) so the first-launch frame budget is not spent on
+/// jsonDecode — the UI thread only awaits the parsed dataset and hands
+/// it to the store, which batches the inserts (see
+/// CollectionStore.applyDatasetUpdate).
 final datasetBootstrapProvider = FutureProvider<void>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   final store = CollectionStore(db: db);
   final jsonText = await rootBundle.loadString('assets/data/players_v1.json');
-  await store.importBundledDataset(jsonText);
+  final dataset = await Isolate.run(() => PlayerDataset.fromJson(jsonText));
+  await store.importBundledDataset(dataset);
 });
 
 /// Rewarded-ad store (GDD 19): economy ad surfaces for the collection.

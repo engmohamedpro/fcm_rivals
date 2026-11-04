@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
+import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/squad/squad_screen.dart';
 import 'package:fcm_rivals/features/squad/squad_view.dart';
@@ -38,7 +39,10 @@ void main() {
     final jsonText = await tester.runAsync(
       () => rootBundle.loadString('assets/data/players_v1.json'),
     );
-    await tester.runAsync(() => store.importBundledDataset(jsonText!));
+    await tester.runAsync(() async {
+        final dataset = PlayerDataset.fromJson(jsonText!);
+        await store.importBundledDataset(dataset);
+      });
     // Club with zero opened packs: the squad map resolves empty.
     await tester.runAsync(
       () => store.createClub(

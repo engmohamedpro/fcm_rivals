@@ -19,6 +19,7 @@ import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmButton, FcmPill;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
+import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/facilities/campus_screen.dart';
 import 'package:fcm_rivals/features/facilities/facilities.dart';
 
@@ -41,7 +42,10 @@ void main() {
     final jsonText = await tester.runAsync(
       () => rootBundle.loadString('assets/data/players_v1.json'),
     );
-    await tester.runAsync(() => store.importBundledDataset(jsonText!));
+    await tester.runAsync(() async {
+        final dataset = PlayerDataset.fromJson(jsonText!);
+        await store.importBundledDataset(dataset);
+      });
     await tester.runAsync(
       () => store.createClub(
         clubName: 'Pyramid United',
