@@ -14,6 +14,7 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/database/coin_ops.dart';
 import '../../core/domain/players.dart';
 import '../ads/ad_engine.dart';
 import '../ads/ad_store.dart';
@@ -318,22 +319,29 @@ class CollectionStore {
   /// button (main.dart) once testing is done. Credits the user club
   /// with [amount] test coins through the same atomic transaction and
   /// ledger row as every other coin movement (FR-016).
+  ///
+  /// Debug and test builds only: asserts are enabled there, so the
+  /// helper runs; release builds compile asserts out and this returns
+  /// without touching the balance or the ledger. The app-bar button is
+  /// guarded by kDebugMode too, so neither half of the dev shortcut can
+  /// ship.
   Future<void> grantTestCoins({int amount = 1_000_000}) async {
+    var devBuild = false;
+    assert(() {
+      devBuild = true;
+      return true;
+    }());
+    if (!devBuild) return;
     final club = await getClub();
     if (club == null) {
       throw const CollectionException('No club yet — cannot grant coins');
     }
-    await db.transaction(() async {
-      await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
-        ClubsCompanion(coins: Value(club.coins + amount)),
-      );
-      await db.coinLedger(
-        club.id,
-        amount,
-        reason: 'test_grant',
-        detail: 'Dev test grant from app-bar + button',
-      );
-    });
+    await db.creditCoins(
+      club.id,
+      amount,
+      reason: 'test_grant',
+      detail: 'Dev test grant from app-bar + button',
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -369,9 +377,9 @@ class CollectionStore {
   }
 
   /// Imports the bundled dataset into SQLite (idempotent per version) and
-  /// primes the in-memory registry. Called at app start.
-  Future<void> importBundledDataset(String jsonText) async {
-    final dataset = PlayerDataset.fromJson(jsonText);
+  /// primes the in-memory registry. The caller owns parsing — the app
+  /// bootstrap decodes on a background isolate (see providers.dart).
+  Future<void> importBundledDataset(PlayerDataset dataset) async {
     final current = await db.select(db.datasetVersions).getSingleOrNull();
     if (current != null && current.version >= dataset.version) return;
     await applyDatasetUpdate(dataset);
@@ -390,15 +398,20 @@ class CollectionStore {
     final compensations = <RemovalCompensation>[];
 
     await db.transaction(() async {
-      // Upsert current rows (regenerated stats included per GDD 4.6).
-      for (final player in [
-        ...importResult.added,
-        ...importResult.updated,
-        ...importResult.regenerated,
-      ]) {
-        await db
-            .into(db.players)
-            .insertOnConflictUpdate(
+      // Upsert current rows (regenerated stats included per GDD 4.6) in
+      // ONE batched statement instead of ~20,876 awaited round trips:
+      // the batch is atomic with the rest of this transaction, so
+      // dataset updates and removed-player compensation still commit
+      // or roll back together (FR-004..FR-008, NFR-003).
+      await db.batch((batch) {
+        batch.insertAll(
+          db.players,
+          [
+            for (final player in [
+              ...importResult.added,
+              ...importResult.updated,
+              ...importResult.regenerated,
+            ])
               PlayersCompanion.insert(
                 playerId: Value(player.playerId),
                 name: player.name,
@@ -411,8 +424,10 @@ class CollectionStore {
                 defence: player.baseStats.defence,
                 goalkeeping: player.baseStats.goalkeeping,
               ),
-            );
-      }
+          ],
+          mode: InsertMode.insertOrReplace,
+        );
+      });
 
       // Removed players: compensate owners, drop copies and squad slots
       // (GDD 4.8) — inside the same transaction as the data update.
@@ -444,8 +459,18 @@ class CollectionStore {
         }
         if (compensations.isNotEmpty) {
           final total = compensations.fold<int>(0, (a, c) => a + c.coins);
-          await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
-            ClubsCompanion(coins: Value(club.coins + total)),
+          // Relative update — a concurrent coin movement (a pack
+          // purchase, a match reward) can no longer be overwritten by
+          // this credit (see coin_ops.dart). The legacy coinLedger
+          // re-selects the row itself, so its balanceAfter is correct.
+          await db.customUpdate(
+            'UPDATE clubs SET coins = coins + ? WHERE id = ?',
+            variables: [
+              Variable.withInt(total),
+              Variable.withInt(club.id),
+            ],
+            updates: {db.clubs},
+            updateKind: UpdateKind.update,
           );
           await db.coinLedger(
             club.id,
@@ -672,21 +697,28 @@ class CollectionStore {
     if (price <= 0) {
       throw const CollectionException('Pack price must be positive');
     }
+    // Friendly early failure (the WHERE-clause guard in spendCoins is
+    // what actually enforces it under races).
     if (userClub.coins < price) {
       throw const CollectionException('Not enough coins');
     }
     final now = DateTime.now();
-    return db.transaction(() async {
-      await (db.update(db.clubs)..where((c) => c.id.equals(userClub.id))).write(
-        ClubsCompanion(coins: Value(userClub.coins - price)),
-      );
-      await db.coinLedger(
-        userClub.id,
-        -price,
-        reason: 'pack_purchase',
-        detail: 'Bought ${tier.label} ${category.name} pack',
-      );
-      final id = await db
+    final id = await db.transaction(() async {
+      // Debit first, relative and conditional: if a concurrent movement
+      // spent the balance below the price between the pre-check and
+      // here, this throws and the transaction (including the pack row)
+      // rolls back — no pack without coins, no coins without ledger.
+      try {
+        await db.spendCoins(
+          userClub.id,
+          price,
+          reason: 'pack_purchase',
+          detail: 'Bought ${tier.label} ${category.name} pack',
+        );
+      } on Exception catch (e) {
+        throw CollectionException(e.toString().replaceFirst('Exception: ', ''));
+      }
+      return await db
           .into(db.packs)
           .insert(
             PacksCompanion.insert(
@@ -699,10 +731,10 @@ class CollectionStore {
               createdAt: now,
             ),
           );
-      return (await (db.select(
-        db.packs,
-      )..where((p) => p.id.equals(id))).getSingle());
     });
+    return (await (db.select(
+      db.packs,
+    )..where((p) => p.id.equals(id))).getSingle());
   }
 
   // ---------------------------------------------------------------------------
@@ -805,8 +837,13 @@ class CollectionStore {
         );
       }
       if (sold.isNotEmpty) {
-        await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
-          ClubsCompanion(coins: Value(club.coins + credit)),
+        // Relative credit — a concurrent coin movement can no longer be
+        // overwritten by this sale (see coin_ops.dart).
+        await db.customUpdate(
+          'UPDATE clubs SET coins = coins + ? WHERE id = ?',
+          variables: [Variable.withInt(credit), Variable.withInt(club.id)],
+          updates: {db.clubs},
+          updateKind: UpdateKind.update,
         );
         await db.coinLedger(
           club.id,
@@ -975,16 +1012,20 @@ class CollectionStore {
     );
 
     await db.transaction(() async {
-      await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
-        ClubsCompanion(coins: Value(club.coins - price)),
-      );
-      await db.coinLedger(
-        club.id,
-        -price,
-        reason: 'upgrade_purchase',
-        detail:
-            'Bought upgrade to +${outcome.newUpgradeLevel} for ${base.name}',
-      );
+      // Relative, conditional debit: if a concurrent movement dropped
+      // the balance below the price after the pre-check, this throws
+      // and the whole upgrade rolls back (see coin_ops.dart).
+      try {
+        await db.spendCoins(
+          club.id,
+          price,
+          reason: 'upgrade_purchase',
+          detail:
+              'Bought upgrade to +${outcome.newUpgradeLevel} for ${base.name}',
+        );
+      } on Exception catch (e) {
+        throw CollectionException(e.toString().replaceFirst('Exception: ', ''));
+      }
       await (db.update(
         db.ownedPlayers,
       )..where((o) => o.id.equals(ownedId))).write(
@@ -1182,15 +1223,18 @@ class CollectionStore {
     final nextLevel = level + 1;
     final now = DateTime.now();
     await db.transaction(() async {
-      await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
-        ClubsCompanion(coins: Value(club.coins - price)),
-      );
-      await db.coinLedger(
-        club.id,
-        -price,
-        reason: 'facility_upgrade',
-        detail: '${facility.subtitle} level $nextLevel',
-      );
+      // Relative, conditional debit — same race-free guard as every
+      // other coin movement (see coin_ops.dart).
+      try {
+        await db.spendCoins(
+          club.id,
+          price,
+          reason: 'facility_upgrade',
+          detail: '${facility.subtitle} level $nextLevel',
+        );
+      } on Exception catch (e) {
+        throw CollectionException(e.toString().replaceFirst('Exception: ', ''));
+      }
       final existing =
           await (db.select(db.facilityLevels)..where(
                 (f) =>
@@ -1314,11 +1358,14 @@ class CollectionStore {
         );
       }
       if (reward > 0) {
-        final club = await (db.select(
-          db.clubs,
-        )..where((c) => c.id.equals(clubId))).getSingle();
-        await (db.update(db.clubs)..where((c) => c.id.equals(clubId))).write(
-          ClubsCompanion(coins: Value(club.coins + reward)),
+        // Relative credit — a concurrent coin movement (the user buying
+        // a pack while the match resolves) can no longer be overwritten
+        // by this reward (see coin_ops.dart).
+        await db.customUpdate(
+          'UPDATE clubs SET coins = coins + ? WHERE id = ?',
+          variables: [Variable.withInt(reward), Variable.withInt(clubId)],
+          updates: {db.clubs},
+          updateKind: UpdateKind.update,
         );
         await db.coinLedger(
           clubId,
@@ -1353,6 +1400,11 @@ extension on AppDatabase {
   /// Appends one ledger row for [amount] credited to [clubId]. Must be
   /// called AFTER the balance update inside the same transaction so
   /// balanceAfter reflects the post-transaction state (FR-016).
+  ///
+  /// Kept for call sites that update the balance inside their own larger
+  /// transaction (e.g. applyMatchResult's stamina writes share it); new
+  /// coin movements should prefer [CoinOps.spendCoins]/[CoinOps.creditCoins]
+  /// which are relative and race-free.
   Future<void> coinLedger(
     int clubId,
     int amount, {
