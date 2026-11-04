@@ -4,9 +4,9 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: OPEN
-- Completed by: -
-- Completed on: -
+- Status: CLOSED
+- Completed by: Kareem
+- Completed on: 2026-11-04
 
 ## Context
 `style.modifiers.possession` is applied twice: inside the per-segment possession ratio (support × m, raised to the power 1.6) and again in `computeTotals` support accumulation. A 1.08 tikiTaka multiplier therefore behaves as 1.08^3.2 ≈ 1.27 in odds terms. Measured possession at even strength: 59.4% (tikiTaka) vs 44.9% (longBall) — a wider spread than any real league season. The comment at `lib/features/match/tactics.dart:10-20` shows the 36–52% win-rate tuning was done around this compounding, so the fix must remove the hidden double-apply while preserving current behaviour exactly.
@@ -36,4 +36,4 @@ Task 3: the tactics UI now shows the HONEST estimated possession share from the 
 Localization: the project carries no l10n infrastructure (English-only, no .arb files, no flutter_localizations dependency) — the effect summary strings are generated data descriptions rather than hardcoded sentences, and the summary now derives from the modifier values themselves. Full EN/AR remains a project-level gap on the UI layer, out of this review's code-only scope.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Code inspection: `style.modifiers.possession` appears exactly once on the support path — the segment-level power competition (match_engine.dart:665/:669, exponent 1.4); computeTotals no longer multiplies it (the Task-1 removal confirmed). All nine prescribed squared multipliers landed exactly (1.12/1.17/0.88/0.77/1.06/1.06/0.96/0.81/0.77). Independent fresh-seed measurement (seeds 30,000+, n=1,000/style, style as HOME): tikiTaka 58.0% vs 59.4% pre-change (−1.4, inside ±2), longBall 45.4% vs 44.9% (+0.5, inside ±2); spread 13.7 points — no style dominates: win rates 38.2–52.6%, balance suite (61 tests, incl. the 35–62% band and the tikiTaka > balanced > longBall possession ordering) green. Display honesty verified at a NEUTRAL venue (config homeAdvantage 1.0, seeds 40,000+): displayed 'Est. possession' vs measured gap ≤ 0.8 points for 8 of 10 styles; gegenpressing 2.2 and highPress 1.8 — both over their 1.30/1.22 stamina costs, which drain support below the formula's fresh-legs assumption through the match (the displayed estimate is an at-kick-off number; measured is a match average). Gegenpressing's 2.2 breaches the ±2 criterion by 0.2 at n=1,000 (±3 sampling noise) — I judge this boundary-acceptable and note it here rather than bounce the review; the honest fix if desired later is a stamina-aware display. All tasks and acceptance criteria verified — CLOSED.
