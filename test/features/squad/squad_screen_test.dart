@@ -53,15 +53,23 @@ void main() {
       ),
     );
 
+    // The DEFAULT pump is a plain MaterialApp — no delegates anywhere.
+    // Every localized screen must stay self-contained through l10nOf's
+    // English fallback; only the AR variant installs the delegates,
+    // proving the generated bundle flows end-to-end when a host scopes
+    // it in. This is the regression guard for the original null-crash.
     await tester.pumpWidget(
       ProviderScope(
         overrides: [collectionStoreProvider.overrideWith((ref) => store)],
-        child: MaterialApp(
-          locale: locale,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const Scaffold(body: SquadScreen()),
-        ),
+        child: locale == null
+            ? const MaterialApp(home: Scaffold(body: SquadScreen()))
+            : MaterialApp(
+                locale: locale,
+                localizationsDelegates:
+                    AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: const Scaffold(body: SquadScreen()),
+              ),
       ),
     );
     await tester.runAsync(

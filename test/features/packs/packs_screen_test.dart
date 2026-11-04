@@ -264,6 +264,79 @@ void main() {
     expect(packsAfter.length, packsBefore.length - 1);
   });
 
+  // PacksScreen runs under a plain MaterialApp in this whole file — no
+  // delegates — so the sold-for snackbar copy comes from l10nOf's English
+  // fallback. This is the explicit fallback-copy assertion the suite was
+  // missing: a broken l10nOf (throwing or wrong bundle) fails HERE.
+  testWidgets('SELL from the reveal shows the English sold-for fallback '
+      'snackbar', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester);
+
+    // Claim the owned pack straight into the reveal, like the CLAIM test.
+    final packsBefore = await tester.runAsync(() => store.getAvailablePacks());
+    final claimedCell = find
+        .byKey(
+          ValueKey(
+            'store-pack-${packsBefore!.first.category}-'
+            '${packsBefore.first.scopeValue ?? 'ANY'}-${packsBefore.first.tier}',
+          ),
+        )
+        .first;
+    await tester.ensureVisible(claimedCell);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(claimedCell, warnIfMissed: false);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    // Walk the reveal timeline to its end (8s standard, 17s legendary)
+    // — the SELL/KEEP action bar stays IgnorePointer until done.
+    await tester.pump(const Duration(seconds: 18));
+    expect(find.byType(PackOpeningScreen), findsOneWidget);
+
+    // The reveal offers SELL for a real owned draw.
+    final sellButton = find.widgetWithText(FcmButton, 'SELL');
+    expect(sellButton, findsOneWidget);
+
+    // getCollection already scopes to status == 'owned'.
+    final ownedBefore =
+        (await tester.runAsync(() => store.getCollection()))!.length;
+
+    await tester.tap(sellButton);
+    await tester.pump();
+    // sellPlayers runs real drift I/O before the snackbar presents.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // The fallback bundle copy, verbatim — not a crash, not a key, not
+    // null — presented as a snackbar while the reveal is still onstage.
+    // The full parameterized ARB string is asserted ('Sold for {coins}
+    // coins' with locale-grouped digits), so a broken l10nOf fails here.
+    expect(find.byType(SnackBar), findsWidgets);
+    final soldFor = tester.widget<Text>(find.textContaining('Sold for'));
+    expect(
+      soldFor.data,
+      matches(RegExp(r'^Sold for [\d,]+ coins$')),
+      reason: 'the English fallback copy end-to-end',
+    );
+
+    // The sale was real: one fewer owned player in the collection.
+    expect(
+      (await tester.runAsync(() => store.getCollection()))!.length,
+      ownedBefore - 1,
+    );
+  });
+
   testWidgets(
     'BUY opens a YES/NO confirmation and YES buys AND opens the pack',
     (WidgetTester tester) async {
