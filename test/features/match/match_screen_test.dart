@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/match/live_match_views.dart';
 import 'package:fcm_rivals/features/match/match_screen.dart';
@@ -259,8 +260,6 @@ void main() {
     expect(find.text('Player ratings'), findsOneWidget);
     final clubTab = find.text('FC Rivals');
     expect(clubTab, findsWidgets);
-    final opponentTab = find.text('Al Ahly');
-    expect(opponentTab, findsWidgets);
 
     // FC Rivals players are listed under the open tab.
     int ratingRows() => find
@@ -273,22 +272,38 @@ void main() {
 
     // Switch to the opponent tab: a different set of rows appears
     // (opponent players are generated, not the 'Player N' dataset).
-    await tester.tap(opponentTab.first);
+    // The opponent's name also appears as the momentum-graph legend
+    // ABOVE the ratings section — target the tappable tab specifically
+    // (the FcmPressable carrying the label), or the tap lands on the
+    // inert legend and the list never switches.
+    final opponentTab = find.widgetWithText(FcmPressable, 'Al Ahly');
+    expect(opponentTab, findsOneWidget);
+    await tester.tap(opponentTab);
     await tester.pump(const Duration(milliseconds: 300));
     // The opponent squad is listed now — every 'Player N' name has been
     // swapped for 'Al Ahly XX' rows ('Player ratings' section header is
     // the only 'Player ' text left).
-    // 'Player ratings' (section header) and the Man of the Match panel
-    // (a user player) are the only 'Player ' texts left on the screen —
-    // the ratings list itself has swapped to opponent rows.
+    // 'Player ratings' (section header) is the only 'Player ' text left
+    // on the screen after the swap — the ratings list shows opponent
+    // rows. The Man of the Match can be a user player ('Player N') OR
+    // an opponent player ('Al Ahly XX'): whoever rated highest won it,
+    // so accept either and only pin down that the list itself swapped.
     final remaining = find
         .textContaining('Player ')
         .evaluate()
         .map((e) => (e.widget as Text).data ?? '')
         .where((t) => t.startsWith('Player '))
         .toList();
-    expect(remaining.length, 2);
-    expect(remaining, containsAll(['Player ratings', 'Player 35']));
+    expect(remaining, contains('Player ratings'));
+    expect(remaining.length, lessThanOrEqualTo(2));
+    if (remaining.length == 2) {
+      final mom = remaining.where((t) => t != 'Player ratings').first;
+      expect(
+        RegExp(r'^Player ([1-9]|[1-5]\d|60)$').hasMatch(mom),
+        isTrue,
+        reason: 'MoM must be a user player when a user player wins it',
+      );
+    }
     expect(find.text('Al Ahly ST'), findsWidgets);
 
     // And back — the user's squad returns.

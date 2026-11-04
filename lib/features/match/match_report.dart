@@ -282,7 +282,11 @@ MatchStatsReport computeStats(
     switch (e.type) {
       case MatchEventType.possession:
         s.possessionMinutes++;
+        // Every counted attempt needs its completions: a possession-kept
+        // pocket completes its passes at the team's real accuracy, not
+        // zero (the old asymmetry dragged reported accuracy to ~15%).
         s.passesAttempted += (e.metadata['passesAttempted'] as int? ?? 0);
+        s.passesCompleted += (e.metadata['passesCompleted'] as int? ?? 0);
       case MatchEventType.passMove:
         s.passesAttempted += (e.metadata['passesAttempted'] as int? ?? 0);
         s.passesCompleted += (e.metadata['passesCompleted'] as int? ?? 0);
