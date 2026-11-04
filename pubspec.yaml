@@ -42,6 +42,12 @@ dependencies:
   path_provider: ^2.1.0
   flutter_riverpod: ^2.5.0
 
+  # Localization (EN/AR + RTL): ARB-driven messages via flutter gen-l10n,
+  # locale-aware number/date formatting via intl.
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+
   # Match-day sound: looped stadium ambience for the live match plus
   # goal cheers layered on top (audioplayers handles looping and two
   # simultaneous players).
@@ -71,6 +77,9 @@ flutter:
   # included with your application, so that you can use the icons in the
   # material Icons class.
   uses-material-design: true
+
+  # Localization: generate AppLocalizations from lib/l10n/*.arb.
+  generate: true
 
   assets:
     - assets/data/

@@ -1,0 +1,70 @@
+{
+  "@@locale": "ar",
+  "appTitle": "FCM Rivals",
+  "navSeason": "الموسم",
+  "navTeam": "الفريق",
+  "navCollection": "المجموعة",
+  "navCampus": "الحرم",
+  "navStore": "المتجر",
+  "createYourClub": "أنشئ ناديك",
+  "createYourClubIntro": "تبدأ بعملات و٢٢ حزمة مجانية — اثنتان لكل مركز في تشكيلتك الأولى.",
+  "clubNameLabel": "اسم النادي",
+  "clubNameHint": "الاسم على الشعار",
+  "managerNameLabel": "اسم المدرب",
+  "managerNameHint": "الاسم الذي يناديك به المعلق",
+  "chooseCrest": "اختر شعارك",
+  "chooseFormation": "التشكيلة الأولى",
+  "startClub": "ابدأ النادي",
+  "startSeason": "ابدأ موسمك الأول",
+  "playMatch": "العب المباراة",
+  "completeSeason": "أكمل الموسم",
+  "startSeasonInDivision": "ابدأ الموسم في الدرجة {division}",
+  "@startSeasonInDivision": {
+    "placeholders": {
+      "division": {
+        "type": "int"
+      }
+    }
+  },
+  "nextFixtureRound": "المباراة التالية · الجولة {round}",
+  "@nextFixtureRound": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "noFixtureReady": "لا توجد مباراة جاهزة — يتم التحديث.",
+  "bestSquadSelected": "تم اختيار أفضل تشكيلة",
+  "languageLabel": "اللغة",
+  "languageEn": "English",
+  "languageAr": "العربية",
+  "languageSystem": "النظام",
+  "matchSpeedLabel": "سرعة عرض المباراة",
+  "settingsTitle": "الإعدادات",
+  "coinCompactMillions": "{value} م",
+  "@coinCompactMillions": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "coinCompactThousands": "{value} ألف",
+  "@coinCompactThousands": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "openPacksHint": "افتح الحزم لجمع اللاعبين ثم اضغط الاختيار التلقائي.",
+  "clubCrestSection": "شعار النادي",
+  "starterFormationSection": "التشكيلة الأولى",
+  "starterFormationIntro": "هذه تشكيلتك الأولى — يبدأ فريقك بهذه الهيئة و٢٢ حزمة مجانية تطابق مراكزها. يمكنك تغييرها في أي وقت من تبويب الفريق.",
+  "startManaging": "ابدأ الإدارة",
+  "fieldRequired": "مطلوب",
+  "clubNameHintField": "الاسم على الشعار",
+  "managerNameHintField": "الاسم الذي يناديك به المعلق",
+  "tapAgainToSkip": "اضغط خارج البطاقة مرة أخرى للتخطي بدون حديث"
+}

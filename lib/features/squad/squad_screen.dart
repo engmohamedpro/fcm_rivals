@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/app_localizations.dart';
+
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
@@ -76,11 +78,11 @@ class SquadScreen extends ConsumerWidget {
             // so the tab never hides itself behind a placeholder; the
             // hint above the view just explains how to fill it.
             if (squad.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 14),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
                 child: FcmPanel(
                   child: Text(
-                    'Open packs to collect players, then tap Auto Pick.',
+                    AppLocalizations.of(context)!.openPacksHint,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: FcmColors.textDim),
                   ),
@@ -191,7 +193,13 @@ class SquadScreen extends ConsumerWidget {
     ref.invalidate(squadProvider);
     if (context.mounted) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Best squad selected')));
+          .showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.bestSquadSelected,
+            ),
+          ),
+        );
     }
   }
 

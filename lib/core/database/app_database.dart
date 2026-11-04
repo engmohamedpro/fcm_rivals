@@ -247,6 +247,9 @@ class UserSettings extends Table {
 
   /// Live match playback speed multiplier: 1, 2, 3 or 4 (GDD 26.2).
   IntColumn get matchSpeed => integer().withDefault(const Constant(1))();
+
+  /// UI language tag: 'en', 'ar' or null (follow the system locale).
+  TextColumn get locale => text().nullable()();
 }
 
 @DriftDatabase(
@@ -271,7 +274,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -335,6 +338,10 @@ class AppDatabase extends _$AppDatabase {
         // entry carries the dataset player it represents. Existing
         // rows predate real-player generation and stay null.
         await m.addColumn(aiPlayers, aiPlayers.realPlayerId);
+      }
+      if (from < 10) {
+        // UI language preference (EN/AR; null follows the system).
+        await m.addColumn(userSettings, userSettings.locale);
       }
     },
   );

@@ -835,7 +835,7 @@ class _EventRow extends StatelessWidget {
             width: 30,
             child: Text(
               "${line.minute}'",
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.end,
               style: const TextStyle(
                 color: FcmColors.textDim,
                 fontSize: 11,

@@ -3,7 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'l10n/app_localizations.dart';
 
 import 'app/providers.dart';
 import 'core/ui/fcm_logo.dart';
@@ -26,14 +29,30 @@ void main() {
   runApp(const ProviderScope(child: FcmRivalsApp()));
 }
 
-class FcmRivalsApp extends StatelessWidget {
+class FcmRivalsApp extends ConsumerWidget {
   const FcmRivalsApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // The persisted language choice ('en'/'ar'); null follows the
+    // system locale (English fallback for anything unsupported).
+    final tag = ref.watch(localeProvider);
+    final locale = tag == null ? null : Locale(tag);
     return MaterialApp(
       title: 'FCM Rivals',
       debugShowCheckedModeBanner: false,
+      onGenerateTitle: (context) =>
+          AppLocalizations.of(context)?.appTitle ?? 'FCM Rivals',
+      locale: locale,
+      localeResolutionCallback: (device, supported) =>
+          device ?? const Locale('en'),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: buildFcmTheme(),
       themeMode: ThemeMode.dark,
       darkTheme: buildFcmTheme(),
@@ -66,11 +85,36 @@ class FcmRivalsApp extends StatelessWidget {
 }
 
 /// Routes between onboarding (no club yet) and the main game shell.
-class _EntryGate extends ConsumerWidget {
+class _EntryGate extends ConsumerStatefulWidget {
   const _EntryGate();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_EntryGate> createState() => _EntryGateState();
+}
+
+class _EntryGateState extends ConsumerState<_EntryGate> {
+  @override
+  void initState() {
+    super.initState();
+    // The persisted language loads once at the gate — before any screen
+    // renders — so the whole app starts in the chosen locale.
+    unawaited(_loadPersistedLocale());
+  }
+
+  Future<void> _loadPersistedLocale() async {
+    try {
+      final store = await ref.read(userSettingsProvider.future);
+      final tag = await store.locale();
+      if (tag != null && mounted) {
+        ref.read(localeProvider.notifier).state = tag;
+      }
+    } catch (_) {
+      // Storage hiccup: stay on the system locale.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final club = ref.watch(clubProvider);
     return club.when(
       loading: () => const Scaffold(body: FcmLogoLoading()),
@@ -95,15 +139,48 @@ class GameShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final packs = ref.watch(availablePacksProvider).valueOrNull?.length ?? 0;
+    final l10n = AppLocalizations.of(context)!;
     final items = [
-      const FcmNavItem('Season', Icons.emoji_events_rounded),
-      const FcmNavItem('Team', Icons.shield_rounded),
-      const FcmNavItem('Collection', Icons.collections_bookmark),
-      const FcmNavItem('Campus', Icons.account_balance_rounded),
-      FcmNavItem('Store', Icons.storefront_rounded, badge: packs),
+      FcmNavItem(l10n.navSeason, Icons.emoji_events_rounded),
+      FcmNavItem(l10n.navTeam, Icons.shield_rounded),
+      FcmNavItem(l10n.navCollection, Icons.collections_bookmark),
+      FcmNavItem(l10n.navCampus, Icons.account_balance_rounded),
+      FcmNavItem(l10n.navStore, Icons.storefront_rounded, badge: packs),
     ];
 
     return _GameShellBody(items: items);
+  }
+}
+
+/// EN/AR toggle in the app bar: one tap flips the whole app's locale
+/// and persists the choice (GDD localization). The glyph stays in the
+/// TARGET language so the switch always shows where it leads.
+class _LanguageToggle extends ConsumerWidget {
+  const _LanguageToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tag = ref.watch(localeProvider);
+    final next = tag == 'ar' ? 'en' : 'ar';
+    return IconButton(
+      tooltip: AppLocalizations.of(context)?.languageLabel ?? 'Language',
+      visualDensity: VisualDensity.compact,
+      onPressed: () => unawaited(
+        setLocale(
+          controller: ref.read(localeProvider.notifier),
+          settings: () => ref.read(userSettingsProvider.future),
+          tag: next,
+        ),
+      ),
+      icon: Text(
+        next == 'ar' ? 'ع' : 'EN',
+        style: const TextStyle(
+          color: FcmColors.goldSoft,
+          fontWeight: FontWeight.w900,
+          fontSize: 13,
+        ),
+      ),
+    );
   }
 }
 
@@ -152,6 +229,7 @@ class _GameShellBodyState extends State<_GameShellBody> {
         // release builds (kDebugMode is a const, so tree shaking removes
         // the widget entirely).
         actions: [
+          const _LanguageToggle(),
           if (kDebugMode) const _TestCoinButton(),
           const _CoinBalance(),
         ],
@@ -245,7 +323,7 @@ class _CoinBalance extends ConsumerWidget {
     final club = ref.watch(clubProvider).valueOrNull;
     if (club == null) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(right: 14),
+      padding: const EdgeInsetsDirectional.only(end: 14),
       child: Center(child: FcmCoinChip(coins: club.coins)),
     );
   }

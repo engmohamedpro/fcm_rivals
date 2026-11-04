@@ -52,6 +52,34 @@ class UserSettingsStore {
         .write(db.UserSettingsCompanion(matchSpeed: Value(speed)));
   }
 
+  /// The persisted UI language tag ('en' | 'ar'), or null when the app
+  /// should follow the system locale.
+  Future<String?> locale() async {
+    final row = await _row();
+    return row?.locale;
+  }
+
+  /// Persists the UI language tag; a null clears it back to
+  /// system-follow.
+  Future<void> setLocale(String? tag) async {
+    if (tag != null && tag != 'en' && tag != 'ar') return;
+    final row = await _row();
+    if (row == null) {
+      await database
+          .into(database.userSettings)
+          .insert(
+            db.UserSettingsCompanion.insert(
+              id: _rowId,
+              locale: tag == null ? const Value.absent() : Value(tag),
+            ),
+          );
+      return;
+    }
+    await (database.update(database.userSettings)
+          ..where((t) => t.id.equals(_rowId)))
+        .write(db.UserSettingsCompanion(locale: Value(tag)));
+  }
+
   Future<db.UserSetting?> _row() async {
     final query = database.select(database.userSettings)
       ..where((t) => t.id.equals(_rowId));

@@ -20,6 +20,8 @@ import 'package:flutter/services.dart';
 
 import 'fcm_style.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// Rating → colour used by bars and pills (champagne elite → ember weak),
 /// desaturated to sit inside the brand's gold-on-black palette.
 Color ratingColor(num v) {
@@ -992,12 +994,18 @@ class FcmCoinChip extends StatelessWidget {
 
   final int coins;
 
-  static String compact(int coins) {
+  /// Locale-aware compact readout: the value keeps Western digits (game
+  /// HUD convention) while the unit follows the active locale — 'M'/'K'
+  /// in English, 'م'/'ألف' in Arabic. Callers without a context use the
+  /// English form.
+  static String compact(int coins, {AppLocalizations? l10n}) {
+    String m(String v) => l10n?.coinCompactMillions(v) ?? '${v}M';
+    String k(String v) => l10n?.coinCompactThousands(v) ?? '${v}K';
     if (coins >= 1000000) {
       final v = coins / 1000000;
-      return '${v >= 10 ? v.round() : v.toStringAsFixed(1)}M';
+      return m(v >= 10 ? v.round().toString() : v.toStringAsFixed(1));
     }
-    if (coins >= 10000) return '${(coins / 1000).round()}k';
+    if (coins >= 10000) return k((coins / 1000).round().toString());
     return '$coins';
   }
 
@@ -1036,7 +1044,7 @@ class FcmCoinChip extends StatelessWidget {
         const SizedBox(width: 8),
         FcmCountUp(
           value: coins,
-          format: compact,
+          format: (v) => compact(v, l10n: AppLocalizations.of(context)),
           style: const TextStyle(
             color: FcmColors.goldSoft,
             fontWeight: FontWeight.w900,

@@ -115,6 +115,22 @@ final userSettingsProvider = FutureProvider<UserSettingsStore>((ref) async {
   return UserSettingsStore(database: db);
 });
 
+/// The persisted UI language: 'en', 'ar', or null (follow the system).
+/// The app bar's language toggle writes through [setLocaleProvider].
+final localeProvider = StateProvider<String?>((ref) => null);
+
+/// Persists a UI language choice and updates [localeProvider] so the
+/// MaterialApp rebuilds with the new locale immediately. Accepts the
+/// provider pair so both widget refs and plain refs can call it.
+Future<void> setLocale({
+  required StateController<String?> controller,
+  required Future<UserSettingsStore> Function() settings,
+  String? tag,
+}) async {
+  controller.state = tag;
+  await (await settings()).setLocale(tag);
+}
+
 /// The user club, null until created (FR-001). A stream over drift's
 /// table watch: every coin movement, rename or crest change re-emits
 /// the row automatically, so the app-bar balance and every screen

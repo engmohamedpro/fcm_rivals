@@ -142,7 +142,7 @@ class FacilityCard extends StatelessWidget {
                           Expanded(
                             child: Container(
                               height: 4,
-                              margin: const EdgeInsets.only(right: 3),
+                              margin: const EdgeInsetsDirectional.only(end: 3),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(2),
                                 gradient: i < level

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/app_localizations.dart';
+
 import '../../app/providers.dart';
 import '../../core/domain/players.dart' show Position;
 import '../../core/ui/fcm_logo.dart';
@@ -100,7 +102,9 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                       child: Column(
                         children: [
                           Text(
-                            'Create your club',
+                            AppLocalizations.of(
+                              context,
+                            )!.createYourClub,
                             textAlign: TextAlign.center,
                             style: theme.textTheme.headlineSmall?.copyWith(
                               color: Colors.white,
@@ -108,8 +112,9 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'You start with coins and 22 free packs — two '
-                            'for every position in your starter formation.',
+                            AppLocalizations.of(
+                              context,
+                            )!.createYourClubIntro,
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: FcmColors.textDim,
@@ -131,11 +136,15 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               textInputAction: TextInputAction.next,
                               textCapitalization: TextCapitalization.words,
                               decoration: _field(
-                                'Club name',
+                                AppLocalizations.of(
+                                  context,
+                                )!.clubNameLabel,
                                 Icons.shield_outlined,
                               ),
                               validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? 'Required'
+                                  ? AppLocalizations.of(
+                                        context,
+                                      )!.fieldRequired
                                   : null,
                             ),
                             const SizedBox(height: 14),
@@ -144,16 +153,22 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               textInputAction: TextInputAction.done,
                               textCapitalization: TextCapitalization.words,
                               decoration: _field(
-                                'Manager name',
+                                AppLocalizations.of(
+                                  context,
+                                )!.managerNameLabel,
                                 Icons.person_outline,
                               ),
                               validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? 'Required'
+                                  ? AppLocalizations.of(
+                                        context,
+                                      )!.fieldRequired
                                   : null,
                             ),
                             const SizedBox(height: 22),
-                            const Text(
-                              'CLUB CREST',
+                            Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.clubCrestSection,
                               style: TextStyle(
                                 color: FcmColors.textDim,
                                 fontSize: 12,
@@ -177,8 +192,10 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               ],
                             ),
                             const SizedBox(height: 22),
-                            const Text(
-                              'STARTER FORMATION',
+                            Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.starterFormationSection,
                               style: TextStyle(
                                 color: FcmColors.textDim,
                                 fontSize: 12,
@@ -187,11 +204,10 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'This is your starter formation — your team '
-                              'starts in this shape and your 22 free packs '
-                              'match its positions. You can change it any '
-                              'time later from the Team tab.',
+                            Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.starterFormationIntro,
                               style: TextStyle(
                                 color: FcmColors.textDim,
                                 fontSize: 11,
@@ -228,7 +244,7 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                     FcmEntrance(
                       index: 3,
                       child: FcmButton(
-                        label: 'Start managing',
+                        label: AppLocalizations.of(context)!.startManaging,
                         icon: Icons.arrow_forward_rounded,
                         loading: _submitting,
                         onPressed: _submitting ? null : _submit,

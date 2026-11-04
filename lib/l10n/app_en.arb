@@ -1,0 +1,70 @@
+{
+  "@@locale": "en",
+  "appTitle": "FCM Rivals",
+  "navSeason": "Season",
+  "navTeam": "Team",
+  "navCollection": "Collection",
+  "navCampus": "Campus",
+  "navStore": "Store",
+  "createYourClub": "Create your club",
+  "createYourClubIntro": "You start with coins and 22 free packs — two for every position in your starter formation.",
+  "clubNameLabel": "Club name",
+  "clubNameHint": "The name on the crest",
+  "managerNameLabel": "Manager name",
+  "managerNameHint": "How the commentary calls you",
+  "chooseCrest": "Choose your crest",
+  "chooseFormation": "Starter formation",
+  "startClub": "START CLUB",
+  "startSeason": "Start your first season",
+  "playMatch": "Play match",
+  "completeSeason": "Complete season",
+  "startSeasonInDivision": "Start season in division {division}",
+  "@startSeasonInDivision": {
+    "placeholders": {
+      "division": {
+        "type": "int"
+      }
+    }
+  },
+  "nextFixtureRound": "Next fixture · round {round}",
+  "@nextFixtureRound": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "noFixtureReady": "No fixture ready — refreshing.",
+  "bestSquadSelected": "Best squad selected",
+  "languageLabel": "Language",
+  "languageEn": "English",
+  "languageAr": "العربية",
+  "languageSystem": "System",
+  "matchSpeedLabel": "Match playback speed",
+  "settingsTitle": "Settings",
+  "coinCompactMillions": "{value}M",
+  "@coinCompactMillions": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "coinCompactThousands": "{value}K",
+  "@coinCompactThousands": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "openPacksHint": "Open packs to collect players, then tap Auto Pick.",
+  "clubCrestSection": "CLUB CREST",
+  "starterFormationSection": "STARTER FORMATION",
+  "starterFormationIntro": "This is your starter formation — your team starts in this shape and your 22 free packs match its positions. You can change it any time later from the Team tab.",
+  "startManaging": "Start managing",
+  "fieldRequired": "Required",
+  "clubNameHintField": "The name on the crest",
+  "managerNameHintField": "How the commentary calls you",
+  "tapAgainToSkip": "Tap outside again to skip without a pep talk"
+}

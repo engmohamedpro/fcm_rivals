@@ -1252,7 +1252,7 @@ class _RatingsPanel extends StatelessWidget {
                   ),
                   if (r.goals > 0)
                     Padding(
-                      padding: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsetsDirectional.only(start: 6),
                       child: Text(
                         '⚽ ×${r.goals}',
                         style: const TextStyle(fontSize: 12),
@@ -1260,7 +1260,7 @@ class _RatingsPanel extends StatelessWidget {
                     ),
                   if (r.assists > 0)
                     Padding(
-                      padding: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsetsDirectional.only(start: 6),
                       child: Text(
                         '🅰 ×${r.assists}',
                         style: const TextStyle(fontSize: 12),

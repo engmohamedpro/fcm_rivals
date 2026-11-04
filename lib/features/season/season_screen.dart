@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/app_localizations.dart';
+
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
@@ -283,7 +285,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                 const FcmIconBadge(icon: Icons.stadium_rounded, size: 96),
                 const SizedBox(height: 22),
                 Text(
-                  'Start your first season',
+                  AppLocalizations.of(context)!.startSeason,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     color: Colors.white,
@@ -504,7 +506,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                     onPressed: _busy ? null : _playNextFixture,
                     compact: true,
                     icon: Icons.play_arrow_rounded,
-                    label: 'Play match',
+                    label: AppLocalizations.of(context)!.playMatch,
                   ),
                 ],
               ),
@@ -519,7 +521,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                 onPressed: _busy ? null : _maybeCompleteSeason,
                 loading: _busy,
                 icon: Icons.emoji_events,
-                label: 'Complete season',
+                label: AppLocalizations.of(context)!.completeSeason,
               ),
             ),
           ),

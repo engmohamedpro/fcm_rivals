@@ -6765,8 +6765,17 @@ class $UserSettingsTable extends UserSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _localeMeta = const VerificationMeta('locale');
   @override
-  List<GeneratedColumn> get $columns => [id, matchSpeed];
+  late final GeneratedColumn<String> locale = GeneratedColumn<String>(
+    'locale',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, matchSpeed, locale];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -6790,6 +6799,12 @@ class $UserSettingsTable extends UserSettings
         matchSpeed.isAcceptableOrUnknown(data['match_speed']!, _matchSpeedMeta),
       );
     }
+    if (data.containsKey('locale')) {
+      context.handle(
+        _localeMeta,
+        locale.isAcceptableOrUnknown(data['locale']!, _localeMeta),
+      );
+    }
     return context;
   }
 
@@ -6807,6 +6822,10 @@ class $UserSettingsTable extends UserSettings
         DriftSqlType.int,
         data['${effectivePrefix}match_speed'],
       )!,
+      locale: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}locale'],
+      ),
     );
   }
 
@@ -6821,17 +6840,29 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
 
   /// Live match playback speed multiplier: 1, 2, 3 or 4 (GDD 26.2).
   final int matchSpeed;
-  const UserSetting({required this.id, required this.matchSpeed});
+
+  /// UI language tag: 'en', 'ar' or null (follow the system locale).
+  final String? locale;
+  const UserSetting({required this.id, required this.matchSpeed, this.locale});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['match_speed'] = Variable<int>(matchSpeed);
+    if (!nullToAbsent || locale != null) {
+      map['locale'] = Variable<String>(locale);
+    }
     return map;
   }
 
   UserSettingsCompanion toCompanion(bool nullToAbsent) {
-    return UserSettingsCompanion(id: Value(id), matchSpeed: Value(matchSpeed));
+    return UserSettingsCompanion(
+      id: Value(id),
+      matchSpeed: Value(matchSpeed),
+      locale: locale == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locale),
+    );
   }
 
   factory UserSetting.fromJson(
@@ -6842,6 +6873,7 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     return UserSetting(
       id: serializer.fromJson<int>(json['id']),
       matchSpeed: serializer.fromJson<int>(json['matchSpeed']),
+      locale: serializer.fromJson<String?>(json['locale']),
     );
   }
   @override
@@ -6850,17 +6882,26 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'matchSpeed': serializer.toJson<int>(matchSpeed),
+      'locale': serializer.toJson<String?>(locale),
     };
   }
 
-  UserSetting copyWith({int? id, int? matchSpeed}) =>
-      UserSetting(id: id ?? this.id, matchSpeed: matchSpeed ?? this.matchSpeed);
+  UserSetting copyWith({
+    int? id,
+    int? matchSpeed,
+    Value<String?> locale = const Value.absent(),
+  }) => UserSetting(
+    id: id ?? this.id,
+    matchSpeed: matchSpeed ?? this.matchSpeed,
+    locale: locale.present ? locale.value : this.locale,
+  );
   UserSetting copyWithCompanion(UserSettingsCompanion data) {
     return UserSetting(
       id: data.id.present ? data.id.value : this.id,
       matchSpeed: data.matchSpeed.present
           ? data.matchSpeed.value
           : this.matchSpeed,
+      locale: data.locale.present ? data.locale.value : this.locale,
     );
   }
 
@@ -6868,43 +6909,50 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
   String toString() {
     return (StringBuffer('UserSetting(')
           ..write('id: $id, ')
-          ..write('matchSpeed: $matchSpeed')
+          ..write('matchSpeed: $matchSpeed, ')
+          ..write('locale: $locale')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, matchSpeed);
+  int get hashCode => Object.hash(id, matchSpeed, locale);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UserSetting &&
           other.id == this.id &&
-          other.matchSpeed == this.matchSpeed);
+          other.matchSpeed == this.matchSpeed &&
+          other.locale == this.locale);
 }
 
 class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   final Value<int> id;
   final Value<int> matchSpeed;
+  final Value<String?> locale;
   final Value<int> rowid;
   const UserSettingsCompanion({
     this.id = const Value.absent(),
     this.matchSpeed = const Value.absent(),
+    this.locale = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   UserSettingsCompanion.insert({
     required int id,
     this.matchSpeed = const Value.absent(),
+    this.locale = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id);
   static Insertable<UserSetting> custom({
     Expression<int>? id,
     Expression<int>? matchSpeed,
+    Expression<String>? locale,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (matchSpeed != null) 'match_speed': matchSpeed,
+      if (locale != null) 'locale': locale,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6912,11 +6960,13 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   UserSettingsCompanion copyWith({
     Value<int>? id,
     Value<int>? matchSpeed,
+    Value<String?>? locale,
     Value<int>? rowid,
   }) {
     return UserSettingsCompanion(
       id: id ?? this.id,
       matchSpeed: matchSpeed ?? this.matchSpeed,
+      locale: locale ?? this.locale,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6930,6 +6980,9 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     if (matchSpeed.present) {
       map['match_speed'] = Variable<int>(matchSpeed.value);
     }
+    if (locale.present) {
+      map['locale'] = Variable<String>(locale.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6941,6 +6994,7 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     return (StringBuffer('UserSettingsCompanion(')
           ..write('id: $id, ')
           ..write('matchSpeed: $matchSpeed, ')
+          ..write('locale: $locale, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10457,12 +10511,14 @@ typedef $$UserSettingsTableCreateCompanionBuilder =
     UserSettingsCompanion Function({
       required int id,
       Value<int> matchSpeed,
+      Value<String?> locale,
       Value<int> rowid,
     });
 typedef $$UserSettingsTableUpdateCompanionBuilder =
     UserSettingsCompanion Function({
       Value<int> id,
       Value<int> matchSpeed,
+      Value<String?> locale,
       Value<int> rowid,
     });
 
@@ -10482,6 +10538,11 @@ class $$UserSettingsTableFilterComposer
 
   ColumnFilters<int> get matchSpeed => $composableBuilder(
     column: $table.matchSpeed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get locale => $composableBuilder(
+    column: $table.locale,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10504,6 +10565,11 @@ class $$UserSettingsTableOrderingComposer
     column: $table.matchSpeed,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get locale => $composableBuilder(
+    column: $table.locale,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$UserSettingsTableAnnotationComposer
@@ -10522,6 +10588,9 @@ class $$UserSettingsTableAnnotationComposer
     column: $table.matchSpeed,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get locale =>
+      $composableBuilder(column: $table.locale, builder: (column) => column);
 }
 
 class $$UserSettingsTableTableManager
@@ -10557,20 +10626,24 @@ class $$UserSettingsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> matchSpeed = const Value.absent(),
+                Value<String?> locale = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UserSettingsCompanion(
                 id: id,
                 matchSpeed: matchSpeed,
+                locale: locale,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required int id,
                 Value<int> matchSpeed = const Value.absent(),
+                Value<String?> locale = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UserSettingsCompanion.insert(
                 id: id,
                 matchSpeed: matchSpeed,
+                locale: locale,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

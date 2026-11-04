@@ -116,7 +116,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                         children: [
                           for (final f in _Filter.values)
                             Padding(
-                              padding: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsetsDirectional.only(end: 8),
                               child: ChoiceChip(
                                 label: Text(switch (f) {
                                   _Filter.all => 'All',

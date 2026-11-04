@@ -78,7 +78,7 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
         title: const Text('Touchline'),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsetsDirectional.only(end: 12),
             child: FcmButton(
               compact: true,
               icon: Icons.check_rounded,
