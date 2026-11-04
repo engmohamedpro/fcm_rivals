@@ -4,7 +4,7 @@
 - Priority: Critical
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -33,4 +33,4 @@ Reported pass completion is 15.6% vs real 75–85%. `computeStats` adds `passesA
 - Test-suite repair in `match_screen_test.dart` (pre-existing flake, not engine change): the opponent-tab tap targeted `find.text('Al Ahly').first`, which matches the momentum-graph LEGEND above the ratings section — the tap landed on the inert legend and the list never switched. Now targets `find.widgetWithText(FcmPressable, 'Al Ahly')`. Also unfroze the Man-of-the-Match assertion (was pinned to 'Player 35', one specific match outcome; the MoM may legitimately be an opponent player, e.g. a keeper with many saves).
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified independently on FRESH seeds (20,000-21,999, reviewer harness): pass completion 0.720 (band 0.70-0.88), 377 attempts/team/match (300-600), GK strong involvement (a save or a corner claim — the exact triggers the engine feeds _involvedThisMinute) in 1,998/2,000 = 99.9% of matches (>= 90%), comparable to starting CBs (referenced in 2,000/2,000). Favourite edge on fresh seeds 30,000-30,499: +5.8 completion points at a 7.0-point support gap (>= +4). computeStats counts completions on possession events; random-stream discipline confirmed by the calibration suite holding its pre-change distributions. Locked suite `pass_completion_stats_test.dart` re-run green (3/3). Reviewer's first harness pass mis-measured GK visibility (wrong player ids in the harness itself — reviewer bug, fixed); the developer's firstWhere-by-position approach is the robust one. All tasks and acceptance criteria verified — CLOSED.
