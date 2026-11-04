@@ -4,9 +4,9 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: OPEN
-- Completed by: -
-- Completed on: -
+- Status: CLOSED
+- Completed by: Kareem
+- Completed on: 2026-11-04
 
 ## Context
 Matches never open up late and discipline is too soft (2,000-match seeded sim): goals in minutes 76–90+stoppage are 16.3% of all goals (real 20–22%) while minutes 1–15 carry 17.8% (real 10–14%); yellows 1.9/match (real 3.5–4.5), reds 0.19/match (real 0.10–0.15). Late-game drama — the most engaging part of football — is missing, which also weakens the value of substitutions and game management.
@@ -39,4 +39,4 @@ Coupling documented: late-game clustering costs the 6+ share ~1 point (6.55% vs 
 Localization: pure-Dart engine, no user-facing strings; the project has no l10n infrastructure (project-level UI gap, unchanged by this review).
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified independently on FRESH seeds (20,000–22,999, n=3,000 even strength): goal buckets 1-15 15.1% (≤ 16), 16-30 15.3%, 31-45+ 15.7%, 46-60 17.1%, 61-75 16.4%, 76-90+ 20.4% (band 19–25 — the review's headline ask, previously 16.3%); goals/match 2.848 (2.4–2.9 held). Cards: yellows 3.297 (3.0–4.8), reds 0.159 (0.05–0.18) — the prescribed raw pair (0.19/0.002) produced 0.42 reds, so the developer's documented deviation (0.17/0.001 plus a booked-player foul-weight caution of 0.35) is the correct landing and I verify it as such. Code inspection: urgency 0.06/goal capped 0.18 from minute 55; defensive-fatigue multiplier with the review's 0.92 + 0.08 × avgStamina/100 effectiveness form, quadratic time ramp and cold-start ramp (the deviations from the literal Task-1 formula are documented — the literal form was 12x too weak and would have left the timing bands failing); Task 3 latent pressure legitimately skipped with reasoning. Calibration suite (six bucket + card assertions at n=2,000) green in 7.7s; favourite-win ladder unchanged (gap group 72–88% green); full suite 657 green, analyzer clean. All tasks and acceptance criteria verified — CLOSED.
