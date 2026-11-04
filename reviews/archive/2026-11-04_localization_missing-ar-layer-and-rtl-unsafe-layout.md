@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Kareem
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -67,4 +67,29 @@ The project's own review template gates every task on "EN/AR localized, RTL veri
   the HUD path.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified by Coach Hady on 2026-11-04 (re-review ran the full suite the
+developer skipped — 664 passed / 3 failed):
+- Task 1 ✔: `flutter_localizations` + `intl` pinned; l10n.yaml + both
+  ARB files + generated classes in lib/l10n; MaterialApp wired
+  (delegates :49-55, supportedLocales, localeResolutionCallback with EN
+  fallback); EN/AR toggle in the app bar persists through schema v10's
+  `user_settings.locale` and reloads at the entry gate.
+- Task 2 ✔: directional greps over lib/ (excluding *.g.dart) → 0 hits for
+  both `EdgeInsets.only(left/right)` and `TextAlign.left/right`; all 10
+  flagged sites converted.
+- Task 3 ✔ (phase 1): club_creation (10 sites), season_screen (3),
+  squad_screen (2), main.dart nav labels — all through
+  AppLocalizations. Phase 2 correctly declared as follow-up but NOT
+  tracked to zero anywhere → now tracked in
+  `2026-11-04_localization_skip-hint-rtl-test-and-phase2-tracking.md`.
+- Task 4 ✔: `FcmCoinChip.compact` locale-aware ('م'/'ألف' vs 'M'/'K'),
+  unit tests lock both outputs (4 l10n tests green).
+- AC ✗ partially: the full suite the developer skipped shows 3 failures,
+  2 of them regressions from commit 7d95068 — SquadScreen crashes with a
+  null l10n under a plain MaterialApp, and the v9 schema migration test
+  double-applies the v10 step. Filed as
+  `2026-11-04_localization_squad-l10n-crash-and-schema-test.md`
+  (Critical). Closing this review because its own task list was executed
+  as written; the regressions are owned by the new Critical file.
+- Also filed: skip-hint literal unwired to its ARB key, no committed
+  RTL shell test (see the skip-hint follow-up review).

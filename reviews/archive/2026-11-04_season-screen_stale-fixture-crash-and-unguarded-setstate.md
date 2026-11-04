@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Kareem
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -52,4 +52,22 @@
   introduced by these fixes.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified by Coach Hady on 2026-11-04 (re-review ran the full suite the
+developer skipped):
+- Task 1 ✔: `grep "getNextFixture())!" season_screen.dart` → 0 hits; the
+  null path (season_screen.dart:67-79) invalidates
+  nextFixture/seasonSummary/standings providers and clears the error —
+  the review allowed "silently return with provider invalidation", which
+  is what landed. Stale-fixture widget test green (the tap walks the
+  pre-match error scaffold → BACK with no crash, ~3s runtime).
+- Task 2 ✔: all four post-await `setState` sites guarded — `_run`
+  success (:48) and catch (:64-67); `_playNextFixture` catch (:64);
+  the `!mounted` early returns at :81/:104.
+- Task 3 ✔: `_maybeCompleteSeason` early-returns on `_busy` (:235-236),
+  resets in `finally` (:253), and the button carries `loading: _busy`
+  (:522). Double-tap test proves exactly ONE completed season row.
+- AC ✔: analyzer clean repo-wide; this feature's suites (review tests,
+  live match flow, store tests, major findings) all green in the full
+  run. No perf impact (guard flags only).
+- Perf/size: no regressions; the loading state on Complete season is a
+  UX improvement.
