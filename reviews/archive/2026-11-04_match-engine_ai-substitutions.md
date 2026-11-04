@@ -4,7 +4,7 @@
 - Priority: Critical
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -32,4 +32,4 @@ AI substitutions never happen: 0.0/match across 9,200 simulated matches. The thr
 - `test/features/match/ai_substitutions_test.dart` added: volume band over 500 seeds, cap, report/commentary reflection, minute accounting, empty-bench safety, determinism. Tuning harness deleted after locking the numbers into the test.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified independently on FRESH seeds (10,000-10,499, reviewer harness — not the developer's seeds): 3.35 AI subs/team/match (band 2.0-4.0), max 4 per team (cap 5 holds), chasing-game swaps in 354/500 matches, every match had at least one sub. Code inspection: tired gates 65' / stamina < 76 then < 70 from 80', 12-minute spacing, GK excluded from rotation; user-team SubstitutionCommand path byte-identical since 7be7a85 (diff = 0 lines). Locked suite `ai_substitutions_test.dart` re-run green (4/4); stamina_rotation across a full AI season still green. All tasks and acceptance criteria verified — CLOSED.
