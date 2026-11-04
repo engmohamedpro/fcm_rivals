@@ -1284,9 +1284,10 @@ class MatchEngine {
 
     // Substitutions first (GDD 10.5): an AI side refreshes tired legs
     // from its bench — the same rotation pressure the user's squad has.
-    // Only genuinely tired starters (< 40 stamina after minute 55, or <
-    // 30 after 70) come off, and the best compatible bench body comes
-    // on, so AI clubs rotate when fitness demands it, not every match.
+    // Starters below the age-dependent band (80 after 65', 72 after 80')
+    // come off for the best compatible bench body, and a trailing side
+    // gambles with an attacker after 70', so AI clubs rotate when
+    // fitness or the scoreline demands it.
     produced.addAll(_maybeAiSubstitutions(side, rt, minute));
 
     if (rt.aiChanges >= config.aiMaxChanges) return produced;
@@ -1331,10 +1332,16 @@ class MatchEngine {
     return produced;
   }
 
-  /// AI substitutions for tired starters (GDD 10.5/11): the outgoing
-  /// player stops draining stamina the moment he is off (bench never
-  /// drains), the substitute drains only from his entrance — the engine
-  /// runtime already models this; here the AI just decides WHEN.
+  /// AI substitutions (GDD 10.5/11): the outgoing player stops draining
+  /// stamina the moment he is off (bench never drains), the substitute
+  /// drains only from his entrance — the engine runtime already models
+  /// this; here the AI just decides WHEN. The gates must intersect the
+  /// REAL stamina curve: a balanced full-match starter finishes near 70,
+  /// so the tired bands sit at 80 (from 65') and 72 (from 80') — the old
+  /// 40/30 gates never triggered and AI subs were dead code. A team
+  /// trailing after 70' also gambles with a defender-for-attacker swap
+  /// (GDD 12.6). At most one AI change per team per 5 minutes, so the
+  /// window budget is spread through the final third like real matches.
   List<MatchEvent> _maybeAiSubstitutions(
     MatchSide side,
     _TeamRuntime rt,
@@ -1342,19 +1349,35 @@ class MatchEngine {
   ) {
     if (rt.substitutionsUsed >= config.maxSubstitutions) return const [];
     if (rt.bench.isEmpty) return const [];
-    if (minute < 55) return const [];
+    if (minute < 65) return const [];
+    if (minute - rt.lastAiSubMinute < 12) return const [];
     final produced = <MatchEvent>[];
 
-    // Tired threshold sinks as the match ages: 40 after 55', 30 after 70'.
-    final threshold = minute >= 70 ? 30 : 40;
+    // Chasing the game (GDD 12.6) FIRST — it is the stronger signal and
+    // must claim the window (and the bench attacker) before rotation
+    // does: a trailing side throws an attacker on for a defender after
+    // 70', even when nobody is exhausted.
+    final diff = side == MatchSide.home
+        ? _scoreHome - _scoreAway
+        : _scoreAway - _scoreHome;
+    if (diff < 0 &&
+        minute >= 70 &&
+        !rt.aiChaseSubDone &&
+        rt.substitutionsUsed < config.maxSubstitutions) {
+      final event = _aiChaseSubstitution(side, rt, minute);
+      if (event != null) produced.add(event);
+    }
+
+    // Tired threshold sinks as the match ages: 76 after 65', 70 after 80'.
+    final threshold = minute >= 80 ? 70 : 76;
     final onPitch = rt.onPitch.whereType<MatchPlayer>().toList()
       ..sort((a, b) => a.stamina.compareTo(b.stamina));
     for (final tired in onPitch) {
       if (rt.substitutionsUsed >= config.maxSubstitutions) break;
+      if (tired.position == Position.gk) continue;
       if (tired.stamina >= threshold) {
         break; // sorted ascending: nobody left is tired
       }
-      // Best compatible remaining bench player for the outgoing slot.
       final slotIndex = rt.onPitch.indexWhere(
         (p) => p?.playerId == tired.playerId,
       );
@@ -1362,37 +1385,117 @@ class MatchEngine {
       final slotPosition = slotIndex < rt.formation.slots.length
           ? rt.formation.slots[slotIndex].position
           : tired.position;
-      MatchPlayer? bestIn;
-      var bestScore = -1.0;
-      for (final candidate in rt.bench) {
+      final bestIn = _bestBenchForSlot(rt, slotPosition);
+      if (bestIn == null) continue;
+      final event = _applyAiSubstitution(
+        side: side,
+        rt: rt,
+        minute: minute,
+        outgoing: tired,
+        incoming: bestIn,
+        reason: 'tired',
+      );
+      if (event != null) {
+        produced.add(event);
+        break; // one change per window: subs spread like real matches
+      }
+    }
+    return produced;
+  }
+
+  /// Best remaining bench body for [slotPosition]: slot compatibility
+  /// first, then overall quality, with freshness as the tiebreaker.
+  MatchPlayer? _bestBenchForSlot(_TeamRuntime rt, Position slotPosition) {
+    MatchPlayer? best;
+    var bestScore = -1.0;
+    for (final candidate in rt.bench) {
+      final compat = const SquadEngine().compatibilityOf(
+        candidate.position,
+        slotPosition,
+      );
+      if (compat <= 0.1) continue;
+      final score =
+          compat *
+          (candidate.attack + candidate.support + candidate.defence) *
+          (0.75 + 0.25 * (candidate.stamina / 100));
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+    return best;
+  }
+
+  /// Executes one AI swap and emits the corresponding event.
+  MatchEvent? _applyAiSubstitution({
+    required MatchSide side,
+    required _TeamRuntime rt,
+    required int minute,
+    required MatchPlayer outgoing,
+    required MatchPlayer incoming,
+    required String reason,
+  }) {
+    if (!rt.bench.any((p) => p.playerId == incoming.playerId)) return null;
+    rt.substitute(outgoing.playerId, incoming.playerId, config.maxSubstitutions);
+    rt.lastAiSubMinute = minute;
+    final event = _event(
+      minute: minute,
+      type: MatchEventType.substitution,
+      side: side,
+      primaryPlayerId: outgoing.playerId,
+      secondaryPlayerId: incoming.playerId,
+      metadata: {'ai': true, 'reason': reason},
+    );
+    _events.add(event);
+    return event;
+  }
+
+  /// Chasing-game gamble (GDD 12.6): the best bench attacker takes the
+  /// defensive slot that compromises him least — the weariest defender
+  /// makes way when the options are otherwise equal.
+  MatchEvent? _aiChaseSubstitution(
+    MatchSide side,
+    _TeamRuntime rt,
+    int minute,
+  ) {
+    MatchPlayer? outDefender;
+    MatchPlayer? inAttacker;
+    var bestScore = -1.0;
+    for (var slot = 0; slot < rt.onPitch.length; slot++) {
+      final defender = rt.onPitch[slot];
+      if (defender == null) continue;
+      final slotPosition = slot < rt.formation.slots.length
+          ? rt.formation.slots[slot].position
+          : defender.position;
+      const defenders = {Position.cb, Position.lb, Position.rb, Position.cdm};
+      if (!defenders.contains(slotPosition)) continue;
+      for (final attacker in rt.bench) {
+        const attackers = {Position.st, Position.lw, Position.rw, Position.cam};
+        if (!attackers.contains(attacker.position)) continue;
         final compat = const SquadEngine().compatibilityOf(
-          candidate.position,
+          attacker.position,
           slotPosition,
         );
         if (compat <= 0.1) continue;
         final score =
-            compat *
-            (candidate.attack + candidate.support + candidate.defence) *
-            (0.75 + 0.25 * (candidate.stamina / 100));
+            compat * attacker.attack + (100 - defender.stamina) * 0.05;
         if (score > bestScore) {
           bestScore = score;
-          bestIn = candidate;
+          outDefender = defender;
+          inAttacker = attacker;
         }
       }
-      if (bestIn == null) continue;
-      rt.substitute(tired.playerId, bestIn.playerId, config.maxSubstitutions);
-      final event = _event(
-        minute: minute,
-        type: MatchEventType.substitution,
-        side: side,
-        primaryPlayerId: tired.playerId,
-        secondaryPlayerId: bestIn.playerId,
-        metadata: {'ai': true, 'reason': 'tired'},
-      );
-      _events.add(event);
-      produced.add(event);
     }
-    return produced;
+    if (outDefender == null || inAttacker == null) return null;
+    rt.aiChaseSubDone = true;
+    return _applyAiSubstitution(
+      side: side,
+      rt: rt,
+      minute: minute,
+      outgoing: outDefender,
+      incoming: inAttacker,
+      reason: 'chasing',
+    );
   }
 
   ActionModifiers _activeActionModifiersOf(MatchSide side) {
@@ -1527,6 +1630,12 @@ class _TeamRuntime {
   int actionExpiresMinute = 0;
   int aiChanges = 0;
   int lastAiChangeMinute = 0;
+
+  /// AI substitution bookkeeping: last minute an AI sub was made (subs
+  /// are spaced ≥ 5 minutes apart) and whether the chasing-game
+  /// attacker swap has already been used this match.
+  int lastAiSubMinute = 0;
+  bool aiChaseSubDone = false;
 
   /// Active pep talk (GDD 15): persistent multipliers, at most one at a
   /// time — a later talk replaces the earlier one.

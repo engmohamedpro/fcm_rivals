@@ -821,7 +821,10 @@ void main() {
     });
 
     test('AI substitutions stop at the substitution cap', () {
-      // Six tired bodies, only five subs allowed: exactly five happen.
+      // Six tired bodies, only five subs allowed. With the 12-minute
+      // spacing (sub windows at 65, 77, 89...) the cap is reached only
+      // through the spread windows, so this proves the cap still binds:
+      // never more than five, and as many as the windows allow.
       final starters = [
         mk(1, Position.gk),
         for (var i = 2; i <= 11; i++)
@@ -851,18 +854,30 @@ void main() {
         ),
       );
       engine.simulateToEnd();
-      expect(engine.state.substitutionsAway, 5);
+      expect(
+        engine.state.substitutionsAway,
+        lessThanOrEqualTo(engine.config.maxSubstitutions),
+        reason: 'the hard cap must always bind',
+      );
+      // 65→77→89 is three spread windows before full time: the six tired
+      // legs still get relieved, just paced like a real bench.
+      expect(
+        engine.state.substitutionsAway,
+        greaterThan(0),
+        reason: 'exhausted squads must still be rotated',
+      );
     });
 
     test(
       'a subbed-out player stops draining; the substitute drains from entry',
       () {
-        // One fading starter (enters the sub window below 40) subbed at
-        // the first AI window (minute 55+), one fresh substitute: after
-        // full time the substitute's minutes are strictly fewer than the
-        // match length, while the starter's stamina stays well above zero
-        // — frozen at what he had when he came off instead of draining to
-        // the floor he would have hit playing all 90.
+        // One fading starter (enters the sub window well below the 76
+        // gate) subbed at the first AI window (minute 65+), one fresh
+        // substitute: after full time the substitute's minutes are
+        // strictly fewer than the match length, while the starter's
+        // stamina stays well above zero — frozen at what he had when he
+        // came off instead of draining to the floor he would have hit
+        // playing all 90.
         final starters = [
           mk(1, Position.gk),
           mk(2, Position.cb, stamina: 38),
@@ -897,20 +912,20 @@ void main() {
         final players = engine.playersOf(MatchSide.away);
         final starter = players.firstWhere((p) => p.playerId == 2);
         final substitute = players.firstWhere((p) => p.playerId == 12);
-        // Substitute entered no earlier than minute 55 → at most ~43 mins
-        // (90 + stoppage - 54), never a full match.
-        expect(substitute.minutesPlayed, lessThan(44));
+        // Substitute entered no earlier than minute 65 → at most ~33 mins
+        // (90 + stoppage - 64), never a full match.
+        expect(substitute.minutesPlayed, lessThan(34));
         expect(substitute.minutesPlayed, greaterThan(0));
         // The starter came off and stopped draining: subbed around minute
-        // 55 with ~55 minutes of play, his remaining stamina is exactly
-        // the kick-off value minus ~55 minutes of drain — NOT the ~0 he
+        // 65 with ~65 minutes of play, his remaining stamina is exactly
+        // the kick-off value minus ~65 minutes of drain — NOT the ~0 he
         // would have reached playing all 90 (0.43/min × 90 ≈ 39 drain).
         // The assertion is the FROZEN property: staying above the floor a
         // full-match drain would have hit.
         expect(starter.stamina, greaterThan(38 - 0.55 * 90));
         expect(starter.stamina, lessThan(38));
         // Match minutes: starter played the minutes up to his substitution.
-        expect(starter.minutesPlayed, lessThan(56));
+        expect(starter.minutesPlayed, lessThan(66));
       },
     );
   });
