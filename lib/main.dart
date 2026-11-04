@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -147,7 +148,13 @@ class _GameShellBodyState extends State<_GameShellBody> {
           child: FcmGoldSeam(),
         ),
         title: const FcmWordmark(size: 44),
-        actions: const [_TestCoinButton(), _CoinBalance()],
+        // Dev-only: the test-coin shortcut is compiled out of profile and
+        // release builds (kDebugMode is a const, so tree shaking removes
+        // the widget entirely).
+        actions: [
+          if (kDebugMode) const _TestCoinButton(),
+          const _CoinBalance(),
+        ],
       ),
       body: FcmBackdrop(
         child: Stack(
@@ -245,8 +252,9 @@ class _CoinBalance extends ConsumerWidget {
 }
 
 /// TEMPORARY DEV BUTTON — remove together with
-/// CollectionStore.grantTestCoins once testing is done. Sits before the
-/// coin balance in the app bar; each tap credits 1,000,000 test coins.
+/// CollectionStore.grantTestCoins once testing is done. Debug builds
+/// only (see the kDebugMode guard at the call site); each tap credits
+/// 1,000,000 test coins.
 class _TestCoinButton extends ConsumerWidget {
   const _TestCoinButton();
 
