@@ -307,7 +307,7 @@ class _ControlCard extends StatelessWidget {
     children: [
       const Text(
         'TEAM RATING',
-        textAlign: TextAlign.right,
+        textAlign: TextAlign.end,
         style: TextStyle(
           color: FcmColors.textDim,
           fontSize: 9,
