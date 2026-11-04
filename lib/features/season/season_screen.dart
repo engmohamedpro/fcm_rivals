@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 
 import '../../app/providers.dart';
+import '../../app/routes.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../match/match_forecast.dart' show PreMatchData;
 import '../match/tactics.dart' show MatchPepTalk;
-import '../match/match_screen.dart';
 import '../match/pre_match_screen.dart'
     show PreMatchScreen, PreMatchTacticSelection;
 import 'season_engine.dart' show StandingEntry;
@@ -82,18 +82,15 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       // for this match only — the saved default setup is never touched.
       MatchPepTalk? talk;
       PreMatchTacticSelection? tactics;
-      final kickedOff = await Navigator.of(context).push<bool>(
-        MaterialPageRoute<bool>(
-          builder: (_) => _PreMatchRoute(
-            loadData: () => store.loadPreMatchData(
-              ref.read(collectionStoreProvider).value!,
-            ),
-            onKickOff: (t, selection) {
-              talk = t;
-              tactics = selection;
-            },
-          ),
+      final kickedOff = await AppRoutes.preMatch(
+        context,
+        loadData: () => store.loadPreMatchData(
+          ref.read(collectionStoreProvider).value!,
         ),
+        onKickOff: (t, selection) {
+          talk = t;
+          tactics = selection;
+        },
       );
       if (!mounted || kickedOff != true) return;
       final collection = await ref.read(collectionStoreProvider.future);
@@ -104,14 +101,11 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       );
       if (!mounted) return;
       setState(() => _error = null);
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => MatchScreen(
-            session: session,
-            title: 'League · Round ${next.round}',
-            onFullTime: (report) => store.commitFixtureResult(session, next),
-          ),
-        ),
+      await AppRoutes.leagueMatch(
+        context,
+        session: session,
+        title: 'League · Round ${next.round}',
+        onFullTime: (report) => store.commitFixtureResult(session, next),
       );
       ref.invalidate(seasonSummaryProvider);
       ref.invalidate(standingsProvider);
@@ -724,8 +718,12 @@ class _StandingRow extends StatelessWidget {
 /// knows kick-off was pressed (vs. backed out, which leaves the fixture
 /// unplayed). Nothing is persisted here — the selection lives only for
 /// the match the caller is about to create.
-class _PreMatchRoute extends ConsumerStatefulWidget {
-  const _PreMatchRoute({required this.loadData, required this.onKickOff});
+class PreMatchRoute extends ConsumerStatefulWidget {
+  const PreMatchRoute({
+    super.key,
+    required this.loadData,
+    required this.onKickOff,
+  });
 
   final Future<PreMatchData> Function() loadData;
 
@@ -735,10 +733,10 @@ class _PreMatchRoute extends ConsumerStatefulWidget {
   onKickOff;
 
   @override
-  ConsumerState<_PreMatchRoute> createState() => _PreMatchRouteState();
+  ConsumerState<PreMatchRoute> createState() => PreMatchRouteState();
 }
 
-class _PreMatchRouteState extends ConsumerState<_PreMatchRoute> {
+class PreMatchRouteState extends ConsumerState<PreMatchRoute> {
   Future<PreMatchData>? _future;
 
   @override

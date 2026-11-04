@@ -15,7 +15,10 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import '../core/database/app_database.dart';
 import '../features/ads/ad_store.dart';
+import '../features/collection/campus_store.dart';
+import '../features/collection/club_store.dart';
 import '../features/collection/collection_store.dart';
+import '../features/collection/squad_store.dart';
 import '../features/facilities/facilities.dart';
 import '../features/player_database/player_database.dart';
 import '../features/settings/user_settings_store.dart';
@@ -103,6 +106,26 @@ final collectionStoreProvider = FutureProvider<CollectionStore>((ref) async {
     db: db,
     adStore: await ref.watch(adStoreProvider.future),
   );
+});
+
+/// Focused stores extracted from CollectionStore (app-structure Task 2):
+/// same database instance, single-purpose APIs. Screens may watch these
+/// directly; CollectionStore remains the facade for the pack/collection
+/// flows and composes the same three objects internally.
+final clubStoreProvider = FutureProvider<ClubStore>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  return ClubStore(db: db);
+});
+
+final squadStoreProvider = FutureProvider<SquadStore>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  await ref.watch(datasetBootstrapProvider.future);
+  return SquadStore(db: db, squad: ref.watch(squadEngineProvider));
+});
+
+final campusStoreProvider = FutureProvider<CampusStore>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  return CampusStore(db: db);
 });
 
 /// Random source for pack draws and merges; seedable in tests.

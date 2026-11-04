@@ -27,6 +27,9 @@ import '../packs/pack_engine.dart';
 import '../player_database/player_database.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
+import 'campus_store.dart';
+import 'club_store.dart';
+import 'squad_store.dart';
 import '../upgrades/upgrade_engine.dart';
 import '../../core/ui/fcm_style.dart' show CardRarity;
 
@@ -171,23 +174,27 @@ class CollectionStore {
     this.upgrades = const UpgradeEngine(),
     this.squad = const SquadEngine(),
     this.adStore,
-  });
+  })  : _club = ClubStore(db: db),
+        _squadStore = SquadStore(db: db, squad: squad),
+        _campus = CampusStore(db: db);
 
   final AppDatabase db;
   final EconomyEngine economy;
   final UpgradeEngine upgrades;
   final SquadEngine squad;
 
+  /// Focused stores this facade composes (app-structure review Task 2):
+  /// same database instance, same engines — single-purpose homes for
+  /// club, squad and campus concerns.
+  final ClubStore _club;
+  final SquadStore _squadStore;
+  final CampusStore _campus;
+
   /// Rewarded-ad store for the economy ad surfaces (GDD 19.3 'Other
   /// Proposed'): upgrade discount, selling bonus, daily reward
   /// multiplier. Optional — when absent, all ad boosts are simply
   /// inactive and the coin paths charge full price.
   final AdStore? adStore;
-
-  /// Facility enum name → instance, for reading FacilityLevels rows.
-  static final Map<String, Facility> _facilityByCode = {
-    for (final f in Facility.values) f.name: f,
-  };
 
   /// Packs draw from the in-memory registry mirrored into SQLite; kept in
   /// sync by [applyDatasetUpdate] and lazily loaded on first use.
@@ -308,56 +315,6 @@ class CollectionStore {
       return clubId;
     });
   }
-
-  /// The user club, or null before onboarding completes. Uses
-  /// getSingleOrNull — watchSingle would throw on the empty table on a
-  /// fresh install, crashing club creation.
-  Future<Club?> getClub() => (db.select(
-    db.clubs,
-  )..where((c) => c.isUser.equals(true))).getSingleOrNull();
-
-  /// Live stream of the user club row: drift re-emits on every write
-  /// to `clubs`, so coin movements land in the UI the moment they
-  /// commit — no manual provider invalidation needed. Emits null until
-  /// onboarding creates the club.
-  Stream<Club?> watchClub() => (db.select(
-    db.clubs,
-  )..where((c) => c.isUser.equals(true))).watchSingleOrNull();
-
-  /// TEMPORARY DEV HELPER — remove together with the app-bar "+"
-  /// button (main.dart) once testing is done. Credits the user club
-  /// with [amount] test coins through the same atomic transaction and
-  /// ledger row as every other coin movement (FR-016).
-  ///
-  /// Debug and test builds only: asserts are enabled there, so the
-  /// helper runs; release builds compile asserts out and this returns
-  /// without touching the balance or the ledger. The app-bar button is
-  /// guarded by kDebugMode too, so neither half of the dev shortcut can
-  /// ship.
-  Future<void> grantTestCoins({int amount = 1_000_000}) async {
-    var devBuild = false;
-    assert(() {
-      devBuild = true;
-      return true;
-    }());
-    if (!devBuild) return;
-    final club = await getClub();
-    if (club == null) {
-      throw const CollectionException('No club yet — cannot grant coins');
-    }
-    await db.creditCoins(
-      club.id,
-      amount,
-      reason: 'test_grant',
-      detail: 'Dev test grant from app-bar + button',
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Dataset
-  // ---------------------------------------------------------------------------
-
-  /// Ensures the in-memory registry mirrors the persisted dataset (used by
   /// pack drawing before any update was applied in this session).
   Future<PlayerDatabase> _ensureRegistry() async {
     if (_registryLoaded) return _registry;
@@ -1079,205 +1036,11 @@ class CollectionStore {
 
   /// Squad assignments currently persisted: slot → card. Iterates in
   /// slot order — the order Auto Pick writes (bench then reserves
-  /// best-first) — so consumers that walk the entries see the ranked
-  /// squad instead of an arbitrary database row order.
-  Future<Map<int, PlayerCard>> getSquad() async {
-    final club = await getClub();
-    if (club == null) return const {};
-    final cards = await getCollection();
-    final byId = {for (final c in cards) c.ownedId: c};
-    final rows =
-        await (db.select(db.ownedPlayers)
-              ..where((o) => o.clubId.equals(club.id))
-              ..orderBy([(o) => OrderingTerm.asc(o.squadSlot)]))
-            .get();
-    final squad = <int, PlayerCard>{};
-    for (final row in rows) {
-      if (row.squadSlot != null && byId.containsKey(row.id)) {
-        squad[row.squadSlot!] = byId[row.id]!;
-      }
-    }
-    return squad;
-  }
-
-  /// Persists a full squad assignment (FR-017/FR-020 storage side). Slots
-  /// not present in [assignments] are cleared. Runs in one transaction.
-  Future<void> saveSquad(Map<int, int> assignments) async {
-    final club = await getClub();
-    if (club == null) {
-      throw const CollectionException('No club');
-    }
-    final owned = await (db.select(
-      db.ownedPlayers,
-    )..where((o) => o.clubId.equals(club.id) & o.status.equals('owned'))).get();
-    final byOwned = {for (final o in owned) o.id: o};
-    for (final id in assignments.values) {
-      if (!byOwned.containsKey(id)) {
-        throw CollectionException('Owned player $id not found');
-      }
-    }
-    // one player per slot and one slot per player
-    if (assignments.values.toSet().length != assignments.length) {
-      throw const CollectionException('A player cannot take two slots');
-    }
-
-    await db.transaction(() async {
-      for (final o in owned) {
-        final slot = assignments.entries
-            .where((e) => e.value == o.id)
-            .map((e) => e.key)
-            .firstOrNull;
-        if (o.squadSlot != slot) {
-          await (db.update(db.ownedPlayers)..where((x) => x.id.equals(o.id)))
-              .write(OwnedPlayersCompanion(squadSlot: Value(slot)));
-        }
-      }
-    });
-  }
-
-  /// Auto Pick over the current collection and formation, then persist
-  /// (FR-019). Returns the applied assignment.
-  Future<Map<int, int>> autoPickSquad() async {
-    final club = await getClub();
-    if (club == null) {
-      throw const CollectionException('No club');
-    }
-    final cards = await getCollection();
-    final formation = formationByCode(club.formationCode);
-    final assignment = squad.autoPick(cards, formation);
-    await saveSquad(assignment);
-    return assignment;
-  }
-
-  /// Updates the club formation (FR-018) and re-runs Auto Pick so every XI
-  /// slot stays filled (GDD 6.4: changing formation updates positions).
-  Future<void> changeFormation(String formationCode) async {
-    final club = await getClub();
-    if (club == null) {
-      throw const CollectionException('No club');
-    }
-    final formation = formationByCode(formationCode);
-    await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
-      ClubsCompanion(formationCode: Value(formation.code)),
-    );
-    await autoPickSquad();
-  }
-
-  /// Updates the club's tactical setup for future matches (GDD 10.2/10.3).
-  Future<void> changeTactics({
-    String? formationCode,
-    String? playingStyle,
-    String? mentality,
-  }) async {
-    final club = await getClub();
-    if (club == null) {
-      throw const CollectionException('No club');
-    }
-    await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
-      ClubsCompanion(
-        formationCode: formationCode != null
-            ? Value(formationByCode(formationCode).code)
-            : const Value.absent(),
-        playingStyle: playingStyle != null
-            ? Value(playingStyle)
-            : const Value.absent(),
-        mentality: mentality != null ? Value(mentality) : const Value.absent(),
-      ),
-    );
-    if (formationCode != null) {
-      await autoPickSquad();
-    }
-  }
-
   // ---------------------------------------------------------------------------
   // Campus facilities (GDD 3.5)
   // ---------------------------------------------------------------------------
 
   /// Current facility levels of the user's club (missing rows = 0).
-  Future<CampusLevels> getCampus() async {
-    final club = await getClub();
-    if (club == null) return CampusLevels.empty;
-    final rows = await (db.select(
-      db.facilityLevels,
-    )..where((f) => f.clubId.equals(club.id))).get();
-    return CampusLevels({
-      for (final row in rows)
-        if (_facilityByCode[row.facility] != null)
-          _facilityByCode[row.facility]!: row.level,
-    });
-  }
-
-  /// Builds the next level of [facility]: charges the escalating coin
-  /// price, writes the level row and the ledger entry in one
-  /// transaction. Returns the new level.
-  Future<int> upgradeFacility(
-    Facility facility, {
-    FacilitiesCosts costs = defaultFacilitiesCosts,
-  }) async {
-    final club = await getClub();
-    if (club == null) {
-      throw const CollectionException('No club');
-    }
-    final levels = await getCampus();
-    final level = levels.levelOf(facility);
-    if (level >= costs.maxLevel) {
-      throw CollectionException(
-        '${facility.title} is already at its maximum level',
-      );
-    }
-    final price = costs.upgradeCost(level);
-    if (club.coins < price) {
-      throw CollectionException('Not enough coins (need $price)');
-    }
-    final nextLevel = level + 1;
-    final now = DateTime.now();
-    await db.transaction(() async {
-      // Relative, conditional debit — same race-free guard as every
-      // other coin movement (see coin_ops.dart).
-      try {
-        await db.spendCoins(
-          club.id,
-          price,
-          reason: 'facility_upgrade',
-          detail: '${facility.subtitle} level $nextLevel',
-        );
-      } on InsufficientFundsException {
-        throw const CollectionException('Not enough coins');
-      }
-      final existing =
-          await (db.select(db.facilityLevels)..where(
-                (f) =>
-                    f.clubId.equals(club.id) & f.facility.equals(facility.name),
-              ))
-              .getSingleOrNull();
-      if (existing == null) {
-        await db
-            .into(db.facilityLevels)
-            .insert(
-              FacilityLevelsCompanion.insert(
-                clubId: club.id,
-                facility: facility.name,
-                level: Value(nextLevel),
-                upgradedAt: Value(now),
-              ),
-            );
-      } else {
-        await (db.update(
-          db.facilityLevels,
-        )..where((f) => f.id.equals(existing.id))).write(
-          FacilityLevelsCompanion(
-            level: Value(nextLevel),
-            upgradedAt: Value(now),
-          ),
-        );
-      }
-    });
-    return nextLevel;
-  }
-
-  /// Applies a finished match (GDD 11 recovery + 17.6 rewards, FR-016):
-  /// stamina recovery with the optional pep talk bonus, the reward credit
-  /// and its ledger row — all in one transaction. Bench players who did
   /// not come on keep their stamina untouched.
   Future<void> applyMatchResult({
     required int clubId,
@@ -1403,6 +1166,49 @@ class CollectionStore {
       goalkeeping: row.goalkeeping,
     ),
   );
+
+  // --- Club / squad / campus: delegated to the focused stores ----------
+  // (the bodies live in club_store.dart, squad_store.dart and
+  // campus_store.dart; these members are the compatibility facade)
+
+  Future<Club?> getClub() => _club.getClub();
+  Stream<Club?> watchClub() => _club.watchClub();
+  Future<void> grantTestCoins({int amount = 1_000_000}) =>
+      _club.grantTestCoins(amount: amount);
+
+  /// Ledger row for coin movements inside a caller-owned transaction
+  /// (the CoinOps helpers cover the stand-alone cases).
+  Future<void> coinLedger(
+    int clubId,
+    int amount, {
+    required String reason,
+    String? detail,
+  }) =>
+      _club.coinLedger(clubId, amount, reason: reason, detail: detail);
+
+  Future<Map<int, PlayerCard>> getSquad() => _squadStore.getSquad();
+  Future<void> saveSquad(Map<int, int> assignments) =>
+      _squadStore.saveSquad(assignments);
+  Future<Map<int, int>> autoPickSquad() => _squadStore.autoPickSquad();
+  Future<void> changeFormation(String formationCode) =>
+      _squadStore.changeFormation(formationCode);
+  Future<void> changeTactics({
+    String? formationCode,
+    String? playingStyle,
+    String? mentality,
+  }) =>
+      _squadStore.changeTactics(
+        formationCode: formationCode,
+        playingStyle: playingStyle,
+        mentality: mentality,
+      );
+
+  Future<CampusLevels> getCampus() => _campus.getCampus();
+  Future<int> upgradeFacility(
+    Facility facility, {
+    FacilitiesCosts costs = defaultFacilitiesCosts,
+  }) =>
+      _campus.upgradeFacility(facility, costs: costs);
 }
 
 extension on AppDatabase {

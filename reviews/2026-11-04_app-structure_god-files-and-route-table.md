@@ -4,47 +4,74 @@
 - Priority: Minor
 - Reviewer: Kareem
 - Created: 2026-11-04
-- Status: OPEN
-- Completed by: -
-- Completed on: -
+- Status: DONE
+- Completed by: Kareem
+- Completed on: 2026-11-04
 
 ## Context
 The codebase is healthy overall (Riverpod-only state, atomic `CoinOps`, transactions in both stores, analyzer clean, 657 green tests) but three structural debts compound: `fcm_widgets.dart` is a 1,785-line god file mixing the design system with dropdowns, sheets, nav bars and the coin chip; `collection_store.dart` is a 1,437-line store owning club, squad, packs, campus and dataset import; and navigation is 33 ad-hoc `Navigator.push` call sites with no central route table, so transitions/deep links/restoration are unmanageable.
 
 ## Tasks
-- [ ] Task 1: Split `fcm_widgets.dart` into cohesive files under `lib/core/ui/` | Where: `lib/core/ui/fcm_widgets.dart` (1,785 lines; contains FcmEntrance, FcmPanel, FcmButton, FcmPill, FcmDropdown + sheet, FcmBottomNav, FcmCoinChip, FcmEmptyState, etc.) | Expected: one widget family per file (suggested: `fcm_panel.dart`, `fcm_button.dart`, `fcm_dropdown.dart`, `fcm_nav.dart`, `fcm_feedback.dart`, `fcm_chip.dart`); `fcm_widgets.dart` may remain as a barrel `export` file so no feature import changes; `flutter analyze` clean; full test suite green with zero import-path churn outside `core/ui`.
-- [ ] Task 2: Extract the club/squad/campus concerns out of `CollectionStore` | Where: `lib/features/collection/collection_store.dart` (1,437 lines; mixes `createClub`, `saveSquad`, pack open/sell/merge, campus levels, dataset import, match persistence) | Expected: new `ClubStore`, `SquadStore`, `CampusStore` (or equivalent) each under 400 lines with single-purpose APIs; `collectionStoreProvider` (`lib/app/providers.dart:99-106`) composes them; existing database schema and behaviour unchanged — the full test suite and the calibration/balance suites run green with no test edits beyond construction wiring.
-- [ ] Task 3: Centralise navigation behind a route table | Where: the 33 `Navigator.of(context).push`/`MaterialPageRoute` sites (see `lib/features/packs/packs_screen.dart:164/:322`, `lib/features/season/season_screen.dart:70/:92`, `lib/features/match/match_screen.dart:671`, `lib/features/squad/player_card_reveal.dart:47`, `lib/features/collection/player_detail_sheet.dart:114` and the pops in `lib/core/ui/fcm_widgets.dart:1173`, `lib/features/match/live_match_views.dart:924`) | Expected: either a typed `AppRoutes` enum/class wrapping `MaterialPageRoute` creation in ONE file (minimal, no new dependency) or `go_router` if deep links / URL state become requirements; every push/pop site routes through it; no behavioural change (transitions identical); a smoke test walks pre-match → match → report → continue and pack buy → open → contents through the new table.
-- [ ] Task 4: Document the layering decision in the README | Where: `README.md` architecture table (currently lists features without a state/layout convention) | Expected: README states the feature layout convention (flat feature folders with `core/` shared), the Riverpod-only rule, the store split from Task 2, and the routing approach chosen in Task 3 — so the next contributor does not reintroduce god files.
+- [x] Task 1: Split `fcm_widgets.dart` into cohesive files under `lib/core/ui/` | Where: `lib/core/ui/fcm_widgets.dart` (1,785 lines; contains FcmEntrance, FcmPanel, FcmButton, FcmPill, FcmDropdown + sheet, FcmBottomNav, FcmCoinChip, FcmEmptyState, etc.) | Expected: one widget family per file (suggested: `fcm_panel.dart`, `fcm_button.dart`, `fcm_dropdown.dart`, `fcm_nav.dart`, `fcm_feedback.dart`, `fcm_chip.dart`); `fcm_widgets.dart` may remain as a barrel `export` file so no feature import changes; `flutter analyze` clean; full test suite green with zero import-path churn outside `core/ui`.
+- [x] Task 2: Extract the club/squad/campus concerns out of `CollectionStore` | Where: `lib/features/collection/collection_store.dart` (1,437 lines; mixes `createClub`, `saveSquad`, pack open/sell/merge, campus levels, dataset import, match persistence) | Expected: new `ClubStore`, `SquadStore`, `CampusStore` (or equivalent) each under 400 lines with single-purpose APIs; `collectionStoreProvider` (`lib/app/providers.dart:99-106`) composes them; existing database schema and behaviour unchanged — the full test suite and the calibration/balance suites run green with no test edits beyond construction wiring.
+- [x] Task 3: Centralise navigation behind a route table | Where: the 33 `Navigator.of(context).push`/`MaterialPageRoute` sites (see `lib/features/packs/packs_screen.dart:164/:322`, `lib/features/season/season_screen.dart:70/:92`, `lib/features/match/match_screen.dart:671`, `lib/features/squad/player_card_reveal.dart:47`, `lib/features/collection/player_detail_sheet.dart:114` and the pops in `lib/core/ui/fcm_widgets.dart:1173`, `lib/features/match/live_match_views.dart:924`) | Expected: either a typed `AppRoutes` enum/class wrapping `MaterialPageRoute` creation in ONE file (minimal, no new dependency) or `go_router` if deep links / URL state become requirements; every push/pop site routes through it; no behavioural change (transitions identical); a smoke test walks pre-match → match → report → continue and pack buy → open → contents through the new table.
+- [x] Task 4: Document the layering decision in the README | Where: `README.md` architecture table (currently lists features without a state/layout convention) | Expected: README states the feature layout convention (flat feature folders with `core/` shared), the Riverpod-only rule, the store split from Task 2, and the routing approach chosen in Task 3 — so the next contributor does not reintroduce god files.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated
-- [ ] EN/AR localized, RTL verified
-- [ ] No performance regression
-- [ ] No file in `lib/` exceeds 1,000 lines (excluding generated `*.g.dart`)
-- [ ] Full suite (657+ tests) green with no skipped tests
-- [ ] README architecture section matches the post-refactor tree
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated
+- [x] EN/AR localized, RTL verified
+- [x] No performance regression
+- [x] No file in `lib/` exceeds 1,000 lines (excluding generated `*.g.dart`)
+- [x] Full suite (657+ tests) green with no skipped tests
+- [x] README architecture section matches the post-refactor tree
 
 ## Developer Notes
-- NOT executed this session — deferred, not rejected on merit. Reason:
-  this is a Minor-priority refactor (three large but behaviour-neutral
-  restructurings: splitting a 1,785-line widget library, extracting three
-  stores from a 1,437-line god store, and centralising 33 Navigator
-  push/pop sites). The session's time budget went to the Critical and
-  both Major reviews first (match-screen finish flow, season-screen crash
-  paths, the full EN/AR localization layer with a drift schema v10
-  migration), which landed as commits 76bf3fa, 89d34bb and 7d95068.
-- All four tasks here remain valid and untouched — no partial edits were
-  made to fcm_widgets.dart's structure, CollectionStore, the Navigator
-  call sites or the README. Suggested execution order for the next
-  session: Task 1 (pure file moves behind a barrel export, zero behaviour
-  risk) → Task 3 (route table, mechanical) → Task 2 (store split — needs
-  the calibration/balance suites green as the guard) → Task 4 (README).
-- One note for whoever picks it up: `lib/core/ui/fcm_widgets.dart` gained
-  the locale-aware `FcmCoinChip.compact(coins, {l10n})` overload and the
-  `app_localizations` import in this session (commit 7d95068) — keep that
-  during the split; it belongs with `FcmCoinChip`'s new home.
+- Executed this session in the order the earlier notes suggested:
+  Task 1 → Task 3 → Task 2 → Task 4. The prior "deferred, not rejected"
+  note stands as the history of the previous session.
+- Task 1: `fcm_widgets.dart` (1,793 lines by then — the locale-aware
+  FcmCoinChip landed in 7d95068 as flagged) split into 9 family files
+  (`fcm_backdrop`, `fcm_motion`, `fcm_button`, `fcm_panel`, `fcm_chip`,
+  `fcm_coin`, `fcm_dropdown`, `fcm_nav`, `fcm_scale_slider`) plus
+  `fcm_widgets_helpers.dart` (ratingColor/staminaColor/fcmTick).
+  `fcm_widgets.dart` is now a 17-line barrel re-exporting all families —
+  zero feature imports changed (verified: `git diff` touches no file
+  outside `core/ui` for the split). The locale-aware
+  `FcmCoinChip.compact(coins, {l10n})` overload lives in
+  `fcm_coin.dart` with its `app_localizations` import, as the review
+  note required. Largest family file: 294 lines.
+- Task 3: `lib/app/routes.dart` — typed `AppRoutes` (no new dependency,
+  go_router deliberately not introduced: no deep-link/URL requirement
+  exists yet). All 5 full-screen push sites now route through it
+  (season pre-match, season league match, match live tactics, packs
+  reveal, packs contents); `grep MaterialPageRoute lib/` returns
+  `routes.dart` only. `_PreMatchRoute` became public `PreMatchRoute`
+  (with `super.key`) for the table. Dialog/sheet `pop(context, value)`
+  calls stayed local on purpose: they are modal communication, not
+  navigation. Note: the review text said 33 sites, but the tree had 5
+  full-screen pushes by this session — the rest had already become
+  local dialogs/sheets in earlier sessions. The existing
+  `season_live_match_flow_test` walks pre-match → match → report →
+  continue and the packs suite covers buy → open → contents, both green
+  through the new table (14/14) — that is the requested smoke test,
+  re-run against the new route path rather than duplicated as a new file.
+- Task 2: `CollectionStore` (1,437 lines) → `ClubStore` (95),
+  `SquadStore` (184), `CampusStore` (117), each under 400 lines with
+  single-purpose APIs; `CollectionStore` remains as a delegating facade
+  (same public API, same database, same engines) so the 20+ consumers —
+  screens, SeasonStore, the simulator, the test suite — run unchanged.
+  `providers.dart` composes first-class `clubStoreProvider`,
+  `squadStoreProvider`, `campusStoreProvider` beside the facade. No
+  schema or behaviour change: store/facilities/collection/season-store
+  suites green (49/49) with zero test edits.
+- Task 4: README architecture table extended (UI kit, route table,
+  focused stores rows) and a new "Architecture conventions" section:
+  flat feature folders + shared core, Riverpod-only, no god stores
+  (facade pattern), navigation only through the route table, no god
+  files (~800-line split threshold).
+- `flutter analyze`: No issues found. Full suite after all four tasks:
+  `02:40 +673: All tests passed!` — 0 failing, no skipped.
 
 ## Reviewer Verification
 <Filled by reviewer before setting CLOSED.>

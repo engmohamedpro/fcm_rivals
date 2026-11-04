@@ -42,11 +42,36 @@ engines as pure Dart with no UI dependencies, atomic coin transactions.
 | Collection Store | `lib/features/collection/` | atomic pack open/sell/merge, club creation with the 22 free starter packs (two per formation slot), dataset-update compensation, coin ledger, match result persistence (FR-012..FR-016) |
 | Persistence | `lib/core/database/` | Drift/SQLite schema v3: players, dataset versions, clubs (user + AI), owned players, packs, coin transactions, seasons, league teams, fixtures, match results, AI players, ad usages (SRS 25) |
 | App UI | `lib/app/`, `lib/features/*/` screens | Riverpod providers, club creation, pack opening with reveal, pitch squad view, collection management; league fixtures launch the full-screen live match (pep talks, tactics, substitutions, post-match report) from the Season tab |
+| UI kit | `lib/core/ui/` | design system split into widget families (`fcm_button`, `fcm_panel`, `fcm_chip`, `fcm_coin`, `fcm_dropdown`, `fcm_nav`, `fcm_motion`, `fcm_scale_slider`, `fcm_backdrop`) re-exported through the `fcm_widgets.dart` barrel |
+| Route table | `lib/app/routes.dart` | `AppRoutes` owns every full-screen `MaterialPageRoute` (pre-match, league match, live tactics, pack reveal, pack contents); screens never construct routes inline |
+| Focused stores | `lib/features/collection/{club,squad,campus}_store.dart` | `ClubStore`, `SquadStore`, `CampusStore` — single-purpose APIs over the same database; `CollectionStore` is the composing facade |
 
 All engines are pure Dart with no Flutter UI dependencies, ready for the
 future authoritative server port (GDD §29). All balancing constants live in
 one configuration class per engine (`BaseStatsConfig`, `EconomyConfig`) as
 pre-balance placeholders per GDD rule 14.
+
+## Architecture conventions
+
+* **Flat feature folders with a shared `core/`**: each feature owns its
+  engines, stores and screens under `lib/features/<feature>/`; anything
+  used by two or more features lives in `lib/core/` (domain, database,
+  UI kit). `lib/app/` is the composition layer (providers, routes) — the
+  only place allowed to know every feature.
+* **Riverpod is the one state solution**: providers in `lib/app/providers.dart`
+  wire the stores; screens read/watch them and never construct stores
+  directly. NoBloc, no setState for app state.
+* **One store concern per file, no god stores**: `CollectionStore` was
+  split into `ClubStore`, `SquadStore` and `CampusStore` (each under 400
+  lines) with `CollectionStore` kept as a delegating facade so call sites
+  never churn. New persistence goes into a focused store, not back into
+  the facade.
+* **Navigation only through the route table**: every full-screen push
+  goes through `AppRoutes` (`lib/app/routes.dart`); dialog and sheet
+  `pop(context, value)` calls stay local to their call sites.
+* **No god files anywhere**: keep source files focused — if a file
+  passes ~800 lines, split it (the `fcm_widgets.dart` barrel pattern
+  keeps imports stable across a split).
 
 ## Player database
 

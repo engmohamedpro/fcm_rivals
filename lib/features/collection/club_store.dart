@@ -1,0 +1,95 @@
+/// FCM Rivals — club store: the user club row and its coin ledger.
+///
+/// Extracted from CollectionStore so club concerns evolve on their
+/// own: reads/writes of the `clubs` row, the dev-only test grant,
+/// and the ledger-row extension shared by larger transactions.
+/// Every coin movement still runs through the same atomic
+/// transactions (FR-016, NFR-003) — same database, same behaviour.
+library;
+
+import 'package:drift/drift.dart';
+
+import '../../core/database/app_database.dart';
+import 'collection_store.dart' show CollectionException;
+import '../../core/database/coin_ops.dart' show CoinOps;
+
+/// CollectionStore delegates here; see the library doc.
+class ClubStore {
+  ClubStore({required this.db});
+
+  final AppDatabase db;
+
+
+  /// The user club, or null before onboarding completes. Uses
+  /// getSingleOrNull — watchSingle would throw on the empty table on a
+  /// fresh install, crashing club creation.
+  Future<Club?> getClub() => (db.select(
+    db.clubs,
+  )..where((c) => c.isUser.equals(true))).getSingleOrNull();
+
+  /// Live stream of the user club row: drift re-emits on every write
+  /// to `clubs`, so coin movements land in the UI the moment they
+  /// commit — no manual provider invalidation needed. Emits null until
+  /// onboarding creates the club.
+  Stream<Club?> watchClub() => (db.select(
+    db.clubs,
+  )..where((c) => c.isUser.equals(true))).watchSingleOrNull();
+
+  /// TEMPORARY DEV HELPER — remove together with the app-bar "+"
+  /// button (main.dart) once testing is done. Credits the user club
+  /// with [amount] test coins through the same atomic transaction and
+  /// ledger row as every other coin movement (FR-016).
+  ///
+  /// Debug and test builds only: asserts are enabled there, so the
+  /// helper runs; release builds compile asserts out and this returns
+  /// without touching the balance or the ledger. The app-bar button is
+  /// guarded by kDebugMode too, so neither half of the dev shortcut can
+  /// ship.
+  Future<void> grantTestCoins({int amount = 1_000_000}) async {
+    var devBuild = false;
+    assert(() {
+      devBuild = true;
+      return true;
+    }());
+    if (!devBuild) return;
+    final club = await getClub();
+    if (club == null) {
+      throw const CollectionException('No club yet — cannot grant coins');
+    }
+    await db.creditCoins(
+      club.id,
+      amount,
+      reason: 'test_grant',
+      detail: 'Dev test grant from app-bar + button',
+    );
+  }
+
+  /// Appends one ledger row for [amount] credited to [clubId]. Must be
+  /// called AFTER the balance update inside the same transaction so
+  /// balanceAfter reflects the post-transaction state (FR-016).
+  ///
+  /// Kept for call sites that update the balance inside their own larger
+  /// transaction (e.g. applyMatchResult's stamina writes share it); new
+  /// coin movements should prefer [CoinOps.spendCoins]/[CoinOps.creditCoins]
+  /// which are relative and race-free.
+  Future<void> coinLedger(
+    int clubId,
+    int amount, {
+    required String reason,
+    String? detail,
+  }) async {
+    final club = await (db.select(
+      db.clubs,
+    )..where((c) => c.id.equals(clubId))).getSingle();
+    await db.into(db.coinTransactions).insert(
+      CoinTransactionsCompanion.insert(
+        clubId: clubId,
+        amount: amount,
+        balanceAfter: club.coins,
+        reason: reason,
+        detail: Value(detail),
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+}

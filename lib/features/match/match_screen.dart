@@ -5,13 +5,13 @@ import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../app/routes.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
 import '../../l10n/l10n_context.dart';
 import '../../l10n/pep_talk_l10n.dart';
 import 'live_match_views.dart';
-import 'live_tactics_screen.dart';
 import 'match_audio.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
@@ -732,14 +732,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     final session = widget.session;
     _sheetOpen = true;
     try {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          fullscreenDialog: true,
-          builder: (_) => LiveTacticsScreen(
-            session: session,
-            minuteQueuedFrom: session.engine.state.minute + 1,
-          ),
-        ),
+      await AppRoutes.liveTactics(
+        context,
+        session: session,
+        minuteQueuedFrom: session.engine.state.minute + 1,
       );
     } finally {
       if (mounted) {

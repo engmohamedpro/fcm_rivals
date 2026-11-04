@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../app/routes.dart';
 import '../../l10n/l10n_context.dart';
 import '../../core/database/app_database.dart' show Pack;
 import '../../core/domain/players.dart' show Position;
@@ -13,7 +14,6 @@ import '../../features/collection/collection_store.dart'
     show CollectionStore, PackOpenResult, StorePackOffer;
 import '../../features/packs/pack_engine.dart'
     show PackCategory, PackTier, PackTierColor;
-import 'pack_contents_screen.dart';
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_opening_screen.dart';
 
@@ -164,22 +164,18 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     SnackBar sellMessage(int credit) => SnackBar(
       content: Text(l10n.packsSoldFor(_groupDigits(credit))),
     );
-    final chained = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => PackOpeningScreen(
-          players: result.players,
-          ownedIds: result.ownedIds,
-          packTint: tier.accent,
-          packStars: tier.stars,
-          chainInfo: chain == null ? null : _chainInfoFor(chain),
-          queryBalance: () => ref.read(clubProvider).valueOrNull?.coins,
-          onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
-            ref.invalidate(collectionProvider);
-            if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
-          }),
-        ),
-      ),
+    final chained = await AppRoutes.packReveal(
+      context,
+      players: result.players,
+      ownedIds: result.ownedIds,
+      packTint: tier.accent,
+      packStars: tier.stars,
+      chainInfo: chain == null ? null : _chainInfoFor(chain),
+      queryBalance: () => ref.read(clubProvider).valueOrNull?.coins,
+      onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
+        ref.invalidate(collectionProvider);
+        if (mounted) messenger.showSnackBar(sellMessage(sale.credit));
+      }),
     );
     if (chained != true || chain == null || !context.mounted) return;
     final next = await _openAnotherInChain(context, store, chain);
@@ -324,20 +320,16 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   }) async {
     final store = await ref.read(collectionStoreProvider.future);
     if (!context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => PackContentsScreen(
-          title: title ?? offer.title,
-          category: offer.category,
-          scopeValue: offer.scopeValue,
-          tier: offer.tier,
-          loadPlayers: () => store.getPackPlayers(
-            category: offer.category,
-            scopeValue: offer.scopeValue,
-            tier: offer.tier,
-          ),
-        ),
+    await AppRoutes.packContents(
+      context,
+      title: title ?? offer.title,
+      category: offer.category,
+      scopeValue: offer.scopeValue,
+      tier: offer.tier,
+      loadPlayers: () => store.getPackPlayers(
+        category: offer.category,
+        scopeValue: offer.scopeValue,
+        tier: offer.tier,
       ),
     );
   }
