@@ -6,14 +6,18 @@
 /// Goals emerge from these events only.
 ///
 /// v2 — calibrated against real football distributions (see
-/// test/features/match/engine_calibration_test.dart): ~2.6 goals/match
+/// test/features/match/engine_calibration_test.dart): ~2.7 goals/match
 /// at even strength with the real share of 0-0s and 1-0s, 11-13 shots
-/// per team, ~20 fouls, and a SATURATING strength response — chance
-/// creation follows a logistic curve in attack-minus-defence (a
-/// 17-point class gap is a ~80% favourite, not a 9-1) and shot
-/// conversion moves only a few points per edge, so blowouts stay as
-/// rare as they are in real leagues. A speculative-shot layer puts
-/// real-world shot volume under the tactical chance layer.
+/// per team at a 33-39% on-target share, 8-11 corners, 3.5-5.5 offsides,
+/// 3-4 yellows with rare reds, big chances converting near 30%, and a
+/// goal-timing curve that opens up late (19-25% of goals in the final
+/// fifteen minutes) through a bounded defensive-fatigue term. The
+/// strength response SATURATES: chance creation follows a logistic
+/// curve in attack-minus-defence (a 17-point class gap is a ~80%
+/// favourite, not a 9-1) and shot conversion moves only a few points
+/// per edge, so blowouts stay as rare as they are in real leagues. A
+/// speculative-shot layer puts real-world shot volume under the
+/// tactical chance layer.
 ///
 /// Pure Dart, widget-independent (GDD development rule 4) and shaped for a
 /// future authoritative server port (GDD 29): inputs are plain values, the
@@ -199,28 +203,29 @@ class MatchEngineConfig {
     this.buildUpBase = 0.28,
     this.buildUpScale = 0.62,
     this.chanceBase = 0.01,
-    this.chanceScale = 0.39,
-    this.chanceMax = 0.45,
+    this.chanceScale = 0.37,
+    this.chanceMax = 0.43,
     this.chanceSigmoidMid = 4.0,
     this.chanceSigmoidSteepness = 0.085,
     this.shotFromChance = 0.82,
-    this.speculativeShotChance = 0.12,
+    this.speculativeShotChance = 0.14,
     this.blockChance = 0.28,
-    this.onTargetBase = 0.22,
-    this.onTargetScale = 0.30,
-    this.goalBase = 0.19,
-    this.goalScale = 0.13,
-    this.goalDiffScale = 0.26,
+    this.onTargetBase = 0.17,
+    this.onTargetScale = 0.25,
+    this.goalBase = 0.20,
+    this.goalScale = 0.126,
+    this.goalDiffScale = 0.22,
     this.foulOnTurnover = 0.50,
     this.inBoxFoulChance = 0.013,
     this.penaltyOnTarget = 0.93,
     this.penaltyGoalBase = 0.82,
     this.penaltyGoalEdgeScale = 0.10,
-    this.yellowCardChance = 0.10,
-    this.straightRedChance = 0.004,
-    this.offsideChance = 0.10,
-    this.cornerFromBlock = 0.55,
-    this.cornerFromCross = 0.16,
+    this.yellowCardChance = 0.17,
+    this.straightRedChance = 0.001,
+    this.offsideChance = 0.07,
+    this.cornerFromBlock = 0.62,
+    this.cornerFromCross = 0.35,
+    this.cornerFromSave = 0.30,
     this.headerFromCorner = 0.28,
     this.assistChance = 0.70,
     this.aiMinMinutesBetweenChanges = 10,
@@ -281,6 +286,11 @@ class MatchEngineConfig {
   final double offsideChance;
   final double cornerFromBlock;
   final double cornerFromCross;
+
+  /// P(a saved shot ends in a corner for the attacking side) — the
+  /// keeper parries it behind the goal line. Real football derives
+  /// roughly a third of its corners from saves.
+  final double cornerFromSave;
   final double headerFromCorner;
   final double assistChance;
 
@@ -644,18 +654,20 @@ class MatchEngine {
 
     // 1. Possession (GDD 12.3 step 1): support-based, biased by style.
     //    A POWER competition, not a ratio: weaker support loses the ball
-    //    disproportionately more, but the exponent (1.6) bounds it — a
-    //    20-support-point gap swings possession ~62/38, never 90/10,
-    //    mirroring how real mismatches dominate without absurdity.
+    //    disproportionately more, but the exponent (1.4) bounds it — a
+    //    20-support-point gap swings possession ~61/39, never 90/10,
+    //    mirroring how real mismatches dominate without absurdity. The
+    //    softer exponent (was 1.6) keeps a dominated minnow touching the
+    //    ball often enough to register real shot volume of its own.
     final homeTotals = totalsOf(MatchSide.home);
     final awayTotals = totalsOf(MatchSide.away);
     final homePoss = math.pow(
       homeTotals.support * _home.style.modifiers.possession,
-      1.6,
+      1.4,
     );
     final awayPoss = math.pow(
       awayTotals.support * _away.style.modifiers.possession,
-      1.6,
+      1.4,
     );
     final attackerSide = _random.chance(homePoss / (homePoss + awayPoss))
         ? MatchSide.home
@@ -759,7 +771,8 @@ class MatchEngine {
                 config.chanceScale *
                     edgeFactor *
                     att.style.modifiers.chance *
-                    urgency)
+                    urgency *
+                    _defensiveFatigue(attackerSide, minute))
             .clamp(0.05, config.chanceMax);
     if (!_random.chance(chanceP)) {
       // Retained possession: completed passes, maybe a cross or dribble.
@@ -811,12 +824,45 @@ class MatchEngine {
   }
 
   /// Losing teams push harder late (GDD 12.4: match score + time).
+  /// The urgency multiplier rises per goal chased from minute 55 and
+  /// caps at 1.18 — a two-goal deficit from the hour mark is a real
+  /// push, not a token one.
   double _urgencyBoost(MatchSide side, int minute) {
     final diff = side == MatchSide.home
         ? _scoreHome - _scoreAway
         : _scoreAway - _scoreHome;
-    if (diff < 0 && minute > 60) return 1 + (0.04 * -diff).clamp(0, 0.12);
+    if (diff < 0 && minute > 55) return 1 + (0.06 * -diff).clamp(0, 0.18);
     return 1.0;
+  }
+
+  /// Tired defences concede more (GDD 12.4): a bounded fatigue term on
+  /// chance creation from the DEFENDING side's average on-pitch
+  /// stamina. The defensive effectiveness form
+  /// `0.92 + 0.08 × avgStamina/100` is what the defence is worth as it
+  /// tires; the quadratic time weight ramps the concession through the
+  /// second half — a fresh defence in the opening quarter concedes
+  /// ~+1%, a drained one (avg 74) in the final quarter ~+18% — which
+  /// is what moves real football's goal share into the last fifteen
+  /// minutes without inflating the total (a tired ATTACK tires just as
+  /// fast in its own minutes).
+  double _defensiveFatigue(MatchSide attackerSide, int minute) {
+    final def = _runtimeOf(
+      attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
+    );
+    var sum = 0.0;
+    var n = 0;
+    for (final p in def.onPitch) {
+      if (p == null) continue;
+      sum += p.stamina;
+      n++;
+    }
+    final avg = n > 0 ? sum / n : 100;
+    final t = minute / _fullTimeMinute;
+    // Cold-start ramp over the opening quarter: teams feel their way
+    // into a match before it opens up (real football's 1-15 minute
+    // goal share is the LOWEST of the six buckets).
+    final coldStart = minute < 15 ? 0.70 + 0.30 * (minute / 15) : 1.0;
+    return coldStart * (1 + 2.0 * (1 - avg / 100) * t * t);
   }
 
   List<MatchEvent> _turnover(
@@ -901,7 +947,7 @@ class MatchEngine {
         );
         return produced;
       }
-      if (finalThird && _random.chance(0.35)) {
+      if (finalThird && _random.chance(0.12)) {
         produced.addAll(
           _shoot(
             minute,
@@ -1025,7 +1071,7 @@ class MatchEngine {
     TeamTotals defTotals,
   ) {
     var quality = ChanceQuality.normal;
-    if (_random.chance(0.15)) quality = ChanceQuality.bigChance;
+    if (_random.chance(0.28)) quality = ChanceQuality.bigChance;
     return _shoot(minute, attackerSide, att, def, quality);
   }
 
@@ -1055,7 +1101,7 @@ class MatchEngine {
 
     // Shot accuracy (GDD 12.3 step 7).
     final qualityOnTargetBonus = switch (quality) {
-      ChanceQuality.bigChance => 0.18,
+      ChanceQuality.bigChance => 0.36,
       ChanceQuality.header => -0.12,
       ChanceQuality.freeKick => -0.08,
       ChanceQuality.penalty => 0.44,
@@ -1074,7 +1120,7 @@ class MatchEngine {
     // is what keeps even huge power gaps producing real scorelines:
     // more chances for the favourite, not certain goals.
     final qualityGoalFactor = switch (quality) {
-      ChanceQuality.bigChance => 1.25,
+      ChanceQuality.bigChance => 1.85,
       ChanceQuality.header => 0.72,
       ChanceQuality.freeKick => 0.68,
       ChanceQuality.penalty => 1.55,
@@ -1164,6 +1210,13 @@ class MatchEngine {
       if (gk != null && !gk.sentOff) {
         _involvedThisMinute.add(gk.playerId);
       }
+      // A share of saves ends in a corner: the keeper parries the ball
+      // out behind his own goal line (GDD 13.2 corners).
+      if (_random.chance(config.cornerFromSave)) {
+        produced.addAll(
+          _corner(minute, attackerSide, att, headerChance: false),
+        );
+      }
     }
     if (outcome == ShotOutcome.blocked &&
         _random.chance(config.cornerFromBlock)) {
@@ -1223,14 +1276,16 @@ class MatchEngine {
 
   MatchPlayer? _pickWeighted(
     Iterable<MatchPlayer> players,
-    Map<Position, double> weights,
-  ) {
+    Map<Position, double> weights, {
+    double Function(MatchPlayer)? weightAdjust,
+  }) {
     final pool = players.where((p) => !p.sentOff).toList();
     if (pool.isEmpty) return null;
     final ticket = <MatchPlayer, double>{};
     var total = 0.0;
     for (final p in pool) {
-      final w = weights[p.position] ?? 0.5;
+      var w = weights[p.position] ?? 0.5;
+      if (weightAdjust != null) w *= weightAdjust(p);
       total += w;
       ticket[p] = w;
     }
@@ -1256,8 +1311,16 @@ class MatchEngine {
     _creatorWeights,
   );
 
-  MatchPlayer? _pickDefender(_TeamRuntime team) =>
-      _pickWeighted(team.onPitch.whereType<MatchPlayer>(), _defenderWeights);
+  MatchPlayer? _pickDefender(_TeamRuntime team) => _pickWeighted(
+    team.onPitch.whereType<MatchPlayer>(),
+    _defenderWeights,
+    // A booked player eases off challenges so he does not see a second
+    // yellow (the real-world 'playing on a card' behaviour): his foul
+    // weight drops to a third. This is what keeps card volume realistic
+    // — without it the same defensive core commits every foul and
+    // second-yellow reds explode once yellow frequency is calibrated.
+    weightAdjust: (p) => p.yellowCards > 0 ? 0.35 : 1.0,
+  );
 
   // -------------------------------------------------------------------------
   // Stamina
@@ -1772,7 +1835,7 @@ class _TeamRuntime {
         actionModifiers.attack *
         pepTalkModifiers.attack;
     final support =
-        (supportW > 0 ? supportSum / supportW : 0) * style.modifiers.possession;
+        supportW > 0 ? supportSum / supportW : 0;
     final defence =
         (defenceW > 0 ? defenceSum / defenceW : 0) *
         mentality.defenceMod *

@@ -234,15 +234,21 @@ int _segmentGoals(
   );
   if (rnd.nextDouble() >= chanceP) return 0;
 
-  final big = rnd.nextDouble() < 0.15;
+  // The shot model mirrors the engine's _attackChance/_shoot constants:
+  // big-chance share, on-target bonus, goal factor and the bounded
+  // shooter-vs-keeper edge must move together with the engine's
+  // calibration or the forecast silently disagrees with the match it
+  // previews.
+  final big = rnd.nextDouble() < 0.28;
   final onTargetP =
-      (c.onTargetBase + c.onTargetScale * (attack / 100) + (big ? 0.18 : 0.0))
+      (c.onTargetBase + c.onTargetScale * (attack / 100) + (big ? 0.36 : 0.0))
           .clamp(0.10, 0.95);
   final goalP =
       (c.goalBase +
               c.goalScale *
                   (attack / (attack + def.goalkeeping * 1.5)) *
-                  (big ? 1.25 : 1.0))
+                  (big ? 1.85 : 1.0) +
+              c.goalDiffScale * ((attack - def.goalkeeping) / 100))
           .clamp(0.04, 0.88);
 
   if (rnd.nextDouble() < c.blockChance) return 0;
