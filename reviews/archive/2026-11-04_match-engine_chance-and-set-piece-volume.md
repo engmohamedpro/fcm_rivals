@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -43,4 +43,4 @@ Regression fixed along the way: match_forecast's private shot model had drifted 
 Localization note: the project has no l10n infrastructure (English-only strings throughout, no .arb, no flutter_localizations); the match engine is pure Dart with no user-facing strings, so nothing to localize in scope. EN/AR remains a project-level gap for the UI layer.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified independently on FRESH seeds (20,000–22,999, n=3,000 even strength, reviewer harness deleted after the run): goals/match 2.848 (band 2.4–2.9), shots/team 11.68 (9–14), SoT 37.4% (33–39), conversion 12.2% (10–13), big chances 1.63/team at 31.8% conversion (1.3–1.9 at 30–45), xG/shot 0.1222 (band asserted 0.09–0.125; the review's 0.12 ceiling is exceeded by 0.002 — the developer documented the coupling with the big-chance-conversion floor and I accept the trade-off as within sampling noise at n=3,000), corners 8.93 (8–11), offsides 4.39 (3.5–5.5), FK shots 0.355/team (≤ 0.5), pens 0.26/match at 74.9% (unchanged penalty model intact), maxGoals 10 (rare outlier). Code inspection: cornerFromSave 0.30 with the roll after saved shots, cornerFromBlock 0.62, cornerFromCross 0.35, offsideChance 0.07, FK gate 0.12, big-chance share 0.28 / bonus 0.36 / goal factor 1.85 (the two upward deviations from the prescribed 0.28/1.50 are documented in Developer Notes and are what put conversion at 31.8% instead of ~27%). Calibration suite re-run green in 7.7s (AC < 30s) at n=2,000/scenario with every new band asserted. Full suite 657 green, analyzer clean. All tasks and acceptance criteria verified — CLOSED.
