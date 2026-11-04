@@ -4,7 +4,7 @@
 - Priority: Minor
 - Reviewer: Kareem
 - Created: 2026-11-04
-- Status: OPEN
+- Status: REJECTED_PARTIAL
 - Completed by: -
 - Completed on: -
 
@@ -27,7 +27,24 @@ The codebase is healthy overall (Riverpod-only state, atomic `CoinOps`, transact
 - [ ] README architecture section matches the post-refactor tree
 
 ## Developer Notes
-<Implementation notes, rejected points with reason.>
+- NOT executed this session — deferred, not rejected on merit. Reason:
+  this is a Minor-priority refactor (three large but behaviour-neutral
+  restructurings: splitting a 1,785-line widget library, extracting three
+  stores from a 1,437-line god store, and centralising 33 Navigator
+  push/pop sites). The session's time budget went to the Critical and
+  both Major reviews first (match-screen finish flow, season-screen crash
+  paths, the full EN/AR localization layer with a drift schema v10
+  migration), which landed as commits 76bf3fa, 89d34bb and 7d95068.
+- All four tasks here remain valid and untouched — no partial edits were
+  made to fcm_widgets.dart's structure, CollectionStore, the Navigator
+  call sites or the README. Suggested execution order for the next
+  session: Task 1 (pure file moves behind a barrel export, zero behaviour
+  risk) → Task 3 (route table, mechanical) → Task 2 (store split — needs
+  the calibration/balance suites green as the guard) → Task 4 (README).
+- One note for whoever picks it up: `lib/core/ui/fcm_widgets.dart` gained
+  the locale-aware `FcmCoinChip.compact(coins, {l10n})` overload and the
+  `app_localizations` import in this session (commit 7d95068) — keep that
+  during the split; it belongs with `FcmCoinChip`'s new home.
 
 ## Reviewer Verification
 <Filled by reviewer before setting CLOSED.>
