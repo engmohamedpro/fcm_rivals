@@ -4,7 +4,7 @@
 - Priority: Minor
 - Reviewer: Kareem
 - Created: 2026-11-04
-- Status: REJECTED_PARTIAL
+- Status: OPEN
 - Completed by: -
 - Completed on: -
 
