@@ -678,21 +678,29 @@ class SeasonStore {
         db.matchResults,
       )..where((r) => r.fixtureId.equals(fixtureId))).go();
       if (rewardCoinsToRefund > 0) {
+        // Relative debit — a concurrent coin movement can no longer be
+        // overwritten by this refund (see coin_ops.dart). This is a
+        // spend, not a credit: the earlier match reward is being taken
+        // back before the replay re-earns it.
+        await db.customUpdate(
+          'UPDATE clubs SET coins = coins - ? WHERE id = ?',
+          variables: [
+            Variable.withInt(rewardCoinsToRefund),
+            Variable.withInt(userClubId),
+          ],
+          updates: {db.clubs},
+          updateKind: UpdateKind.update,
+        );
         final club = await (db.select(
           db.clubs,
         )..where((c) => c.id.equals(userClubId))).getSingle();
-        await (db.update(
-          db.clubs,
-        )..where((c) => c.id.equals(userClubId))).write(
-          ClubsCompanion(coins: Value(club.coins - rewardCoinsToRefund)),
-        );
         await db
             .into(db.coinTransactions)
             .insert(
               CoinTransactionsCompanion.insert(
                 clubId: userClubId,
                 amount: -rewardCoinsToRefund,
-                balanceAfter: club.coins - rewardCoinsToRefund,
+                balanceAfter: club.coins,
                 reason: 'match_replay_refund',
                 detail: Value('Refund before replay of fixture $fixtureId'),
                 createdAt: now,
@@ -1056,20 +1064,32 @@ class SeasonStore {
         }
       }
 
-      // Season rewards (GDD 18): coins + ledger row.
+      // Season rewards (GDD 18): coins + ledger row. Relative update —
+      // a concurrent coin movement (the user buying a pack while the
+      // season resolves) can no longer be overwritten by this credit
+      // (see coin_ops.dart).
       final club = await (db.select(
         db.clubs,
       )..where((c) => c.id.equals(season.userClubId))).getSingle();
-      await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
-        ClubsCompanion(coins: Value(club.coins + rewardCoins)),
+      await db.customUpdate(
+        'UPDATE clubs SET coins = coins + ? WHERE id = ?',
+        variables: [
+          Variable.withInt(rewardCoins),
+          Variable.withInt(club.id),
+        ],
+        updates: {db.clubs},
+        updateKind: UpdateKind.update,
       );
+      final clubRow = await (db.select(
+        db.clubs,
+      )..where((c) => c.id.equals(club.id))).getSingle();
       await db
           .into(db.coinTransactions)
           .insert(
             CoinTransactionsCompanion.insert(
               clubId: club.id,
               amount: rewardCoins,
-              balanceAfter: club.coins + rewardCoins,
+              balanceAfter: clubRow.coins,
               reason: 'season_reward',
               detail: Value(
                 'Season ${season.ordinal} · division ${season.division} · '
