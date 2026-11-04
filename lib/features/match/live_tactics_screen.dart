@@ -18,6 +18,7 @@ import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
+import '../../l10n/l10n_context.dart';
 import '../squad/squad_engine.dart' show PlayerCard;
 import '../squad/squad_view.dart' show TacticsSetupView;
 import 'match_engine.dart';
@@ -75,7 +76,7 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Touchline'),
+        title: Text(l10nOf(context).liveTacticsTitle),
         actions: [
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 12),
@@ -395,7 +396,7 @@ class _LiveSubstitutions extends StatelessWidget {
                       orElse: () => selectedOut!,
                     ),
                   ),
-                  child: const Text('Cancel selection'),
+                  child: Text(l10nOf(context).liveTacticsCancelSelection),
                 ),
               ),
           ],

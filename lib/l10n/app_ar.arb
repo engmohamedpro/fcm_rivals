@@ -66,5 +66,44 @@
   "fieldRequired": "مطلوب",
   "clubNameHintField": "الاسم على الشعار",
   "managerNameHintField": "الاسم الذي يناديك به المعلق",
-  "tapAgainToSkip": "اضغط خارج البطاقة مرة أخرى للتخطي بدون حديث"
+  "tapAgainToSkip": "اضغط خارج البطاقة مرة أخرى للتخطي بدون حديث",
+  "postMatchRecoveryTitle": "الاستشفاء بعد المباراة",
+  "postMatchRecoveryIntro": "تركيز واحد للفريق في أيام الراحة القادمة:",
+  "recoveryBonusEffect": "+{bonus}% استشفاء طبيعي",
+  "@recoveryBonusEffect": {
+    "placeholders": {
+      "bonus": {
+        "type": "int"
+      }
+    }
+  },
+  "pepTalkRestEveryone": "راحة، الجميع يستحقها!",
+  "pepTalkFocusExhausted": "التركيز على اللاعبين المنهكين!",
+  "pepTalkRewardSubstitutes": "مكافأة بدلاء اللقاء!",
+  "pepTalkEveryoneGaveBest": "الجميع بذل أفضل ما لديه!",
+  "watchAdBoostedRecovery": "شاهد إعلانًا: استشفاء معزز",
+  "watchAdBoostedEffect": "+15% استشفاء طبيعي لكامل الفريق (GDD 19.3)",
+  "noPepTalkDefault": "بدون حديث — الاستشفاء الافتراضي",
+  "packsSoldFor": "تم البيع مقابل {coins} عملة",
+  "@packsSoldFor": {
+    "placeholders": {
+      "coins": {
+        "type": "String"
+      }
+    }
+  },
+  "packsNotEnoughCoins": "لا توجد عملات كافية لحزمة أخرى",
+  "liveTacticsTitle": "خط التماس",
+  "liveTacticsCancelSelection": "إلغاء التحديد",
+  "pepTalkRecoveryConfirmation": "{pepTalk} (+{bonus}% استشفاء)",
+  "@pepTalkRecoveryConfirmation": {
+    "placeholders": {
+      "pepTalk": {
+        "type": "String"
+      },
+      "bonus": {
+        "type": "int"
+      }
+    }
+  }
 }

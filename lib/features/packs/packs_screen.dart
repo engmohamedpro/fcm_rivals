@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../l10n/l10n_context.dart';
 import '../../core/database/app_database.dart' show Pack;
 import '../../core/domain/players.dart' show Position;
 import '../../core/ui/fcm_style.dart';
@@ -159,8 +160,10 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     // Captured before the push: the sell callback fires much later,
     // inside the reveal, when this context may already be unmounted.
     final messenger = ScaffoldMessenger.of(context);
-    SnackBar sellMessage(int credit) =>
-        SnackBar(content: Text('Sold for ${_groupDigits(credit)} coins'));
+    final l10n = l10nOf(context);
+    SnackBar sellMessage(int credit) => SnackBar(
+      content: Text(l10n.packsSoldFor(_groupDigits(credit))),
+    );
     final chained = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         fullscreenDialog: true,
@@ -215,7 +218,9 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         if (coins < offer.price) {
           // A race the capsule can't see (balance changed mid-reveal).
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Not enough coins for another pack')),
+            SnackBar(
+              content: Text(l10nOf(context).packsNotEnoughCoins),
+            ),
           );
           return null;
         }

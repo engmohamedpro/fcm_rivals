@@ -136,4 +136,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tapAgainToSkip => 'Tap outside again to skip without a pep talk';
+
+  @override
+  String get postMatchRecoveryTitle => 'Post-match recovery';
+
+  @override
+  String get postMatchRecoveryIntro =>
+      'One focus for the squad on the rest days ahead:';
+
+  @override
+  String recoveryBonusEffect(int bonus) {
+    return '+$bonus% natural recovery';
+  }
+
+  @override
+  String get pepTalkRestEveryone => 'Rest, everyone deserves it!';
+
+  @override
+  String get pepTalkFocusExhausted => 'Focus on exhausted players!';
+
+  @override
+  String get pepTalkRewardSubstitutes => 'Reward the substitutes!';
+
+  @override
+  String get pepTalkEveryoneGaveBest => 'Everyone gave their best!';
+
+  @override
+  String get watchAdBoostedRecovery => 'Watch ad: boosted recovery';
+
+  @override
+  String get watchAdBoostedEffect =>
+      '+15% natural recovery for the whole squad (GDD 19.3)';
+
+  @override
+  String get noPepTalkDefault => 'No pep talk — default recovery';
+
+  @override
+  String packsSoldFor(String coins) {
+    return 'Sold for $coins coins';
+  }
+
+  @override
+  String get packsNotEnoughCoins => 'Not enough coins for another pack';
+
+  @override
+  String get liveTacticsTitle => 'Touchline';
+
+  @override
+  String get liveTacticsCancelSelection => 'Cancel selection';
+
+  @override
+  String pepTalkRecoveryConfirmation(String pepTalk, int bonus) {
+    return '$pepTalk (+$bonus% recovery)';
+  }
 }

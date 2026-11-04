@@ -331,6 +331,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap outside again to skip without a pep talk'**
   String get tapAgainToSkip;
+
+  /// No description provided for @postMatchRecoveryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-match recovery'**
+  String get postMatchRecoveryTitle;
+
+  /// No description provided for @postMatchRecoveryIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'One focus for the squad on the rest days ahead:'**
+  String get postMatchRecoveryIntro;
+
+  /// No description provided for @recoveryBonusEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'+{bonus}% natural recovery'**
+  String recoveryBonusEffect(int bonus);
+
+  /// No description provided for @pepTalkRestEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest, everyone deserves it!'**
+  String get pepTalkRestEveryone;
+
+  /// No description provided for @pepTalkFocusExhausted.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus on exhausted players!'**
+  String get pepTalkFocusExhausted;
+
+  /// No description provided for @pepTalkRewardSubstitutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Reward the substitutes!'**
+  String get pepTalkRewardSubstitutes;
+
+  /// No description provided for @pepTalkEveryoneGaveBest.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone gave their best!'**
+  String get pepTalkEveryoneGaveBest;
+
+  /// No description provided for @watchAdBoostedRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch ad: boosted recovery'**
+  String get watchAdBoostedRecovery;
+
+  /// No description provided for @watchAdBoostedEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'+15% natural recovery for the whole squad (GDD 19.3)'**
+  String get watchAdBoostedEffect;
+
+  /// No description provided for @noPepTalkDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'No pep talk — default recovery'**
+  String get noPepTalkDefault;
+
+  /// No description provided for @packsSoldFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold for {coins} coins'**
+  String packsSoldFor(String coins);
+
+  /// No description provided for @packsNotEnoughCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough coins for another pack'**
+  String get packsNotEnoughCoins;
+
+  /// No description provided for @liveTacticsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Touchline'**
+  String get liveTacticsTitle;
+
+  /// No description provided for @liveTacticsCancelSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel selection'**
+  String get liveTacticsCancelSelection;
+
+  /// No description provided for @pepTalkRecoveryConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'{pepTalk} (+{bonus}% recovery)'**
+  String pepTalkRecoveryConfirmation(String pepTalk, int bonus);
 }
 
 class _AppLocalizationsDelegate

@@ -8,6 +8,8 @@ import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
+import '../../l10n/l10n_context.dart';
+import '../../l10n/pep_talk_l10n.dart';
 import 'live_match_views.dart';
 import 'live_tactics_screen.dart';
 import 'match_audio.dart';
@@ -426,6 +428,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         ? session.engine.state.scoreAway
         : session.engine.state.scoreHome;
     final won = userGoals > opponentGoals;
+    final l10n = l10nOf(context);
 
     return Positioned.fill(
       child: GestureDetector(
@@ -446,17 +449,17 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.healing_rounded,
                       color: FcmColors.gold,
                       size: 20,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
-                      'Post-match recovery',
-                      style: TextStyle(
+                      l10n.postMatchRecoveryTitle,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
@@ -465,9 +468,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'One focus for the squad on the rest days ahead:',
-                  style: TextStyle(
+                Text(
+                  l10n.postMatchRecoveryIntro,
+                  style: const TextStyle(
                     color: FcmColors.textDim,
                     fontSize: 12,
                     height: 1.35,
@@ -478,22 +481,19 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: _RecoveryOption(
-                      title: choice.displayName,
-                      effect:
-                          '+${(choice.recoveryBonus * 100).round()}% natural '
-                          'recovery',
+                      title: l10n.pepTalkName(choice),
+                      effect: l10n.recoveryBonusEffect(
+                        (choice.recoveryBonus * 100).round(),
+                      ),
                       onTap: () =>
                           _answerRecovery(_RecoveryChoice(pepTalk: choice)),
                     ),
-                  ),
-                if (!won)
+                  ),                if (!won)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: _RecoveryOption(
-                      title: 'Watch ad: boosted recovery',
-                      effect:
-                          '+15% natural recovery for the whole squad '
-                          '(GDD 19.3)',
+                      title: l10n.watchAdBoostedRecovery,
+                      effect: l10n.watchAdBoostedEffect,
                       gold: true,
                       onTap: () =>
                           _answerRecovery(const _RecoveryChoice.boosted()),
@@ -502,20 +502,26 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                 TextButton(
                   onPressed: () =>
                       _answerRecovery(const _RecoveryChoice.none()),
-                  child: const Text(
-                    'No pep talk — default recovery',
-                    style: TextStyle(color: FcmColors.textDim, fontSize: 12),
+                  child: Text(
+                    l10n.noPepTalkDefault,
+                    style: const TextStyle(
+                      color: FcmColors.textDim,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
                 // Armed by the first scrim tap: the skip needs a second,
                 // deliberate confirmation before it takes effect.
                 if (_scrimSkipArmed)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      'Tap outside again to skip without a pep talk',
+                      l10n.tapAgainToSkip,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: FcmColors.gold, fontSize: 11),
+                      style: const TextStyle(
+                        color: FcmColors.gold,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
               ],
@@ -1017,9 +1023,12 @@ class _MatchReportViewState extends State<MatchReportView> {
                             const SizedBox(width: 5),
                             Flexible(
                               child: Text(
-                                '${widget.pepTalk!.displayName} '
-                                '(+${(widget.pepTalk!.recoveryBonus * 100).round()}% '
-                                'recovery)',
+                                l10nOf(context).pepTalkRecoveryConfirmation(
+                                  l10nOf(context).pepTalkName(
+                                    widget.pepTalk!,
+                                  ),
+                                  (widget.pepTalk!.recoveryBonus * 100).round(),
+                                ),
                                 style: const TextStyle(
                                   color: FcmColors.success,
                                   fontSize: 11,

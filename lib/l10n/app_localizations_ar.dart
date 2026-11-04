@@ -136,4 +136,57 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tapAgainToSkip => 'اضغط خارج البطاقة مرة أخرى للتخطي بدون حديث';
+
+  @override
+  String get postMatchRecoveryTitle => 'الاستشفاء بعد المباراة';
+
+  @override
+  String get postMatchRecoveryIntro =>
+      'تركيز واحد للفريق في أيام الراحة القادمة:';
+
+  @override
+  String recoveryBonusEffect(int bonus) {
+    return '+$bonus% استشفاء طبيعي';
+  }
+
+  @override
+  String get pepTalkRestEveryone => 'راحة، الجميع يستحقها!';
+
+  @override
+  String get pepTalkFocusExhausted => 'التركيز على اللاعبين المنهكين!';
+
+  @override
+  String get pepTalkRewardSubstitutes => 'مكافأة بدلاء اللقاء!';
+
+  @override
+  String get pepTalkEveryoneGaveBest => 'الجميع بذل أفضل ما لديه!';
+
+  @override
+  String get watchAdBoostedRecovery => 'شاهد إعلانًا: استشفاء معزز';
+
+  @override
+  String get watchAdBoostedEffect =>
+      '+15% استشفاء طبيعي لكامل الفريق (GDD 19.3)';
+
+  @override
+  String get noPepTalkDefault => 'بدون حديث — الاستشفاء الافتراضي';
+
+  @override
+  String packsSoldFor(String coins) {
+    return 'تم البيع مقابل $coins عملة';
+  }
+
+  @override
+  String get packsNotEnoughCoins => 'لا توجد عملات كافية لحزمة أخرى';
+
+  @override
+  String get liveTacticsTitle => 'خط التماس';
+
+  @override
+  String get liveTacticsCancelSelection => 'إلغاء التحديد';
+
+  @override
+  String pepTalkRecoveryConfirmation(String pepTalk, int bonus) {
+    return '$pepTalk (+$bonus% استشفاء)';
+  }
 }

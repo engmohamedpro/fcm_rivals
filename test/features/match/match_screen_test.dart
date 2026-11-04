@@ -29,6 +29,7 @@ import 'package:fcm_rivals/features/match/match_screen.dart';
 import 'package:fcm_rivals/features/match/match_session.dart';
 import 'package:fcm_rivals/features/match/stamina.dart' show PepTalk;
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import 'package:fcm_rivals/l10n/app_localizations.dart';
 
 import '../../helpers/audioplayers_mocks.dart';
 
@@ -354,7 +355,11 @@ void main() {
     return session;
   }
 
-  Future<void> pumpMatch(WidgetTester tester, MatchSession session) async {
+  Future<void> pumpMatch(
+    WidgetTester tester,
+    MatchSession session, {
+    Locale? locale,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -364,6 +369,9 @@ void main() {
           databaseProvider.overrideWith((ref) => sessionDb!),
         ],
         child: MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MatchScreen(session: session, title: 'League · Round 1'),
         ),
       ),
@@ -377,14 +385,17 @@ void main() {
   /// Bounded pump loop until the recovery card is up, dismissing the
   /// half-time talk on the way (the same pattern the full-time test
   /// above uses).
-  Future<void> driveToRecoveryCard(WidgetTester tester) async {
+  Future<void> driveToRecoveryCard(
+    WidgetTester tester, {
+    String cardTitle = 'Post-match recovery',
+  }) async {
     for (var i = 0; i < 400; i++) {
       await tester.pump(const Duration(milliseconds: 200));
       if (find.text('HALF TIME').evaluate().isNotEmpty) {
         await tester.tap(find.text('Say nothing — back to the match'));
         await tester.pump(const Duration(milliseconds: 400));
       }
-      if (find.text('Post-match recovery').evaluate().isNotEmpty) return;
+      if (find.text(cardTitle).evaluate().isNotEmpty) return;
     }
     fail('The recovery card never came up');
   }
@@ -529,6 +540,49 @@ void main() {
       findsNothing,
     );
     expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
+  });
+
+  testWidgets('recovery card: Arabic locale renders the card, options and '
+      'the armed skip hint through the ARB bundle', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    sessionDb = db;
+    final store = await seededSquadStore(db);
+    // A defeat so the ad-boosted row is on the card too.
+    final session = await lossSession(store);
+
+    await pumpMatch(tester, session, locale: const Locale('ar'));
+    await driveToRecoveryCard(
+      tester,
+      cardTitle: 'الاستشفاء بعد المباراة',
+    );
+
+    // Every option row renders localized copy, not enum displayNames.
+    expect(find.text('راحة، الجميع يستحقها!'), findsOneWidget);
+    expect(find.text('شاهد إعلانًا: استشفاء معزز'), findsOneWidget);
+    expect(find.text('بدون حديث — الاستشفاء الافتراضي'), findsOneWidget);
+    // And the EN literal is gone.
+    expect(find.text('Watch ad: boosted recovery'), findsNothing);
+    expect(
+      find.text(PepTalk.restEveryone.displayName),
+      findsNothing,
+      reason: 'the enum displayName must not leak into the AR UI',
+    );
+
+    // First scrim tap arms the hint — in Arabic copy.
+    await tester.tapAt(const Offset(400, 200));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      find.text('اضغط خارج البطاقة مرة أخرى للتخطي بدون حديث'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('disposing the screen while the recovery card is up '
