@@ -19,6 +19,7 @@ import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/squad/squad_screen.dart';
 import 'package:fcm_rivals/features/squad/squad_view.dart';
+import 'package:fcm_rivals/l10n/app_localizations.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,7 @@ void main() {
     await db.close();
   });
 
-  Future<void> bootScreen(WidgetTester tester) async {
+  Future<void> bootScreen(WidgetTester tester, {Locale? locale}) async {
     final jsonText = await tester.runAsync(
       () => rootBundle.loadString('assets/data/players_v1.json'),
     );
@@ -55,7 +56,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [collectionStoreProvider.overrideWith((ref) => store)],
-        child: const MaterialApp(home: Scaffold(body: SquadScreen())),
+        child: MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: SquadScreen()),
+        ),
       ),
     );
     await tester.runAsync(
@@ -106,5 +112,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('Best squad selected'), findsOneWidget);
     expect(find.byType(TacticsSetupView), findsOneWidget);
+  });
+
+  // The pattern guard for every localized screen: delegates + AR locale
+  // resolve the Arabic copy end-to-end through the generated bundle.
+  testWidgets('Arabic locale renders the hint through the delegates', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester, locale: const Locale('ar'));
+
+    expect(
+      find.text('افتح الحزم لجمع اللاعبين ثم اضغط الاختيار التلقائي.'),
+      findsOneWidget,
+    );
+    expect(find.byType(TacticsSetupView), findsOneWidget);
+    expect(find.byType(SquadPitch), findsOneWidget);
   });
 }

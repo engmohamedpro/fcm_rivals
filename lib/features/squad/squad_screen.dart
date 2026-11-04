@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n_context.dart';
 
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
@@ -82,7 +82,7 @@ class SquadScreen extends ConsumerWidget {
                 padding: const EdgeInsets.only(bottom: 14),
                 child: FcmPanel(
                   child: Text(
-                    AppLocalizations.of(context)!.openPacksHint,
+                    l10nOf(context).openPacksHint,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: FcmColors.textDim),
                   ),
@@ -192,14 +192,13 @@ class SquadScreen extends ConsumerWidget {
     await store.autoPickSquad();
     ref.invalidate(squadProvider);
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.bestSquadSelected,
-            ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10nOf(context).bestSquadSelected,
           ),
-        );
+        ),
+      );
     }
   }
 
