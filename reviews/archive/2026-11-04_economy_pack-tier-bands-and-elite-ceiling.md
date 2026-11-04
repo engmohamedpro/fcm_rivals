@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -35,4 +35,4 @@ Pack tier bands are relative to each pool's log market-value range (`tierBoundar
 - No new UI copy (engine-level change), so no new ARB entries; existing coin formatting stays locale-aware via formatCoins.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified by code inspection plus re-running the locked suites. Absolute tier floors [EUR 3M, 20M] are default-on in PackEngine; `pack_tier_bands_test.dart` re-run green on the real 20,876-player dataset (20,000 seeded openings per tier): Legendary P(>= 20M) 0.667 / P(>= 50M) 0.104, Epic 0.118, Rare 0.000 — matching the developer's table. Reward factors 0.90/1.24 confirmed in code; the spread test is green and my own re-computation lands loss at ~82-83% of par and win at ~127-131% depending on goal mix — both inside the required 80-90% / 120-135% bands. Upgrade pointsPerLevel = 2 confirmed; cost curve re-checked: L1 on a EUR 50M card = 15,750 coins = 7.6 matches at 60% WR average income (>= 3 required), full L0-L5 ~ 98 matches, so upgrades stay subordinate to pack acquisition. Task 2's product decision (packs are the elite path; elite XI ~ 30 seasons at 60% WR, refunds ignored) is recorded explicitly with the sim table as the task allows. Economy/upgrades/packs/collection/balance suites all green; analyzer clean. One NON-BLOCKING nit for a future doc pass: the code comment and Developer Notes prose state 'loss ~ 88% / win ~ 133%'; the exact end-to-end figures at the stated goal mixes are ~82% / ~127-131% — the bands hold either way, only the prose point-estimate is off. All tasks and acceptance criteria verified — CLOSED.
