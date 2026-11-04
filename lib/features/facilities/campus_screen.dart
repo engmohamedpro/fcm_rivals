@@ -37,7 +37,6 @@ class _CampusScreenState extends ConsumerState<CampusScreen> {
     try {
       final store = await ref.read(collectionStoreProvider.future);
       await store.upgradeFacility(facility);
-      ref.invalidate(clubProvider);
       ref.invalidate(campusProvider);
     } catch (e) {
       if (mounted) {

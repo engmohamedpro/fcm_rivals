@@ -269,7 +269,6 @@ class _TestCoinButton extends ConsumerWidget {
       onPressed: () async {
         final store = await ref.read(collectionStoreProvider.future);
         await store.grantTestCoins();
-        ref.invalidate(clubProvider);
       },
     );
   }

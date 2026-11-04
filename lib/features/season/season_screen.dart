@@ -34,7 +34,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       ref.invalidate(seasonSummaryProvider);
       ref.invalidate(standingsProvider);
       ref.invalidate(nextFixtureProvider);
-      ref.invalidate(clubProvider);
       ref.invalidate(availablePacksProvider);
       setState(() => _error = null);
     } catch (e) {
@@ -102,7 +101,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       ref.invalidate(seasonSummaryProvider);
       ref.invalidate(standingsProvider);
       ref.invalidate(nextFixtureProvider);
-      ref.invalidate(clubProvider);
       ref.invalidate(collectionProvider);
       ref.invalidate(squadProvider);
       ref.invalidate(availablePacksProvider);
@@ -220,7 +218,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     final completion = await store.completeSeason(collection);
     ref.invalidate(seasonSummaryProvider);
     ref.invalidate(standingsProvider);
-    ref.invalidate(clubProvider);
     ref.invalidate(availablePacksProvider);
     if (mounted) await _showCompletion(completion);
   }

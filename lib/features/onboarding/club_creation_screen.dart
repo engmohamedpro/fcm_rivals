@@ -50,7 +50,6 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
         crestIndex: _crestIndex,
         formationCode: _formationCode,
       );
-      ref.invalidate(clubProvider);
       ref.invalidate(availablePacksProvider);
       ref.invalidate(campusProvider);
     } catch (e) {

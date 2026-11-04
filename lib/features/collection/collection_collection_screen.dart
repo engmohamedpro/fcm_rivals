@@ -300,7 +300,6 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     try {
       final result = await store.sellPlayers([card.ownedId]);
       ref.invalidate(collectionProvider);
-      ref.invalidate(clubProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -369,7 +368,6 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
         random: ref.read(randomProvider),
       );
       ref.invalidate(collectionProvider);
-      ref.invalidate(clubProvider);
       ref.invalidate(squadProvider);
       if (context.mounted) {
         final gains = result.upgradeLevel;
