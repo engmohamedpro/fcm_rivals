@@ -6,25 +6,28 @@
 /// pre-balance placeholders (GDD rule 14) gathered for simulation tuning.
 library;
 
+import 'dart:math' as math;
+
 /// Ten supported playing styles (GDD 10.2).
 ///
 /// Balance-tuned by the §34 deep-balance simulation (see
 /// test/balance/match_engine_balance_test.dart): every style vs an
 /// identical balanced opponent lands in the 36-52% win-rate band with a
-/// real spread between strongest and weakest. The possession multipliers
-/// stay close to 1.0 because the engine's possession competition raises
-/// support totals to the power 1.6 — a +6% multiplier compounds into a
-/// big possession share, so 1.20/1.28 made Possession/Tiki-Taka win
-/// 64-67% of matches outright (a free dominant strategy). Gegenpressing
-/// and High Press sit below 50% by design: their 1.30/1.22 stamina
-/// multipliers are the real cost.
+/// real spread between strongest and weakest. The possession modifier is
+/// applied ONCE, inside the engine's possession competition (support ×
+/// modifier, raised to the power 1.4) — the multipliers below are the
+/// squared values of the pre-fix single-site numbers, chosen so each
+/// style's effective odds ratio (and therefore its measured possession
+/// and win rate) is preserved exactly under the single application.
+/// Gegenpressing and High Press sit below 50% by design: their
+/// 1.30/1.22 stamina multipliers are the real cost.
 enum PlayingStyle {
   possession(
     'Possession',
     StyleModifiers(
       attack: 1.00,
       defence: 1.00,
-      possession: 1.06,
+      possession: 1.12,
       chance: 0.95,
       stamina: 1.00,
       passAccuracy: 1.06,
@@ -35,7 +38,7 @@ enum PlayingStyle {
     StyleModifiers(
       attack: 0.95,
       defence: 1.02,
-      possession: 1.08,
+      possession: 1.17,
       chance: 0.92,
       stamina: 0.95,
       passAccuracy: 1.10,
@@ -46,7 +49,7 @@ enum PlayingStyle {
     StyleModifiers(
       attack: 1.08,
       defence: 0.96,
-      possession: 0.94,
+      possession: 0.88,
       chance: 1.08,
       stamina: 1.02,
       passAccuracy: 0.92,
@@ -57,7 +60,7 @@ enum PlayingStyle {
     StyleModifiers(
       attack: 1.12,
       defence: 1.05,
-      possession: 0.88,
+      possession: 0.77,
       chance: 1.15,
       stamina: 0.92,
       passAccuracy: 0.90,
@@ -68,7 +71,7 @@ enum PlayingStyle {
     StyleModifiers(
       attack: 1.10,
       defence: 0.94,
-      possession: 1.03,
+      possession: 1.06,
       chance: 1.10,
       stamina: 1.30,
       passAccuracy: 0.94,
@@ -79,7 +82,7 @@ enum PlayingStyle {
     StyleModifiers(
       attack: 1.06,
       defence: 0.92,
-      possession: 1.03,
+      possession: 1.06,
       chance: 1.06,
       stamina: 1.22,
       passAccuracy: 0.94,
@@ -90,7 +93,7 @@ enum PlayingStyle {
     StyleModifiers(
       attack: 1.06,
       defence: 1.00,
-      possession: 0.98,
+      possession: 0.96,
       chance: 1.05,
       stamina: 1.05,
       passAccuracy: 0.98,
@@ -101,7 +104,7 @@ enum PlayingStyle {
     StyleModifiers(
       attack: 1.02,
       defence: 1.03,
-      possession: 0.90,
+      possession: 0.81,
       chance: 1.02,
       stamina: 0.94,
       passAccuracy: 0.84,
@@ -112,7 +115,7 @@ enum PlayingStyle {
     StyleModifiers(
       attack: 0.88,
       defence: 1.14,
-      possession: 0.88,
+      possession: 0.77,
       chance: 0.88,
       stamina: 0.85,
       passAccuracy: 0.92,
@@ -169,6 +172,14 @@ class StyleModifiers {
   final double passAccuracy;
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  ///
+  /// The possession line is HONEST: it shows the estimated possession
+  /// share the engine's power competition actually produces at even
+  /// strength (`m^1.4 / (m^1.4 + 1)`), not the raw multiplier — a +17%
+  /// multiplier reads as a big number but swings the measured share by
+  /// only ~5-6 points, and the UI must not promise more than the
+  /// simulation delivers. The estimate tracks the measured share of a
+  /// seeded run within ±2 points for every style.
   String get effectSummary {
     final parts = <String>[];
 
@@ -178,9 +189,13 @@ class StyleModifiers {
       parts.add('$name ${percent > 0 ? '+' : ''}$percent%');
     }
 
+    if (possession != 1.0) {
+      final w = math.pow(possession, 1.4).toDouble();
+      final share = 100 * w / (w + 1);
+      parts.add('Est. possession ${share.round()}%');
+    }
     describe('Attack', attack);
     describe('Defence', defence);
-    describe('Possession', possession);
     describe('Chances', chance);
     describe('Stamina use', stamina);
     describe('Passing', passAccuracy);
