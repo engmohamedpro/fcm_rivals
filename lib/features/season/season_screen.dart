@@ -35,9 +35,11 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       ref.invalidate(standingsProvider);
       ref.invalidate(nextFixtureProvider);
       ref.invalidate(availablePacksProvider);
-      setState(() => _error = null);
+      if (mounted) setState(() => _error = null);
     } catch (e) {
-      setState(() => _error = '$e'.replaceFirst('SeasonException: ', ''));
+      if (mounted) {
+        setState(() => _error = '$e'.replaceFirst('SeasonException: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -59,7 +61,18 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     setState(() => _busy = true);
     try {
       final store = await ref.read(seasonStoreProvider.future);
-      final next = (await store.getNextFixture())!;
+      final next = await store.getNextFixture();
+      if (next == null) {
+        // The fixture card can be a beat stale — a committed result or a
+        // mid-flight provider refresh may have consumed the fixture between
+        // the rebuild and this tap. Refresh and step out quietly instead of
+        // crashing on a null unwrap.
+        ref.invalidate(nextFixtureProvider);
+        ref.invalidate(seasonSummaryProvider);
+        ref.invalidate(standingsProvider);
+        if (mounted) setState(() => _error = null);
+        return;
+      }
       if (!mounted) return;
       // The matchday build-up: analysis + match-only tactics + dressing
       // room, then the chosen pep talk (null = no talk). Ad-free by design
@@ -106,7 +119,9 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       ref.invalidate(availablePacksProvider);
       await _maybeCompleteSeason();
     } catch (e) {
-      setState(() => _error = '$e'.replaceFirst('SeasonException: ', ''));
+      if (mounted) {
+        setState(() => _error = '$e'.replaceFirst('SeasonException: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -210,16 +225,26 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     );
   }
 
+  /// Auto-completes the season when the last fixture is played. Runs under
+  /// the same [_busy] gate as every other store action, so a double tap
+  /// (or a completion racing the match flow's own call) executes exactly
+  /// once — the second caller sees the flag and steps out.
   Future<void> _maybeCompleteSeason() async {
-    final store = await ref.read(seasonStoreProvider.future);
-    final next = await store.getNextFixture();
-    if (next != null) return;
-    final collection = await ref.read(collectionStoreProvider.future);
-    final completion = await store.completeSeason(collection);
-    ref.invalidate(seasonSummaryProvider);
-    ref.invalidate(standingsProvider);
-    ref.invalidate(availablePacksProvider);
-    if (mounted) await _showCompletion(completion);
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final store = await ref.read(seasonStoreProvider.future);
+      final next = await store.getNextFixture();
+      if (next != null) return;
+      final collection = await ref.read(collectionStoreProvider.future);
+      final completion = await store.completeSeason(collection);
+      ref.invalidate(seasonSummaryProvider);
+      ref.invalidate(standingsProvider);
+      ref.invalidate(availablePacksProvider);
+      if (mounted) await _showCompletion(completion);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -492,6 +517,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
               accent: FcmColors.gold,
               child: FcmButton(
                 onPressed: _busy ? null : _maybeCompleteSeason,
+                loading: _busy,
                 icon: Icons.emoji_events,
                 label: 'Complete season',
               ),
