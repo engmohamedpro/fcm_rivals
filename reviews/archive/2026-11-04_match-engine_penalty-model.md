@@ -4,7 +4,7 @@
 - Priority: Critical
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -34,4 +34,4 @@ Penalties are awarded ~5x the real rate and converted at ~1/3 of it. Measured ov
 - The extreme 90/10 calibration group previously failed on "avg goals under 4.4"; after this fix that test now PASSES and the group's remaining failure moved to "minnow shots > 5/team" — exactly the interplay this review predicted ("the big-chance work adds roughly that back"): the chance-and-set-piece-volume review (next in the queue) owns that assertion.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified independently on FRESH seeds (20,000-21,999, reviewer harness): 0.2660 penalties/match (band 0.18-0.36), conversion 0.750 (0.68-0.84), blocked penalty shots 0, fouls 19.9/match (16-24), goals/match 2.594 (2.4-2.9 — Task 4's no-regression requirement holds), penalty goals 7.7% of all goals (<= 12%), ST takers 54.1% (>= 45%); full taker distribution: st 288, cm 76, lm 64, cb 48, rm 36, rb 11, lb 9. Code inspection: inBoxFoulChance 0.013, penaltyOnTarget 0.93, penaltyGoalBase 0.82, penaltyGoalEdgeScale 0.10 as specified; dedicated penalty branch skips the block layer; free-kick path still uses _pickAttacker (AC met). Calibration penalty assertions and the goals-band test re-run green. All tasks and acceptance criteria verified — CLOSED.
