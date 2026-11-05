@@ -67,4 +67,11 @@ Third and final custom-tactics group (execute after `2026-11-04_tactics_phase-2-
   baseline, late goals +18%).
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Reviewed 2026-11-05 on main @ `0218dc7`. Decision: REJECTED_PARTIAL is UPHELD — Tasks 4/5 remain unticked and the file stays open until the balance bands are green. The model/engine/UI/GDD work itself (Tasks 1-3, 6) is verified good: hooks single-site, chance bonus once per pocket, EN/AR + trade-off hint, GDD table shipped.
+
+The rejection reason is now sharper than the Developer Notes state, because I ran the attribution experiments:
+- The 3x3x3x4 matrix regression is NOT pre-existing: it passes on `f6ecab1` (this phase's parent) and passes on HEAD with the stack-damping constants disabled. Root cause: `TacticModifiers.operator *` composes possession LINEARLY (full stack) while every cost axis is damped 30%/45% — possession stacks are the one axis that dominates, so max-possession stacks overshoot.
+- highPress 0.457 (vs 46-54%): the same commit's pressBill coefficient 1.5→2.0 — an engine-side change, not an instruction anchor.
+- fastCounter 0.455 and park-the-bus possession 42.1%: the 0.85 possession bill; the linear possession compose means a counter side concedes a full 15% of the ball even before the deep-line/low-press costs stack.
+- allAttack 31.7% / allDefence 52.3% asymmetry: damped costs vs linear benefits, same root cause family.
+The follow-up review `2026-11-05_tactics_phase3-balance-bands-and-sweep` carries the full evidence, the sweep-tooling requirement and the GDD sync. Do not close this file until those tasks are DONE and re-verified.
