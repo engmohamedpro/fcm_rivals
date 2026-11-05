@@ -16,6 +16,7 @@ import 'live_match_views.dart';
 import 'match_audio.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
+import 'match_report_view.dart';
 import 'match_session.dart';
 import 'stamina.dart';
 import 'tactics.dart';
@@ -94,7 +95,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
 
   /// Resolves when the manager answers the post-match recovery card —
   /// the card's tap handlers complete it instead of polling a field.
-  Completer<_RecoveryChoice>? _recoveryChoice;
+  Completer<RecoveryChoice>? _recoveryChoice;
 
   /// Guards double-taps: the card answers exactly once.
   bool _choiceMade = false;
@@ -348,11 +349,11 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       // card design as the half-time talk.
       _choiceMade = false;
       _scrimSkipArmed = false;
-      final choiceCompleter = Completer<_RecoveryChoice>();
+      final choiceCompleter = Completer<RecoveryChoice>();
       _recoveryChoice = choiceCompleter;
       if (mounted) setState(() => _recoveryPending = true);
       // The card's tap handlers resolve the completer — no polling.
-      _RecoveryChoice? choice;
+      RecoveryChoice? choice;
       try {
         choice = await choiceCompleter.future;
       } catch (_) {
@@ -396,7 +397,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
 
   /// Answers the recovery card exactly once: the first tap wins, later
   /// taps are swallowed while the finish proceeds.
-  void _answerRecovery(_RecoveryChoice choice) {
+  void _answerRecovery(RecoveryChoice choice) {
     if (_choiceMade) return;
     _choiceMade = true;
     _recoveryChoice?.complete(choice);
@@ -471,29 +472,29 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                 for (final choice in PepTalk.values)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: _RecoveryOption(
+                    child: RecoveryOption(
                       title: l10n.pepTalkName(choice),
                       effect: l10n.recoveryBonusEffect(
                         (choice.recoveryBonus * 100).round(),
                       ),
                       onTap: () =>
-                          _answerRecovery(_RecoveryChoice(pepTalk: choice)),
+                          _answerRecovery(RecoveryChoice(pepTalk: choice)),
                     ),
                   ),
                 if (!won)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: _RecoveryOption(
+                    child: RecoveryOption(
                       title: l10n.watchAdBoostedRecovery,
                       effect: l10n.watchAdBoostedEffect,
                       gold: true,
                       onTap: () =>
-                          _answerRecovery(const _RecoveryChoice.boosted()),
+                          _answerRecovery(const RecoveryChoice.boosted()),
                     ),
                   ),
                 TextButton(
                   onPressed: () =>
-                      _answerRecovery(const _RecoveryChoice.none()),
+                      _answerRecovery(const RecoveryChoice.none()),
                   child: Text(
                     l10n.noPepTalkDefault,
                     style: const TextStyle(
@@ -527,7 +528,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// First scrim tap arms the skip hint; the second confirms the skip.
   void _confirmSkipOnScrim() {
     if (_scrimSkipArmed) {
-      _answerRecovery(const _RecoveryChoice.none());
+      _answerRecovery(const RecoveryChoice.none());
       return;
     }
     setState(() => _scrimSkipArmed = true);
@@ -749,548 +750,4 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       }
     }
   }
-}
-
-/// One post-match recovery option row (touchline card style).
-class _RecoveryOption extends StatelessWidget {
-  const _RecoveryOption({
-    required this.title,
-    required this.effect,
-    required this.onTap,
-    this.gold = false,
-  });
-
-  final String title;
-  final String effect;
-  final VoidCallback onTap;
-  final bool gold;
-
-  @override
-  Widget build(BuildContext context) {
-    return FcmPressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: gold ? FcmColors.gold : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    effect,
-                    style: const TextStyle(
-                      color: FcmColors.gold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: FcmColors.textDim,
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Post-match report (GDD 14 post-match screen): result, reward, Man
-/// of the Match, the full-match momentum flow and both squads' player
-/// ratings in ONE tabbed panel — the user's XI opens first, the
-/// opponent one tap away. The team-statistics table is gone — the
-/// momentum graph (the same one the live match shows) tells how the
-/// game flowed. The pep-talk choice is gone from here (it happens on
-/// the full-time touchline card); the screen ends with a CONTINUE
-/// button that closes the match flow.
-class MatchReportView extends StatefulWidget {
-  const MatchReportView({
-    super.key,
-    required this.report,
-    required this.homeTeamName,
-    required this.awayTeamName,
-    required this.pepTalk,
-    this.adBoostedRecovery = false,
-    this.userSide,
-    this.momentumSeries,
-    this.userTeamColor = FcmColors.gold,
-    required this.onContinue,
-  });
-
-  final MatchReportResult report;
-  final String homeTeamName;
-  final String awayTeamName;
-
-  /// The post-match pep talk applied at full time (shown as a status
-  /// line — the choice itself was made on the touchline card).
-  final PepTalk? pepTalk;
-
-  /// Whether the ad-supported boosted recovery was applied (GDD 19.3).
-  final bool adBoostedRecovery;
-
-  /// Which side the player managed; drives the VICTORY / DEFEAT banner
-  /// and which ratings tab opens first.
-  final MatchSide? userSide;
-
-  /// The full-match momentum timeline (per-minute HOME shares) — the
-  /// live bar's series at full time. Null when the match carried no
-  /// team ids; the section then stays off.
-  final List<double>? momentumSeries;
-
-  /// The user's crest colour, tinting their side's spikes.
-  final Color userTeamColor;
-
-  /// Ends the match flow — the ONLY exit (no back button above).
-  final VoidCallback onContinue;
-
-  @override
-  State<MatchReportView> createState() => _MatchReportViewState();
-}
-
-class _MatchReportViewState extends State<MatchReportView> {
-  /// Which squad's ratings are shown: the user's team opens first —
-  /// after the final whistle you read your own players before the
-  /// opponent's.
-  late int _ratingsTab = _initialTab;
-
-  int get _initialTab {
-    final side = widget.userSide;
-    if (side == null) return 0;
-    return side == MatchSide.home ? 0 : 1;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final report = widget.report;
-    final home = report.state.scoreHome;
-    final away = report.state.scoreAway;
-    String? verdict;
-    var verdictColor = FcmColors.gold;
-    if (widget.userSide != null) {
-      final mine = widget.userSide == MatchSide.home ? home : away;
-      final theirs = widget.userSide == MatchSide.home ? away : home;
-      if (mine > theirs) {
-        verdict = 'VICTORY';
-        verdictColor = FcmColors.success;
-      } else if (mine < theirs) {
-        verdict = 'DEFEAT';
-        verdictColor = FcmColors.danger;
-      } else {
-        verdict = 'DRAW';
-      }
-    }
-    final userTeamName = _initialTab == 0
-        ? widget.homeTeamName
-        : widget.awayTeamName;
-    final opponentTeamName = _initialTab == 0
-        ? widget.awayTeamName
-        : widget.homeTeamName;
-    final userRatings = _initialTab == 0
-        ? report.homeRatings
-        : report.awayRatings;
-    final opponentRatings = _initialTab == 0
-        ? report.awayRatings
-        : report.homeRatings;
-    // Spike colours: the user's crest colour tints their side, the
-    // opponent's stays dimmed white (brand gold when no user side).
-    Color homeColor = FcmColors.gold;
-    Color awayColor = opponentMomentumColor;
-    if (widget.userSide != null) {
-      homeColor = widget.userSide == MatchSide.home
-          ? widget.userTeamColor
-          : opponentMomentumColor;
-      awayColor = widget.userSide == MatchSide.home
-          ? opponentMomentumColor
-          : widget.userTeamColor;
-    }
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 18),
-            children: [
-              FcmEntrance(
-                child: FcmPanel(
-                  accent: verdictColor,
-                  glow: true,
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-                  child: Column(
-                    children: [
-                      if (verdict != null) ...[
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.6, end: 1),
-                          duration: const Duration(milliseconds: 700),
-                          curve: Curves.elasticOut,
-                          builder: (context, v, child) =>
-                              Transform.scale(scale: v, child: child),
-                          child: FitText(
-                            verdict,
-                            align: Alignment.center,
-                            style: TextStyle(
-                              color: verdictColor,
-                              fontSize: 36,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 5,
-                              shadows: [
-                                Shadow(
-                                  color: verdictColor.withValues(alpha: 0.6),
-                                  blurRadius: 22,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      Text(
-                        'Full time: ${widget.homeTeamName} $home - $away '
-                        '${widget.awayTeamName}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // The same C coin the top bar shows — one
-                          // currency, one icon everywhere.
-                          const FcmCoinGlyph(size: 20),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Reward: ${report.rewardCoins}',
-                            style: const TextStyle(
-                              color: FcmColors.gold,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // The recovery decision made on the full-time
-                      // touchline card, restated as a status line.
-                      if (widget.adBoostedRecovery)
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.movie, size: 14, color: FcmColors.gold),
-                            SizedBox(width: 5),
-                            Text(
-                              'Ad-boosted recovery applied (+15% natural '
-                              'recovery)',
-                              style: TextStyle(
-                                color: FcmColors.gold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        )
-                      else if (widget.pepTalk != null)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.healing_rounded,
-                              size: 14,
-                              color: FcmColors.success,
-                            ),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                l10nOf(context).pepTalkRecoveryConfirmation(
-                                  l10nOf(context).pepTalkName(widget.pepTalk!),
-                                  (widget.pepTalk!.recoveryBonus * 100).round(),
-                                ),
-                                style: const TextStyle(
-                                  color: FcmColors.success,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              if (report.manOfTheMatch != null) ...[
-                const SizedBox(height: 12),
-                FcmEntrance(
-                  index: 1,
-                  child: FcmPanel(
-                    accent: FcmColors.gold,
-                    child: Row(
-                      children: [
-                        const FcmIconBadge(
-                          icon: Icons.emoji_events_rounded,
-                          size: 50,
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              FitText(
-                                report.manOfTheMatch!.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              Text(
-                                'Man of the Match · rating '
-                                '${report.manOfTheMatch!.rating.toStringAsFixed(1)}',
-                                style: const TextStyle(
-                                  color: FcmColors.textDim,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              // The full-match momentum flow where the team-statistics
-              // table used to be: the same spike bar the live match
-              // shows, now over the whole 90 minutes.
-              if (widget.momentumSeries != null &&
-                  widget.momentumSeries!.isNotEmpty) ...[
-                const FcmSectionTitle('Momentum'),
-                FcmEntrance(
-                  index: 2,
-                  child: FcmPanel(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                    child: MomentumBar(
-                      series: widget.momentumSeries!,
-                      homeTeamName: widget.homeTeamName,
-                      awayTeamName: widget.awayTeamName,
-                      homeColor: homeColor,
-                      awayColor: awayColor,
-                    ),
-                  ),
-                ),
-              ],
-              // Both squads' ratings in ONE tabbed panel: the user's
-              // team is the first tab and opens first.
-              const FcmSectionTitle('Player ratings'),
-              FcmEntrance(
-                index: 3,
-                child: _RatingsTabs(
-                  firstLabel: userTeamName,
-                  secondLabel: opponentTeamName,
-                  firstRatings: userRatings,
-                  secondRatings: opponentRatings,
-                  current: _ratingsTab,
-                  onChanged: (tab) => setState(() => _ratingsTab = tab),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-        // CONTINUE — the only way out of the finished match: a full-width
-        // bar pinned to the bottom of the screen.
-        SafeArea(
-          minimum: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-          child: FcmButton(
-            label: 'Continue',
-            icon: Icons.arrow_forward_rounded,
-            onPressed: widget.onContinue,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Tab pair for the two squads' player ratings: gold segment for the
-/// active squad, steel for the idle one. One tap switches lists.
-class _RatingsTabs extends StatelessWidget {
-  const _RatingsTabs({
-    required this.firstLabel,
-    required this.secondLabel,
-    required this.firstRatings,
-    required this.secondRatings,
-    required this.current,
-    required this.onChanged,
-  });
-
-  final String firstLabel;
-  final String secondLabel;
-  final List<PlayerMatchRating> firstRatings;
-  final List<PlayerMatchRating> secondRatings;
-  final int current;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          height: 40,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            gradient: FcmColors.steelGradient,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: FcmColors.bronze.withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            children: [
-              for (final (i, label) in [firstLabel, secondLabel].indexed)
-                Expanded(
-                  child: FcmPressable(
-                    onTap: () => onChanged(i),
-                    scale: 0.98,
-                    child: Container(
-                      height: double.infinity,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        gradient: i == current ? FcmColors.goldGradient : null,
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: FitText(
-                        label,
-                        style: TextStyle(
-                          color: i == current
-                              ? FcmColors.ink
-                              : FcmColors.textDim,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        _RatingsPanel(ratings: current == 0 ? firstRatings : secondRatings),
-      ],
-    );
-  }
-}
-
-/// One squad's player ratings: position, name, goal/assist tallies and
-/// the colour-coded rating pill. Players who feature only.
-class _RatingsPanel extends StatelessWidget {
-  const _RatingsPanel({required this.ratings});
-
-  final List<PlayerMatchRating> ratings;
-
-  static Color _ratingColor(double r) {
-    if (r >= 7.5) return FcmColors.success;
-    if (r >= 6.5) return FcmColors.gold;
-    if (r >= 5.5) return const Color(0xFFC89A5B);
-    return FcmColors.danger;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final played = ratings.where((r) => r.played).toList();
-    if (played.isEmpty) {
-      return const FcmPanel(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: Text(
-          'No players featured.',
-          style: TextStyle(color: FcmColors.textDim, fontSize: 12),
-        ),
-      );
-    }
-    return FcmPanel(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(
-        children: [
-          for (final r in played)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 42,
-                    child: FitText(
-                      r.position.code,
-                      style: const TextStyle(
-                        color: FcmColors.textDim,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: FitText(
-                      r.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  if (r.goals > 0)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 6),
-                      child: Text(
-                        '⚽ ×${r.goals}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  if (r.assists > 0)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 6),
-                      child: Text(
-                        '🅰 ×${r.assists}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  const SizedBox(width: 10),
-                  FcmPill(
-                    r.rating.toStringAsFixed(1),
-                    color: _ratingColor(r.rating),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Post-match recovery choice: one free Pep Talk or the ad-boosted path.
-class _RecoveryChoice {
-  const _RecoveryChoice({this.pepTalk}) : boosted = false;
-  const _RecoveryChoice.boosted() : pepTalk = null, boosted = true;
-  const _RecoveryChoice.none() : pepTalk = null, boosted = false;
-
-  final PepTalk? pepTalk;
-  final bool boosted;
 }

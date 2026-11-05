@@ -4,8 +4,8 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-05
-- Status: OPEN
-- Completed on: -
+- Status: DONE
+- Completed on: 2026-11-05
 
 ## Context
 One of ten follow-ups carved out of `2026-11-04_app-structure_remaining-oversized-files` (set to SPLIT 2026-11-05 per the README §1 one-file-per-task rule). The README's ~800-line split threshold (README.md:72-74) is contradicted by `lib/features/match/match_screen.dart` (1,296 lines on 2026-11-05). Split it following the proven `fcm_widgets.dart` barrel pattern so consumer imports never churn.
@@ -22,7 +22,7 @@ One of ten follow-ups carved out of `2026-11-04_app-structure_remaining-oversize
 Not applicable.
 
 ## Task
-- [ ] Extract the report view and ratings panels out of MatchScreen | Where: `lib/features/match/match_screen.dart` (1,296 lines; anchors above) | Expected: `match_report_view.dart` owns `MatchReportView`, the ratings tabs/panels and the recovery widgets; `match_screen.dart` keeps the live-match shell; screen behaviour and widget tree identical — `match_screen_test.dart`, `live_match_ux_test.dart` and `season_live_match_flow_test.dart` green with zero test edits.
+- [x] Extract the report view and ratings panels out of MatchScreen | Where: `lib/features/match/match_screen.dart` (1,296 lines; anchors above) | Expected: `match_report_view.dart` owns `MatchReportView`, the ratings tabs/panels and the recovery widgets; `match_screen.dart` keeps the live-match shell; screen behaviour and widget tree identical — `match_screen_test.dart`, `live_match_ux_test.dart` and `season_live_match_flow_test.dart` green with zero test edits.
 
 ## Acceptance Criteria
 - [ ] Compiles with zero analyzer warnings
@@ -33,7 +33,25 @@ Not applicable.
 - [ ] `match_screen_test.dart`, `live_match_ux_test.dart` and `season_live_match_flow_test.dart` green with zero test edits
 
 ## Developer Notes
-<Implementation summary, files changed, exact test commands/results, and rejection reason/evidence if applicable. Implement this task only, create one task-specific commit, and push it before starting another task.>
+- Extracted `match_report_view.dart` (564 lines) from
+  `match_screen.dart` (now 754): `MatchReportView` +
+  `_MatchReportViewState`, `_RatingsTabs`, `_RatingsPanel`, and the
+  recovery widgets. The two shell-consumed privates became public:
+  `_RecoveryOption` -> `RecoveryOption` (with `super.key` added),
+  `_RecoveryChoice` -> `RecoveryChoice`; all shell usages updated.
+  Pure relocation — widget trees unchanged, no test edits.
+- Checks (Flutter 3.47.9 stable):
+  - `flutter analyze`: No issues found!
+  - `flutter test test/features/match/match_screen_test.dart
+    test/features/match/live_match_ux_test.dart
+    test/features/season/season_live_match_flow_test.dart`:
+    All tests passed (27).
+  - `flutter test` full suite: 705 passed, 4 failed — exactly the four
+    known phase-3 balance bands (same as pre-change `5447a67`); zero
+    widget-test failures, zero new failures.
+- Only `match_screen.dart`, the new `match_report_view.dart` and this
+  task file are in the commit.
+
 
 ## Reviewer Verification
 <Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
