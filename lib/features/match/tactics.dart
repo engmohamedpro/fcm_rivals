@@ -67,40 +67,62 @@ class TacticModifiers {
   /// single-application sites enforce), with diminishing returns on
   /// stacked same-direction pushes: when both sides already deviate
   /// from 1.0 the same way, the excess over 1.0 of the product is
-  /// damped by [_stackDamp] — the second aggressive instruction adds
-  /// less than the first, so extreme combos stay playable.
-  TacticModifiers operator *(TacticModifiers other) => TacticModifiers(
-    attack: _damped(attack, other.attack),
-    defence: _damped(defence, other.defence),
-    // Possession composes LINEARLY: a low-block counter side's identity
-    // IS ceding the ball — damping it would erase the style.
-    possession: possession * other.possession,
-    chance: _damped(chance, other.chance),
-    stamina: _dampedStamina(stamina, other.stamina),
-    passAccuracy: _damped(passAccuracy, other.passAccuracy),
-    shotQuality: _damped(shotQuality, other.shotQuality),
-  );
-
-  /// How much of a stacked same-direction excess survives the compose.
-  static const double _stackDamp = 0.70;
+  /// damped — the second aggressive instruction adds less than the
+  /// first, so extreme combos stay playable.
+  ///
+  /// The damp factors come from [TuningOverrides.current.compose]; the
+  /// shipped [ComposeRule] carries 0.70 (costs), 0.55 (stamina) and
+  /// 1.0 (possession, both directions — LINEAR: a low-block counter
+  /// side's identity IS ceding the ball, and hoarding instructions
+  /// stack at full strength), so this method is bit-identical to the
+  /// no-seam build in production.
+  TacticModifiers operator *(TacticModifiers other) {
+    final c = TuningOverrides.current.compose;
+    return TacticModifiers(
+      attack: _damped(attack, other.attack, c.costStackDamp),
+      defence: _damped(defence, other.defence, c.costStackDamp),
+      possession: _dampedPossession(possession, other.possession, c),
+      chance: _damped(chance, other.chance, c.costStackDamp),
+      stamina: _dampedStamina(stamina, other.stamina, c.staminaStackDamp),
+      passAccuracy: _damped(passAccuracy, other.passAccuracy, c.costStackDamp),
+      shotQuality: _damped(shotQuality, other.shotQuality, c.costStackDamp),
+    );
+  }
 
   /// Product with damped stacked excess; opposing pushes cancel
-  /// naturally through the plain product.
-  static double _damped(double a, double b) {
+  /// naturally through the plain product. [damp] is the share of the
+  /// stacked excess that survives.
+  static double _damped(double a, double b, double damp) {
     final product = a * b;
     final stacked = (a - 1) * (b - 1) > 0;
     if (!stacked) return product;
-    return 1 + (product - 1) * _stackDamp;
+    return 1 + (product - 1) * damp;
+  }
+
+  /// Possession composes through the same damp rule as the other axes,
+  /// with its own per-direction factors so the sweep can damp the
+  /// hoarding direction (>1 stacks) and the ceding direction (<1
+  /// stacks) independently (review Task 2 options a/b). Both shipped
+  /// factors are 1.0, so the compose stays LINEAR in production and
+  /// this method returns the plain product bit-identically.
+  static double _dampedPossession(double a, double b, ComposeRule c) {
+    final product = a * b;
+    if ((a - 1) * (b - 1) <= 0) return product;
+    final damp = product > 1
+        ? c.possessionStackDampAbove
+        : c.possessionStackDampBelow;
+    if (damp >= 1.0) return product;
+    return 1 + (product - 1) * damp;
   }
 
   /// Stamina stacks are the killer (the gegenpress bill); damp them
   /// harder so three stamina costs compose to a real but survivable
   /// bill.
-  static double _dampedStamina(double a, double b) {
+  static double _dampedStamina(double a, double b, double damp) {
     final product = a * b;
     final stacked = (a - 1) * (b - 1) > 0;
     if (!stacked) return product;
-    return 1 + (product - 1) * 0.55;
+    return 1 + (product - 1) * damp;
   }
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
@@ -134,6 +156,104 @@ class TacticModifiers {
     describe('Passing', passAccuracy);
     return parts.isEmpty ? 'No modifiers' : parts.join(' · ');
   }
+}
+
+/// A tunable instruction option: every custom-tactics instruction enum
+/// implements this so the balance sweep can address any option's
+/// modifiers uniformly (see [TuningOverrides]).
+abstract interface class InstructionOption {
+  /// This option's shipped modifier bundle (a GDD rule 14 anchor).
+  TacticModifiers get modifiers;
+}
+
+/// The instruction-compose damp factors (review
+/// 2026-11-05_tactics_phase3-balance-bands-and-sweep, Task 2). The
+/// shipped rule: cost axes damp stacked excess at 0.70, stamina at
+/// 0.55, possession composes LINEARLY (both directions at 1.0).
+class ComposeRule {
+  const ComposeRule({
+    this.costStackDamp = 0.70,
+    this.staminaStackDamp = 0.55,
+    this.possessionStackDampAbove = 1.0,
+    this.possessionStackDampBelow = 1.0,
+  });
+
+  /// The shipped compose rule (identity of this class's defaults).
+  static const ComposeRule shipped = ComposeRule();
+
+  /// Damp on stacked same-direction excess for the cost axes
+  /// (attack/defence/chance/passAccuracy/shotQuality).
+  final double costStackDamp;
+
+  /// Damp on stacked stamina costs (the gegenpress bill).
+  final double staminaStackDamp;
+
+  /// Damp on stacked possession-HOARDING pushes (both factors > 1).
+  /// 1.0 = linear, the shipped rule.
+  final double possessionStackDampAbove;
+
+  /// Damp on stacked possession-CEDING pushes (both factors < 1).
+  /// 1.0 = linear, the shipped rule.
+  final double possessionStackDampBelow;
+}
+
+/// Tuning seam for the balance sweep (`tool/tactics_tuning_sweep.dart`,
+/// review Task 1). Production never touches it: [current] stays
+/// [none], so every `.tuned` lookup falls through to the instruction's
+/// shipped constant and gameplay is bit-identical to the no-seam
+/// build. The sweep installs a candidate (instruction overrides + a
+/// compose rule) before building engines and restores [none] after.
+class TuningOverrides {
+  const TuningOverrides._(
+    this._instructions,
+    this.compose, {
+    this.pressBillSlope = 2.0,
+  });
+
+  /// No overrides: shipped constants, the shipped compose rule and the
+  /// shipped press-bill slope.
+  static const TuningOverrides none = TuningOverrides._(
+    {},
+    ComposeRule.shipped,
+  );
+
+  /// The active overrides; [none] everywhere except inside the sweep.
+  static TuningOverrides current = none;
+
+  final Map<InstructionOption, TacticModifiers> _instructions;
+
+  /// The active compose rule; [ComposeRule.shipped] outside the sweep.
+  final ComposeRule compose;
+
+  /// The engine's press-bill slope (match_engine.dart:876): how hard a
+  /// pressing side's stamina bill multiplies the late-match fatigue
+  /// term. Shipped 2.0; the sweep may vary it, but the preferred fix is
+  /// retuning the per-instruction stamina anchors (this coefficient has
+  /// moved twice already — review Task 3).
+  final double pressBillSlope;
+
+  /// The instruction's effective bundle: the sweep's override for it,
+  /// or its shipped constant when no override is installed.
+  TacticModifiers of(InstructionOption option) =>
+      _instructions[option] ?? option.modifiers;
+
+  /// Builds an overrides set for the tuning sweep. Production never
+  /// calls this; only `tool/tactics_tuning_sweep.dart` does.
+  factory TuningOverrides.withValues({
+    Map<InstructionOption, TacticModifiers> instructions = const {},
+    ComposeRule compose = ComposeRule.shipped,
+    double pressBillSlope = 2.0,
+  }) => TuningOverrides._(
+    Map.of(instructions),
+    compose,
+    pressBillSlope: pressBillSlope,
+  );
+}
+
+/// The effective bundle of an instruction option: the sweep's override
+/// when one is installed, the shipped anchor otherwise.
+extension TunedInstruction on InstructionOption {
+  TacticModifiers get tuned => TuningOverrides.current.of(this);
 }
 
 /// A team's full tactical setup (GDD 10.2 Custom Tactics): three
@@ -258,7 +378,7 @@ TeamTactics tacticsFromDbPayload(String? raw) {
 /// Build-up style: how the team plays out from the back (GDD 10.2 In
 /// Possession). Anchor values are GDD rule 14 placeholders, tuned by
 /// the balance harness.
-enum BuildUpStyle {
+enum BuildUpStyle implements InstructionOption {
   playOut(
     'Play Out from the Back',
     TacticModifiers(possession: 1.06, passAccuracy: 1.05, chance: 0.94),
@@ -277,11 +397,12 @@ enum BuildUpStyle {
   const BuildUpStyle(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
 /// Tempo: how quickly the ball moves forward.
-enum AttackTempo {
+enum AttackTempo implements InstructionOption {
   slow('Slow', TacticModifiers(possession: 1.03, chance: 0.95, stamina: 0.94)),
   standard('Standard', TacticModifiers.identity),
   fast(
@@ -297,11 +418,12 @@ enum AttackTempo {
   const AttackTempo(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
 /// Width: where the attacks are staged from.
-enum AttackWidth {
+enum AttackWidth implements InstructionOption {
   narrow('Narrow', TacticModifiers(passAccuracy: 1.04, chance: 0.96)),
   standard('Standard', TacticModifiers.identity),
   wide('Wide', TacticModifiers(passAccuracy: 0.96, chance: 1.03));
@@ -309,11 +431,12 @@ enum AttackWidth {
   const AttackWidth(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
 /// Final-third approach: how chances are hunted near goal.
-enum FinalThirdApproach {
+enum FinalThirdApproach implements InstructionOption {
   workBallIntoBox(
     'Work Ball into Box',
     TacticModifiers(chance: 0.92, shotQuality: 1.08),
@@ -331,6 +454,7 @@ enum FinalThirdApproach {
   const FinalThirdApproach(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
@@ -371,11 +495,10 @@ class InPossessionTactics {
       finalThird == FinalThirdApproach.balanced;
 
   /// The group's composed contribution to the engine bundle.
+  /// Composed through the tuning seam (`.tuned`): the shipped
+  /// constants when no sweep override is installed.
   TacticModifiers get modifiers =>
-      buildUp.modifiers *
-      tempo.modifiers *
-      width.modifiers *
-      finalThird.modifiers;
+      buildUp.tuned * tempo.tuned * width.tuned * finalThird.tuned;
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible),
   /// in the same honest-estimate format as the old possession line.
@@ -452,7 +575,7 @@ class InPossessionTactics {
 /// tackling and the offside trap. Phase 0 scaffold — the fields arrive
 /// in phase 2.
 /// Defensive line height (GDD 10.2 Out of Possession).
-enum DefensiveLine {
+enum DefensiveLine implements InstructionOption {
   deep('Deep Line', TacticModifiers(defence: 1.05, possession: 0.91)),
   standard('Standard', TacticModifiers.identity),
   high('High Line', TacticModifiers(defence: 0.94, possession: 1.04));
@@ -460,12 +583,13 @@ enum DefensiveLine {
   const DefensiveLine(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
 /// Pressing intensity. The High-press stamina cost (1.28) is anchored
 /// to the §34 gegenpress cost of 1.30.
-enum PressingIntensity {
+enum PressingIntensity implements InstructionOption {
   low(
     'Low Press',
     TacticModifiers(defence: 1.02, stamina: 0.88, possession: 0.94),
@@ -479,13 +603,14 @@ enum PressingIntensity {
   const PressingIntensity(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
 /// Tackling aggression. The foul and yellow scaling factors ride the
 /// engine's per-side foul/card probabilities (phase 2 Task 2), not
 /// this bundle.
-enum TacklingAggression {
+enum TacklingAggression implements InstructionOption {
   clean(
     'Clean',
     TacticModifiers(defence: 0.98),
@@ -516,6 +641,7 @@ enum TacklingAggression {
   });
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 
   /// Multiplier on this side's foul-emission probability.
@@ -568,8 +694,10 @@ class OutOfPossessionTactics {
       tackling == TacklingAggression.balanced &&
       !offsideTrap;
 
+  /// Composed through the tuning seam (`.tuned`): the shipped
+  /// constants when no sweep override is installed.
   TacticModifiers get modifiers =>
-      defensiveLine.modifiers * pressing.modifiers * tackling.modifiers;
+      defensiveLine.tuned * pressing.tuned * tackling.tuned;
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
   String get effectSummary {
@@ -635,7 +763,7 @@ class OutOfPossessionTactics {
 /// Transitions instructions (GDD 10.2): counter-press, counter-attacking
 /// and rest defence. Phase 0 scaffold — the fields arrive in phase 3.
 /// Counter-press behaviour right after losing the ball.
-enum CounterPress {
+enum CounterPress implements InstructionOption {
   retreat(
     'Retreat to Shape',
     TacticModifiers(defence: 1.03, chance: 0.95, stamina: 0.92),
@@ -649,11 +777,12 @@ enum CounterPress {
   const CounterPress(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
 /// What the team does with a recovered ball.
-enum AttackOnRecovery {
+enum AttackOnRecovery implements InstructionOption {
   patient('Patient', TacticModifiers(possession: 1.05, chance: 0.94)),
   balanced('Balanced', TacticModifiers.identity),
   fast(
@@ -664,11 +793,12 @@ enum AttackOnRecovery {
   const AttackOnRecovery(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
 /// How many players stay back while attacking (rest defence).
-enum RestDefence {
+enum RestDefence implements InstructionOption {
   conservative(
     'Conservative · 4 back',
     TacticModifiers(defence: 1.04, chance: 0.96),
@@ -682,6 +812,7 @@ enum RestDefence {
   const RestDefence(this.displayName, this.modifiers);
 
   final String displayName;
+  @override
   final TacticModifiers modifiers;
 }
 
@@ -705,10 +836,10 @@ class TransitionTactics {
       attackOnRecovery == AttackOnRecovery.balanced &&
       restDefence == RestDefence.standard;
 
+  /// Composed through the tuning seam (`.tuned`): the shipped
+  /// constants when no sweep override is installed.
   TacticModifiers get modifiers =>
-      counterPress.modifiers *
-      attackOnRecovery.modifiers *
-      restDefence.modifiers;
+      counterPress.tuned * attackOnRecovery.tuned * restDefence.tuned;
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
   String get effectSummary => modifiers.effectSummary;

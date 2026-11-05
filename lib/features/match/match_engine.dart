@@ -871,9 +871,13 @@ class MatchEngine {
     // multiplies the fatigue term — a high press concedes
     // measurably more after 75' (its 1.30 stamina bill
     // arriving where real matches break open), while a low
-    // block (stamina < 1.0) tightens slightly.
-    final pressDrain = def.tactics.outOfPossession.pressing.modifiers.stamina;
-    final pressBill = pressDrain > 1.0 ? (pressDrain - 1.0) * 2.0 : 0.0;
+    // block (stamina < 1.0) tightens slightly. The drain and
+    // the bill's slope read through the tuning seam: shipped
+    // 1.30 and 2.0 when no sweep override is installed.
+    final pressDrain = def.tactics.outOfPossession.pressing.tuned.stamina;
+    final pressBill = pressDrain > 1.0
+        ? (pressDrain - 1.0) * TuningOverrides.current.pressBillSlope
+        : 0.0;
     return coldStart *
         (1 + 2.0 * (1 - avg / 100) * t * t) *
         (1 + pressBill * (t * t));
