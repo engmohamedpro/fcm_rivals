@@ -48,9 +48,10 @@ dependencies:
     sdk: flutter
   intl: ^0.20.2
 
-  # Match-day sound: looped stadium ambience for the live match plus
-  # goal cheers layered on top (audioplayers handles looping and two
-  # simultaneous players).
+  # Match-day sound: looped stadium ambience that follows the match
+  # clock (half time, second-half kick-off, pause) plus goal cheers
+  # layered on top — one fresh player per goal, so cheers overlap
+  # freely (home goals loud, away goals quiet).
   audioplayers: ^6.1.0
 
 dev_dependencies:

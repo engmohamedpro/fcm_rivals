@@ -151,8 +151,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     super.initState();
     _ticker = createTicker(_onTick)..start();
     _feedScroll.addListener(_onFeedScrolled);
-    // Kick-off: the ambience starts with the first half and runs until
-    // full time (stopped there — the post-match report is silent).
+    // Kick-off: the ambience starts with the first half. From there the
+    // whistle events drive it — half time ends it for the break, the
+    // second-half kick-off brings it back, full time ends it for good —
+    // and the user's pause button holds it with the match.
     unawaited(_audio.start());
     // The last chosen playback speed carries over — the preference
     // sticks FOREVER, across matches and app restarts (GDD 26.2).
@@ -259,6 +261,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   void _togglePause() {
     fcmTick();
     setState(() => _paused = !_paused);
+    // The bed holds with the match: a held match must not sound over
+    // the stadium.
+    unawaited(_paused ? _audio.pause() : _audio.resume());
   }
 
   void _advance() {
@@ -298,13 +303,20 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       // Auto-follow: land the newest line in view after the frame
       // measures the grown list.
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLatest());
-      // Every goal in the minute just simulated — either side — triggers
-      // its own cheer over the looped ambience: each goal rings out in
-      // full, so two goals in the same minute stack two cheers on top
-      // of each other.
+      // Every event in the minute just simulated drives its sound. Each
+      // goal rings out its own cheer over the bed — home goals at the
+      // home crowd's volume, away goals much quieter — and the whistle
+      // events park the bed: half time ends it for the break, the
+      // second-half kick-off brings it back. Full time ends it for good
+      // below, with the report flow.
       for (final event in events) {
         if (event.type == MatchEventType.goal) {
-          unawaited(_audio.goalCheer());
+          unawaited(_audio.goalCheer(isHome: event.side == MatchSide.home));
+        } else if (event.type == MatchEventType.halfTime) {
+          unawaited(_audio.halfTimeBreak());
+        } else if (event.type == MatchEventType.kickoff &&
+            event.metadata['secondHalf'] == true) {
+          unawaited(_audio.secondHalfKickOff());
         }
       }
     }
