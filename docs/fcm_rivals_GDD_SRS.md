@@ -519,7 +519,23 @@ The ten preset Playing Styles are removed. The user builds his own
 tactics from instructions grouped into three phases of play:
 
 - **In Possession** — build-up style, tempo, width and final-third
-  approach. Delivered in phase 1.
+  approach (phase 1, shipped):
+
+  | Instruction | Options | Anchor effects (rule 14 placeholders) |
+  |---|---|---|
+  | Build-up | Play Out from the Back / Mixed / Long Ball | Play Out: possession 1.10, passing 1.05, chances 0.94 · Long Ball: possession 0.82, passing 0.86, chances 1.06, stamina 0.96 |
+  | Tempo | Slow / Standard / Fast | Slow: possession 1.06, chances 0.95, stamina 0.94 · Fast: possession 0.95, chances 1.05, passing 0.97, stamina 1.08 |
+  | Width | Narrow / Standard / Wide | Narrow: passing 1.04, chances 0.96 · Wide: passing 0.96, chances 1.05 |
+  | Final third | Work Ball into Box / Balanced / Early Crosses / Shoot on Sight | Work Ball: chances 0.92, shot quality 1.08 · Early Crosses: chances 1.04, shot quality 0.95, passing 0.96 · Shoot on Sight: chances 1.10, shot quality 0.90 |
+
+  Shot quality is a per-side hook on the chance→goal conversion path —
+  the only way Work Ball vs Shoot on Sight are tellable apart.
+  Combinations rebuild the legacy possession family: Play Out + Slow +
+  Narrow ≈ old Tiki-Taka; Long Ball + Fast ≈ old Direct Play. The UI
+  shows an estimated possession share that updates with the chosen mix.
+  Balance bands (10k seeded sims, even strength): any single extreme
+  46–54% win rate, full-stack extremes 40–58%, measured possession
+  33–65%, goals 2.6–2.9/match, conversion 10–11%.
 - **Out of Possession** — defensive line height, pressing intensity,
   tackling aggression and the offside trap. Delivered in phase 2.
 - **Transitions** — counter-press, counter-attacking and rest defence.

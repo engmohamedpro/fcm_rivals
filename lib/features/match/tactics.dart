@@ -185,6 +185,16 @@ class TeamTactics {
   /// until then is the old Balanced, whatever the save said.
   factory TeamTactics.fromLegacyStyle(String? name) => const TeamTactics();
 
+  TeamTactics copyWith({
+    InPossessionTactics? inPossession,
+    OutOfPossessionTactics? outOfPossession,
+    TransitionTactics? transitions,
+  }) => TeamTactics(
+    inPossession: inPossession ?? this.inPossession,
+    outOfPossession: outOfPossession ?? this.outOfPossession,
+    transitions: transitions ?? this.transitions,
+  );
+
   @override
   bool operator ==(Object other) =>
       other is TeamTactics &&
@@ -217,28 +227,197 @@ TeamTactics tacticsFromDbPayload(String? raw) {
 /// In Possession instructions (GDD 10.2): build-up, tempo, width and
 /// final-third approach. Phase 0 scaffold — the fields arrive in
 /// phase 1, so this carries only the group identity.
+/// Build-up style: how the team plays out from the back (GDD 10.2 In
+/// Possession). Anchor values are GDD rule 14 placeholders, tuned by
+/// the balance harness.
+enum BuildUpStyle {
+  playOut(
+    'Play Out from the Back',
+    TacticModifiers(possession: 1.06, passAccuracy: 1.05, chance: 0.94),
+  ),
+  mixed('Mixed Build-Up', TacticModifiers.identity),
+  longBall(
+    'Long Ball',
+    TacticModifiers(
+      possession: 0.95,
+      passAccuracy: 0.91,
+      chance: 1.03,
+      stamina: 0.96,
+    ),
+  );
+
+  const BuildUpStyle(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// Tempo: how quickly the ball moves forward.
+enum AttackTempo {
+  slow('Slow', TacticModifiers(possession: 1.03, chance: 0.95, stamina: 0.94)),
+  standard('Standard', TacticModifiers.identity),
+  fast(
+    'Fast',
+    TacticModifiers(
+      possession: 0.97,
+      chance: 1.03,
+      passAccuracy: 0.97,
+      stamina: 1.04,
+    ),
+  );
+
+  const AttackTempo(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// Width: where the attacks are staged from.
+enum AttackWidth {
+  narrow('Narrow', TacticModifiers(passAccuracy: 1.04, chance: 0.96)),
+  standard('Standard', TacticModifiers.identity),
+  wide('Wide', TacticModifiers(passAccuracy: 0.96, chance: 1.03));
+
+  const AttackWidth(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// Final-third approach: how chances are hunted near goal.
+enum FinalThirdApproach {
+  workBallIntoBox(
+    'Work Ball into Box',
+    TacticModifiers(chance: 0.92, shotQuality: 1.08),
+  ),
+  balanced('Balanced', TacticModifiers.identity),
+  earlyCrosses(
+    'Early Crosses',
+    TacticModifiers(chance: 1.04, shotQuality: 0.95, passAccuracy: 0.96),
+  ),
+  shootOnSight(
+    'Shoot on Sight',
+    TacticModifiers(chance: 1.04, shotQuality: 0.94),
+  );
+
+  const FinalThirdApproach(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// In Possession instructions (GDD 10.2): build-up, tempo, width and
+/// final-third approach. Every default (Mixed / Standard / Standard /
+/// Balanced) contributes the identity, so a default group changes
+/// nothing — combinations rebuild the removed possession/direct/long-
+/// ball/wing styles (Play Out + Slow + Narrow ≈ old Tiki-Taka).
+///
+/// "Attacking freedom / fluidity" is deliberately NOT here: the engine
+/// has no off-ball-movement axis to express it honestly, and fake depth
+/// is worse than absent depth.
 class InPossessionTactics {
-  const InPossessionTactics();
+  const InPossessionTactics({
+    this.buildUp = BuildUpStyle.mixed,
+    this.tempo = AttackTempo.standard,
+    this.width = AttackWidth.standard,
+    this.finalThird = FinalThirdApproach.balanced,
+  });
 
-  /// Whether every instruction sits at its default (phase 0: always).
-  bool get isDefault => true;
+  /// How the team plays out from the back.
+  final BuildUpStyle buildUp;
 
-  /// The group's contribution to the engine bundle.
-  TacticModifiers get modifiers => TacticModifiers.identity;
+  /// How quickly the ball moves forward.
+  final AttackTempo tempo;
 
-  /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  /// Where attacks are staged from.
+  final AttackWidth width;
+
+  /// How chances are hunted near goal.
+  final FinalThirdApproach finalThird;
+
+  /// Whether every instruction sits at its default.
+  bool get isDefault =>
+      buildUp == BuildUpStyle.mixed &&
+      tempo == AttackTempo.standard &&
+      width == AttackWidth.standard &&
+      finalThird == FinalThirdApproach.balanced;
+
+  /// The group's composed contribution to the engine bundle.
+  TacticModifiers get modifiers =>
+      buildUp.modifiers *
+      tempo.modifiers *
+      width.modifiers *
+      finalThird.modifiers;
+
+  /// Human-visible effect summary (GDD 10.3: effects must be visible),
+  /// in the same honest-estimate format as the old possession line.
   String get effectSummary => modifiers.effectSummary;
 
-  Map<String, dynamic> toJson() => const {};
+  /// Estimated possession share at even strength from the composed
+  /// possession multiplier — the honest-share formula the engine's
+  /// power competition actually produces (`m^1.4 / (m^1.4 + 1)`).
+  int get estimatedPossessionShare {
+    final m = modifiers.possession;
+    final w = math.pow(m, 1.4).toDouble();
+    return (100 * w / (w + 1)).round();
+  }
+
+  Map<String, dynamic> toJson() => {
+    if (buildUp != BuildUpStyle.mixed) 'buildUp': buildUp.name,
+    if (tempo != AttackTempo.standard) 'tempo': tempo.name,
+    if (width != AttackWidth.standard) 'width': width.name,
+    if (finalThird != FinalThirdApproach.balanced)
+      'finalThird': finalThird.name,
+  };
 
   factory InPossessionTactics.fromJson(Map<String, dynamic> json) =>
-      const InPossessionTactics();
+      InPossessionTactics(
+        buildUp: _enumOr(
+          BuildUpStyle.values,
+          json['buildUp'],
+          BuildUpStyle.mixed,
+        ),
+        tempo: _enumOr(AttackTempo.values, json['tempo'], AttackTempo.standard),
+        width: _enumOr(AttackWidth.values, json['width'], AttackWidth.standard),
+        finalThird: _enumOr(
+          FinalThirdApproach.values,
+          json['finalThird'],
+          FinalThirdApproach.balanced,
+        ),
+      );
+
+  /// Tolerant enum parse: unknown or missing keys fall back to default
+  /// so a payload from any earlier phase keeps loading.
+  static T _enumOr<T extends Enum>(List<T> values, Object? raw, T fallback) {
+    if (raw is! String) return fallback;
+    for (final v in values) {
+      if (v.name == raw) return v;
+    }
+    return fallback;
+  }
+
+  InPossessionTactics copyWith({
+    BuildUpStyle? buildUp,
+    AttackTempo? tempo,
+    AttackWidth? width,
+    FinalThirdApproach? finalThird,
+  }) => InPossessionTactics(
+    buildUp: buildUp ?? this.buildUp,
+    tempo: tempo ?? this.tempo,
+    width: width ?? this.width,
+    finalThird: finalThird ?? this.finalThird,
+  );
 
   @override
-  bool operator ==(Object other) => other is InPossessionTactics;
+  bool operator ==(Object other) =>
+      other is InPossessionTactics &&
+      other.buildUp == buildUp &&
+      other.tempo == tempo &&
+      other.width == width &&
+      other.finalThird == finalThird;
 
   @override
-  int get hashCode => 0;
+  int get hashCode => Object.hash(buildUp, tempo, width, finalThird);
 }
 
 /// Out of Possession instructions (GDD 10.2): line height, pressing,

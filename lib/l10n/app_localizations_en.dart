@@ -216,4 +216,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tacticsLabel => 'Tactics';
+
+  @override
+  String get tacticsBuildUp => 'Build-up';
+
+  @override
+  String get tacticsTempo => 'Tempo';
+
+  @override
+  String get tacticsWidth => 'Width';
+
+  @override
+  String get tacticsFinalThird => 'Final third';
+
+  @override
+  String tacticsEstPossession(Object share) {
+    return 'Est. possession: $share%';
+  }
+
+  @override
+  String get buildUpPlayOut => 'Play Out from the Back';
+
+  @override
+  String get buildUpMixed => 'Mixed Build-Up';
+
+  @override
+  String get buildUpLongBall => 'Long Ball';
+
+  @override
+  String get tempoSlow => 'Slow';
+
+  @override
+  String get tempoStandard => 'Standard';
+
+  @override
+  String get tempoFast => 'Fast';
+
+  @override
+  String get widthNarrow => 'Narrow';
+
+  @override
+  String get widthStandardWidth => 'Standard';
+
+  @override
+  String get widthWide => 'Wide';
+
+  @override
+  String get finalThirdWorkBall => 'Work Ball into Box';
+
+  @override
+  String get finalThirdBalanced => 'Balanced';
+
+  @override
+  String get finalThirdEarlyCrosses => 'Early Crosses';
+
+  @override
+  String get finalThirdShootOnSight => 'Shoot on Sight';
 }

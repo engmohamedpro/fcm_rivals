@@ -469,6 +469,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tactics'**
   String get tacticsLabel;
+
+  /// No description provided for @tacticsBuildUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Build-up'**
+  String get tacticsBuildUp;
+
+  /// No description provided for @tacticsTempo.
+  ///
+  /// In en, this message translates to:
+  /// **'Tempo'**
+  String get tacticsTempo;
+
+  /// No description provided for @tacticsWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Width'**
+  String get tacticsWidth;
+
+  /// No description provided for @tacticsFinalThird.
+  ///
+  /// In en, this message translates to:
+  /// **'Final third'**
+  String get tacticsFinalThird;
+
+  /// No description provided for @tacticsEstPossession.
+  ///
+  /// In en, this message translates to:
+  /// **'Est. possession: {share}%'**
+  String tacticsEstPossession(Object share);
+
+  /// No description provided for @buildUpPlayOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Play Out from the Back'**
+  String get buildUpPlayOut;
+
+  /// No description provided for @buildUpMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed Build-Up'**
+  String get buildUpMixed;
+
+  /// No description provided for @buildUpLongBall.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Ball'**
+  String get buildUpLongBall;
+
+  /// No description provided for @tempoSlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow'**
+  String get tempoSlow;
+
+  /// No description provided for @tempoStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get tempoStandard;
+
+  /// No description provided for @tempoFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get tempoFast;
+
+  /// No description provided for @widthNarrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrow'**
+  String get widthNarrow;
+
+  /// No description provided for @widthStandardWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get widthStandardWidth;
+
+  /// No description provided for @widthWide.
+  ///
+  /// In en, this message translates to:
+  /// **'Wide'**
+  String get widthWide;
+
+  /// No description provided for @finalThirdWorkBall.
+  ///
+  /// In en, this message translates to:
+  /// **'Work Ball into Box'**
+  String get finalThirdWorkBall;
+
+  /// No description provided for @finalThirdBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get finalThirdBalanced;
+
+  /// No description provided for @finalThirdEarlyCrosses.
+  ///
+  /// In en, this message translates to:
+  /// **'Early Crosses'**
+  String get finalThirdEarlyCrosses;
+
+  /// No description provided for @finalThirdShootOnSight.
+  ///
+  /// In en, this message translates to:
+  /// **'Shoot on Sight'**
+  String get finalThirdShootOnSight;
 }
 
 class _AppLocalizationsDelegate

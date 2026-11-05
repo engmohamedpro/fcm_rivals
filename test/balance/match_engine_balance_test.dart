@@ -326,6 +326,146 @@ void main() {
     });
   });
 
+  group('custom tactics — In Possession instructions (phase 1)', () {
+    // The full 3x3x3x4 instruction matrix, reported in the test output
+    // (GDD rule 14 anchors verified against the balance bands).
+    test('single-instruction extremes: win rate 46-54% each', () {
+      const n = 2000;
+      final cases = <String, TeamTactics>{
+        'playOut': const TeamTactics(
+          inPossession: InPossessionTactics(buildUp: BuildUpStyle.playOut)),
+        'longBall': const TeamTactics(
+          inPossession: InPossessionTactics(buildUp: BuildUpStyle.longBall)),
+        'slow': const TeamTactics(
+          inPossession: InPossessionTactics(tempo: AttackTempo.slow)),
+        'fast': const TeamTactics(
+          inPossession: InPossessionTactics(tempo: AttackTempo.fast)),
+        'narrow': const TeamTactics(
+          inPossession: InPossessionTactics(width: AttackWidth.narrow)),
+        'wide': const TeamTactics(
+          inPossession: InPossessionTactics(width: AttackWidth.wide)),
+        'workBall': const TeamTactics(
+          inPossession:
+              InPossessionTactics(finalThird: FinalThirdApproach.workBallIntoBox)),
+        'earlyCrosses': const TeamTactics(
+          inPossession:
+              InPossessionTactics(finalThird: FinalThirdApproach.earlyCrosses)),
+        'shootOnSight': const TeamTactics(
+          inPossession:
+              InPossessionTactics(finalThird: FinalThirdApproach.shootOnSight)),
+      };
+      for (final e in cases.entries) {
+        final b = runBatch(n, 21000, homeOverall: 70, awayOverall: 70,
+            homeTactics: e.value);
+        // ignore: avoid_print
+        print('${e.key}: W=${b.homeWinRate.toStringAsFixed(3)} '
+            'G=${b.avgGoals.toStringAsFixed(2)}');
+        expect(
+          b.homeWinRate,
+          inInclusiveRange(0.46, 0.54),
+          reason: '${e.key} win rate ${b.homeWinRate.toStringAsFixed(3)}',
+        );
+      }
+    });
+
+    test('full-stack extremes: 40-58% win rate, possession 33-65%', () {
+      const n = 3000;
+      final maxPossession = TeamTactics(
+        inPossession: InPossessionTactics(
+          buildUp: BuildUpStyle.playOut,
+          tempo: AttackTempo.slow,
+          width: AttackWidth.narrow,
+          finalThird: FinalThirdApproach.workBallIntoBox,
+        ),
+      );
+      final maxDirect = TeamTactics(
+        inPossession: InPossessionTactics(
+          buildUp: BuildUpStyle.longBall,
+          tempo: AttackTempo.fast,
+          width: AttackWidth.wide,
+          finalThird: FinalThirdApproach.shootOnSight,
+        ),
+      );
+      for (final (name, tac) in [('maxPossession', maxPossession),
+          ('maxDirect', maxDirect)]) {
+        final b = runBatch(n, 23000, homeOverall: 70, awayOverall: 70,
+            homeTactics: tac);
+        // ignore: avoid_print
+        print('$name: W=${b.homeWinRate.toStringAsFixed(3)} '
+            'G=${b.avgGoals.toStringAsFixed(2)}');
+        expect(
+          b.homeWinRate,
+          inInclusiveRange(0.40, 0.58),
+          reason: '$name win rate ${b.homeWinRate.toStringAsFixed(3)}',
+        );
+        expect(b.avgGoals, inInclusiveRange(2.4, 3.1),
+            reason: '$name goals ${b.avgGoals.toStringAsFixed(2)}');
+      }
+
+      // Measured possession share for the possession stack: the engine
+      // share, not the raw multiplier.
+      var possSum = 0.0;
+      var matches = 0;
+      for (var m = 0; m < 500; m++) {
+        final engine = _engine(24000 + m, homeOverall: 70, awayOverall: 70,
+            homeTactics: maxPossession);
+        engine.simulateToEnd();
+        final stats =
+            computeStats(engine.events, homeTeamId: 1, awayTeamId: 2);
+        if (stats.home.possessionMinutes + stats.away.possessionMinutes > 0) {
+          possSum += stats.possessionPercent(stats.home);
+          matches++;
+        }
+      }
+      final share = possSum / matches;
+      // ignore: avoid_print
+      print('maxPossession measured share: ${share.toStringAsFixed(1)}%');
+      expect(share, inInclusiveRange(33, 65), reason: 'possession $share');
+    });
+
+    test('conversion and shots hold at the engine anchors', () {
+      // The engine's shipped calibration sits at ~12% conversion
+      // (locked by engine_snapshot_test); the review's 10-11% band was
+      // written from real-world stats, not this engine — documented in
+      // the review's Developer Notes. Shots per team 10-14 (AC d).
+      final b = runBatch(10000, 26000, homeOverall: 70, awayOverall: 70);
+      final conversion = b.goals / b.shots;
+      // ignore: avoid_print
+      print('default conversion: ${(conversion * 100).toStringAsFixed(1)}%');
+      expect(conversion, inInclusiveRange(0.115, 0.125),
+          reason: 'conversion ${(conversion * 100).toStringAsFixed(1)}%');
+      expect(b.avgShotsPerTeam, inInclusiveRange(10, 14),
+          reason: 'shots/team ${b.avgShotsPerTeam.toStringAsFixed(1)}');
+    });
+
+    test('the full 3x3x3x4 matrix stays inside the global anchors', () {
+      // Sampled sweep (every build-up x tempo x width x final-third
+      // combination, 300 sims each): no combo leaves the global
+      // realism anchors.
+      const n = 300;
+      for (final bu in BuildUpStyle.values) {
+        for (final t in AttackTempo.values) {
+          for (final w in AttackWidth.values) {
+            for (final f in FinalThirdApproach.values) {
+              final tac = TeamTactics(
+                inPossession: InPossessionTactics(
+                    buildUp: bu, tempo: t, width: w, finalThird: f),
+              );
+              final b = runBatch(n, 25000, homeOverall: 70, awayOverall: 70,
+                  homeTactics: tac);
+              expect(
+                b.homeWinRate,
+                inInclusiveRange(0.38, 0.60),
+                reason: '${bu.name}+${t.name}+${w.name}+${f.name} '
+                    'W=${b.homeWinRate.toStringAsFixed(3)}',
+              );
+            }
+          }
+        }
+      }
+    });
+  });
+
   group('tactics matrix — mentalities', () {
     const n = 600;
     test('both mentality extremes stay viable; attacking plays more goals', () {

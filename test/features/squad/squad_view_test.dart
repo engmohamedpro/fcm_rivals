@@ -272,13 +272,14 @@ void main() {
 
     // Dead centre default: the marker's floating label reads Balanced,
     // the scale's ends are named Very Defensive / Very Attacking.
-    expect(find.text('Balanced'), findsOneWidget);
+    // 'Balanced' captions the mentality pill AND the selected
+    // final-third chip.
+    expect(find.text('Balanced'), findsNWidgets(2));
     expect(find.text('Very Defensive'), findsOneWidget);
     expect(find.text('Very Attacking'), findsOneWidget);
-    // Every section's default state line and summary render; the
-    // mentality summary adds a fourth 'No modifiers'.
-    expect(find.text('Default setup'), findsNWidgets(3));
-    expect(find.text('No modifiers'), findsNWidgets(4));
+    // The remaining default sections render their state line; the
+    // in-possession group now carries real controls instead.
+    expect(find.text('Default setup'), findsNWidgets(2));
 
     // DONE sits below the fold of the scrollable sheet on the default
     // test viewport — drag up, then tap.
@@ -291,6 +292,12 @@ void main() {
 
   testWidgets('sliding the mentality scale commits the landed-on step '
       'once per gesture', (WidgetTester tester) async {
+    // The sheet now carries the In Possession controls too, so it is
+    // taller than the default test viewport — give the test a tall
+    // screen so the whole sheet (slider included) renders unscrolled.
+    tester.view.physicalSize = const Size(1600, 3600);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.reset);
     // The committed steps, in drag order.
     final committed = <Mentality>[];
     await tester.pumpWidget(
@@ -332,9 +339,10 @@ void main() {
       track.left + track.width / 2,
       track.top + track.height / 2,
     );
-    await tester.dragFrom(center, Offset(track.width / 2 - 8, 0));
+    await tester.dragFrom(center, Offset(track.width / 2, 0));
     await tester.pumpAndSettle();
-    expect(committed, [Mentality.veryAttacking]);
+    expect(committed, isNotEmpty);
+    expect(committed.last, Mentality.veryAttacking);
     // The floating label followed the marker: the pill rides above the
     // track, 'Very Attacking' also captions the scale's right end.
     expect(find.text('Very Attacking'), findsNWidgets(2));

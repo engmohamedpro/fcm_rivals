@@ -42,7 +42,7 @@ class TacticsGroupScaffold extends StatelessWidget {
           title: l10n.tacticsInPossessionTitle,
           subtitle: l10n.tacticsInPossessionSubtitle,
           summary: tactics.inPossession.effectSummary,
-          child: const _PhasePlaceholder(key: ValueKey('inPossessionControls')),
+          child: _InPossessionControls(tactics: tactics, onChanged: onChanged),
         ),
         const SizedBox(height: 12),
         _Section(
@@ -136,6 +136,202 @@ class _Section extends StatelessWidget {
           const SizedBox(height: 8),
           child,
         ],
+      ),
+    );
+  }
+}
+
+/// In Possession instruction controls (phase 1): four segmented rows —
+/// build-up, tempo, width, final-third approach — each option carrying
+/// its visible effect summary (GDD 10.3), plus the estimated-possession
+/// readout that updates as options change.
+class _InPossessionControls extends StatelessWidget {
+  const _InPossessionControls({required this.tactics, required this.onChanged});
+
+  final TeamTactics tactics;
+  final ValueChanged<TeamTactics> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = l10nOf(context);
+    final ip = tactics.inPossession;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SegmentedRow<BuildUpStyle>(
+          label: l10n.tacticsBuildUp,
+          values: BuildUpStyle.values,
+          selected: ip.buildUp,
+          display: (v) => switch (v) {
+            BuildUpStyle.playOut => l10n.buildUpPlayOut,
+            BuildUpStyle.mixed => l10n.buildUpMixed,
+            BuildUpStyle.longBall => l10n.buildUpLongBall,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) => onChanged(
+            tactics.copyWith(inPossession: ip.copyWith(buildUp: v)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SegmentedRow<AttackTempo>(
+          label: l10n.tacticsTempo,
+          values: AttackTempo.values,
+          selected: ip.tempo,
+          display: (v) => switch (v) {
+            AttackTempo.slow => l10n.tempoSlow,
+            AttackTempo.standard => l10n.tempoStandard,
+            AttackTempo.fast => l10n.tempoFast,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) =>
+              onChanged(tactics.copyWith(inPossession: ip.copyWith(tempo: v))),
+        ),
+        const SizedBox(height: 8),
+        _SegmentedRow<AttackWidth>(
+          label: l10n.tacticsWidth,
+          values: AttackWidth.values,
+          selected: ip.width,
+          display: (v) => switch (v) {
+            AttackWidth.narrow => l10n.widthNarrow,
+            AttackWidth.standard => l10n.widthStandardWidth,
+            AttackWidth.wide => l10n.widthWide,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) =>
+              onChanged(tactics.copyWith(inPossession: ip.copyWith(width: v))),
+        ),
+        const SizedBox(height: 8),
+        _SegmentedRow<FinalThirdApproach>(
+          label: l10n.tacticsFinalThird,
+          values: FinalThirdApproach.values,
+          selected: ip.finalThird,
+          display: (v) => switch (v) {
+            FinalThirdApproach.workBallIntoBox => l10n.finalThirdWorkBall,
+            FinalThirdApproach.balanced => l10n.finalThirdBalanced,
+            FinalThirdApproach.earlyCrosses => l10n.finalThirdEarlyCrosses,
+            FinalThirdApproach.shootOnSight => l10n.finalThirdShootOnSight,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) => onChanged(
+            tactics.copyWith(inPossession: ip.copyWith(finalThird: v)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // The honest possession estimate (GDD 10.3): the share the
+        // engine's power competition actually produces.
+        Text(
+          l10n.tacticsEstPossession(
+            tactics.inPossession.estimatedPossessionShare,
+          ),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One labelled segmented-control row: label, chips for every option,
+/// and the SELECTED option's effect summary underneath.
+class _SegmentedRow<T extends Enum> extends StatelessWidget {
+  const _SegmentedRow({
+    required this.label,
+    required this.values,
+    required this.selected,
+    required this.display,
+    required this.summary,
+    required this.onSelect,
+  });
+
+  final String label;
+  final List<T> values;
+  final T selected;
+  final String Function(T) display;
+  final String Function(T) summary;
+  final ValueChanged<T> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final v in values)
+              _OptionChip(
+                label: display(v),
+                selected: v == selected,
+                onTap: () => onSelect(v),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          summary(selected),
+          style: TextStyle(
+            color: theme.colorScheme.primary,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A compact selectable chip matching the app's tactic-option look.
+class _OptionChip extends StatelessWidget {
+  const _OptionChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: selected
+          ? theme.colorScheme.primary
+          : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurfaceVariant,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }

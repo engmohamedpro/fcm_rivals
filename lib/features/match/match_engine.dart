@@ -1126,11 +1126,20 @@ class MatchEngine {
       ChanceQuality.penalty => 1.55,
       ChanceQuality.normal => 1.0,
     };
+    // In-Possession shot quality (GDD 10.2 phase 1): Work Ball into Box
+    // trades chance volume for better looks, Shoot on Sight the
+    // reverse — a per-side hook on the chance→goal conversion path so
+    // the two are tellable apart. Penalties are set pieces, not
+    // built-up play: their conversion stays anchored.
+    final shotQuality = quality == ChanceQuality.penalty
+        ? 1.0
+        : att.tactics.modifiers.shotQuality;
     final goalPGivenOnTarget =
         (config.goalBase +
                 config.goalScale * qualityGoalFactor +
                 config.goalDiffScale * ((shooterEff - gkEff) / 100))
-            .clamp(0.04, 0.88);
+            .clamp(0.04, 0.88) *
+        shotQuality;
 
     // xG (GDD 13.2): P(on target) × P(goal | on target).
     final xg = onTargetP * goalPGivenOnTarget;

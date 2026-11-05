@@ -189,7 +189,7 @@ void main() {
       expect(find.text('In Possession'), findsOneWidget);
       expect(find.text('Out of Possession'), findsOneWidget);
       expect(find.text('Transitions'), findsOneWidget);
-      expect(find.text('Default setup'), findsNWidgets(3));
+      expect(find.text('Default setup'), findsNWidgets(2));
 
       // Close the options sheet — DONE sits below the fold of the
       // scrollable sheet on this viewport, so drag up first.
