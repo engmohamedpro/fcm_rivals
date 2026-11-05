@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -701,11 +699,13 @@ class _ScopeSection extends StatelessWidget {
 ///
 /// Owned and buyable cells share the exact same layout: the plate shows
 /// the success-green FREE ×N metal when the club owns packs of this
-/// type, the dark gold-rimmed coin chip otherwise. A cell with free
-/// packs shakes its pack art in a slow heartbeat loop — shake, rest,
-/// shake — so unclaimed packs call out from the shelf without turning
-/// the whole grid into noise.
-class _StorePackCell extends StatefulWidget {
+/// type, the dark gold-rimmed coin chip otherwise. The shelf is
+/// deliberately STATIC — no idle animation anywhere on the store: one
+/// eager column paints up to 36 of these heavy foils (lattice, card
+/// fan, sunburst, shadows), so an always-on animation here would keep
+/// the whole grid repainting at 60fps; the green FREE plate alone
+/// carries the claim affordance.
+class _StorePackCell extends StatelessWidget {
   const _StorePackCell({
     super.key,
     required this.offer,
@@ -720,34 +720,14 @@ class _StorePackCell extends StatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  State<_StorePackCell> createState() => _StorePackCellState();
-}
-
-class _StorePackCellState extends State<_StorePackCell>
-    with SingleTickerProviderStateMixin {
-  /// The heartbeat: 0→1 runs one ~0.55s shake, then the curve rests at
-  /// 1 until the loop wraps — shake, rest, shake. Only the pack art
-  /// rides this transform; the texts under it stay still.
-  late final AnimationController _nudge = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2200),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _nudge.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final offer = widget.offer;
-    final isFree = widget.ownedCount > 0;
-    final affordable = widget.coins == null || widget.coins! >= offer.price;
+    final offer = this.offer;
+    final isFree = ownedCount > 0;
+    final affordable = coins == null || coins! >= offer.price;
     final tierColor = offer.tier.accent;
 
     return FcmPressable(
-      onTap: widget.onTap,
+      onTap: onTap,
       scale: 0.93,
       child: Column(
         children: [
@@ -769,45 +749,20 @@ class _StorePackCellState extends State<_StorePackCell>
             ),
             child: AspectRatio(
               aspectRatio: kPackAspect,
-              child: isFree
-                  ? AnimatedBuilder(
-                      animation: _nudge,
-                      builder: (context, child) {
-                        // t in 0..1 across the full cycle; the shake
-                        // occupies the first quarter (~0.55s) only.
-                        final t = _nudge.value;
-                        final shakeT = (t / 0.25).clamp(0.0, 1.0).toDouble();
-                        final wobble =
-                            math.sin(shakeT * math.pi * 5) *
-                            (1 - shakeT) *
-                            0.034;
-                        return Transform.rotate(
-                          angle: wobble,
-                          child: Transform.translate(
-                            offset: Offset(wobble * 34, -wobble.abs() * 10),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: CustomPaint(
-                        painter: FoilPackPainter(
-                          shimmer: 0.42,
-                          charge: 0,
-                          glowColor: tierColor,
-                          tint: tierColor,
-                          stars: offer.tier.stars,
-                        ),
-                      ),
-                    )
-                  : CustomPaint(
-                      painter: FoilPackPainter(
-                        shimmer: 0.42,
-                        charge: 0,
-                        glowColor: tierColor,
-                        tint: tierColor,
-                        stars: offer.tier.stars,
-                      ),
-                    ),
+              // The boundary lets one cell repaint (late logo decode,
+              // affordability flip) without re-rasterizing the sibling
+              // foils of its section.
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: FoilPackPainter(
+                    shimmer: 0.42,
+                    charge: 0,
+                    glowColor: tierColor,
+                    tint: tierColor,
+                    stars: offer.tier.stars,
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 4),
@@ -819,7 +774,7 @@ class _StorePackCellState extends State<_StorePackCell>
             child: Center(
               child: _PricePlate(
                 isFree: isFree,
-                ownedCount: widget.ownedCount,
+                ownedCount: ownedCount,
                 price: offer.price,
                 affordable: affordable,
               ),
