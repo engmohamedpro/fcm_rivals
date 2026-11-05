@@ -321,4 +321,44 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get trapDeepWarning =>
       'No benefit with a deep line — pure risk. Raise the line or turn the trap off.';
+
+  @override
+  String get tacticsCounterPress => 'Counter-press';
+
+  @override
+  String get tacticsAttackOnRecovery => 'Attack on recovery';
+
+  @override
+  String get tacticsRestDefence => 'Rest defence';
+
+  @override
+  String get cpRetreat => 'Retreat to Shape';
+
+  @override
+  String get cpBalanced => 'Balanced';
+
+  @override
+  String get cpImmediate => 'Immediate Counter-Press';
+
+  @override
+  String get arPatient => 'Patient';
+
+  @override
+  String get arBalanced => 'Balanced';
+
+  @override
+  String get arFast => 'Fast Counter';
+
+  @override
+  String get rdConservative => 'Conservative · 4 back';
+
+  @override
+  String get rdStandard => 'Standard · 3 back';
+
+  @override
+  String get rdAggressive => 'Aggressive · 2 back';
+
+  @override
+  String get restDefenceHint =>
+      'More players back means cover but fewer joining attacks.';
 }

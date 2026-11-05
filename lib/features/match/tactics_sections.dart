@@ -61,7 +61,7 @@ class TacticsGroupScaffold extends StatelessWidget {
           title: l10n.tacticsTransitionsTitle,
           subtitle: l10n.tacticsTransitionsSubtitle,
           summary: tactics.transitions.effectSummary,
-          child: const _PhasePlaceholder(key: ValueKey('transitionsControls')),
+          child: _TransitionsControls(tactics: tactics, onChanged: onChanged),
         ),
       ],
     );
@@ -458,23 +458,76 @@ class _OutOfPossessionControls extends StatelessWidget {
   }
 }
 
-/// The phase-0 placeholder row: the group's default state. Each phase
-/// replaces one of these with its real instruction controls.
-class _PhasePlaceholder extends StatelessWidget {
-  const _PhasePlaceholder({super.key});
+/// Transitions instruction controls (phase 3): counter-press, attack
+/// on recovery and rest defence. The rest-defence row carries its
+/// one-line trade-off explanation (cover vs numbers forward).
+class _TransitionsControls extends StatelessWidget {
+  const _TransitionsControls({required this.tactics, required this.onChanged});
+
+  final TeamTactics tactics;
+  final ValueChanged<TeamTactics> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final l10n = l10nOf(context);
-    final theme = Theme.of(context);
-    return Text(
-      l10n.tacticsSectionDefault,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-        fontSize: 11,
-        fontStyle: FontStyle.italic,
-      ),
+    final tr = tactics.transitions;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SegmentedRow<CounterPress>(
+          label: l10n.tacticsCounterPress,
+          values: CounterPress.values,
+          selected: tr.counterPress,
+          display: (v) => switch (v) {
+            CounterPress.retreat => l10n.cpRetreat,
+            CounterPress.balanced => l10n.cpBalanced,
+            CounterPress.immediate => l10n.cpImmediate,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) => onChanged(
+            tactics.copyWith(transitions: tr.copyWith(counterPress: v)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SegmentedRow<AttackOnRecovery>(
+          label: l10n.tacticsAttackOnRecovery,
+          values: AttackOnRecovery.values,
+          selected: tr.attackOnRecovery,
+          display: (v) => switch (v) {
+            AttackOnRecovery.patient => l10n.arPatient,
+            AttackOnRecovery.balanced => l10n.arBalanced,
+            AttackOnRecovery.fast => l10n.arFast,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) => onChanged(
+            tactics.copyWith(transitions: tr.copyWith(attackOnRecovery: v)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SegmentedRow<RestDefence>(
+          label: l10n.tacticsRestDefence,
+          values: RestDefence.values,
+          selected: tr.restDefence,
+          display: (v) => switch (v) {
+            RestDefence.conservative => l10n.rdConservative,
+            RestDefence.standard => l10n.rdStandard,
+            RestDefence.aggressive => l10n.rdAggressive,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) => onChanged(
+            tactics.copyWith(transitions: tr.copyWith(restDefence: v)),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.restDefenceHint,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 10,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -673,6 +673,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No benefit with a deep line — pure risk. Raise the line or turn the trap off.'**
   String get trapDeepWarning;
+
+  /// No description provided for @tacticsCounterPress.
+  ///
+  /// In en, this message translates to:
+  /// **'Counter-press'**
+  String get tacticsCounterPress;
+
+  /// No description provided for @tacticsAttackOnRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Attack on recovery'**
+  String get tacticsAttackOnRecovery;
+
+  /// No description provided for @tacticsRestDefence.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest defence'**
+  String get tacticsRestDefence;
+
+  /// No description provided for @cpRetreat.
+  ///
+  /// In en, this message translates to:
+  /// **'Retreat to Shape'**
+  String get cpRetreat;
+
+  /// No description provided for @cpBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get cpBalanced;
+
+  /// No description provided for @cpImmediate.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediate Counter-Press'**
+  String get cpImmediate;
+
+  /// No description provided for @arPatient.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient'**
+  String get arPatient;
+
+  /// No description provided for @arBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get arBalanced;
+
+  /// No description provided for @arFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Counter'**
+  String get arFast;
+
+  /// No description provided for @rdConservative.
+  ///
+  /// In en, this message translates to:
+  /// **'Conservative · 4 back'**
+  String get rdConservative;
+
+  /// No description provided for @rdStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard · 3 back'**
+  String get rdStandard;
+
+  /// No description provided for @rdAggressive.
+  ///
+  /// In en, this message translates to:
+  /// **'Aggressive · 2 back'**
+  String get rdAggressive;
+
+  /// No description provided for @restDefenceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'More players back means cover but fewer joining attacks.'**
+  String get restDefenceHint;
 }
 
 class _AppLocalizationsDelegate

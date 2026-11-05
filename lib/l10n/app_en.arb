@@ -147,5 +147,18 @@
   "tackleAggressive": "Aggressive",
   "trapOn": "On",
   "trapOff": "Off",
-  "trapDeepWarning": "No benefit with a deep line — pure risk. Raise the line or turn the trap off."
+  "trapDeepWarning": "No benefit with a deep line — pure risk. Raise the line or turn the trap off.",
+  "tacticsCounterPress": "Counter-press",
+  "tacticsAttackOnRecovery": "Attack on recovery",
+  "tacticsRestDefence": "Rest defence",
+  "cpRetreat": "Retreat to Shape",
+  "cpBalanced": "Balanced",
+  "cpImmediate": "Immediate Counter-Press",
+  "arPatient": "Patient",
+  "arBalanced": "Balanced",
+  "arFast": "Fast Counter",
+  "rdConservative": "Conservative · 4 back",
+  "rdStandard": "Standard · 3 back",
+  "rdAggressive": "Aggressive · 2 back",
+  "restDefenceHint": "More players back means cover but fewer joining attacks."
 }

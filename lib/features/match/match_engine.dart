@@ -768,6 +768,9 @@ class MatchEngine {
               -config.chanceSigmoidSteepness *
                   (attackEdge - config.chanceSigmoidMid),
             ));
+    // One chance roll per possession pocket (one attacker pocket per
+    // minute), so the Fast Counter bonus can never stack on consecutive
+    // recovered balls — each recovery starts exactly one pocket.
     final chanceP =
         (config.chanceBase +
                 config.chanceScale *
@@ -870,7 +873,7 @@ class MatchEngine {
     // arriving where real matches break open), while a low
     // block (stamina < 1.0) tightens slightly.
     final pressDrain = def.tactics.outOfPossession.pressing.modifiers.stamina;
-    final pressBill = pressDrain > 1.0 ? (pressDrain - 1.0) * 1.5 : 0.0;
+    final pressBill = pressDrain > 1.0 ? (pressDrain - 1.0) * 2.0 : 0.0;
     return coldStart *
         (1 + 2.0 * (1 - avg / 100) * t * t) *
         (1 + pressBill * (t * t));

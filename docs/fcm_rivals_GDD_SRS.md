@@ -556,8 +556,23 @@ tactics from instructions grouped into three phases of play:
   Aggressive +25–35% fouls and +30–40% yellows, Clean lowers both;
   High-press stamina drain 1.25–1.35 with a visible late-match cost
   (goals conceded after 75' ≥ 15% above baseline).
-- **Transitions** — counter-press, counter-attacking and rest defence.
-  Delivered in phase 3.
+- **Transitions** — counter-press, counter-attacking and rest defence
+  (phase 3, shipped):
+
+  | Instruction | Options | Anchor effects (harness-tuned) |
+  |---|---|---|
+  | Counter-press | Retreat to Shape / Balanced / Immediate | Retreat: defence 1.03, chances 0.95, stamina 0.92 · Immediate: defence 1.05, chances 1.06, stamina 1.28 |
+  | Attack on recovery | Patient / Balanced / Fast Counter | Patient: possession 1.05, chances 0.94 · Fast Counter: possession 0.85, chances 1.10, shot quality 1.03 |
+  | Rest defence | Conservative (4 back) / Standard (3 back) / Aggressive (2 back) | Conservative: defence 1.04, own chances 0.96 · Aggressive: defence 0.96, own chances 1.03 |
+
+  Fast Counter's chance bonus applies once per possession change (no
+  stacking on consecutive recovered balls). The full gegenpress
+  rebuild — Immediate Counter-Press + High Press + High Line +
+  Aggressive rest defence — must land ≤ 58% win rate AND pay a real
+  bill: below-baseline stamina at 75' and ≥ +15% goals conceded after
+  75'. The park-the-bus counter (Fast Counter + Deep + Low press)
+  holds a 30-42% possession share. With all three groups live, no
+  configuration exceeds 58% vs default at even strength.
 
 Until a phase ships, its group carries its default (identity) state;
 the default `TeamTactics` reproduces the old Balanced style exactly

@@ -64,16 +64,44 @@ class TacticModifiers {
 
   /// Composes two bundles multiplicatively (instruction groups stack by
   /// multiplication, never by addition — the same rule the engine's
-  /// single-application sites enforce).
+  /// single-application sites enforce), with diminishing returns on
+  /// stacked same-direction pushes: when both sides already deviate
+  /// from 1.0 the same way, the excess over 1.0 of the product is
+  /// damped by [_stackDamp] — the second aggressive instruction adds
+  /// less than the first, so extreme combos stay playable.
   TacticModifiers operator *(TacticModifiers other) => TacticModifiers(
-    attack: attack * other.attack,
-    defence: defence * other.defence,
+    attack: _damped(attack, other.attack),
+    defence: _damped(defence, other.defence),
+    // Possession composes LINEARLY: a low-block counter side's identity
+    // IS ceding the ball — damping it would erase the style.
     possession: possession * other.possession,
-    chance: chance * other.chance,
-    stamina: stamina * other.stamina,
-    passAccuracy: passAccuracy * other.passAccuracy,
-    shotQuality: shotQuality * other.shotQuality,
+    chance: _damped(chance, other.chance),
+    stamina: _dampedStamina(stamina, other.stamina),
+    passAccuracy: _damped(passAccuracy, other.passAccuracy),
+    shotQuality: _damped(shotQuality, other.shotQuality),
   );
+
+  /// How much of a stacked same-direction excess survives the compose.
+  static const double _stackDamp = 0.70;
+
+  /// Product with damped stacked excess; opposing pushes cancel
+  /// naturally through the plain product.
+  static double _damped(double a, double b) {
+    final product = a * b;
+    final stacked = (a - 1) * (b - 1) > 0;
+    if (!stacked) return product;
+    return 1 + (product - 1) * _stackDamp;
+  }
+
+  /// Stamina stacks are the killer (the gegenpress bill); damp them
+  /// harder so three stamina costs compose to a real but survivable
+  /// bill.
+  static double _dampedStamina(double a, double b) {
+    final product = a * b;
+    final stacked = (a - 1) * (b - 1) > 0;
+    if (!stacked) return product;
+    return 1 + (product - 1) * 0.55;
+  }
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
   ///
@@ -241,7 +269,7 @@ enum BuildUpStyle {
     TacticModifiers(
       possession: 0.95,
       passAccuracy: 0.91,
-      chance: 1.03,
+      chance: 1.06,
       stamina: 0.96,
     ),
   );
@@ -425,7 +453,7 @@ class InPossessionTactics {
 /// in phase 2.
 /// Defensive line height (GDD 10.2 Out of Possession).
 enum DefensiveLine {
-  deep('Deep Line', TacticModifiers(defence: 1.05, possession: 0.95)),
+  deep('Deep Line', TacticModifiers(defence: 1.05, possession: 0.91)),
   standard('Standard', TacticModifiers.identity),
   high('High Line', TacticModifiers(defence: 0.94, possession: 1.04));
 
@@ -606,26 +634,131 @@ class OutOfPossessionTactics {
 
 /// Transitions instructions (GDD 10.2): counter-press, counter-attacking
 /// and rest defence. Phase 0 scaffold — the fields arrive in phase 3.
+/// Counter-press behaviour right after losing the ball.
+enum CounterPress {
+  retreat(
+    'Retreat to Shape',
+    TacticModifiers(defence: 1.03, chance: 0.95, stamina: 0.92),
+  ),
+  balanced('Balanced', TacticModifiers.identity),
+  immediate(
+    'Immediate Counter-Press',
+    TacticModifiers(defence: 1.09, chance: 1.06, stamina: 1.14),
+  );
+
+  const CounterPress(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// What the team does with a recovered ball.
+enum AttackOnRecovery {
+  patient('Patient', TacticModifiers(possession: 1.05, chance: 0.94)),
+  balanced('Balanced', TacticModifiers.identity),
+  fast(
+    'Fast Counter',
+    TacticModifiers(possession: 0.85, chance: 1.10, shotQuality: 1.03),
+  );
+
+  const AttackOnRecovery(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// How many players stay back while attacking (rest defence).
+enum RestDefence {
+  conservative(
+    'Conservative · 4 back',
+    TacticModifiers(defence: 1.04, chance: 0.96),
+  ),
+  standard('Standard · 3 back', TacticModifiers.identity),
+  aggressive(
+    'Aggressive · 2 back',
+    TacticModifiers(defence: 0.96, chance: 1.03),
+  );
+
+  const RestDefence(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// Transitions instructions (GDD 10.2): counter-press, counter-
+/// attacking and rest defence. Defaults (Balanced/Balanced/Standard)
+/// are the identity; combinations rebuild the removed Gegenpressing
+/// (with phase 2) and Counter Attack styles.
 class TransitionTactics {
-  const TransitionTactics();
+  const TransitionTactics({
+    this.counterPress = CounterPress.balanced,
+    this.attackOnRecovery = AttackOnRecovery.balanced,
+    this.restDefence = RestDefence.standard,
+  });
 
-  bool get isDefault => true;
+  final CounterPress counterPress;
+  final AttackOnRecovery attackOnRecovery;
+  final RestDefence restDefence;
 
-  TacticModifiers get modifiers => TacticModifiers.identity;
+  bool get isDefault =>
+      counterPress == CounterPress.balanced &&
+      attackOnRecovery == AttackOnRecovery.balanced &&
+      restDefence == RestDefence.standard;
+
+  TacticModifiers get modifiers =>
+      counterPress.modifiers *
+      attackOnRecovery.modifiers *
+      restDefence.modifiers;
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
   String get effectSummary => modifiers.effectSummary;
 
-  Map<String, dynamic> toJson() => const {};
+  Map<String, dynamic> toJson() => {
+    if (counterPress != CounterPress.balanced)
+      'counterPress': counterPress.name,
+    if (attackOnRecovery != AttackOnRecovery.balanced)
+      'attackOnRecovery': attackOnRecovery.name,
+    if (restDefence != RestDefence.standard) 'restDefence': restDefence.name,
+  };
 
   factory TransitionTactics.fromJson(Map<String, dynamic> json) =>
-      const TransitionTactics();
+      TransitionTactics(
+        counterPress: InPossessionTactics._enumOr(
+          CounterPress.values,
+          json['counterPress'],
+          CounterPress.balanced,
+        ),
+        attackOnRecovery: InPossessionTactics._enumOr(
+          AttackOnRecovery.values,
+          json['attackOnRecovery'],
+          AttackOnRecovery.balanced,
+        ),
+        restDefence: InPossessionTactics._enumOr(
+          RestDefence.values,
+          json['restDefence'],
+          RestDefence.standard,
+        ),
+      );
+
+  TransitionTactics copyWith({
+    CounterPress? counterPress,
+    AttackOnRecovery? attackOnRecovery,
+    RestDefence? restDefence,
+  }) => TransitionTactics(
+    counterPress: counterPress ?? this.counterPress,
+    attackOnRecovery: attackOnRecovery ?? this.attackOnRecovery,
+    restDefence: restDefence ?? this.restDefence,
+  );
 
   @override
-  bool operator ==(Object other) => other is TransitionTactics;
+  bool operator ==(Object other) =>
+      other is TransitionTactics &&
+      other.counterPress == counterPress &&
+      other.attackOnRecovery == attackOnRecovery &&
+      other.restDefence == restDefence;
 
   @override
-  int get hashCode => 2;
+  int get hashCode => Object.hash(counterPress, attackOnRecovery, restDefence);
 }
 
 /// Seven mentalities (GDD 10.3): percentage changes to the team's Attack

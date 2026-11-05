@@ -787,9 +787,286 @@ void main() {
       expect(
         pressLate / baselineLate,
         greaterThan(1.08),
-        reason: 'late goals ${pressLate / n} vs ${baselineLate / n} '
+        reason:
+            'late goals ${pressLate / n} vs ${baselineLate / n} '
             '(ratio ${(pressLate / baselineLate).toStringAsFixed(3)})',
       );
+    });
+  });
+
+  group('custom tactics — Transitions instructions (phase 3)', () {
+    test('single-instruction extremes: win rate 46-54% each', () {
+      const n = 2000;
+      final cases = <String, TeamTactics>{
+        'retreat': const TeamTactics(
+          transitions: TransitionTactics(counterPress: CounterPress.retreat),
+        ),
+        'immediate': const TeamTactics(
+          transitions: TransitionTactics(counterPress: CounterPress.immediate),
+        ),
+        'patient': const TeamTactics(
+          transitions: TransitionTactics(
+            attackOnRecovery: AttackOnRecovery.patient,
+          ),
+        ),
+        'fastCounter': const TeamTactics(
+          transitions: TransitionTactics(
+            attackOnRecovery: AttackOnRecovery.fast,
+          ),
+        ),
+        'restConservative': const TeamTactics(
+          transitions: TransitionTactics(restDefence: RestDefence.conservative),
+        ),
+        'restAggressive': const TeamTactics(
+          transitions: TransitionTactics(restDefence: RestDefence.aggressive),
+        ),
+      };
+      for (final e in cases.entries) {
+        final b = runBatch(
+          n,
+          41000,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeTactics: e.value,
+        );
+        // ignore: avoid_print
+        print('${e.key}: W=${b.homeWinRate.toStringAsFixed(3)}');
+        expect(
+          b.homeWinRate,
+          inInclusiveRange(0.46, 0.54),
+          reason: '${e.key} win rate ${b.homeWinRate.toStringAsFixed(3)}',
+        );
+      }
+    });
+
+    test('the full gegenpress rebuild wins by pressing, not for free', () {
+      const n = 3000;
+      final gegenpress = TeamTactics(
+        outOfPossession: const OutOfPossessionTactics(
+          defensiveLine: DefensiveLine.high,
+          pressing: PressingIntensity.high,
+        ),
+        transitions: const TransitionTactics(
+          counterPress: CounterPress.immediate,
+          restDefence: RestDefence.aggressive,
+        ),
+      );
+      final b = runBatch(
+        n,
+        43000,
+        homeOverall: 70,
+        awayOverall: 70,
+        homeTactics: gegenpress,
+      );
+      // ignore: avoid_print
+      print(
+        'gegenpress: W=${b.homeWinRate.toStringAsFixed(3)} '
+        'G=${b.avgGoals.toStringAsFixed(2)}',
+      );
+
+      // (a) win rate ≤ 58%.
+      expect(
+        b.homeWinRate,
+        lessThanOrEqualTo(0.58),
+        reason: 'gegenpress win rate ${b.homeWinRate.toStringAsFixed(3)}',
+      );
+
+      // (b) the stamina bill is real: average stamina at 75' below
+      // baseline, and goals conceded after 75' ≥ 15% above baseline.
+      double staminaAt(int atMinute, TeamTactics tac) {
+        var sum = 0.0;
+        var count = 0;
+        for (var m = 0; m < 1500; m++) {
+          final engine = _engine(
+            44000 + m,
+            homeOverall: 70,
+            awayOverall: 70,
+            homeTactics: tac,
+          );
+          while (!engine.isFinished && engine.state.minute < atMinute) {
+            engine.advanceMinute();
+          }
+          for (final p in engine.playersOf(MatchSide.home)) {
+            if (p.minutesPlayed >= atMinute - 1) {
+              sum += p.stamina;
+              count++;
+            }
+          }
+        }
+        return sum / count;
+      }
+
+      int lateGoals(TeamTactics tac) {
+        var late = 0;
+        for (var m = 0; m < 1500; m++) {
+          final engine = _engine(
+            45000 + m,
+            homeOverall: 70,
+            awayOverall: 70,
+            homeTactics: tac,
+          );
+          for (final e in engine.simulateToEnd()) {
+            if (e.type == MatchEventType.goal &&
+                e.side == MatchSide.away &&
+                e.minute >= 75) {
+              late++;
+            }
+          }
+        }
+        return late;
+      }
+
+      final baselineStamina = staminaAt(75, const TeamTactics());
+      final gegenStamina = staminaAt(75, gegenpress);
+      // ignore: avoid_print
+      print(
+        'stamina@75: gegenpress ${gegenStamina.toStringAsFixed(1)} '
+        'vs baseline ${baselineStamina.toStringAsFixed(1)}',
+      );
+      expect(
+        gegenStamina,
+        lessThan(baselineStamina),
+        reason: 'stamina $gegenStamina vs $baselineStamina',
+      );
+
+      final baselineLate = lateGoals(const TeamTactics());
+      final gegenLate = lateGoals(gegenpress);
+      // ignore: avoid_print
+      print(
+        'late goals: gegenpress ${gegenLate / 1500} vs baseline '
+        '${baselineLate / 1500}',
+      );
+      expect(
+        gegenLate / baselineLate,
+        greaterThan(1.15),
+        reason:
+            'late goals ratio ${(gegenLate / baselineLate).toStringAsFixed(3)}',
+      );
+    });
+
+    test('park-the-bus counter: 40-58% win, 30-42% possession', () {
+      const n = 3000;
+      final parkTheBus = TeamTactics(
+        outOfPossession: const OutOfPossessionTactics(
+          defensiveLine: DefensiveLine.deep,
+          pressing: PressingIntensity.low,
+        ),
+        transitions: const TransitionTactics(
+          attackOnRecovery: AttackOnRecovery.fast,
+        ),
+      );
+      final b = runBatch(
+        n,
+        46000,
+        homeOverall: 70,
+        awayOverall: 70,
+        homeTactics: parkTheBus,
+      );
+      // ignore: avoid_print
+      print(
+        'parkTheBus: W=${b.homeWinRate.toStringAsFixed(3)} '
+        'G=${b.avgGoals.toStringAsFixed(2)}',
+      );
+      expect(
+        b.homeWinRate,
+        inInclusiveRange(0.40, 0.58),
+        reason: 'parkTheBus win rate ${b.homeWinRate.toStringAsFixed(3)}',
+      );
+
+      var possSum = 0.0;
+      var matches = 0;
+      for (var m = 0; m < 500; m++) {
+        final engine = _engine(
+          47000 + m,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeTactics: parkTheBus,
+        );
+        engine.simulateToEnd();
+        final stats = computeStats(engine.events, homeTeamId: 1, awayTeamId: 2);
+        if (stats.home.possessionMinutes + stats.away.possessionMinutes > 0) {
+          possSum += stats.possessionPercent(stats.home);
+          matches++;
+        }
+      }
+      final share = possSum / matches;
+      // ignore: avoid_print
+      print('parkTheBus possession: ${share.toStringAsFixed(1)}%');
+      expect(share, inInclusiveRange(30, 42), reason: 'possession $share');
+    });
+
+    test('cross-phase corner cases stay inside the global anchors', () {
+      const n = 1200;
+      final cases = <String, TeamTactics>{
+        'allStandard': const TeamTactics(),
+        'allAttack': TeamTactics(
+          inPossession: const InPossessionTactics(
+            buildUp: BuildUpStyle.longBall,
+            tempo: AttackTempo.fast,
+            width: AttackWidth.wide,
+            finalThird: FinalThirdApproach.shootOnSight,
+          ),
+          outOfPossession: const OutOfPossessionTactics(
+            defensiveLine: DefensiveLine.high,
+            pressing: PressingIntensity.high,
+            tackling: TacklingAggression.aggressive,
+            offsideTrap: true,
+          ),
+          transitions: const TransitionTactics(
+            counterPress: CounterPress.immediate,
+            attackOnRecovery: AttackOnRecovery.fast,
+            restDefence: RestDefence.aggressive,
+          ),
+        ),
+        'allDefence': TeamTactics(
+          inPossession: const InPossessionTactics(
+            buildUp: BuildUpStyle.playOut,
+            tempo: AttackTempo.slow,
+            width: AttackWidth.narrow,
+            finalThird: FinalThirdApproach.workBallIntoBox,
+          ),
+          outOfPossession: const OutOfPossessionTactics(
+            defensiveLine: DefensiveLine.deep,
+            pressing: PressingIntensity.low,
+            tackling: TacklingAggression.clean,
+          ),
+          transitions: const TransitionTactics(
+            counterPress: CounterPress.retreat,
+            attackOnRecovery: AttackOnRecovery.patient,
+            restDefence: RestDefence.conservative,
+          ),
+        ),
+      };
+      for (final e in cases.entries) {
+        final b = runBatch(
+          n,
+          48000,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeTactics: e.value,
+        );
+        // ignore: avoid_print
+        print(
+          '${e.key}: W=${b.homeWinRate.toStringAsFixed(3)} '
+          'G=${b.avgGoals.toStringAsFixed(2)} '
+          'D=${b.drawRate.toStringAsFixed(3)}',
+        );
+        expect(
+          b.homeWinRate,
+          lessThanOrEqualTo(0.58),
+          reason: '${e.key} win rate ${b.homeWinRate.toStringAsFixed(3)}',
+        );
+        expect(
+          b.avgGoals,
+          inInclusiveRange(2.4, 3.2),
+          reason: '${e.key} goals ${b.avgGoals.toStringAsFixed(2)}',
+        );
+        expect(
+          b.drawRate,
+          inInclusiveRange(0.20, 0.34),
+          reason: '${e.key} draws ${b.drawRate.toStringAsFixed(3)}',
+        );
+      }
     });
   });
 
