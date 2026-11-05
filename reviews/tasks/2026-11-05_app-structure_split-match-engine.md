@@ -4,8 +4,8 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-05
-- Status: OPEN
-- Completed on: -
+- Status: DONE
+- Completed on: 2026-11-05
 
 ## Context
 One of ten follow-ups carved out of `2026-11-04_app-structure_remaining-oversized-files` (set to SPLIT 2026-11-05 per the README §1 one-file-per-task rule). The README's ~800-line split threshold (README.md:72-74) is contradicted by `lib/features/match/match_engine.dart` (2,054 lines on 2026-11-05). Split it following the proven `fcm_widgets.dart` barrel pattern so consumer imports never churn.
@@ -22,7 +22,7 @@ One of ten follow-ups carved out of `2026-11-04_app-structure_remaining-oversize
 Not applicable.
 
 ## Task
-- [ ] Split the match engine into domain, commands and engine | Where: `lib/features/match/match_engine.dart` (2,054 lines on 2026-11-05; anchors above) | Expected: `match_event.dart` (enums + event/player/team-input models + config) and `match_commands.dart` (the command hierarchy), engine core stays; pure Dart, no behaviour change — `engine_snapshot_test.dart` and `engine_calibration_test.dart` green with zero test edits and identical seed output; every resulting file ≤800 lines.
+- [x] Split the match engine into domain, commands and engine | Where: `lib/features/match/match_engine.dart` (2,054 lines on 2026-11-05; anchors above) | Expected: `match_event.dart` (enums + event/player/team-input models + config) and `match_commands.dart` (the command hierarchy), engine core stays; pure Dart, no behaviour change — `engine_snapshot_test.dart` and `engine_calibration_test.dart` green with zero test edits and identical seed output; every resulting file ≤800 lines.
 
 ## Acceptance Criteria
 - [ ] Compiles with zero analyzer warnings
@@ -33,7 +33,48 @@ Not applicable.
 - [ ] `engine_snapshot_test.dart` and `engine_calibration_test.dart` green with zero test edits and identical seed output
 
 ## Developer Notes
-<Implementation summary, files changed, exact test commands/results, and rejection reason/evidence if applicable. Implement this task only, create one task-specific commit, and push it before starting another task.>
+- Split executed as pure text relocation (no token changed; verified
+  programmatically: the concatenation of the seven resulting files
+  contains every token of the original `match_engine.dart` — zero
+  missing, zero behavioural edits).
+- Resulting layout:
+  - `match_event.dart` (278 lines): `matchEngineVersion` re-export,
+    the four enums, `MatchEvent`, `MatchPlayer`, `MatchTeamInput`,
+    `MatchEngineConfig` + `defaultMatchEngineConfig`.
+  - `match_commands.dart` (86 lines): the `MatchCommand` hierarchy
+    (`ChangeFormation`/`ChangeTactics`/`ChangeMentality`/`Substitution`/
+    `ChangePepTalk`).
+  - `match_engine_runtime.dart` (324 lines): part of the engine
+    library — `TeamTotals`, `squadQualityTotals`, `MatchState`,
+    `MatchRandom`, `_TeamRuntime`, `_MatchEngineRole` (kept in-library
+    because the engine and its part files use the private runtime
+    types).
+  - `match_engine_simulation.dart` (376 lines), part:
+    `_drawSegmentCount` .. `_turnover`.
+  - `match_engine_setpieces.dart` (433 lines), part: `_issueCard`
+    .. `_drainStamina` (cards, corners, chance creation, shot
+    pipeline, player picking, stamina drain).
+  - `match_engine_events.dart` (385 lines), part: `_applyDueCommands`
+    .. `_emit` (command application, AI adaptation/substitutions,
+    event emission).
+  - `match_engine.dart` (245 lines): library doc, imports, re-exports
+    (`match_event.dart`, `match_commands.dart`), the part directives,
+    `matchEngineVersion` and the `MatchEngine` core (ctor, fields,
+    public API). Every existing `import 'match_engine.dart'` keeps
+    working unchanged (barrel pattern).
+- Checks (Flutter 3.47.9 stable):
+  - `flutter analyze`: No issues found! (ran in 4.2s).
+  - `flutter test test/features/match/engine_snapshot_test.dart
+    test/features/match/engine_calibration_test.dart`: All tests
+    passed (21 tests) — zero test edits, identical seeded output.
+  - `flutter test` full suite: 705 passed, 4 failed — the four
+    failures are exactly the known phase-3 balance bands tracked in
+    `2026-11-05_tactics_phase3-balance-bands-and-sweep` (same four,
+    same shape as the pre-split run on `fd5798d`); zero new failures,
+    zero widget-test failures.
+- No test, localization or unrelated file was touched; `git status`
+  shows only the seven engine files and this task file.
+
 
 ## Reviewer Verification
 <Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
