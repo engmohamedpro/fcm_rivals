@@ -537,7 +537,25 @@ tactics from instructions grouped into three phases of play:
   46–54% win rate, full-stack extremes 40–58%, measured possession
   33–65%, goals 2.6–2.9/match, conversion 10–11%.
 - **Out of Possession** — defensive line height, pressing intensity,
-  tackling aggression and the offside trap. Delivered in phase 2.
+  tackling aggression and the offside trap (phase 2, shipped):
+
+  | Instruction | Options | Anchor effects (harness-tuned) |
+  |---|---|---|
+  | Defensive line | Deep / Standard / High | Deep: defence 1.05, own possession 0.95 · High: defence 0.94, own possession 1.04 |
+  | Pressing | Low / Mid / High | Low: defence 1.02, stamina 0.88, own possession 0.94 · High: defence 1.28, chances 1.04, stamina 1.30 (§34 anchor) — the defence lift pays for the drain; the late-match bill arrives through the fatigue term |
+  | Tackling | Clean / Balanced / Aggressive | Aggressive: defence 1.04, fouls ×1.30, yellows ×1.04 (composed with fouls ≈ +36%) · Clean: defence 0.98, fouls ×0.75, yellows ×0.70 |
+  | Offside trap | Off / On | While on: conceded-chance quality ×0.94, beaten-trap events (6%) ×1.15 |
+
+  The engine reads BOTH teams' instructions: a High line concedes
+  better chances to a Long Ball / Fast-tempo opponent (×1.06), a Deep
+  block blunts a Play Out / Slow opponent's chances (×0.96). Foul and
+  yellow-card probabilities are per-side, scaled by the defending
+  team's tackling — aggressive defending concedes more penalties
+  (penalty award rate stays 0.25–0.30/match at Balanced). Realism
+  bands: fouls/match at Balanced within ±10% of the engine baseline,
+  Aggressive +25–35% fouls and +30–40% yellows, Clean lowers both;
+  High-press stamina drain 1.25–1.35 with a visible late-match cost
+  (goals conceded after 75' ≥ 15% above baseline).
 - **Transitions** — counter-press, counter-attacking and rest defence.
   Delivered in phase 3.
 

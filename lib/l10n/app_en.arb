@@ -131,5 +131,21 @@
   "finalThirdWorkBall": "Work Ball into Box",
   "finalThirdBalanced": "Balanced",
   "finalThirdEarlyCrosses": "Early Crosses",
-  "finalThirdShootOnSight": "Shoot on Sight"
+  "finalThirdShootOnSight": "Shoot on Sight",
+  "tacticsDefensiveLine": "Defensive line",
+  "tacticsPressing": "Pressing",
+  "tacticsTackling": "Tackling",
+  "tacticsOffsideTrap": "Offside trap",
+  "lineDeep": "Deep",
+  "lineStandard": "Standard",
+  "lineHigh": "High",
+  "pressLow": "Low",
+  "pressMid": "Mid",
+  "pressHigh": "High",
+  "tackleClean": "Clean",
+  "tackleBalanced": "Balanced",
+  "tackleAggressive": "Aggressive",
+  "trapOn": "On",
+  "trapOff": "Off",
+  "trapDeepWarning": "No benefit with a deep line — pure risk. Raise the line or turn the trap off."
 }

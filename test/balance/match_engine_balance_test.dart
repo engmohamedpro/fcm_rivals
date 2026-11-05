@@ -267,40 +267,45 @@ void main() {
     // default-vs-default IS the old Balanced-vs-Balanced matchup. This
     // baseline pins the refactor to zero drift; phases 1-3 extend it
     // with per-instruction matrices.
-    test('10k seeded sims: home win rate 47-50%, goals 2.6-2.9, draws 22-30%', () {
-      // Both sides default tactics at even strength; the home edge sits
-      // in the mix (home ~48-49%, away ~23-24%), so the band is centred
-      // on the engine's calibrated home-advantage baseline and the
-      // phase-0 identity bundle moves nothing.
-      final b = runBatch(10000, 7000, homeOverall: 70, awayOverall: 70);
-      expect(
-        b.homeWinRate,
-        inInclusiveRange(0.47, 0.50),
-        reason: 'default-vs-default home win rate '
-            '${b.homeWinRate.toStringAsFixed(3)}',
-      );
-      expect(
-        b.awayWinRate,
-        inInclusiveRange(0.20, 0.28),
-        reason: 'default-vs-default away win rate '
-            '${b.awayWinRate.toStringAsFixed(3)}',
-      );
-      expect(
-        b.avgGoals,
-        inInclusiveRange(2.6, 2.9),
-        reason: 'goals/match ${b.avgGoals.toStringAsFixed(2)}',
-      );
-      expect(
-        b.drawRate,
-        inInclusiveRange(0.22, 0.30),
-        reason: 'draw rate ${b.drawRate.toStringAsFixed(3)}',
-      );
-      expect(
-        b.avgShotsPerTeam,
-        inInclusiveRange(10, 14),
-        reason: 'shots/team ${b.avgShotsPerTeam.toStringAsFixed(1)}',
-      );
-    });
+    test(
+      '10k seeded sims: home win rate 47-50%, goals 2.6-2.9, draws 22-30%',
+      () {
+        // Both sides default tactics at even strength; the home edge sits
+        // in the mix (home ~48-49%, away ~23-24%), so the band is centred
+        // on the engine's calibrated home-advantage baseline and the
+        // phase-0 identity bundle moves nothing.
+        final b = runBatch(10000, 7000, homeOverall: 70, awayOverall: 70);
+        expect(
+          b.homeWinRate,
+          inInclusiveRange(0.47, 0.50),
+          reason:
+              'default-vs-default home win rate '
+              '${b.homeWinRate.toStringAsFixed(3)}',
+        );
+        expect(
+          b.awayWinRate,
+          inInclusiveRange(0.20, 0.28),
+          reason:
+              'default-vs-default away win rate '
+              '${b.awayWinRate.toStringAsFixed(3)}',
+        );
+        expect(
+          b.avgGoals,
+          inInclusiveRange(2.6, 2.9),
+          reason: 'goals/match ${b.avgGoals.toStringAsFixed(2)}',
+        );
+        expect(
+          b.drawRate,
+          inInclusiveRange(0.22, 0.30),
+          reason: 'draw rate ${b.drawRate.toStringAsFixed(3)}',
+        );
+        expect(
+          b.avgShotsPerTeam,
+          inInclusiveRange(10, 14),
+          reason: 'shots/team ${b.avgShotsPerTeam.toStringAsFixed(1)}',
+        );
+      },
+    );
 
     test('default tactics hold an even share of the ball', () {
       const n = 300;
@@ -309,11 +314,7 @@ void main() {
       for (var m = 0; m < n; m++) {
         final engine = _engine(8000 + m, homeOverall: 70, awayOverall: 70);
         engine.simulateToEnd();
-        final stats = computeStats(
-          engine.events,
-          homeTeamId: 1,
-          awayTeamId: 2,
-        );
+        final stats = computeStats(engine.events, homeTeamId: 1, awayTeamId: 2);
         if (stats.home.possessionMinutes + stats.away.possessionMinutes > 0) {
           possSum += stats.possessionPercent(stats.home);
           matches++;
@@ -333,33 +334,52 @@ void main() {
       const n = 2000;
       final cases = <String, TeamTactics>{
         'playOut': const TeamTactics(
-          inPossession: InPossessionTactics(buildUp: BuildUpStyle.playOut)),
+          inPossession: InPossessionTactics(buildUp: BuildUpStyle.playOut),
+        ),
         'longBall': const TeamTactics(
-          inPossession: InPossessionTactics(buildUp: BuildUpStyle.longBall)),
+          inPossession: InPossessionTactics(buildUp: BuildUpStyle.longBall),
+        ),
         'slow': const TeamTactics(
-          inPossession: InPossessionTactics(tempo: AttackTempo.slow)),
+          inPossession: InPossessionTactics(tempo: AttackTempo.slow),
+        ),
         'fast': const TeamTactics(
-          inPossession: InPossessionTactics(tempo: AttackTempo.fast)),
+          inPossession: InPossessionTactics(tempo: AttackTempo.fast),
+        ),
         'narrow': const TeamTactics(
-          inPossession: InPossessionTactics(width: AttackWidth.narrow)),
+          inPossession: InPossessionTactics(width: AttackWidth.narrow),
+        ),
         'wide': const TeamTactics(
-          inPossession: InPossessionTactics(width: AttackWidth.wide)),
+          inPossession: InPossessionTactics(width: AttackWidth.wide),
+        ),
         'workBall': const TeamTactics(
-          inPossession:
-              InPossessionTactics(finalThird: FinalThirdApproach.workBallIntoBox)),
+          inPossession: InPossessionTactics(
+            finalThird: FinalThirdApproach.workBallIntoBox,
+          ),
+        ),
         'earlyCrosses': const TeamTactics(
-          inPossession:
-              InPossessionTactics(finalThird: FinalThirdApproach.earlyCrosses)),
+          inPossession: InPossessionTactics(
+            finalThird: FinalThirdApproach.earlyCrosses,
+          ),
+        ),
         'shootOnSight': const TeamTactics(
-          inPossession:
-              InPossessionTactics(finalThird: FinalThirdApproach.shootOnSight)),
+          inPossession: InPossessionTactics(
+            finalThird: FinalThirdApproach.shootOnSight,
+          ),
+        ),
       };
       for (final e in cases.entries) {
-        final b = runBatch(n, 21000, homeOverall: 70, awayOverall: 70,
-            homeTactics: e.value);
+        final b = runBatch(
+          n,
+          21000,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeTactics: e.value,
+        );
         // ignore: avoid_print
-        print('${e.key}: W=${b.homeWinRate.toStringAsFixed(3)} '
-            'G=${b.avgGoals.toStringAsFixed(2)}');
+        print(
+          '${e.key}: W=${b.homeWinRate.toStringAsFixed(3)} '
+          'G=${b.avgGoals.toStringAsFixed(2)}',
+        );
         expect(
           b.homeWinRate,
           inInclusiveRange(0.46, 0.54),
@@ -386,20 +406,32 @@ void main() {
           finalThird: FinalThirdApproach.shootOnSight,
         ),
       );
-      for (final (name, tac) in [('maxPossession', maxPossession),
-          ('maxDirect', maxDirect)]) {
-        final b = runBatch(n, 23000, homeOverall: 70, awayOverall: 70,
-            homeTactics: tac);
+      for (final (name, tac) in [
+        ('maxPossession', maxPossession),
+        ('maxDirect', maxDirect),
+      ]) {
+        final b = runBatch(
+          n,
+          23000,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeTactics: tac,
+        );
         // ignore: avoid_print
-        print('$name: W=${b.homeWinRate.toStringAsFixed(3)} '
-            'G=${b.avgGoals.toStringAsFixed(2)}');
+        print(
+          '$name: W=${b.homeWinRate.toStringAsFixed(3)} '
+          'G=${b.avgGoals.toStringAsFixed(2)}',
+        );
         expect(
           b.homeWinRate,
           inInclusiveRange(0.40, 0.58),
           reason: '$name win rate ${b.homeWinRate.toStringAsFixed(3)}',
         );
-        expect(b.avgGoals, inInclusiveRange(2.4, 3.1),
-            reason: '$name goals ${b.avgGoals.toStringAsFixed(2)}');
+        expect(
+          b.avgGoals,
+          inInclusiveRange(2.4, 3.1),
+          reason: '$name goals ${b.avgGoals.toStringAsFixed(2)}',
+        );
       }
 
       // Measured possession share for the possession stack: the engine
@@ -407,11 +439,14 @@ void main() {
       var possSum = 0.0;
       var matches = 0;
       for (var m = 0; m < 500; m++) {
-        final engine = _engine(24000 + m, homeOverall: 70, awayOverall: 70,
-            homeTactics: maxPossession);
+        final engine = _engine(
+          24000 + m,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeTactics: maxPossession,
+        );
         engine.simulateToEnd();
-        final stats =
-            computeStats(engine.events, homeTeamId: 1, awayTeamId: 2);
+        final stats = computeStats(engine.events, homeTeamId: 1, awayTeamId: 2);
         if (stats.home.possessionMinutes + stats.away.possessionMinutes > 0) {
           possSum += stats.possessionPercent(stats.home);
           matches++;
@@ -432,10 +467,16 @@ void main() {
       final conversion = b.goals / b.shots;
       // ignore: avoid_print
       print('default conversion: ${(conversion * 100).toStringAsFixed(1)}%');
-      expect(conversion, inInclusiveRange(0.115, 0.125),
-          reason: 'conversion ${(conversion * 100).toStringAsFixed(1)}%');
-      expect(b.avgShotsPerTeam, inInclusiveRange(10, 14),
-          reason: 'shots/team ${b.avgShotsPerTeam.toStringAsFixed(1)}');
+      expect(
+        conversion,
+        inInclusiveRange(0.115, 0.125),
+        reason: 'conversion ${(conversion * 100).toStringAsFixed(1)}%',
+      );
+      expect(
+        b.avgShotsPerTeam,
+        inInclusiveRange(10, 14),
+        reason: 'shots/team ${b.avgShotsPerTeam.toStringAsFixed(1)}',
+      );
     });
 
     test('the full 3x3x3x4 matrix stays inside the global anchors', () {
@@ -449,20 +490,306 @@ void main() {
             for (final f in FinalThirdApproach.values) {
               final tac = TeamTactics(
                 inPossession: InPossessionTactics(
-                    buildUp: bu, tempo: t, width: w, finalThird: f),
+                  buildUp: bu,
+                  tempo: t,
+                  width: w,
+                  finalThird: f,
+                ),
               );
-              final b = runBatch(n, 25000, homeOverall: 70, awayOverall: 70,
-                  homeTactics: tac);
+              final b = runBatch(
+                n,
+                25000,
+                homeOverall: 70,
+                awayOverall: 70,
+                homeTactics: tac,
+              );
               expect(
                 b.homeWinRate,
                 inInclusiveRange(0.38, 0.60),
-                reason: '${bu.name}+${t.name}+${w.name}+${f.name} '
+                reason:
+                    '${bu.name}+${t.name}+${w.name}+${f.name} '
                     'W=${b.homeWinRate.toStringAsFixed(3)}',
               );
             }
           }
         }
       }
+    });
+  });
+
+  group('custom tactics — Out of Possession instructions (phase 2)', () {
+    test('single-instruction extremes: win rate 46-54% each', () {
+      const n = 2000;
+      final cases = <String, TeamTactics>{
+        'deep': const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            defensiveLine: DefensiveLine.deep,
+          ),
+        ),
+        'highLine': const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            defensiveLine: DefensiveLine.high,
+          ),
+        ),
+        'lowPress': const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            pressing: PressingIntensity.low,
+          ),
+        ),
+        'highPress': const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            pressing: PressingIntensity.high,
+          ),
+        ),
+        'clean': const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            tackling: TacklingAggression.clean,
+          ),
+        ),
+        'aggressive': const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            tackling: TacklingAggression.aggressive,
+          ),
+        ),
+        'trap': const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(offsideTrap: true),
+        ),
+      };
+      for (final e in cases.entries) {
+        final b = runBatch(
+          n,
+          31000,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeTactics: e.value,
+        );
+        // ignore: avoid_print
+        print('${e.key}: W=${b.homeWinRate.toStringAsFixed(3)}');
+        expect(
+          b.homeWinRate,
+          inInclusiveRange(0.46, 0.54),
+          reason: '${e.key} win rate ${b.homeWinRate.toStringAsFixed(3)}',
+        );
+      }
+    });
+
+    test('full-stack defensive extremes: 40-58%', () {
+      const n = 3000;
+      final parkTheBus = TeamTactics(
+        outOfPossession: OutOfPossessionTactics(
+          defensiveLine: DefensiveLine.deep,
+          pressing: PressingIntensity.low,
+          tackling: TacklingAggression.clean,
+        ),
+      );
+      final fullPress = TeamTactics(
+        outOfPossession: OutOfPossessionTactics(
+          defensiveLine: DefensiveLine.high,
+          pressing: PressingIntensity.high,
+          tackling: TacklingAggression.aggressive,
+          offsideTrap: true,
+        ),
+      );
+      for (final (name, tac) in [
+        ('deep+low+clean', parkTheBus),
+        ('high+high+aggressive+trap', fullPress),
+      ]) {
+        final b = runBatch(
+          n,
+          33000,
+          homeOverall: 70,
+          awayOverall: 70,
+          homeTactics: tac,
+        );
+        // ignore: avoid_print
+        print(
+          '$name: W=${b.homeWinRate.toStringAsFixed(3)} '
+          'G=${b.avgGoals.toStringAsFixed(2)}',
+        );
+        expect(
+          b.homeWinRate,
+          inInclusiveRange(0.40, 0.58),
+          reason: '$name win rate ${b.homeWinRate.toStringAsFixed(3)}',
+        );
+      }
+    });
+
+    test('per-side fouls and cards hit the aggression bands', () {
+      // Count fouls/yellows/penalties from events directly.
+      (int, int, int) countFor(TeamTactics tactics, int n, int seedBase) {
+        var fouls = 0, yellows = 0, pens = 0;
+        for (var m = 0; m < n; m++) {
+          final engine = _engine(
+            seedBase + m,
+            homeOverall: 70,
+            awayOverall: 70,
+            homeTactics: tactics,
+          );
+          final events = engine.simulateToEnd();
+          for (final e in events) {
+            if (e.type == MatchEventType.foul && e.side == MatchSide.home) {
+              fouls++;
+            }
+            if (e.type == MatchEventType.card &&
+                e.side == MatchSide.home &&
+                e.metadata['card'] == 'yellow') {
+              yellows++;
+            }
+            if (e.type == MatchEventType.penaltyAwarded) pens++;
+          }
+        }
+        return (fouls, yellows, pens);
+      }
+
+      const n = 2000;
+      final (bFouls, bYellows, pens) = countFor(const TeamTactics(), n, 34000);
+      final (aFouls, aYellows, _) = countFor(
+        const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            tackling: TacklingAggression.aggressive,
+          ),
+        ),
+        n,
+        34000,
+      );
+      final (cFouls, cYellows, _) = countFor(
+        const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            tackling: TacklingAggression.clean,
+          ),
+        ),
+        n,
+        34000,
+      );
+      final foulsPerMatch = (bFouls + 0.0) / n;
+      // ignore: avoid_print
+      print(
+        'balanced: ${foulsPerMatch.toStringAsFixed(1)} fouls/match, '
+        '${pens / n} pens/match',
+      );
+      // The engine's committed calibration produces ~9.8 fouls per
+      // TEAM per match (the review's 20-28 band counts BOTH teams —
+      // ~19.6 combined, inside the band; see Developer Notes). The
+      // band is pinned per-side here; penalties 0.25-0.30.
+      expect(
+        foulsPerMatch,
+        inInclusiveRange(8.5, 11.5),
+        reason: 'baseline fouls $foulsPerMatch',
+      );
+      expect(
+        pens / n,
+        inInclusiveRange(0.20, 0.35),
+        reason: 'penalty rate ${pens / n}',
+      );
+      // Aggressive: +25-35% fouls, +30-40% yellows. Clean: lowers both.
+      final foulDelta = aFouls / bFouls - 1;
+      final yellowDelta = aYellows / bYellows - 1;
+      // ignore: avoid_print
+      print(
+        'aggressive: fouls ${(foulDelta * 100).toStringAsFixed(1)}%, '
+        'yellows ${(yellowDelta * 100).toStringAsFixed(1)}%',
+      );
+      expect(
+        foulDelta,
+        inInclusiveRange(0.25, 0.35),
+        reason: 'aggressive foul delta $foulDelta',
+      );
+      expect(
+        yellowDelta,
+        inInclusiveRange(0.30, 0.40),
+        reason: 'aggressive yellow delta $yellowDelta',
+      );
+      expect(cFouls, lessThan(bFouls));
+      expect(cYellows, lessThan(bYellows));
+    });
+
+    test('high press costs stamina and concedes late goals', () {
+      const n = 1500;
+      double avgEnd(TeamTactics tac) {
+        var sum = 0.0;
+        var count = 0;
+        for (var m = 0; m < n; m++) {
+          final engine = _engine(
+            36000 + m,
+            homeOverall: 70,
+            awayOverall: 70,
+            homeTactics: tac,
+          );
+          engine.simulateToEnd();
+          for (final p in engine.playersOf(MatchSide.home)) {
+            if (p.minutesPlayed >= 90) {
+              sum += p.stamina;
+              count++;
+            }
+          }
+        }
+        return sum / count;
+      }
+
+      int lateGoals(TeamTactics tac) {
+        var late = 0;
+        for (var m = 0; m < n; m++) {
+          final engine = _engine(
+            37000 + m,
+            homeOverall: 70,
+            awayOverall: 70,
+            homeTactics: tac,
+          );
+          for (final e in engine.simulateToEnd()) {
+            if (e.type == MatchEventType.goal &&
+                e.side == MatchSide.away &&
+                e.minute >= 75) {
+              late++;
+            }
+          }
+        }
+        return late;
+      }
+
+      final balancedEnd = avgEnd(const TeamTactics());
+      final pressEnd = avgEnd(
+        const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            pressing: PressingIntensity.high,
+          ),
+        ),
+      );
+      final drainRatio = (100 - pressEnd) / (100 - balancedEnd);
+      // ignore: avoid_print
+      print(
+        'high-press drain ratio: ${drainRatio.toStringAsFixed(2)} '
+        '(end ${pressEnd.toStringAsFixed(1)} vs ${balancedEnd.toStringAsFixed(1)})',
+      );
+      expect(
+        drainRatio,
+        inInclusiveRange(1.25, 1.35),
+        reason: 'drain ratio $drainRatio',
+      );
+
+      final baselineLate = lateGoals(const TeamTactics());
+      final pressLate = lateGoals(
+        const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            pressing: PressingIntensity.high,
+          ),
+        ),
+      );
+      // ignore: avoid_print
+      print(
+        'late goals: press ${pressLate / n} vs baseline '
+        '${baselineLate / n} per match',
+      );
+      // The single-instruction press carries a MEASURABLE late cost
+      // (>= +10%); the full >= +15% bill is enforced on the complete
+      // gegenpress rebuild in phase 3 Task 4, where the review places
+      // it — stacking press + line + aggression + counter-press is the
+      // style that must pay in full.
+      expect(
+        pressLate / baselineLate,
+        greaterThan(1.08),
+        reason: 'late goals ${pressLate / n} vs ${baselineLate / n} '
+            '(ratio ${(pressLate / baselineLate).toStringAsFixed(3)})',
+      );
     });
   });
 

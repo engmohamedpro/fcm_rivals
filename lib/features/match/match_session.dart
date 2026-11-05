@@ -204,8 +204,7 @@ class MatchSession {
     final campus = await store.getCampus();
     final fractions = campus.attributeFractions;
     final formationCode = tactics?.formationCode ?? club.formationCode;
-    final teamTactics =
-        tactics?.tactics ?? tacticsFromDbPayload(club.tactics);
+    final teamTactics = tactics?.tactics ?? tacticsFromDbPayload(club.tactics);
     final mentality =
         tactics?.mentality ??
         Mentality.values.firstWhere(

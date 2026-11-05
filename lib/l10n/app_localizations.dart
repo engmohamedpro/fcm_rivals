@@ -577,6 +577,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shoot on Sight'**
   String get finalThirdShootOnSight;
+
+  /// No description provided for @tacticsDefensiveLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Defensive line'**
+  String get tacticsDefensiveLine;
+
+  /// No description provided for @tacticsPressing.
+  ///
+  /// In en, this message translates to:
+  /// **'Pressing'**
+  String get tacticsPressing;
+
+  /// No description provided for @tacticsTackling.
+  ///
+  /// In en, this message translates to:
+  /// **'Tackling'**
+  String get tacticsTackling;
+
+  /// No description provided for @tacticsOffsideTrap.
+  ///
+  /// In en, this message translates to:
+  /// **'Offside trap'**
+  String get tacticsOffsideTrap;
+
+  /// No description provided for @lineDeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep'**
+  String get lineDeep;
+
+  /// No description provided for @lineStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get lineStandard;
+
+  /// No description provided for @lineHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get lineHigh;
+
+  /// No description provided for @pressLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get pressLow;
+
+  /// No description provided for @pressMid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mid'**
+  String get pressMid;
+
+  /// No description provided for @pressHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get pressHigh;
+
+  /// No description provided for @tackleClean.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean'**
+  String get tackleClean;
+
+  /// No description provided for @tackleBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get tackleBalanced;
+
+  /// No description provided for @tackleAggressive.
+  ///
+  /// In en, this message translates to:
+  /// **'Aggressive'**
+  String get tackleAggressive;
+
+  /// No description provided for @trapOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get trapOn;
+
+  /// No description provided for @trapOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get trapOff;
+
+  /// No description provided for @trapDeepWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'No benefit with a deep line — pure risk. Raise the line or turn the trap off.'**
+  String get trapDeepWarning;
 }
 
 class _AppLocalizationsDelegate

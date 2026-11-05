@@ -189,13 +189,13 @@ void main() {
       expect(find.text('In Possession'), findsOneWidget);
       expect(find.text('Out of Possession'), findsOneWidget);
       expect(find.text('Transitions'), findsOneWidget);
-      expect(find.text('Default setup'), findsNWidgets(2));
+      expect(find.text('Default setup'), findsOneWidget);
 
       // Close the options sheet — DONE sits below the fold of the
       // scrollable sheet on this viewport, so drag up first.
       await tester.drag(
         find.text('TACTIC OPTIONS'),
-        const Offset(0, -400),
+        const Offset(0, -900),
       );
       await _flush(tester, wait: const Duration(milliseconds: 300));
       await tester.tap(find.text('DONE'));

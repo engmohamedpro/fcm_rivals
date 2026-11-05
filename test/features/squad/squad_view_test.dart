@@ -272,18 +272,18 @@ void main() {
 
     // Dead centre default: the marker's floating label reads Balanced,
     // the scale's ends are named Very Defensive / Very Attacking.
-    // 'Balanced' captions the mentality pill AND the selected
-    // final-third chip.
-    expect(find.text('Balanced'), findsNWidgets(2));
+    // 'Balanced' captions the mentality pill, the selected final-third
+    // chip and the selected tackling chip.
+    expect(find.text('Balanced'), findsNWidgets(3));
     expect(find.text('Very Defensive'), findsOneWidget);
     expect(find.text('Very Attacking'), findsOneWidget);
-    // The remaining default sections render their state line; the
-    // in-possession group now carries real controls instead.
-    expect(find.text('Default setup'), findsNWidgets(2));
+    // Only the transitions section still renders its default state
+    // line; the other two groups carry real controls.
+    expect(find.text('Default setup'), findsOneWidget);
 
     // DONE sits below the fold of the scrollable sheet on the default
     // test viewport — drag up, then tap.
-    await tester.drag(find.text('TACTIC OPTIONS'), const Offset(0, -400));
+    await tester.drag(find.text('TACTIC OPTIONS'), const Offset(0, -900));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('DONE'));
     await tester.pumpAndSettle();

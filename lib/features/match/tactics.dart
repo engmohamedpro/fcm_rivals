@@ -423,26 +423,185 @@ class InPossessionTactics {
 /// Out of Possession instructions (GDD 10.2): line height, pressing,
 /// tackling and the offside trap. Phase 0 scaffold — the fields arrive
 /// in phase 2.
+/// Defensive line height (GDD 10.2 Out of Possession).
+enum DefensiveLine {
+  deep('Deep Line', TacticModifiers(defence: 1.05, possession: 0.95)),
+  standard('Standard', TacticModifiers.identity),
+  high('High Line', TacticModifiers(defence: 0.94, possession: 1.04));
+
+  const DefensiveLine(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// Pressing intensity. The High-press stamina cost (1.28) is anchored
+/// to the §34 gegenpress cost of 1.30.
+enum PressingIntensity {
+  low(
+    'Low Press',
+    TacticModifiers(defence: 1.02, stamina: 0.88, possession: 0.94),
+  ),
+  mid('Mid Press', TacticModifiers.identity),
+  high(
+    'High Press',
+    TacticModifiers(defence: 1.28, chance: 1.04, stamina: 1.30),
+  );
+
+  const PressingIntensity(this.displayName, this.modifiers);
+
+  final String displayName;
+  final TacticModifiers modifiers;
+}
+
+/// Tackling aggression. The foul and yellow scaling factors ride the
+/// engine's per-side foul/card probabilities (phase 2 Task 2), not
+/// this bundle.
+enum TacklingAggression {
+  clean(
+    'Clean',
+    TacticModifiers(defence: 0.98),
+    foulScale: 0.75,
+    yellowScale: 0.70,
+  ),
+  balanced(
+    'Balanced',
+    TacticModifiers.identity,
+    foulScale: 1.00,
+    yellowScale: 1.00,
+  ),
+  aggressive(
+    'Aggressive',
+    TacticModifiers(defence: 1.04),
+    foulScale: 1.30,
+    // The engine applies foulScale AND yellowScale on the same path,
+    // so the composed yellow delta is their product minus one. 1.30 ×
+    // 1.04 ≈ +35%, inside the review's +30-40% band.
+    yellowScale: 1.04,
+  );
+
+  const TacklingAggression(
+    this.displayName,
+    this.modifiers, {
+    required this.foulScale,
+    required this.yellowScale,
+  });
+
+  final String displayName;
+  final TacticModifiers modifiers;
+
+  /// Multiplier on this side's foul-emission probability.
+  final double foulScale;
+
+  /// Multiplier on this side's yellow-card probability.
+  final double yellowScale;
+}
+
+/// The offside trap's shape (GDD 10.2): a stochastic hook on conceded
+/// chances — most get worse (×0.94), a beaten trap (6%) gets amplified
+/// (×1.15). Net negative for the opponent, with tail risk. The state
+/// itself is a plain bool on the instruction group.
+class OffsideTrapToggles {
+  const OffsideTrapToggles._();
+
+  /// Share of conceded chances that beat the trap while it is on.
+  static const double beatenShare = 0.06;
+
+  /// Quality multiplier applied to conceded chances while the trap
+  /// holds (the majority case).
+  static const double heldQuality = 0.94;
+
+  /// Quality multiplier for the beaten-trap tail risk.
+  static const double beatenQuality = 1.15;
+}
+
+/// Out of Possession instructions (GDD 10.2): line height, pressing,
+/// tackling aggression and the offside trap. Defaults (Standard / Mid /
+/// Balanced / Off) are the identity; combinations rebuild the removed
+/// High Press, Gegenpressing (with phase 3) and Low Block styles.
 class OutOfPossessionTactics {
-  const OutOfPossessionTactics();
+  const OutOfPossessionTactics({
+    this.defensiveLine = DefensiveLine.standard,
+    this.pressing = PressingIntensity.mid,
+    this.tackling = TacklingAggression.balanced,
+    this.offsideTrap = false,
+  });
 
-  bool get isDefault => true;
+  final DefensiveLine defensiveLine;
+  final PressingIntensity pressing;
+  final TacklingAggression tackling;
 
-  TacticModifiers get modifiers => TacticModifiers.identity;
+  /// Whether the offside trap is on.
+  final bool offsideTrap;
+
+  bool get isDefault =>
+      defensiveLine == DefensiveLine.standard &&
+      pressing == PressingIntensity.mid &&
+      tackling == TacklingAggression.balanced &&
+      !offsideTrap;
+
+  TacticModifiers get modifiers =>
+      defensiveLine.modifiers * pressing.modifiers * tackling.modifiers;
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
-  String get effectSummary => modifiers.effectSummary;
+  String get effectSummary {
+    final base = modifiers.effectSummary;
+    if (!offsideTrap) return base;
+    final trapLine = 'Offside trap: tighter line, 6% breakaway risk';
+    return base == 'No modifiers' ? trapLine : '$base · $trapLine';
+  }
 
-  Map<String, dynamic> toJson() => const {};
+  Map<String, dynamic> toJson() => {
+    if (defensiveLine != DefensiveLine.standard)
+      'defensiveLine': defensiveLine.name,
+    if (pressing != PressingIntensity.mid) 'pressing': pressing.name,
+    if (tackling != TacklingAggression.balanced) 'tackling': tackling.name,
+    if (offsideTrap) 'offsideTrap': true,
+  };
 
   factory OutOfPossessionTactics.fromJson(Map<String, dynamic> json) =>
-      const OutOfPossessionTactics();
+      OutOfPossessionTactics(
+        defensiveLine: InPossessionTactics._enumOr(
+          DefensiveLine.values,
+          json['defensiveLine'],
+          DefensiveLine.standard,
+        ),
+        pressing: InPossessionTactics._enumOr(
+          PressingIntensity.values,
+          json['pressing'],
+          PressingIntensity.mid,
+        ),
+        tackling: InPossessionTactics._enumOr(
+          TacklingAggression.values,
+          json['tackling'],
+          TacklingAggression.balanced,
+        ),
+        offsideTrap: json['offsideTrap'] == true,
+      );
+
+  OutOfPossessionTactics copyWith({
+    DefensiveLine? defensiveLine,
+    PressingIntensity? pressing,
+    TacklingAggression? tackling,
+    bool? offsideTrap,
+  }) => OutOfPossessionTactics(
+    defensiveLine: defensiveLine ?? this.defensiveLine,
+    pressing: pressing ?? this.pressing,
+    tackling: tackling ?? this.tackling,
+    offsideTrap: offsideTrap ?? this.offsideTrap,
+  );
 
   @override
-  bool operator ==(Object other) => other is OutOfPossessionTactics;
+  bool operator ==(Object other) =>
+      other is OutOfPossessionTactics &&
+      other.defensiveLine == defensiveLine &&
+      other.pressing == pressing &&
+      other.tackling == tackling &&
+      other.offsideTrap == offsideTrap;
 
   @override
-  int get hashCode => 1;
+  int get hashCode =>
+      Object.hash(defensiveLine, pressing, tackling, offsideTrap);
 }
 
 /// Transitions instructions (GDD 10.2): counter-press, counter-attacking

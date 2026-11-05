@@ -272,4 +272,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get finalThirdShootOnSight => 'Shoot on Sight';
+
+  @override
+  String get tacticsDefensiveLine => 'Defensive line';
+
+  @override
+  String get tacticsPressing => 'Pressing';
+
+  @override
+  String get tacticsTackling => 'Tackling';
+
+  @override
+  String get tacticsOffsideTrap => 'Offside trap';
+
+  @override
+  String get lineDeep => 'Deep';
+
+  @override
+  String get lineStandard => 'Standard';
+
+  @override
+  String get lineHigh => 'High';
+
+  @override
+  String get pressLow => 'Low';
+
+  @override
+  String get pressMid => 'Mid';
+
+  @override
+  String get pressHigh => 'High';
+
+  @override
+  String get tackleClean => 'Clean';
+
+  @override
+  String get tackleBalanced => 'Balanced';
+
+  @override
+  String get tackleAggressive => 'Aggressive';
+
+  @override
+  String get trapOn => 'On';
+
+  @override
+  String get trapOff => 'Off';
+
+  @override
+  String get trapDeepWarning =>
+      'No benefit with a deep line — pure risk. Raise the line or turn the trap off.';
 }

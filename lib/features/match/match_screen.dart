@@ -488,7 +488,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                       onTap: () =>
                           _answerRecovery(_RecoveryChoice(pepTalk: choice)),
                     ),
-                  ),                if (!won)
+                  ),
+                if (!won)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: _RecoveryOption(
@@ -1020,9 +1021,7 @@ class _MatchReportViewState extends State<MatchReportView> {
                             Flexible(
                               child: Text(
                                 l10nOf(context).pepTalkRecoveryConfirmation(
-                                  l10nOf(context).pepTalkName(
-                                    widget.pepTalk!,
-                                  ),
+                                  l10nOf(context).pepTalkName(widget.pepTalk!),
                                   (widget.pepTalk!.recoveryBonus * 100).round(),
                                 ),
                                 style: const TextStyle(

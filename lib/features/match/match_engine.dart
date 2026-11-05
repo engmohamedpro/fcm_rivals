@@ -687,8 +687,10 @@ class MatchEngine {
     // complete 75-85%).
     final passesAttempted = 3 + _random.nextInt(8);
     final possessionAccuracy =
-        ((attTotals.support / 100) * att.tactics.modifiers.passAccuracy)
-            .clamp(0.40, 0.92);
+        ((attTotals.support / 100) * att.tactics.modifiers.passAccuracy).clamp(
+          0.40,
+          0.92,
+        );
     var passesCompleted = (passesAttempted * possessionAccuracy).round();
 
     // 2-3. Build-up: passing and progression vs defensive pressure.
@@ -862,7 +864,16 @@ class MatchEngine {
     // into a match before it opens up (real football's 1-15 minute
     // goal share is the LOWEST of the six buckets).
     final coldStart = minute < 15 ? 0.70 + 0.30 * (minute / 15) : 1.0;
-    return coldStart * (1 + 2.0 * (1 - avg / 100) * t * t);
+    // Phase-2 late-match bill: the pressing side's drain
+    // multiplies the fatigue term — a high press concedes
+    // measurably more after 75' (its 1.30 stamina bill
+    // arriving where real matches break open), while a low
+    // block (stamina < 1.0) tightens slightly.
+    final pressDrain = def.tactics.outOfPossession.pressing.modifiers.stamina;
+    final pressBill = pressDrain > 1.0 ? (pressDrain - 1.0) * 1.5 : 0.0;
+    return coldStart *
+        (1 + 2.0 * (1 - avg / 100) * t * t) *
+        (1 + pressBill * (t * t));
   }
 
   List<MatchEvent> _turnover(
@@ -875,14 +886,20 @@ class MatchEngine {
     final loser = _pickAttacker(att)!;
     _involvedThisMinute.add(loser.playerId);
 
-    if (_random.chance(config.foulOnTurnover)) {
+    // Per-side foul rate (phase 2): the defending team's tackling
+    // aggression scales the emission probability — aggressive
+    // defending fouls more, clean defending less. inBoxFoulChance
+    // scales identically: aggressive defending concedes more
+    // penalties, the real cost of the option.
+    final foulScale = def.tactics.outOfPossession.tackling.foulScale;
+    if (_random.chance(config.foulOnTurnover * foulScale)) {
       // Foul by the defending side (GDD 13.1 free kicks / penalties).
       final fouler = _pickDefender(def)!;
       _involvedThisMinute.add(fouler.playerId);
       // A foul lands in the box ~1.3% of the time (Europe's top
       // divisions award 0.25-0.30 penalties/match from ~20 fouls) —
       // the old 7% produced ~5x the real award rate.
-      final inBox = _random.chance(config.inBoxFoulChance);
+      final inBox = _random.chance(config.inBoxFoulChance * foulScale);
       final finalThird = !inBox && _random.chance(0.30);
       produced.add(
         _emit(
@@ -900,8 +917,12 @@ class MatchEngine {
           },
         ),
       );
-      // Cards (GDD 13.1).
-      if (_random.chance(config.yellowCardChance)) {
+      // Cards (GDD 13.1) — per-side yellow rate scaled by the
+      // defending team's tackling aggression.
+      if (_random.chance(
+        config.yellowCardChance *
+            def.tactics.outOfPossession.tackling.yellowScale,
+      )) {
         produced.addAll(
           _issueCard(
             minute,
@@ -1062,7 +1083,10 @@ class MatchEngine {
     return produced;
   }
 
-  /// Chance creation → shot → outcome (GDD 12.3 steps 6-9).
+  /// Chance creation → shot → outcome (GDD 12.3 steps 6-9), carrying
+  /// the phase-2 defensive hooks: the offside trap's stochastic
+  /// quality gamble and the line-height interactions with the
+  /// OPPONENT's build-up (both runtimes are in scope here).
   List<MatchEvent> _attackChance(
     int minute,
     MatchSide attackerSide,
@@ -1072,7 +1096,46 @@ class MatchEngine {
   ) {
     var quality = ChanceQuality.normal;
     if (_random.chance(0.28)) quality = ChanceQuality.bigChance;
-    return _shoot(minute, attackerSide, att, def, quality);
+    return _shoot(
+      minute,
+      attackerSide,
+      att,
+      def,
+      quality,
+      defenderQualityScale: _concededChanceQualityScale(att, def),
+    );
+  }
+
+  /// The defending side's conceded-chance quality scale from its
+  /// offside trap and line-height interactions with the attacker's
+  /// build-up (phase 2 Task 3).
+  double _concededChanceQualityScale(_TeamRuntime att, _TeamRuntime def) {
+    final oop = def.tactics.outOfPossession;
+    var scale = 1.0;
+
+    // Offside trap: stochastic hook — most conceded chances tighten
+    // (×0.94), a beaten trap (6%) is amplified (×1.15). Net negative
+    // for the opponent, with tail risk.
+    if (oop.offsideTrap) {
+      scale *= _random.chance(OffsideTrapToggles.beatenShare)
+          ? OffsideTrapToggles.beatenQuality
+          : OffsideTrapToggles.heldQuality;
+    }
+
+    // Line-height interaction matrix (both teams' instructions):
+    // a high line is punished by balls in behind; a deep block
+    // concedes territory to patient build-up.
+    final ip = att.tactics.inPossession;
+    final directOpponent =
+        ip.buildUp == BuildUpStyle.longBall || ip.tempo == AttackTempo.fast;
+    final patientOpponent =
+        ip.buildUp == BuildUpStyle.playOut || ip.tempo == AttackTempo.slow;
+    if (oop.defensiveLine == DefensiveLine.high && directOpponent) {
+      scale *= 1.06; // balls in behind: better chances conceded
+    } else if (oop.defensiveLine == DefensiveLine.deep && patientOpponent) {
+      scale *= 0.96; // conceded territory: worse chances conceded
+    }
+    return scale;
   }
 
   List<MatchEvent> _shoot(
@@ -1082,6 +1145,7 @@ class MatchEngine {
     _TeamRuntime def,
     ChanceQuality quality, {
     MatchPlayer? shooterOverride,
+    double defenderQualityScale = 1.0,
   }) {
     final produced = <MatchEvent>[];
     final shooter = shooterOverride ?? _pickShooter(att);
@@ -1133,7 +1197,7 @@ class MatchEngine {
     // built-up play: their conversion stays anchored.
     final shotQuality = quality == ChanceQuality.penalty
         ? 1.0
-        : att.tactics.modifiers.shotQuality;
+        : att.tactics.modifiers.shotQuality * defenderQualityScale;
     final goalPGivenOnTarget =
         (config.goalBase +
                 config.goalScale * qualityGoalFactor +
@@ -1595,7 +1659,11 @@ class MatchEngine {
     required String reason,
   }) {
     if (!rt.bench.any((p) => p.playerId == incoming.playerId)) return null;
-    rt.substitute(outgoing.playerId, incoming.playerId, config.maxSubstitutions);
+    rt.substitute(
+      outgoing.playerId,
+      incoming.playerId,
+      config.maxSubstitutions,
+    );
     rt.lastAiSubMinute = minute;
     final event = _event(
       minute: minute,
@@ -1843,8 +1911,7 @@ class _TeamRuntime {
         tactics.modifiers.attack *
         actionModifiers.attack *
         pepTalkModifiers.attack;
-    final support =
-        supportW > 0 ? supportSum / supportW : 0;
+    final support = supportW > 0 ? supportSum / supportW : 0;
     final defence =
         (defenceW > 0 ? defenceSum / defenceW : 0) *
         mentality.defenceMod *

@@ -369,7 +369,9 @@ class _OpponentHeader extends StatelessWidget {
                         Container(
                           width: 20,
                           height: 20,
-                          margin: EdgeInsetsDirectional.only(start: i == 0 ? 0 : 4),
+                          margin: EdgeInsetsDirectional.only(
+                            start: i == 0 ? 0 : 4,
+                          ),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,

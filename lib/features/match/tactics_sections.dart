@@ -50,8 +50,9 @@ class TacticsGroupScaffold extends StatelessWidget {
           title: l10n.tacticsOutOfPossessionTitle,
           subtitle: l10n.tacticsOutOfPossessionSubtitle,
           summary: tactics.outOfPossession.effectSummary,
-          child: const _PhasePlaceholder(
-            key: ValueKey('outOfPossessionControls'),
+          child: _OutOfPossessionControls(
+            tactics: tactics,
+            onChanged: onChanged,
           ),
         ),
         const SizedBox(height: 12),
@@ -333,6 +334,126 @@ class _OptionChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Out of Possession instruction controls (phase 2): three segmented
+/// rows plus the offside-trap toggle. The toggle WARNS when the
+/// defensive line is Deep — a deep trap has no benefit, only risk, and
+/// the UI must teach that trade-off (GDD 10.3).
+class _OutOfPossessionControls extends StatelessWidget {
+  const _OutOfPossessionControls({
+    required this.tactics,
+    required this.onChanged,
+  });
+
+  final TeamTactics tactics;
+  final ValueChanged<TeamTactics> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = l10nOf(context);
+    final oop = tactics.outOfPossession;
+    final deepLine = oop.defensiveLine == DefensiveLine.deep;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SegmentedRow<DefensiveLine>(
+          label: l10n.tacticsDefensiveLine,
+          values: DefensiveLine.values,
+          selected: oop.defensiveLine,
+          display: (v) => switch (v) {
+            DefensiveLine.deep => l10n.lineDeep,
+            DefensiveLine.standard => l10n.lineStandard,
+            DefensiveLine.high => l10n.lineHigh,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) => onChanged(
+            tactics.copyWith(outOfPossession: oop.copyWith(defensiveLine: v)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SegmentedRow<PressingIntensity>(
+          label: l10n.tacticsPressing,
+          values: PressingIntensity.values,
+          selected: oop.pressing,
+          display: (v) => switch (v) {
+            PressingIntensity.low => l10n.pressLow,
+            PressingIntensity.mid => l10n.pressMid,
+            PressingIntensity.high => l10n.pressHigh,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) => onChanged(
+            tactics.copyWith(outOfPossession: oop.copyWith(pressing: v)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SegmentedRow<TacklingAggression>(
+          label: l10n.tacticsTackling,
+          values: TacklingAggression.values,
+          selected: oop.tackling,
+          display: (v) => switch (v) {
+            TacklingAggression.clean => l10n.tackleClean,
+            TacklingAggression.balanced => l10n.tackleBalanced,
+            TacklingAggression.aggressive => l10n.tackleAggressive,
+          },
+          summary: (v) => v.modifiers.effectSummary,
+          onSelect: (v) => onChanged(
+            tactics.copyWith(outOfPossession: oop.copyWith(tackling: v)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // The offside trap toggle with its trade-off warning.
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.tacticsOffsideTrap,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+            _OptionChip(
+              label: oop.offsideTrap ? l10n.trapOn : l10n.trapOff,
+              selected: oop.offsideTrap,
+              onTap: () => onChanged(
+                tactics.copyWith(
+                  outOfPossession: oop.copyWith(offsideTrap: !oop.offsideTrap),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (deepLine && oop.offsideTrap)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 12,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    l10n.trapDeepWarning,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
