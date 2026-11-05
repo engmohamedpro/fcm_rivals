@@ -27,99 +27,10 @@ import '../match/tactics.dart'
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart' show PlayerCard;
 import 'season_engine.dart';
+import 'season_models.dart';
 
-/// Season-specific errors.
-class SeasonException implements Exception {
-  const SeasonException(this.message);
-  final String message;
-  @override
-  String toString() => 'SeasonException: $message';
-}
+export 'season_models.dart';
 
-/// Snapshot of the active (or last) season for the UI.
-class SeasonSummary {
-  const SeasonSummary({
-    required this.seasonId,
-    required this.division,
-    required this.ordinal,
-    required this.status,
-    required this.roundsPlayed,
-    required this.roundsTotal,
-    this.finalPosition,
-    this.outcome,
-  });
-
-  final int seasonId;
-  final int division;
-  final int ordinal;
-
-  /// active | completed.
-  final String status;
-  final int roundsPlayed;
-  final int roundsTotal;
-  final int? finalPosition;
-  final String? outcome;
-
-  bool get isCompleted => status == 'completed';
-}
-
-/// The user's next fixture, if any.
-class NextFixture {
-  const NextFixture({
-    required this.fixtureId,
-    required this.round,
-    required this.isHome,
-    required this.opponentClubId,
-    required this.opponentName,
-  });
-
-  final int fixtureId;
-  final int round;
-
-  /// Whether the user hosts this fixture.
-  final bool isHome;
-  final int opponentClubId;
-  final String opponentName;
-}
-
-/// Season completion outcome for the user (GDD 18 rewards).
-class SeasonCompletion {
-  const SeasonCompletion({
-    required this.seasonId,
-    required this.division,
-    required this.finalPosition,
-    required this.outcome,
-    required this.nextDivision,
-    required this.rewardCoins,
-    required this.rewardPackCategory,
-  });
-
-  final int seasonId;
-  final int division;
-  final int finalPosition;
-
-  /// promoted | stayed | relegated.
-  final String outcome;
-  final int nextDivision;
-  final int rewardCoins;
-
-  /// GDD 18 pack reward: 'premium' for 1st, 'normal' for 2nd–3rd,
-  /// 'choice' for other promotions, null when staying/relegated.
-  final String? rewardPackCategory;
-}
-
-/// AI opponent squad loaded for a fixture.
-class AiOpponentSquad {
-  const AiOpponentSquad({
-    required this.club,
-    required this.starters,
-    required this.bench,
-  });
-
-  final Club club;
-  final List<MatchPlayer> starters;
-  final List<MatchPlayer> bench;
-}
 
 class SeasonStore {
   SeasonStore({
