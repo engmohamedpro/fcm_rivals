@@ -174,6 +174,23 @@ shipped-defaults fix. `flutter analyze` zero issues on both tools.
 (only tooling changed), GDD 10.2 still shows pre-tune placeholders,
 and the full suite still runs the four known band failures.
 
+
+**Post-commit measurement — candidate D on the SUITE pool (the
+final gate): 5 fails** (highLine 46.0, restAggressive 45.9,
+gegenpress late goals 105%, allDefence goals 2.38, matrix worst
+60.9 = 1 combo out). So D is NOT acceptable as-is either: the same
+hpChance 1.10 push that holds the sweep pool pushes the suite
+pool's press-side singles (highLine, restAggressive) just under 46
+and the playOut+slow+wide+workBall combo over 60. Cross-pool
+evidence now confirms the structural finding from both directions:
+every press-side lever (hpChance, hpStamina, pbSlope) that moves
+allAttack/late-goals also moves highLine/highPress/restAggressive
+and the matrix worst combo — the bands as written cannot be met
+simultaneously on both seed pools by instruction anchors alone.
+This review is REJECTED_PARTIAL on Tasks 2-6 with the evidence
+above; the recommended path stays: an engine-side review decoupling
+the fatigue term / late-concession hook, then a short anchor pass.
+
 ## Reviewer Verification
 <To be filled when Tasks 2-6 land and the balance bands are green on both seed pools.>
 
