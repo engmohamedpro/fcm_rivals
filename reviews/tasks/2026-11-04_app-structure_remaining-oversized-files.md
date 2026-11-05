@@ -4,7 +4,7 @@
 - Priority: Minor
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: OPEN
+- Status: SPLIT
 - Completed by: -
 - Completed on: -
 
@@ -40,4 +40,7 @@ Follow-up to `2026-11-04_app-structure_god-files-and-route-table.md` (now CLOSED
 
 ## Links
 - Follows: `2026-11-04_app-structure_god-files-and-route-table` (backfilled 2026-11-05 by the lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`; the prose reference above predates the formal field)
-- Follow-up: -
+- Follow-up: `2026-11-05_app-structure_split-match-engine`, `2026-11-05_app-structure_split-match-screen-report`, `2026-11-05_app-structure_split-pack-reveal-widgets`, `2026-11-05_app-structure_split-season-models`, `2026-11-05_app-structure_split-player-card`, `2026-11-05_app-structure_split-collection-results-catalog`, `2026-11-05_app-structure_split-live-match-views`, `2026-11-05_app-structure_split-pre-match-screen`, `2026-11-05_app-structure_split-commentary`, `2026-11-05_app-structure_enforce-line-budget`
+
+## Amendments
+- 2026-11-05 (structural split per README §1 — one file per independently executable task): the ten bundled tasks are each independently executable and now live in ten follow-up files under `reviews/tasks/` (listed under Follow-up). Status OPEN → SPLIT. Each follow-up copies its requirements, targets and evidence per README §7 so no work is reconstructed from this file; the enforcement task additionally declares `Depends on` the nine splits. The task text above is unchanged historical record; execute the work only in the follow-up files.
