@@ -37,3 +37,7 @@ Follow-up to `2026-11-04_app-structure_god-files-and-route-table.md` (now CLOSED
 
 ## Reviewer Verification
 <Filled by reviewer before setting CLOSED.>
+
+## Links
+- Follows: `2026-11-04_app-structure_god-files-and-route-table` (backfilled 2026-11-05 by the lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`; the prose reference above predates the formal field)
+- Follow-up: -

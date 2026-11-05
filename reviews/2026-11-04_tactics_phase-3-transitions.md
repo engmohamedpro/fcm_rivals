@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: REJECTED_PARTIAL
+- Status: SPLIT
 - Completed by: Kareem
 - Completed on: 2026-11-05
 
@@ -77,3 +77,10 @@ The rejection reason is now sharper than the Developer Notes state, because I ra
 The follow-up review `2026-11-05_tactics_phase3-balance-bands-and-sweep` carries the full evidence, the sweep-tooling requirement and the GDD sync. Do not close this file until those tasks are DONE and re-verified.
 
 Developer addendum 2026-11-05: the sweep tool is now committed and rerunnable (`tool/tactics_tuning_sweep.dart`, two seed pools), but the balance bands themselves are still red — Tasks 4/5 here stay unticked and this file stays REJECTED_PARTIAL. The measured blocker is documented in the follow-up review's Developer Notes: per-instruction anchor moves cannot satisfy all bands simultaneously on both seed pools; the remaining lever is the engine's possession competition, which needs its own engine review.
+
+## Links
+- Follows: -
+- Follow-up: `2026-11-05_tactics_phase3-balance-bands-and-sweep`
+
+## Amendments
+- 2026-11-05 (Coach Hady, lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`, finding F2): Status REJECTED_PARTIAL → SPLIT, executing the transition README.md:64/:72 requires once the rejection was upheld — the decision itself (follow-up created, tasks handed over) was already recorded above in Reviewer Verification at commit `05346c2`; only the status token and the formal Follow-up link were missing. The developer addendum above predates this change and its "stays REJECTED_PARTIAL" wording is historical record, not current status. Tasks 4/5 live exclusively in the follow-up file now.

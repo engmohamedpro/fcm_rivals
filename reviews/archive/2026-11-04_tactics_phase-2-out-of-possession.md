@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-05
 
@@ -68,4 +68,6 @@ Second custom-tactics group (execute after `2026-11-04_tactics_phase-1-in-posses
 - `flutter analyze` clean; 684 tests green.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Closure record backfilled 2026-11-05 by Coach Hady (lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`, finding F3): this file was archived at Status DONE with an empty verification placeholder; the closure decision itself was made in commit `05346c2` ("close phases 0-2, uphold phase-3 rejection") but never written into the file. Status DONE → CLOSED per README.md:116/:63.
+
+What was verified for that closure (static re-checks on main @ `45e23af`, 2026-11-05): `OutOfPossessionTactics` at `lib/features/match/tactics.dart:676` with its instruction enums (`DefensiveLine` :578, `PressingIntensity` :592, `TacklingAggression` :613) and the `OffsideTrapToggles` beaten-share constant (0.06, :665); the per-side press-bill site reads through the tuning seam at `lib/features/match/match_engine.dart:874-878` (shipped slope 2.0, drain 1.30). Caveat, stated plainly: the `flutter test` suite was NOT re-run for this backfill — the audit sandbox has no Flutter/Dart SDK; the measured bands quoted above are the developer's execution-day runs. Two recalibrations were accepted with evidence, not silently: the foul-band per-side re-pin (~9.8/team inside the intended combined reading) and the late-goal band placement into phase-3's gegenpress contract — both carry measured numbers in the Developer Notes above. The High-Press defence re-anchor 1.06→1.28 is exactly the retune whose engine-global coupling the phase-3 follow-up (`2026-11-05_tactics_phase3-balance-bands-and-sweep`, root cause 2) now tracks — noted here for the record, not reopened: the instruction landed inside its phase-2 bands.

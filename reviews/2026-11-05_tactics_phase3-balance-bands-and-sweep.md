@@ -94,4 +94,11 @@ Follow-up to `2026-11-04_tactics_phase-3-transitions` (REJECTED_PARTIAL, upheld)
   (developer rule 9).
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+<To be filled when Tasks 2-6 land and the balance bands are green on both seed pools.>
+
+## Links
+- Follows: `2026-11-04_tactics_phase-3-transitions`
+- Follow-up: -
+
+## Amendments
+- 2026-11-05 (Coach Hady, lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`, finding F4): Task 4 names `reviews/2026-11-04_tactics_phase-1-in-possession.md` and `reviews/2026-11-04_tactics_phase-3-transitions.md` as append targets. Both are now under `reviews/archive/` (read-only per README.md:118-119), and the phase-3 file is SPLIT with its remaining work handed over to THIS file — appending there would break README §6's one-active-place rule. Corrected mechanism: any band adjustment backed by sweep evidence is proposed in a NEW tactics review file in the main folder (naming the affected band, citing the sweep line and this file); archived files are never edited. The original task text above is unchanged historical record.

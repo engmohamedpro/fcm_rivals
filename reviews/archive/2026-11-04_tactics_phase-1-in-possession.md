@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-05
 
@@ -64,4 +64,6 @@ First of the three custom-tactics groups replacing the removed Playing Styles (e
 - `flutter analyze` clean; 681 tests green (was 678).
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Closure record backfilled 2026-11-05 by Coach Hady (lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`, finding F3): this file was archived at Status DONE with an empty verification placeholder; the closure decision itself was made in commit `05346c2` ("close phases 0-2, uphold phase-3 rejection") but never written into the file. Status DONE → CLOSED per README.md:116/:63.
+
+What was verified for that closure (static re-checks on main @ `45e23af`, 2026-11-05): `InPossessionTactics` at `lib/features/match/tactics.dart:470` with its four instruction enums (`BuildUpStyle` :381, `AttackTempo` :405, `AttackWidth` :426, `FinalThirdApproach` :439); the `shotQuality` axis and the `TuningOverrides` seam in `TacticModifiers` (`operator *` :80, seam :206 with `current = none` in production); the harness-tuned anchors the Developer Notes list (Play Out 1.06, Long Ball 0.95/0.91/1.03) are the shipped constants. Caveat, stated plainly: the `flutter test` suite was NOT re-run for this backfill — the audit sandbox has no Flutter/Dart SDK; the measured bands quoted above are the developer's execution-day runs. Two evidence-backed recalibrations were accepted, not silent band moves: the harness tuning of Task-4 placeholder anchors (the task itself instructs it) and the conversion-anchor flag (~12% locked by the snapshot test vs the review's 10-11%) — the latter is an engine-level calibration question that belongs to the engine reviews, not to this closed file.

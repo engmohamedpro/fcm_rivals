@@ -4,7 +4,7 @@
 - Priority: Critical
 - Reviewer: Coach Hady
 - Created: 2026-11-04
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-04
 
@@ -71,4 +71,6 @@ Legacy knowledge is not lost — each removed style is rebuilt as a combination 
   tactics equivalents); `tool/simulation_report_test.dart` green.
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Closure record backfilled 2026-11-05 by Coach Hady (lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`, finding F3): this file was archived at Status DONE with an empty verification placeholder; the closure decision itself was made in commit `05346c2` ("close phases 0-2, uphold phase-3 rejection") but never written into the file. Status DONE → CLOSED per README.md:116/:63.
+
+What was verified for that closure (static re-checks on main @ `45e23af`, 2026-11-05): `TeamTactics` at `lib/features/match/tactics.dart:268` composing the three groups; `InPossessionTactics` :470, `OutOfPossessionTactics` :676, `TransitionTactics` :823; `grep -rn "PlayingStyle\|StyleModifiers" lib/ test/` returns zero matches; the legacy-style loader (`tacticsFromDbPayload`) and its per-legacy-name migration test `test/features/season/schema_v11_migration_test.dart` exist; GDD 10.2 rewritten as Custom Tactics with the legacy mapping table (`docs/fcm_rivals_GDD_SRS.md:516-600`); the balance/calibration/snapshot suites are present under `test/`. Caveat, stated plainly: the `flutter test` suite was NOT re-run for this backfill — the audit sandbox has no Flutter/Dart SDK; the numbers in the Developer Notes above are the developer's execution-day runs. Acceptance Criterion "win rate 49–51%" was re-scoped to the engine's home-advantage baseline by the developer with measured justification (Developer Notes, Balance bullet) — accepted as an evidence-backed recalibration, not a silent band move.

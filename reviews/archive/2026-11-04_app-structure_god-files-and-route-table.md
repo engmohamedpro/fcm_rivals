@@ -116,3 +116,11 @@ The codebase is healthy overall (Riverpod-only state, atomic `CoinOps`, transact
   `2026-11-04_app-structure_remaining-oversized-files.md` (Minor,
   Refactor). Everything the review actually asked for is done and
   verified.
+
+## Links
+- Follows: -
+- Follow-up: `2026-11-04_app-structure_remaining-oversized-files`
+
+(Links backfilled 2026-11-05 by the lifecycle audit
+`2026-11-05_reviews_lifecycle-compliance-audit`: the split pair this
+file's verification names was never recorded as formal link fields.)
