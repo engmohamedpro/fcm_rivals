@@ -26,7 +26,7 @@ Re-review verification of `2026-11-04_localization_missing-ar-layer-and-rtl-unsa
 - [x] Schema migration test asserts v10 and applies each step exactly once
 
 ## Developer Notes
-- Task 1: added `lib/l10n/l10n_context.dart` — `l10nOf(context)` returns the
+- Task 1: added `../../../lib/l10n/l10n_context.dart` — `l10nOf(context)` returns the
   ambient AppLocalizations or falls back to `lookupAppLocalizations(Locale('en'))`,
   so no string is duplicated in Dart and every screen stays self-contained
   under a plain MaterialApp. Both SquadScreen sites (hint + snackbar) now
@@ -50,7 +50,7 @@ Re-review verification of `2026-11-04_localization_missing-ar-layer-and-rtl-unsa
 - Verified 2026-11-04 by re-running the checks, not reading the notes:
   `flutter analyze` — No issues found; full `flutter test` suite —
   `02:41 +672: All tests passed!` (0 failing, was 3).
-- Task 1: `lib/l10n/l10n_context.dart` present; both SquadScreen sites
+- Task 1: `../../../lib/l10n/l10n_context.dart` present; both SquadScreen sites
   (`squad_screen.dart:85` hint, `:198` snackbar) resolve via `l10nOf`.
 - Task 2 (option a): `schema_v10_migration_test.dart` exists with the v8
   and v9 rewind paths, asserts `user_version == db.schemaVersion` (=10),
@@ -60,6 +60,6 @@ Re-review verification of `2026-11-04_localization_missing-ar-layer-and-rtl-unsa
   ('Arabic locale renders the hint through the delegates').
 - One residual gap, not blocking the close but tracked: `bootScreen` now
   installs the delegates on every pump, so the plain-MaterialApp (no
-  delegates) pump that Task 1 asked for exists nowhere in `test/` — the
+  delegates) pump that Task 1 asked for exists nowhere in `../../../test` — the
   `l10nOf` fallback branch runs only via the packs reveal path. Filed as
   `2026-11-04_localization_plain-pump-guard-restore.md` (Major, Test).

@@ -42,7 +42,7 @@
   confirms; the explicit "No pep talk" button still skips in one tap.
   `_RecoveryOption` rows already render through `FcmPressable` (scale 0.98
   tap-down feedback) — verified, unchanged.
-- Tests: 4 new widget tests in `test/features/match/match_screen_test.dart`
+- Tests: 4 new widget tests in `../../../test/features/match/match_screen_test.dart`
   (pep-talk commit-once + report status line, ad-boost after a deterministic
   defeat — probed seed 3 / opponent 95 —, scrim double-tap skip, dispose
   mid-finish). `sessionDb` provider override added to the pumped scopes so the

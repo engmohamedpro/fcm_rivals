@@ -35,7 +35,7 @@
 - Task 3: `_maybeCompleteSeason` runs under the `_busy` gate (early return +
   try/finally reset) and the "Complete season" button now shows the loading
   state via `FcmButton.loading` — the same pattern `_run` uses.
-- Tests: new `test/features/season/season_screen_review_test.dart` — (1) the
+- Tests: new `../../../test/features/season/season_screen_review_test.dart` — (1) the
   stale-fixture tap: the whole season is quick-simmed via the store's own
   `simulateRemainingFixtures` BEFORE the screen is pumped, then the stale Play
   tap walks the fixed flow (error scaffold → BACK) with no crash; (2) a
