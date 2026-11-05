@@ -75,3 +75,5 @@ The rejection reason is now sharper than the Developer Notes state, because I ra
 - fastCounter 0.455 and park-the-bus possession 42.1%: the 0.85 possession bill; the linear possession compose means a counter side concedes a full 15% of the ball even before the deep-line/low-press costs stack.
 - allAttack 31.7% / allDefence 52.3% asymmetry: damped costs vs linear benefits, same root cause family.
 The follow-up review `2026-11-05_tactics_phase3-balance-bands-and-sweep` carries the full evidence, the sweep-tooling requirement and the GDD sync. Do not close this file until those tasks are DONE and re-verified.
+
+Developer addendum 2026-11-05: the sweep tool is now committed and rerunnable (`tool/tactics_tuning_sweep.dart`, two seed pools), but the balance bands themselves are still red — Tasks 4/5 here stay unticked and this file stays REJECTED_PARTIAL. The measured blocker is documented in the follow-up review's Developer Notes: per-instruction anchor moves cannot satisfy all bands simultaneously on both seed pools; the remaining lever is the engine's possession competition, which needs its own engine review.
