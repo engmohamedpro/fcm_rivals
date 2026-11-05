@@ -4,7 +4,7 @@
 - Priority: Critical
 - Reviewer: Coach Hady
 - Created: 2026-11-05
-- Status: OPEN
+- Status: IN_PROGRESS
 - Completed by: -
 - Completed on: -
 
@@ -26,8 +26,8 @@ Follow-up to `2026-11-04_tactics_phase-3-transitions` (REJECTED_PARTIAL, upheld)
 3. Fast Counter `possession: 0.85` (`lib/features/match/tactics.dart:661`): through the linear compose and the 1.4-power competition this costs ~5 win points as a single instruction — the heaviest single-instruction bill in the system.
 
 ## Tasks
-- [ ] Task 1: Build the scripted tuning sweep | Where: `tool/tactics_tuning_sweep.dart` (new) | Expected: a Dart CLI (or `flutter test tool/` script, the pattern of `tool/simulation_report_test.dart`) that (a) encodes the tuning constants it varies as parameters — not hardcoded enums — so candidates can be scored without editing the model, and (b) scores a candidate against ALL the pinned bands: the 3x3x3x4 matrix (sampled ≥300 sims/combo), phase-2/3 singles (≥2,000 sims each), the two rebuilds (gegenpress, park-the-bus incl. possession share), the cross-phase corners (allStandard/allAttack/allDefence, ≥1,200 sims), and the global anchors (goals 2.6-2.9, draws 22-30%). Output: one line per case with measured value, band, PASS/FAIL, and a final candidate score (fails count). Seeds disjoint from the test suite's seed ranges so the sweep cannot overfit one seed set. Grid or coordinate descent is acceptable; document the search order in the file header.
-- [ ] Task 2: Resolve the compose asymmetry | Where: `lib/features/match/tactics.dart:72-104` (`operator *`, `_stackDamp`, `_dampedStamina`) | Expected: pick ONE of (a) damping possession stacks like the other axes (documented trade-off: it caps how low a committed low-block can go — check the park-the-bus 30-42% band still reachable), or (b) keeping linear possession but damping it LESS aggressively than costs (a middle constant), or (c) another rule the sweep proves superior. The decision must come from sweep scores, not hand-tasting. Success: max-possession stack W ≤ 60% AND allAttack W ≥ 38% (or a justified re-band in Task 5) with zero new failures anywhere in the sweep.
+- [x] Task 1: Build the scripted tuning sweep | Where: `tool/tactics_tuning_sweep.dart` (new) | Expected: a Dart CLI (or `flutter test tool/` script, the pattern of `tool/simulation_report_test.dart`) that (a) encodes the tuning constants it varies as parameters — not hardcoded enums — so candidates can be scored without editing the model, and (b) scores a candidate against ALL the pinned bands: the 3x3x3x4 matrix (sampled ≥300 sims/combo), phase-2/3 singles (≥2,000 sims each), the two rebuilds (gegenpress, park-the-bus incl. possession share), the cross-phase corners (allStandard/allAttack/allDefence, ≥1,200 sims), and the global anchors (goals 2.6-2.9, draws 22-30%). Output: one line per case with measured value, band, PASS/FAIL, and a final candidate score (fails count). Seeds disjoint from the test suite's seed ranges so the sweep cannot overfit one seed set. Grid or coordinate descent is acceptable; document the search order in the file header.
+- [ ] Task 2: Resolve the compose asymmetry (NOT DONE — see Developer Notes) | Where: `lib/features/match/tactics.dart:72-104` (`operator *`, `_stackDamp`, `_dampedStamina`) | Expected: pick ONE of (a) damping possession stacks like the other axes (documented trade-off: it caps how low a committed low-block can go — check the park-the-bus 30-42% band still reachable), or (b) keeping linear possession but damping it LESS aggressively than costs (a middle constant), or (c) another rule the sweep proves superior. The decision must come from sweep scores, not hand-tasting. Success: max-possession stack W ≤ 60% AND allAttack W ≥ 38% (or a justified re-band in Task 5) with zero new failures anywhere in the sweep.
 - [ ] Task 3: Re-anchor the three measured offenders | Where: `lib/features/match/tactics.dart` — `PressingIntensity.high` (:474-477), `AttackOnRecovery.fast` (:659-662), `match_engine.dart:876` (pressBill) | Expected: after Task 2's compose rule lands, re-run the sweep and set: highPress single in 46-54% (pressBill returns to 1.5 or the per-instruction stamina retunes so the global coefficient stops moving — prefer the latter; the coefficient has been retuned in both phase 2 and phase 3 and must not move a third time), fastCounter single in 46-54% (possession bill likely ~0.90-0.93; verify park-the-bus stays in its 30-42% share), park-the-bus possession share in-band. Every changed constant is committed with the sweep line that justifies it (one comment per anchor, like the existing GDD-rule-14 notes).
 - [ ] Task 4: Update the review bands only with evidence | Where: `reviews/2026-11-04_tactics_phase-1-in-possession.md` (Task 4 bands), `reviews/2026-11-04_tactics_phase-3-transitions.md` (Task 4/5 bands) | Expected: if the sweep proves a band is miscalibrated (not the code), append a dated note to the Developer Notes of the affected review file stating the measured evidence and the new band — do NOT edit the original task text. Default: bands stay as written; the code moves.
 - [ ] Task 5: Sync GDD 10.2 with the shipped anchors | Where: `docs/fcm_rivals_GDD_SRS.md:524-535` | Expected: the phase-1 anchor table still lists pre-tune placeholders (Play Out 1.10 vs shipped 1.06, Long Ball 0.82/0.86/1.06 vs shipped 0.95/0.91/1.06, etc.) and phase-3's counter-press rows list 1.28 stamina vs shipped 1.14. After the sweep lands its final constants, regenerate every anchor row from the code (small script or manual pass over `tactics.dart` — zero drift, values match enum constants exactly), and mark the table "harness-tuned" like the phase-2 table already is. This is the same doc-vs-code drift class phase 2 avoided and phase 3 reintroduced.
@@ -47,7 +47,51 @@ Follow-up to `2026-11-04_tactics_phase-3-transitions` (REJECTED_PARTIAL, upheld)
 - [ ] The sweep tool is committed under `tool/` and rerunnable
 
 ## Developer Notes
-<Implementation notes, rejected points with reason.>
+- Task 1 DONE — the sweep tool is committed and rerunnable
+  (`flutter test tool/tactics_tuning_sweep.dart`, modes baseline /
+  candidate / search / gate via SWEEP_MODE). Its baseline run
+  reproduces the suite's red bands (44 rows, all pinned cases: 22
+  singles, both stacks, gegenpress bill, park-the-bus share+win, 3
+  corners, 108-combo matrix, globals) on a disjoint 700000+ seed
+  pool; a second pool (`--dart-define=SWEEP_SEEDS_SUITE=true`) scores
+  on the SUITE's seed blocks. The seam: `TuningOverrides` in
+  tactics.dart (ComposeRule + per-instruction override map +
+  press-bill slope), `TuningOverrides.current` stays `none` in
+  production — engine snapshot and calibration suites verified
+  bit-identical through it.
+- Tasks 2/3/4/5/6 NOT DONE — the tuning itself did not converge, and
+  the anchors are UNCHANGED from 0218dc7. Measured evidence, both
+  pools at full precision:
+  * Sweep pool, shipped: 4 fails — fastCounter 44.8%, park-the-bus
+    42.2%, allAttack 32.3%, matrix worst 57.2% (0 combos out).
+  * The review's Task 2 option (a) was tried as cost damp 0.70→0.85:
+    on the sweep pool it fixed the corners (allAttack 41.3%, W 0.42)
+    but on the suite pool it pushed deep/highLine/fastCounter/
+    restAggressive singles below 46% and allDefence goals to 2.35 —
+    6 fails, worse than shipped.
+  * Every compose/anchor combination tested (3 coordinate-descent
+    searches, ~50 screened candidates, hpStamina 1.20-1.36, fcPoss
+    0.90-0.94, deep 0.88-0.91, low 0.90-0.94, playOut 1.04-1.06,
+    slow 1.02-1.03, pbSlope 1.6-2.0) swings like a pendulum between
+    the bands on the two seed pools: fixing the corners breaks the
+    singles; fixing the singles breaks the corners. The bands as
+    written are not simultaneously satisfiable by per-instruction
+    anchor moves under this engine — the remaining lever is inside
+    the engine (possession power competition / chance curve), which
+    is exactly the class of change this review told the phase-3
+    developer not to make from inside a tactics review.
+  * Task 3's pressBill preference was honoured: it stays at 2.0; all
+    attempts moved per-instruction anchors only.
+- What is committed: the seam (bit-identical production), the tool,
+  and the two-pool scoring capability. The next developer picks this
+  up from a running tool instead of hand-tuning: recommended order —
+  (1) accept a candidate ONLY on both pools; (2) if the descent
+  stalls again, the blocker is the engine's possession competition
+    (the 1.4 power + linear possession compose); propose an engine
+  review for it rather than another anchor pass.
+- The suite on HEAD: 686 passed, 4 failed (the four known
+  phase-3 bands). Full-suite runs were made before every commit
+  (developer rule 9).
 
 ## Reviewer Verification
 <Filled by reviewer before setting CLOSED.>
