@@ -175,9 +175,9 @@ void main() {
       // The tactic options live in a bottom sheet behind the TACTICS
       // button; the label and the button share the word, so tap the
       // BUTTON itself. The sheet shows the three instruction-group
-      // sections in their default phase-0 state (GDD 10.2): In
-      // Possession, Out of Possession and Transitions, each with its
-      // visible summary.
+      // sections (GDD 10.2) with their real phase-1/2/3 controls at
+      // the defaults: In Possession, Out of Possession and
+      // Transitions, each with its visible summary.
       await tester.tap(
         find.descendant(
           of: find.byType(FcmButton),
@@ -189,7 +189,16 @@ void main() {
       expect(find.text('In Possession'), findsOneWidget);
       expect(find.text('Out of Possession'), findsOneWidget);
       expect(find.text('Transitions'), findsOneWidget);
-      expect(find.text('Default setup'), findsOneWidget);
+      // The Transitions rows assert the CURRENT structure, not a
+      // fragile count: the row labels render uppercased and the
+      // default chips read 'Balanced' (counter-press, attack on
+      // recovery) and 'Standard · 3 back' (rest defence). No
+      // placeholder state line remains.
+      expect(find.text('COUNTER-PRESS'), findsOneWidget);
+      expect(find.text('ATTACK ON RECOVERY'), findsOneWidget);
+      expect(find.text('REST DEFENCE'), findsOneWidget);
+      expect(find.text('Standard · 3 back'), findsOneWidget);
+      expect(find.text('Default setup'), findsNothing);
 
       // Close the options sheet — DONE sits below the fold of the
       // scrollable sheet on this viewport, so drag up first.

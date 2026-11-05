@@ -271,15 +271,35 @@ void main() {
     expect(find.textContaining('FORMATION'), findsNothing);
 
     // Dead centre default: the marker's floating label reads Balanced,
-    // the scale's ends are named Very Defensive / Very Attacking.
-    // 'Balanced' captions the mentality pill, the selected final-third
-    // chip and the selected tackling chip.
-    expect(find.text('Balanced'), findsNWidgets(3));
+    // the scale's ends are named Very Defensive / Very Attacking. The
+    // marker assertion is scoped to the slider so future instruction
+    // rows can never disturb it.
+    expect(
+      find.descendant(
+        of: find.byType(FcmScaleSlider),
+        matching: find.text('Balanced'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Very Defensive'), findsOneWidget);
     expect(find.text('Very Attacking'), findsOneWidget);
-    // Only the transitions section still renders its default state
-    // line; the other two groups carry real controls.
-    expect(find.text('Default setup'), findsOneWidget);
+    // 'Balanced' also captions the selected DEFAULT chips inside the
+    // tactics scaffold, one per group: the final-third chip (In
+    // Possession), the tackling chip (Out of Possession) and the
+    // counter-press + attack-on-recovery chips (Transitions — rest
+    // defence's default chip is 'Standard · 3 back', not Balanced).
+    // Scoped to the scaffold: a future instruction row may move this
+    // count, but it can never touch the slider label above.
+    expect(
+      find.descendant(
+        of: find.byType(TacticsGroupScaffold),
+        matching: find.text('Balanced'),
+      ),
+      findsNWidgets(4),
+    );
+    // Every group ships real controls at its defaults — no section
+    // renders a placeholder state line any more.
+    expect(find.text('Default setup'), findsNothing);
 
     // DONE sits below the fold of the scrollable sheet on the default
     // test viewport — drag up, then tap.

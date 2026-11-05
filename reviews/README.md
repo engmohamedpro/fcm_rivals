@@ -32,6 +32,7 @@ Example: `2026-11-04_auth_login-validation.md`
 6. If a task is rejected: do NOT tick it. Write the reason in Developer Notes and set Status = REJECTED_PARTIAL.
 7. Never delete review files.
 8. Ignore files with Status DONE, CLOSED, or anything in `archive`.
+9. Before any commit that changes UI or engine behaviour, run the full suite (`flutter test`) — not only the new feature's tests. A red suite blocks every future review's "tests green" acceptance criterion; a full-suite run before the commit catches assertions in files an earlier feature touched.
 
 ## Commit message
 `fix(<feature>): address review <file-name-without-extension>`
