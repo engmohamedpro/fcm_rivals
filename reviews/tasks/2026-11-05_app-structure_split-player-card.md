@@ -4,8 +4,8 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-05
-- Status: OPEN
-- Completed on: -
+- Status: DONE
+- Completed on: 2026-11-05
 
 ## Context
 One of ten follow-ups carved out of `2026-11-04_app-structure_remaining-oversized-files` (set to SPLIT 2026-11-05 per the README §1 one-file-per-task rule). The README's ~800-line split threshold (README.md:72-74) is contradicted by `lib/core/ui/player_card.dart` (1,247 lines on 2026-11-05). Split it following the proven `fcm_widgets.dart` barrel pattern so consumer imports never churn.
@@ -22,7 +22,7 @@ One of ten follow-ups carved out of `2026-11-04_app-structure_remaining-oversize
 Not applicable.
 
 ## Task
-- [ ] Split the player card into card, mini card and painters | Where: `lib/core/ui/player_card.dart` (1,247 lines; anchors above) | Expected: `mini_card.dart` (FcmMiniCard + ghost/stat/stamina widgets) and `player_card_painters.dart` (the CustomPainters); a `player_card.dart` barrel keeps the existing import path; `player_card_test.dart` and `mini_card_test.dart` green with zero test edits.
+- [x] Split the player card into card, mini card and painters | Where: `lib/core/ui/player_card.dart` (1,247 lines; anchors above) | Expected: `mini_card.dart` (FcmMiniCard + ghost/stat/stamina widgets) and `player_card_painters.dart` (the CustomPainters); a `player_card.dart` barrel keeps the existing import path; `player_card_test.dart` and `mini_card_test.dart` green with zero test edits.
 
 ## Acceptance Criteria
 - [ ] Compiles with zero analyzer warnings
@@ -33,7 +33,28 @@ Not applicable.
 - [ ] `player_card_test.dart` and `mini_card_test.dart` green with zero test edits
 
 ## Developer Notes
-<Implementation summary, files changed, exact test commands/results, and rejection reason/evidence if applicable. Implement this task only, create one task-specific commit, and push it before starting another task.>
+- Extracted from `player_card.dart` (1,247 -> 430 lines):
+  - `mini_card.dart` (330 lines): `FcmMiniCard` +
+    `_GhostPainter`/`_StatRow`/`_StaminaBar`/`_WarnPainter`.
+  - `player_card_painters.dart` (529 lines): the drawing primitives
+    (`kPlayerCardAspect`, `cardPath`, `_insetCanvas`, `_paintRays`,
+    `_cardStarPath`) + `CardFacePainter`/`CardBackPainter` (were
+    private `_CardFacePainter`/`_CardBackPainter`, public now
+    because both remaining files use them).
+  - `player_card.dart` keeps `FcmPlayerCard` + `FcmPlayerCardBack`
+    and re-exports both new files (barrel) — every existing
+    `import 'player_card.dart'` (with `show FcmMiniCard` etc.) keeps
+    resolving with ZERO test edits.
+- Checks (Flutter 3.47.9 stable):
+  - `flutter analyze`: No issues found!
+  - `flutter test test/features/ui/ test/features/packs/packs_screen_test.dart
+    test/features/squad/squad_view_test.dart`: All tests passed (25)
+    — includes `player_card_test.dart`, `mini_card_test.dart`, and the
+    barrel-importing packs/squad suites.
+  - `flutter test` full suite: 705 passed, 4 failed — exactly the
+    four known phase-3 balance bands; zero new failures.
+- Only the three card files and this task file are in the commit.
+
 
 ## Reviewer Verification
 <Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
