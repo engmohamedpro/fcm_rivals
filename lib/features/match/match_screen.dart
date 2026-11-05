@@ -298,16 +298,22 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       // Auto-follow: land the newest line in view after the frame
       // measures the grown list.
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLatest());
-      // Any goal in the minute just simulated — either side — triggers
-      // the crowd cheer over the looped ambience.
-      if (events.any((e) => e.type == MatchEventType.goal)) {
-        unawaited(_audio.goalCheer());
+      // Every goal in the minute just simulated — either side — triggers
+      // its own cheer over the looped ambience: each goal rings out in
+      // full, so two goals in the same minute stack two cheers on top
+      // of each other.
+      for (final event in events) {
+        if (event.type == MatchEventType.goal) {
+          unawaited(_audio.goalCheer());
+        }
       }
     }
     _maybeOfferHalfTimeTalk();
     if (session.isFinished) {
       // Full time: the whistle ends the ambience too ("first-half
       // kick-off to second-half end"), before the report flow starts.
+      // A cheer still ringing from a late goal keeps playing to its end
+      // — the crowd does not stop mid-roar.
       unawaited(_audio.stop());
       _finishMatch();
     }

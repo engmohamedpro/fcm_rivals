@@ -1,8 +1,10 @@
 // Match-day sound: the ambience must loop from kick-off to full time,
-// goal cheers must play on top of it, and everything must stay quiet
-// (never throw, never leak unhandled async errors) where the audio
-// plugin is absent — the case in every widget test and on any host
-// without the platform channel.
+// and every goal must play its cheer IN FULL on its own one-shot player
+// — cheers overlap instead of cutting each other, and neither the
+// full-time whistle nor half time nor screen teardown cuts a cheer that
+// is still ringing. Everything must stay quiet (never throw, never leak
+// unhandled async errors) where the audio plugin is absent — the case
+// in every widget test and on any host without the platform channel.
 //
 // The platform layer is mocked at the method-channel level with the
 // exact channel and method names audioplayers 6.8.1 sends, so the
@@ -16,12 +18,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/features/match/match_audio.dart';
 
+/// One recorded player command: the method, the player it ran on, and
+/// the full argument string (urls, volumes) for needle lookups.
+final List<({String method, String playerId, String full})> playerCalls = [];
+
+/// Set by installMocks; fires the plugin's completion event for one
+/// player through its event channel, so a test can retire a cheer on cue.
+late void Function(String playerId) sendCompleteEvent;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Calls seen on the audioplayers platform channel. Player commands are
-  // tagged with the method; the two players share the channel, so tests
-  // that need to tell them apart count calls instead.
+  // Calls seen on the audioplayers platform channel, with full arguments
+  // (volumes, sources) for content assertions.
   final calls = <String>[];
   // Temp roots handed to path_provider; each getTemporaryDirectory call
   // makes a fresh one so players never share cache files.
@@ -35,28 +44,37 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
     // Player commands: create/setReleaseMode/setVolume/setSourceUrl/
-    // resume/stop/release/dispose all land here. Every setSourceUrl is
-    // answered with a "prepared" event on the player's event channel,
-    // which the plugin awaits before playback can proceed.
+    // resume/stop/release/dispose all land here. setSourceUrl is
+    // answered with a "prepared" event, and a helper lets tests fire
+    // "complete" for a specific player so a cheer can be retired on
+    // cue. Both are delivered without awaiting here, or the outbound
+    // call would re-enter the messenger and deadlock.
+    void sendEvent(String playerId, Map<String, dynamic> payload) {
+      unawaited(
+        messenger.handlePlatformMessage(
+          'xyz.luan/audioplayers/events/$playerId',
+          const StandardMethodCodec().encodeSuccessEnvelope(payload),
+          null,
+        ),
+      );
+    }
+
+    playerCalls.clear();
     messenger.setMockMethodCallHandler(playerChannel, (call) async {
-      calls.add('${call.method}:${call.arguments}');
+      final playerId = call.arguments is Map
+          ? (call.arguments as Map)['playerId']
+          : null;
+      final full = '${call.method}:${call.arguments}';
+      if (playerId is String) {
+        playerCalls.add((method: call.method, playerId: playerId, full: full));
+      }
+      calls.add(full);
       if (call.method == 'setSourceUrl' && call.arguments is Map) {
         final playerId = (call.arguments as Map)['playerId'] as String;
-        // Answer with a "prepared" event on the player's event channel —
-        // the plugin awaits it before playback proceeds. It must be a
-        // success envelope (EventChannel decodes envelopes, not raw
-        // messages) and delivered without awaiting here, or the outbound
-        // call would re-enter the messenger and deadlock.
-        unawaited(
-          messenger.handlePlatformMessage(
-            'xyz.luan/audioplayers/events/$playerId',
-            const StandardMethodCodec().encodeSuccessEnvelope(<String, dynamic>{
-              'event': 'audio.onPrepared',
-              'value': true,
-            }),
-            null,
-          ),
-        );
+        sendEvent(playerId, const <String, dynamic>{
+          'event': 'audio.onPrepared',
+          'value': true,
+        });
       }
       return null;
     });
@@ -96,6 +114,10 @@ void main() {
     }
 
     messenger.setMockMessageHandler('flutter/assets', loadAsset);
+
+    // Exposed for the tests below: retire a ringing cheer on cue.
+    sendCompleteEvent = (String playerId) =>
+        sendEvent(playerId, const {'event': 'audio.onComplete'});
   }
 
   setUp(() {
@@ -139,12 +161,14 @@ void main() {
       final audio = MatchAudio();
       await audio.start();
       calls.clear();
+      playerCalls.clear();
 
       await audio.goalCheer();
 
       expect(
         calls,
         containsAllInOrder([
+          matches(RegExp(r'setReleaseMode:.*stop')),
           matches(RegExp(r'setVolume:.*1\.0')),
           matches(RegExp(r'setSourceUrl:.*goal_cheers\.mp3')),
           matches(RegExp(r'resume:')),
@@ -154,7 +178,132 @@ void main() {
             'still-looping ambience',
       );
       // The cheer never stops the ambience underneath it.
-      expect(calls.any((c) => c.startsWith('stop:')), isFalse);
+      expect(
+        playerCalls.where((c) => c.method == 'stop'),
+        isEmpty,
+        reason: 'nothing was stopped',
+      );
+      await audio.dispose();
+    });
+
+    test('two cheers close together stack on top of each other', () async {
+      final audio = MatchAudio();
+      await audio.start();
+      calls.clear();
+      playerCalls.clear();
+
+      // The second goal lands while the first cheer is still ringing.
+      await audio.goalCheer();
+      await audio.goalCheer();
+
+      // Two distinct one-shot players, each with its own full source
+      // setup: the second play never restarts or cuts the first.
+      final cheerPlayers = playerCalls
+          .where(
+            (c) => c.method == 'setSourceUrl' && c.full.contains('goal_cheers'),
+          )
+          .map((c) => c.playerId)
+          .toSet();
+      expect(
+        cheerPlayers.length,
+        2,
+        reason: 'two goals in quick succession get two distinct players',
+      );
+      expect(
+        playerCalls.where((c) => c.method == 'stop'),
+        isEmpty,
+        reason: 'the second cheer must not stop the first',
+      );
+      await audio.dispose();
+    });
+
+    test(
+      'a ringing cheer is not cut by stop (full time / half time)',
+      () async {
+        final audio = MatchAudio();
+        await audio.start();
+        final ambienceId = _idOfFirst('setSourceUrl', 'live_match');
+        await audio.goalCheer();
+        final cheerId = _idOfFirst('setSourceUrl', 'goal_cheers');
+        expect(cheerId, isNotNull);
+        calls.clear();
+        playerCalls.clear();
+
+        await audio.stop();
+
+        // Only the ambience player was stopped; the cheer's player is
+        // untouched and keeps ringing to its natural end.
+        final stoppedIds = playerCalls
+            .where((c) => c.method == 'stop')
+            .map((c) => c.playerId)
+            .toSet();
+        expect(stoppedIds, {
+          ambienceId,
+        }, reason: 'the whistle stops only the bed');
+        expect(
+          stoppedIds.contains(cheerId),
+          isFalse,
+          reason: 'the ringing cheer survives the final whistle',
+        );
+        await audio.dispose();
+      },
+    );
+
+    test('a ringing cheer is not cut by dispose (back navigation)', () async {
+      final audio = MatchAudio();
+      await audio.start();
+      final ambienceId = _idOfFirst('setSourceUrl', 'live_match');
+      await audio.goalCheer();
+      final cheerId = _idOfFirst('setSourceUrl', 'goal_cheers');
+      calls.clear();
+      playerCalls.clear();
+
+      await audio.dispose();
+
+      // Teardown touches only the ambience: no cheer player is stopped,
+      // released or disposed here — it retires itself when its cheer
+      // completes.
+      final touchedIds = playerCalls
+          .where(
+            (c) =>
+                c.method == 'stop' ||
+                c.method == 'release' ||
+                c.method == 'dispose',
+          )
+          .map((c) => c.playerId)
+          .toSet();
+      expect(touchedIds, {
+        ambienceId,
+      }, reason: 'only the ambience is torn down');
+      expect(
+        touchedIds.contains(cheerId),
+        isFalse,
+        reason: 'the ringing cheer outlives the screen',
+      );
+    });
+
+    test('a finished cheer retires its own player', () async {
+      final audio = MatchAudio();
+      await audio.start();
+      calls.clear();
+      playerCalls.clear();
+
+      await audio.goalCheer();
+      final cheerId = _idOfFirst('setSourceUrl', 'goal_cheers');
+      expect(cheerId, isNotNull);
+
+      // The cheer runs out on its own: the platform fires complete.
+      sendCompleteEvent(cheerId!);
+      // The retirement goes through microtask turns; let them land.
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        playerCalls.where((c) => c.method == 'dispose').map((c) => c.playerId),
+        contains(cheerId),
+        reason: 'the finished cheer frees its own player',
+      );
       await audio.dispose();
     });
 
@@ -163,16 +312,7 @@ void main() {
       await audio.start();
       // The plugin pings getCurrentPosition around actions; ignore those
       // and count only the calls that would duplicate playback setup.
-      final setupAfterFirst = calls
-          .where(
-            (c) =>
-                c.startsWith('setReleaseMode:') ||
-                c.startsWith('setSourceUrl:') ||
-                c.startsWith('resume:'),
-          )
-          .length;
-      await audio.start();
-      final setupAfterSecond = calls
+      int setupCalls() => calls
           .where(
             (c) =>
                 c.startsWith('setReleaseMode:') ||
@@ -181,9 +321,12 @@ void main() {
           )
           .length;
 
+      final afterFirst = setupCalls();
+      await audio.start();
+
       expect(
-        setupAfterSecond,
-        setupAfterFirst,
+        setupCalls(),
+        afterFirst,
         reason:
             'a repeated start must not re-issue loop mode, source or '
             'resume on the player',
@@ -191,42 +334,30 @@ void main() {
       await audio.dispose();
     });
 
-    test('stop halts both players (full time)', () async {
+    test('stop halts the ambience only (full time)', () async {
       final audio = MatchAudio();
       await audio.start();
+      final ambienceId = _idOfFirst('setSourceUrl', 'live_match');
       await audio.goalCheer();
       calls.clear();
+      playerCalls.clear();
 
       await audio.stop();
 
-      expect(
-        calls.where((c) => c.startsWith('stop:')).length,
-        2,
-        reason:
-            'both the ambience and any running cheer stop at the '
-            'final whistle',
-      );
+      final stoppedIds = playerCalls
+          .where((c) => c.method == 'stop')
+          .map((c) => c.playerId)
+          .toSet();
+      expect(stoppedIds, {
+        ambienceId,
+      }, reason: 'full time stops the ambience and nothing else');
       await audio.dispose();
-    });
-
-    test('dispose stops and releases both players', () async {
-      final audio = MatchAudio();
-      await audio.start();
-      calls.clear();
-
-      await audio.dispose();
-
-      // dispose() internally calls release() per player, whose stop also
-      // lands on the channel: two stops and two releases per player is
-      // the plugin's own dispose path, so expect the doubled count.
-      expect(calls.where((c) => c.startsWith('stop:')).length, 4);
-      expect(calls.where((c) => c.startsWith('release:')).length, 2);
     });
 
     test('goalCheer is ignored before kick-off', () async {
       final audio = MatchAudio();
       await audio.goalCheer();
-      // The two players still register themselves (create + position
+      // The ambience player may still register itself (create + position
       // pings), but nothing that would make sound may be issued.
       expect(
         calls
@@ -260,6 +391,7 @@ void main() {
       final audio = MatchAudio();
       await audio.start();
       await audio.goalCheer();
+      await audio.goalCheer();
       await audio.stop();
       await audio.dispose();
       // Reaching here without throwing (and with no unhandled async
@@ -271,4 +403,15 @@ void main() {
     expect(kAmbienceAsset, 'audio/live_match.mp3');
     expect(kCheerAsset, 'audio/goal_cheers.mp3');
   });
+}
+
+/// The player id of the first [method] call whose arguments mention
+/// [needle] (asset url, volume, …); null when nothing matched.
+String? _idOfFirst(String method, String needle) {
+  for (final record in playerCalls) {
+    if (record.method == method && record.full.contains(needle)) {
+      return record.playerId;
+    }
+  }
+  return null;
 }
