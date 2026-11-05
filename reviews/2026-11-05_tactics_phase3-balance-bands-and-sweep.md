@@ -4,7 +4,7 @@
 - Priority: Critical
 - Reviewer: Coach Hady
 - Created: 2026-11-05
-- Status: IN_PROGRESS
+- Status: REJECTED_PARTIAL
 - Completed by: -
 - Completed on: -
 
@@ -92,6 +92,87 @@ Follow-up to `2026-11-04_tactics_phase-3-transitions` (REJECTED_PARTIAL, upheld)
 - The suite on HEAD: 686 passed, 4 failed (the four known
   phase-3 bands). Full-suite runs were made before every commit
   (developer rule 9).
+
+
+### 2026-11-05 session (Kareem, full Flutter 3.47.9 environment)
+
+**Why the previous search failed — a tool bug, not engine
+infeasibility.** `SweepCandidate`'s defaults claimed to "mirror the
+CURRENT shipped anchors" but actually carried attempt-3 values
+(costDamp 0.85, hpStamina 1.33, fcPoss 0.90, deepPoss 0.88, lowPoss
+0.90, playOutPoss 1.05, slowPoss 1.02). Every "single-knob" screen of
+that search silently departed from a 7-changed-knob baseline, so its
+coordinate-descent directions were confounded. Fixed in
+`tool/tactics_tuning_sweep.dart` (defaults now verified shipped:
+0.70/1.30/0.85/0.91/0.94/1.06/1.03, slope 2.0). The "bands not
+simultaneously satisfiable" conclusion of the previous session is
+therefore NOT established by its evidence.
+
+**Sensitivity mapping (sweep pool, 800 sims/case, from true SHIPPED
+base).** Key measured facts:
+- costStackDamp 0.70->0.88 lifts allAttack 34.6->40.4 with NO
+  movement in parkShare (42.1), fastCounter (43.8), highPress (48.3)
+  — the review's Task 2(a) direction is sound at the right
+  magnitude.
+- The review's Task 3 fcPoss 0.90-0.93 suggestion is REFUTED:
+  fcPoss=0.94 pushes parkShare to 45.4 (out of 30-42) before
+  fastCounter reaches 50.6. fcChance is the correct lever instead:
+  fcChance 1.10->1.26 lifts fastCounter 43.8->47.5 with parkShare
+  unmoved at 41.2-41.3.
+- deepPoss is FROZEN: deep single already sits at 46.3 (band floor
+  46); any decrease pushes it out.
+- lowPoss 0.94->0.91 alone drops parkShare 42.1->40.9 — exactly the
+  parkTheBus share fix needed once fcChance rises.
+- pressBill (match_engine.dart:877-883) reads the RAW
+  PressingIntensity.high stamina constant, NOT the composed bundle —
+  lowering hpStamina below 1.30 silently kills the gegenpress
+  late-goals bill (higher stamina also strengthens late pressing and
+  DROPS conceded goals). hpStamina must stay 1.30; hpChance is the
+  safe press-side lever.
+
+**Best candidate (D): cost 0.86, fcChance 1.26, hpChance 1.10,
+lowPoss 0.91** (all else shipped, incl. hpStamina 1.30 and
+pbSlope 2.0). Measured on the SWEEP pool (full sweep precision, 44
+cases): 2 fails — gegenpress late goals 111% (band >=115%),
+allDefence goals 2.40 (band 2.4-3.2, on the boundary). All four
+suite-red bands pass: fastCounter 47.8, parkShare 41.1, allAttack
+no-collapse 39.6, matrix worst 57.8 (0 combos out).
+
+**Rejected avenues (measured, both pools):**
+- pbSlope 2.2/2.5: late goals 112% max; 2.5 breaks the suite pool
+  (highLine 46.0, highPress 45.8, restAggressive 45.9, matrix worst
+  60.9 = 5 fails). The slope couples to ALL press-side singles.
+- hpStamina 1.32/1.34: same suite-pool breakage (matrix worst 60.9)
+  plus late goals DROPS to 110%. The late-goals lever is NOT
+  stamina.
+- staminaDamp 0.40: allAttack improves to 45.6 but allDefence
+  drops to 51.5 and its goals stay low — moves the same corner the
+  wrong way.
+
+**Structural finding for the reviewer:** the two remaining fails
+pull the same axis in opposite directions — the gegenpress
+late-goals bill wants MORE late press-side fatigue, the press-side
+singles bands (highPress/highLine/restAggressive on the suite pool)
+want LESS. Under the current fatigue formula
+(coldStart * (1 + 2.0(1-avg/100)t^2) * (1 + pressBill*t^2)) these
+are one knob, so no constant set satisfies both at the required
+margins. The engine-side decoupling (e.g. a separate late-concession
+hook keyed to the composed stamina bundle rather than the raw
+pressing constant, or a baseline-relative bill) is the lever — the
+same class of change this review correctly kept out of a tactics
+review. Proposed next step: an engine review for the fatigue-term
+decoupling, then a short anchor pass on top of candidate D (which
+already meets 42 of 44 sweep-pool cases).
+
+**Tooling added:** `tool/tactics_probe.dart` — fast sensitivity
+probing (candidates install SHIPPED + named knobs only; suite/sweep
+pool via PROBE_SEEDS_SUITE dart-define; prints W/G/D per case).
+`tactics_tuning_sweep.dart` gained SWEEP_PATIENT_POSS and the
+shipped-defaults fix. `flutter analyze` zero issues on both tools.
+
+**Tasks 3/4/5/6 are NOT ticked:** no anchor landed in the model
+(only tooling changed), GDD 10.2 still shows pre-tune placeholders,
+and the full suite still runs the four known band failures.
 
 ## Reviewer Verification
 <To be filled when Tasks 2-6 land and the balance bands are green on both seed pools.>

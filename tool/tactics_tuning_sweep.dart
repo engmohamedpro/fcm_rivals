@@ -51,7 +51,7 @@
 /// Candidate knobs (all optional, shipped defaults when unset):
 ///   SWEEP_COST, SWEEP_STAMINA_DAMP, SWEEP_ABOVE, SWEEP_BELOW,
 ///   SWEEP_HP_STAMINA, SWEEP_HP_DEFENCE, SWEEP_HP_CHANCE,
-///   SWEEP_FC_POSS, SWEEP_FC_CHANCE, SWEEP_FC_SHOT,
+///   SWEEP_FC_POSS, SWEEP_FC_CHANCE, SWEEP_FC_SHOT, SWEEP_PATIENT_POSS,
 ///   SWEEP_DEEP_POSS, SWEEP_LOW_POSS, SWEEP_PLAYOUT_POSS,
 ///   SWEEP_SLOW_POSS, SWEEP_PB_SLOPE, SWEEP_GATE=1.
 /// Seeds: 700000+ blocks, disjoint from the suite's 1000-91xxx blocks.
@@ -696,23 +696,30 @@ void _printRows(String label, List<CaseRow> rows) {
 
 class SweepCandidate {
   /// Defaults mirror the CURRENT shipped anchors in tactics.dart
-  /// (sweep-tuned 2026-11-05, attempt 3) — the search departs from
-  /// there, and the suite-accepted winner lands back into the code.
+  /// (verified 2026-11-05 against every enum constant: cost 0.70,
+  /// stamina 0.55, possession linear, hp 1.28/1.04/1.30, fc
+  /// 0.85/1.10/1.03, deep 0.91, low 0.94, playOut 1.06, slow 1.03,
+  /// press-bill slope 2.0). A candidate object that changes ONE knob
+  /// therefore departs from shipped on exactly that knob — the search
+  /// steps stay interpretable. (The previous revision carried attempt-3
+  /// values here while claiming to mirror shipped, which confounded
+  /// every "single-knob" screen of that search.)
   const SweepCandidate({
-    this.costDamp = 0.85,
+    this.costDamp = 0.70,
     this.staminaDamp = 0.55,
     this.aboveDamp = 1.0,
     this.belowDamp = 1.0,
-    this.hpStamina = 1.33,
+    this.hpStamina = 1.30,
     this.hpDefence = 1.28,
     this.hpChance = 1.04,
-    this.fcPoss = 0.90,
+    this.fcPoss = 0.85,
     this.fcChance = 1.10,
     this.fcShot = 1.03,
-    this.deepPoss = 0.88,
-    this.lowPoss = 0.90,
-    this.playOutPoss = 1.05,
-    this.slowPoss = 1.02,
+    this.patientPoss = 1.05,
+    this.deepPoss = 0.91,
+    this.lowPoss = 0.94,
+    this.playOutPoss = 1.06,
+    this.slowPoss = 1.03,
     this.pbSlope = 2.0,
   });
 
@@ -726,6 +733,7 @@ class SweepCandidate {
   final double fcPoss;
   final double fcChance;
   final double fcShot;
+  final double patientPoss;
   final double deepPoss;
   final double lowPoss;
   final double playOutPoss;
@@ -742,6 +750,10 @@ class SweepCandidate {
       possession: fcPoss,
       chance: fcChance,
       shotQuality: fcShot,
+    ),
+    AttackOnRecovery.patient: TacticModifiers(
+      possession: patientPoss,
+      chance: 0.94,
     ),
     DefensiveLine.deep: TacticModifiers(defence: 1.05, possession: deepPoss),
     PressingIntensity.low: TacticModifiers(
@@ -780,7 +792,8 @@ class SweepCandidate {
   String get fingerprint =>
       'cost=$costDamp sta=$staminaDamp above=$aboveDamp below=$belowDamp '
       'hp=$hpDefence/$hpChance/$hpStamina fc=$fcPoss/$fcChance/$fcShot '
-      'deep=$deepPoss low=$lowPoss po=$playOutPoss slow=$slowPoss pb=$pbSlope';
+      'pat=$patientPoss deep=$deepPoss low=$lowPoss po=$playOutPoss '
+      'slow=$slowPoss pb=$pbSlope';
 
   static SweepCandidate fromEnv() {
     double d(String k, double fallback) {
@@ -790,20 +803,21 @@ class SweepCandidate {
     }
 
     return SweepCandidate(
-      costDamp: d('SWEEP_COST', 0.85),
+      costDamp: d('SWEEP_COST', 0.70),
       staminaDamp: d('SWEEP_STAMINA_DAMP', 0.55),
       aboveDamp: d('SWEEP_ABOVE', 1.0),
       belowDamp: d('SWEEP_BELOW', 1.0),
-      hpStamina: d('SWEEP_HP_STAMINA', 1.33),
+      hpStamina: d('SWEEP_HP_STAMINA', 1.30),
       hpDefence: d('SWEEP_HP_DEFENCE', 1.28),
       hpChance: d('SWEEP_HP_CHANCE', 1.04),
-      fcPoss: d('SWEEP_FC_POSS', 0.90),
+      fcPoss: d('SWEEP_FC_POSS', 0.85),
       fcChance: d('SWEEP_FC_CHANCE', 1.10),
       fcShot: d('SWEEP_FC_SHOT', 1.03),
-      deepPoss: d('SWEEP_DEEP_POSS', 0.88),
-      lowPoss: d('SWEEP_LOW_POSS', 0.90),
-      playOutPoss: d('SWEEP_PLAYOUT_POSS', 1.05),
-      slowPoss: d('SWEEP_SLOW_POSS', 1.02),
+      patientPoss: d('SWEEP_PATIENT_POSS', 1.05),
+      deepPoss: d('SWEEP_DEEP_POSS', 0.91),
+      lowPoss: d('SWEEP_LOW_POSS', 0.94),
+      playOutPoss: d('SWEEP_PLAYOUT_POSS', 1.06),
+      slowPoss: d('SWEEP_SLOW_POSS', 1.03),
       pbSlope: d('SWEEP_PB_SLOPE', 2.0),
     );
   }
