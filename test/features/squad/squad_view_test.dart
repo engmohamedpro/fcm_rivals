@@ -14,6 +14,7 @@ import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
     show FcmButton, FcmDropdown, FcmScaleSlider;
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/match/tactics.dart';
+import 'package:fcm_rivals/features/match/tactics_sections.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
 import 'package:fcm_rivals/features/squad/squad_view.dart';
 
@@ -47,13 +48,13 @@ Widget _host({
     body: SingleChildScrollView(
       child: TacticsSetupView(
         formationCode: '4-3-3',
-        style: PlayingStyle.balanced,
+        tactics: const TeamTactics(),
         mentality: Mentality.balanced,
         xi: const {},
         bench: bench ?? const [],
         reserves: const [],
         onFormation: (_) {},
-        onStyle: (_) {},
+        onTactics: (_) {},
         onMentality: (_) {},
         onAutoPick: () {},
         showStamina: showStamina,
@@ -120,26 +121,36 @@ void main() {
     expect(find.byType(FcmDropdown<String>), findsOneWidget);
     expect(find.text('4-3-3'), findsOneWidget);
     expect(find.text('FORMATION'), findsNothing);
-    expect(find.text('STYLE'), findsOneWidget);
+    // The setup label and the control card's TACTICS button.
+    expect(find.text('TACTICS'), findsNWidgets(2));
     expect(find.text('MENTALITY'), findsOneWidget);
     expect(find.text('Auto Pick'), findsOneWidget);
-    expect(find.text('TACTICS'), findsOneWidget);
 
-    // The rating ends the setup row: right of STYLE, on its line.
-    final style = tester.getTopLeft(find.text('STYLE'));
+    // The rating ends the setup row: right of the TACTICS label
+    // (the setup row's first info value), on its line.
+    final tacticsLabel = tester.getTopLeft(find.text('TACTICS').first);
     final rating = tester.getTopLeft(find.text('TEAM RATING'));
-    expect(rating.dx, greaterThan(style.dx));
-    expect((rating.dy - style.dy).abs(), lessThan(4));
+    expect(rating.dx, greaterThan(tacticsLabel.dx));
+    expect((rating.dy - tacticsLabel.dy).abs(), lessThan(4));
 
     // The formation dropdown sits under the setup row, and the action
     // buttons on the full-width row under it.
     final ratingBottom = tester.getBottomLeft(find.text('TEAM RATING'));
     final formation = tester.getTopLeft(find.text('4-3-3'));
     final autoPick = tester.getTopLeft(find.text('Auto Pick'));
-    final tactics = tester.getTopLeft(find.text('TACTICS'));
+    // The TACTICS action button (the 14pt one) shares its row with
+    // Auto Pick.
+    final tacticsButton = tester.getTopLeft(
+      find
+          .descendant(
+            of: find.byType(FcmButton),
+            matching: find.text('TACTICS'),
+          )
+          .first,
+    );
     expect(formation.dy, greaterThan(ratingBottom.dy));
     expect(autoPick.dy, greaterThan(formation.dy));
-    expect((tactics.dy - autoPick.dy).abs(), lessThan(8));
+    expect((tacticsButton.dy - autoPick.dy).abs(), lessThan(8));
   });
 
   testWidgets('bench and reserves always show their full quota of slots', (
@@ -231,9 +242,9 @@ void main() {
                   label: 'TACTICS',
                   onPressed: () => showTacticsOptionsSheet(
                     context,
-                    style: PlayingStyle.balanced,
+                    tactics: const TeamTactics(),
                     mentality: Mentality.balanced,
-                    onStyle: (_) {},
+                    onTactics: (_) {},
                     onMentality: (_) {},
                   ),
                 ),
@@ -247,24 +258,32 @@ void main() {
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
 
-    // The sheet holds the style dropdown and the mentality SCALE —
-    // the formation is not here (it lives on the control card).
+    // The sheet holds the three custom-tactics sections and the
+    // mentality SCALE — the formation is not here (it lives on the
+    // control card).
     expect(find.text('TACTIC OPTIONS'), findsOneWidget);
-    expect(find.text('PLAYING STYLE'), findsOneWidget);
     expect(find.text('MENTALITY'), findsOneWidget);
     expect(find.byType(FcmScaleSlider), findsOneWidget);
-    expect(find.byType(FcmDropdown<PlayingStyle>), findsOneWidget);
+    expect(find.byType(TacticsGroupScaffold), findsOneWidget);
+    expect(find.text('In Possession'), findsOneWidget);
+    expect(find.text('Out of Possession'), findsOneWidget);
+    expect(find.text('Transitions'), findsOneWidget);
     expect(find.textContaining('FORMATION'), findsNothing);
 
-    // Dead centre default: the marker's floating label reads Balanced
-    // (also the style dropdown's selected label — one each), the
-    // scale's ends are named Very Defensive / Very Attacking.
-    expect(find.text('Balanced'), findsNWidgets(2));
+    // Dead centre default: the marker's floating label reads Balanced,
+    // the scale's ends are named Very Defensive / Very Attacking.
+    expect(find.text('Balanced'), findsOneWidget);
     expect(find.text('Very Defensive'), findsOneWidget);
     expect(find.text('Very Attacking'), findsOneWidget);
-    // The centre default carries no modifiers.
-    expect(find.text('No modifiers'), findsOneWidget);
+    // Every section's default state line and summary render; the
+    // mentality summary adds a fourth 'No modifiers'.
+    expect(find.text('Default setup'), findsNWidgets(3));
+    expect(find.text('No modifiers'), findsNWidgets(4));
 
+    // DONE sits below the fold of the scrollable sheet on the default
+    // test viewport — drag up, then tap.
+    await tester.drag(find.text('TACTIC OPTIONS'), const Offset(0, -400));
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('DONE'));
     await tester.pumpAndSettle();
     expect(find.text('TACTIC OPTIONS'), findsNothing);
@@ -286,9 +305,9 @@ void main() {
                   label: 'TACTICS',
                   onPressed: () => showTacticsOptionsSheet(
                     context,
-                    style: PlayingStyle.balanced,
+                    tactics: const TeamTactics(),
                     mentality: Mentality.balanced,
-                    onStyle: (_) {},
+                    onTactics: (_) {},
                     onMentality: committed.add,
                   ),
                 ),

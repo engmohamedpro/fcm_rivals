@@ -5,10 +5,9 @@
 ///  * strength-gap ladder: how win probability scales with OVR gaps of
 ///    0/4/8/12/16/20 — the core difficulty curve of the whole game
 ///  * home advantage magnitude at even strength and at large gaps
-///  * tactics matrix: every playing style vs balanced, every mentality
-///    vs balanced — no style may dominate, the mentality ladder must not
-///    be inverted. (These are the tests that catch the two shipped
-///    imbalances: possession styles and the aggressive-mentality trap.)
+///  * tactics: a default-vs-default baseline (the phase-0 Custom
+///    Tactics refactor pinned to zero drift) plus the mentality matrix
+///    — no mentality may dominate, none may be a trap.
 ///  * formations: all shapes at identical squad quality
 ///  * stamina: style-driven drain, full-match cost
 ///  * determinism & prefix invariants (regression guard)
@@ -67,10 +66,10 @@ MatchEngine _engine(
   required int homeOverall,
   required int awayOverall,
   String homeFormation = '4-4-2',
-  PlayingStyle homeStyle = PlayingStyle.balanced,
+  TeamTactics homeTactics = const TeamTactics(),
   Mentality homeMentality = Mentality.balanced,
   String awayFormation = '4-4-2',
-  PlayingStyle awayStyle = PlayingStyle.balanced,
+  TeamTactics awayTactics = const TeamTactics(),
   Mentality awayMentality = Mentality.balanced,
 }) => MatchEngine(
   seed: seed,
@@ -78,7 +77,7 @@ MatchEngine _engine(
     teamId: 1,
     teamName: 'Home',
     formationCode: homeFormation,
-    style: homeStyle,
+    tactics: homeTactics,
     mentality: homeMentality,
     starters: _squad(100, 'H', homeOverall),
     bench: const [],
@@ -87,7 +86,7 @@ MatchEngine _engine(
     teamId: 2,
     teamName: 'Away',
     formationCode: awayFormation,
-    style: awayStyle,
+    tactics: awayTactics,
     mentality: awayMentality,
     starters: _squad(300, 'A', awayOverall),
     bench: const [],
@@ -129,10 +128,10 @@ Batch runBatch(
   required int homeOverall,
   required int awayOverall,
   String homeFormation = '4-4-2',
-  PlayingStyle homeStyle = PlayingStyle.balanced,
+  TeamTactics homeTactics = const TeamTactics(),
   Mentality homeMentality = Mentality.balanced,
   String awayFormation = '4-4-2',
-  PlayingStyle awayStyle = PlayingStyle.balanced,
+  TeamTactics awayTactics = const TeamTactics(),
   Mentality awayMentality = Mentality.balanced,
 }) {
   var hw = 0, d = 0, aw = 0, goals = 0, homeGoals = 0, shots = 0;
@@ -144,10 +143,10 @@ Batch runBatch(
       homeOverall: homeOverall,
       awayOverall: awayOverall,
       homeFormation: homeFormation,
-      homeStyle: homeStyle,
+      homeTactics: homeTactics,
       homeMentality: homeMentality,
       awayFormation: awayFormation,
-      awayStyle: awayStyle,
+      awayTactics: awayTactics,
       awayMentality: awayMentality,
     );
     engine.simulateToEnd();
@@ -262,76 +261,68 @@ void main() {
     });
   });
 
-  group('tactics matrix — styles (identical squads, 4-4-2 both)', () {
-    const n = 600;
-    test('every style has an effect but none dominates', () {
-      final swings = <String, double>{};
-      for (final style in PlayingStyle.values) {
-        if (style == PlayingStyle.balanced) continue;
-        final b = runBatch(
-          n,
-          7000 + style.index * 100,
-          homeOverall: 70,
-          awayOverall: 70,
-          homeFormation: '4-4-2',
-          awayFormation: '4-4-2',
-          homeStyle: style,
-        );
-        swings[style.name] = b.homeWinRate;
-        expect(
-          b.homeWinRate,
-          inInclusiveRange(0.35, 0.62),
-          reason: '${style.name} win rate ${b.homeWinRate.toStringAsFixed(2)}',
-        );
-      }
-      final sorted = swings.values.toList()..sort();
+  group('custom tactics — default-vs-default baseline (phase 0)', () {
+    // The phase-0 refactor replaces the ten playing styles with the
+    // TeamTactics framework whose defaults are the identity bundle, so
+    // default-vs-default IS the old Balanced-vs-Balanced matchup. This
+    // baseline pins the refactor to zero drift; phases 1-3 extend it
+    // with per-instruction matrices.
+    test('10k seeded sims: home win rate 47-50%, goals 2.6-2.9, draws 22-30%', () {
+      // Both sides default tactics at even strength; the home edge sits
+      // in the mix (home ~48-49%, away ~23-24%), so the band is centred
+      // on the engine's calibrated home-advantage baseline and the
+      // phase-0 identity bundle moves nothing.
+      final b = runBatch(10000, 7000, homeOverall: 70, awayOverall: 70);
       expect(
-        sorted.last - sorted.first,
-        greaterThan(0.04),
-        reason: 'styles look inert: $swings',
+        b.homeWinRate,
+        inInclusiveRange(0.47, 0.50),
+        reason: 'default-vs-default home win rate '
+            '${b.homeWinRate.toStringAsFixed(3)}',
+      );
+      expect(
+        b.awayWinRate,
+        inInclusiveRange(0.20, 0.28),
+        reason: 'default-vs-default away win rate '
+            '${b.awayWinRate.toStringAsFixed(3)}',
+      );
+      expect(
+        b.avgGoals,
+        inInclusiveRange(2.6, 2.9),
+        reason: 'goals/match ${b.avgGoals.toStringAsFixed(2)}',
+      );
+      expect(
+        b.drawRate,
+        inInclusiveRange(0.22, 0.30),
+        reason: 'draw rate ${b.drawRate.toStringAsFixed(3)}',
+      );
+      expect(
+        b.avgShotsPerTeam,
+        inInclusiveRange(10, 14),
+        reason: 'shots/team ${b.avgShotsPerTeam.toStringAsFixed(1)}',
       );
     });
 
-    test('possession styles actually hold the ball; direct styles shoot', () {
+    test('default tactics hold an even share of the ball', () {
       const n = 300;
-      final possessionStats = <String, double>{};
-      for (final style in [
-        PlayingStyle.tikiTaka,
-        PlayingStyle.balanced,
-        PlayingStyle.longBall,
-      ]) {
-        var possSum = 0.0;
-        var matches = 0;
-        for (var m = 0; m < n; m++) {
-          final engine = _engine(
-            8000 + m,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeFormation: '4-4-2',
-            awayFormation: '4-4-2',
-            homeStyle: style,
-          );
-          engine.simulateToEnd();
-          final stats = computeStats(
-            engine.events,
-            homeTeamId: 1,
-            awayTeamId: 2,
-          );
-          if (stats.home.possessionMinutes + stats.away.possessionMinutes > 0) {
-            possSum += stats.possessionPercent(stats.home);
-            matches++;
-          }
+      var possSum = 0.0;
+      var matches = 0;
+      for (var m = 0; m < n; m++) {
+        final engine = _engine(8000 + m, homeOverall: 70, awayOverall: 70);
+        engine.simulateToEnd();
+        final stats = computeStats(
+          engine.events,
+          homeTeamId: 1,
+          awayTeamId: 2,
+        );
+        if (stats.home.possessionMinutes + stats.away.possessionMinutes > 0) {
+          possSum += stats.possessionPercent(stats.home);
+          matches++;
         }
-        possessionStats[style.name] = possSum / matches;
       }
-      expect(
-        possessionStats['tikiTaka']!,
-        greaterThan(possessionStats['balanced']!),
-      );
-      expect(
-        possessionStats['balanced']!,
-        greaterThan(possessionStats['longBall']!),
-      );
+      final share = possSum / matches;
+      // The home edge tilts the share a couple of points; the tactics
+      // bundle itself is identity, so the band is centred on ~52%.
+      expect(share, inInclusiveRange(50.0, 54.0), reason: 'possession $share');
     });
   });
 
@@ -416,10 +407,10 @@ void main() {
     });
   });
 
-  group('stamina & style workload', () {
-    test('high-press styles drain more stamina than low blocks', () {
+  group('stamina & workload', () {
+    test('attacking mentalities drain more stamina than defensive ones', () {
       const n = 250;
-      double avgEnd(PlayingStyle style) {
+      double avgEnd(Mentality mentality) {
         var sum = 0.0;
         var count = 0;
         for (var m = 0; m < n; m++) {
@@ -429,7 +420,7 @@ void main() {
             awayOverall: 70,
             homeFormation: '4-4-2',
             awayFormation: '4-4-2',
-            homeStyle: style,
+            homeMentality: mentality,
           );
           engine.simulateToEnd();
           for (final p in engine.playersOf(MatchSide.home)) {
@@ -442,14 +433,14 @@ void main() {
         return sum / count;
       }
 
-      final gegen = avgEnd(PlayingStyle.gegenpressing);
-      final lowBlock = avgEnd(PlayingStyle.lowBlock);
+      final attacking = avgEnd(Mentality.veryAttacking);
+      final defensive = avgEnd(Mentality.veryDefensive);
       expect(
-        gegen,
-        lessThan(lowBlock - 3),
-        reason: 'gegenpressing $gegen vs low block $lowBlock',
+        attacking,
+        lessThan(defensive - 3),
+        reason: 'veryAttacking $attacking vs veryDefensive $defensive',
       );
-      final balanced = avgEnd(PlayingStyle.balanced);
+      final balanced = avgEnd(Mentality.balanced);
       expect(100 - balanced, inInclusiveRange(20, 55));
     });
 

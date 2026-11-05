@@ -105,5 +105,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "tacticsInPossessionTitle": "في الاستحواذ",
+  "tacticsInPossessionSubtitle": "بناء اللعب والإيقاع والعرض وأسلوب الثلث الأخير",
+  "tacticsOutOfPossessionTitle": "بدون الاستحواذ",
+  "tacticsOutOfPossessionSubtitle": "خط الدفاع والضغط والالتحامات ومصيدة التسلل",
+  "tacticsTransitionsTitle": "التحولات",
+  "tacticsTransitionsSubtitle": "الضغط المرتد والهجمات المرتدة والدفاع الاحتياطي",
+  "tacticsSectionDefault": "الإعداد الافتراضي",
+  "tacticsLabel": "الخطة"
 }

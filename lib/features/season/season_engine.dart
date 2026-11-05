@@ -175,7 +175,7 @@ class AiClubDefinition {
     required this.managerName,
     required this.crestIndex,
     required this.formationCode,
-    required this.style,
+    required this.tactics,
     required this.mentality,
     required this.players,
     required this.targetAverageOverall,
@@ -185,7 +185,7 @@ class AiClubDefinition {
   final String managerName;
   final int crestIndex;
   final String formationCode;
-  final PlayingStyle style;
+  final TeamTactics tactics;
   final Mentality mentality;
 
   /// 18 players: starting XI in formation slot order plus 7 bench players
@@ -364,8 +364,7 @@ class SeasonEngine {
               .aiManagerNames[managerCursor++ % config.aiManagerNames.length],
           crestIndex: random.nextInt(8),
           formationCode: formation.code,
-          style:
-              PlayingStyle.values[random.nextInt(PlayingStyle.values.length)],
+          tactics: const TeamTactics(),
           mentality: _pickMentality(random),
           players: realSquad ?? _generateSquad(target, formation, random),
           targetAverageOverall: target,

@@ -23,6 +23,7 @@ import '../economy/economy_engine.dart';
 import '../facilities/facilities.dart';
 import '../match/stamina.dart'
     show StaminaConfig, PepTalk, recoverStamina, applyPepTalkBonus;
+import '../match/tactics.dart' show TeamTactics;
 import '../packs/pack_engine.dart';
 import '../player_database/player_database.dart';
 import '../squad/formations.dart';
@@ -1194,12 +1195,12 @@ class CollectionStore {
       _squadStore.changeFormation(formationCode);
   Future<void> changeTactics({
     String? formationCode,
-    String? playingStyle,
+    TeamTactics? tactics,
     String? mentality,
   }) =>
       _squadStore.changeTactics(
         formationCode: formationCode,
-        playingStyle: playingStyle,
+        tactics: tactics,
         mentality: mentality,
       );
 

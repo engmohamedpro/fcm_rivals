@@ -15,9 +15,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
-import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmDropdown;
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart';
+
 import 'package:fcm_rivals/features/collection/collection_store.dart';
-import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/season/season_store.dart';
 import 'package:fcm_rivals/main.dart';
@@ -169,64 +169,37 @@ void main() {
       await _flush(tester, wait: const Duration(milliseconds: 600));
       expect(find.text('Set up for this match'), findsOneWidget);
       expect(find.text('TEAM RATING'), findsOneWidget);
-      expect(find.text('TACTICS'), findsOneWidget);
+      // The setup label and the control card's TACTICS button.
+      expect(find.text('TACTICS'), findsNWidgets(2));
 
       // The tactic options live in a bottom sheet behind the TACTICS
-      // button, so the screen stays dominated by the pitch.
-      await tester.tap(find.text('TACTICS'));
+      // button; the label and the button share the word, so tap the
+      // BUTTON itself. The sheet shows the three instruction-group
+      // sections in their default phase-0 state (GDD 10.2): In
+      // Possession, Out of Possession and Transitions, each with its
+      // visible summary.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(FcmButton),
+          matching: find.text('TACTICS'),
+        ),
+      );
       await _flush(tester, wait: const Duration(milliseconds: 600));
       expect(find.text('TACTIC OPTIONS'), findsOneWidget);
-      expect(find.text('PLAYING STYLE'), findsOneWidget);
+      expect(find.text('In Possession'), findsOneWidget);
+      expect(find.text('Out of Possession'), findsOneWidget);
+      expect(find.text('Transitions'), findsOneWidget);
+      expect(find.text('Default setup'), findsNWidgets(3));
 
-      // The style dropdown's closed field shows the saved default
-      // (balanced). The control card's setup row also reads 'Balanced'
-      // behind the sheet, so the tap targets the FIELD inside the style
-      // dropdown, not the first matching text. Tapping it stacks the
-      // option list sheet on top; give the sheets' entrance animations a
-      // few bounded pumps, then fling the option list if the wanted tile
-      // sits below the fold.
-      final styleField = find.descendant(
-        of: find.byType(FcmDropdown<PlayingStyle>),
-        matching: find.text('Balanced'),
+      // Close the options sheet — DONE sits below the fold of the
+      // scrollable sheet on this viewport, so drag up first.
+      await tester.drag(
+        find.text('TACTIC OPTIONS'),
+        const Offset(0, -400),
       );
-      await tester.tap(styleField);
-      for (var i = 0; i < 5; i++) {
-        await tester.pump(const Duration(milliseconds: 200));
-      }
-      for (var i = 0; i < 6; i++) {
-        final tile = find.text('Counter Attack');
-        if (tile.evaluate().isNotEmpty &&
-            tester.getRect(tile.first).bottom < 560) {
-          break;
-        }
-        await tester.flingFrom(
-          const Offset(400, 300),
-          const Offset(0, -350),
-          800,
-        );
-        await tester.pump(const Duration(milliseconds: 300));
-      }
-      // Pick a different style; the option list sheet closes on selection.
-      await tester.tap(find.text('Counter Attack'));
-      for (var i = 0; i < 5; i++) {
-        await tester.pump(const Duration(milliseconds: 200));
-      }
-      // The style dropdown field in the options sheet now carries the
-      // match-only selection (the control card behind the sheet shows it
-      // too — the setup row mirrors the live selection).
-      expect(
-        find.descendant(
-          of: find.byType(FcmDropdown<PlayingStyle>),
-          matching: find.text('Counter Attack'),
-        ),
-        findsOneWidget,
-      );
-
-      // Close the options sheet; the control card's setup summary line on
-      // the tactics screen reflects the match-only selection.
+      await _flush(tester, wait: const Duration(milliseconds: 300));
       await tester.tap(find.text('DONE'));
       await _flush(tester, wait: const Duration(milliseconds: 600));
-      expect(find.textContaining('Counter Attack'), findsOneWidget);
 
       // On to the dressing room (GDD 15.1 pre-match pep talk).
       await tester.tap(find.text('TO DRESSING ROOM'));
@@ -236,9 +209,9 @@ void main() {
 
       // The tactic selection did NOT touch the club's saved default setup:
       // match-only semantics (GDD 10.4) — persistence happens nowhere before
-      // kick-off, and never for style/mentality/formation chosen here.
+      // kick-off, and never for tactics/mentality/formation chosen here.
       final clubAfterTactics = await tester.runAsync(store.getClub);
-      expect(clubAfterTactics!.playingStyle, 'balanced');
+      expect(clubAfterTactics!.tactics, '{}');
 
       // Kick off with the default 'no talk' tile selected.
       await tester.tap(find.text('KICK OFF'));

@@ -10,7 +10,7 @@
 ///      and the opponent's top three players as collection-style cards,
 ///      each staggering in.
 ///   3. Tactics phase  — the SAME tactics screen as the Team tab
-///      (formation, playing style and mentality dropdowns with visible
+///      (formation, custom tactics and mentality with visible
 ///      percentage effects, pitch with stamina bars, bench and reserves),
 ///      except the changes apply to THIS MATCH ONLY: the club's saved
 ///      default setup is never touched (GDD 10.4 match-specific setup).
@@ -84,12 +84,12 @@ class PreMatchScreen extends StatefulWidget {
 class PreMatchTacticSelection {
   const PreMatchTacticSelection({
     required this.formationCode,
-    required this.style,
+    required this.tactics,
     required this.mentality,
   });
 
   final String formationCode;
-  final PlayingStyle style;
+  final TeamTactics tactics;
   final Mentality mentality;
 }
 
@@ -97,7 +97,7 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
   int _phase = 0; // 0 analysis, 1 tactics, 2 pep talk
   MatchPepTalk? _selectedTalk;
   late String _formationCode = widget.data.userFormationCode;
-  late PlayingStyle _style = widget.data.userStyle;
+  late TeamTactics _tactics = widget.data.userTactics;
   late Mentality _mentality = widget.data.userMentality;
 
   void _nextPhase() {
@@ -115,7 +115,7 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
     widget.onTacticsSelected?.call(
       PreMatchTacticSelection(
         formationCode: _formationCode,
-        style: _style,
+        tactics: _tactics,
         mentality: _mentality,
       ),
     );
@@ -157,11 +157,11 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                       key: const ValueKey('tactics'),
                       data: d,
                       formationCode: _formationCode,
-                      style: _style,
+                      tactics: _tactics,
                       mentality: _mentality,
                       onFormation: (code) =>
                           setState(() => _formationCode = code),
-                      onStyle: (s) => setState(() => _style = s),
+                      onTactics: (t) => setState(() => _tactics = t),
                       onMentality: (m) => setState(() => _mentality = m),
                     ),
                     _ => _PepTalkPhase(
@@ -764,7 +764,7 @@ class _TopPlayersCard extends StatelessWidget {
 // -----------------------------------------------------------------------------
 
 /// Set up how this match is played (GDD 10.4): the SAME tactics screen as
-/// the Team tab — formation, playing style and mentality dropdowns
+/// the Team tab — formation, custom tactics and mentality
 /// with their visible percentage effects, the pitch with per-player
 /// stamina bars (GDD 11), bench and reserves — with one difference: the
 /// changes apply to THIS MATCH ONLY and never touch the club's saved
@@ -775,19 +775,19 @@ class _TacticsPhase extends StatelessWidget {
     super.key,
     required this.data,
     required this.formationCode,
-    required this.style,
+    required this.tactics,
     required this.mentality,
     required this.onFormation,
-    required this.onStyle,
+    required this.onTactics,
     required this.onMentality,
   });
 
   final PreMatchData data;
   final String formationCode;
-  final PlayingStyle style;
+  final TeamTactics tactics;
   final Mentality mentality;
   final ValueChanged<String> onFormation;
-  final ValueChanged<PlayingStyle> onStyle;
+  final ValueChanged<TeamTactics> onTactics;
   final ValueChanged<Mentality> onMentality;
 
   @override
@@ -834,13 +834,13 @@ class _TacticsPhase extends StatelessWidget {
         const SizedBox(height: 12),
         TacticsSetupView(
           formationCode: formationCode,
-          style: style,
+          tactics: tactics,
           mentality: mentality,
           xi: xi,
           bench: bench,
           reserves: reserves,
           onFormation: onFormation,
-          onStyle: onStyle,
+          onTactics: onTactics,
           onMentality: onMentality,
         ),
       ],

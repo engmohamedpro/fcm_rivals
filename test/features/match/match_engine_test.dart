@@ -51,7 +51,7 @@ MatchEngine buildEngine(
       teamId: 1,
       teamName: 'Home FC',
       formationCode: '4-4-2',
-      style: PlayingStyle.balanced,
+      tactics: const TeamTactics(),
       mentality: Mentality.balanced,
       starters: makeTeam(100, 'Home', marketValueEur: homeValue),
       bench: makeTeam(
@@ -64,7 +64,7 @@ MatchEngine buildEngine(
       teamId: 2,
       teamName: 'Away FC',
       formationCode: '4-3-3',
-      style: PlayingStyle.balanced,
+      tactics: const TeamTactics(),
       mentality: Mentality.balanced,
       starters: makeTeam(300, 'Away', marketValueEur: awayValue),
       bench: makeTeam(
@@ -621,16 +621,16 @@ void main() {
       }
     });
 
-    test('playing style affects consumption (Gegenpressing drains more)', () {
-      double avgStamina(PlayingStyle style) {
+    test('mentality affects consumption (attacking drains more)', () {
+      double avgStamina(Mentality mentality) {
         final engine = MatchEngine(
           seed: 55,
           home: MatchTeamInput(
             teamId: 1,
             teamName: 'A',
             formationCode: '4-4-2',
-            style: style,
-            mentality: Mentality.balanced,
+            tactics: const TeamTactics(),
+            mentality: mentality,
             starters: makeTeam(100, 'H'),
             bench: makeTeam(200, 'HB').sublist(0, 5),
           ),
@@ -638,7 +638,7 @@ void main() {
             teamId: 2,
             teamName: 'B',
             formationCode: '4-4-2',
-            style: PlayingStyle.balanced,
+            tactics: const TeamTactics(),
             mentality: Mentality.balanced,
             starters: makeTeam(300, 'A'),
             bench: makeTeam(400, 'AB').sublist(0, 5),
@@ -653,13 +653,15 @@ void main() {
             players.length;
       }
 
-      // Average across multiple seeds for stability.
-      var gegen = 0.0, lowBlock = 0.0;
+      // Average across multiple seeds for stability. The removed style
+      // spread (Gegenpressing 1.30 vs Low Block 0.85) is carried by the
+      // mentality ladder until the phase 1-3 instructions land.
+      var attacking = 0.0, defensive = 0.0;
       for (var s = 0; s < 5; s++) {
-        gegen += avgStamina(PlayingStyle.gegenpressing);
-        lowBlock += avgStamina(PlayingStyle.lowBlock);
+        attacking += avgStamina(Mentality.veryAttacking);
+        defensive += avgStamina(Mentality.veryDefensive);
       }
-      expect(gegen / 5, lessThan(lowBlock / 5));
+      expect(attacking / 5, lessThan(defensive / 5));
     });
   });
 
@@ -780,7 +782,7 @@ void main() {
           teamId: 1,
           teamName: 'Home',
           formationCode: '4-4-2',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           starters: makeTeam(100, 'Home'),
           bench: const [],
@@ -789,7 +791,7 @@ void main() {
           teamId: 2,
           teamName: 'Away',
           formationCode: '4-4-2',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           starters: starters,
           bench: bench,
@@ -837,7 +839,7 @@ void main() {
           teamId: 1,
           teamName: 'Home',
           formationCode: '4-4-2',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           starters: makeTeam(100, 'Home'),
           bench: const [],
@@ -846,7 +848,7 @@ void main() {
           teamId: 2,
           teamName: 'Away',
           formationCode: '4-4-2',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           starters: starters,
           bench: bench,
@@ -891,7 +893,7 @@ void main() {
             teamId: 1,
             teamName: 'Home',
             formationCode: '4-4-2',
-            style: PlayingStyle.balanced,
+            tactics: const TeamTactics(),
             mentality: Mentality.balanced,
             starters: makeTeam(100, 'Home'),
             bench: const [],
@@ -900,7 +902,7 @@ void main() {
             teamId: 2,
             teamName: 'Away',
             formationCode: '4-4-2',
-            style: PlayingStyle.balanced,
+            tactics: const TeamTactics(),
             mentality: Mentality.balanced,
             starters: starters,
             bench: bench,

@@ -1,156 +1,38 @@
 /// FCM Rivals — tactical domain (GDD 10, GDD 16).
 ///
-/// Playing Styles, Mentalities and Live Match Actions as pure data with
+/// Custom Tactics, Mentalities and Live Match Actions as pure data with
 /// explicit percentage modifiers. All effects are visible to the user
 /// (GDD 10.3): the numbers below are surfaced by the UI and are
 /// pre-balance placeholders (GDD rule 14) gathered for simulation tuning.
+///
+/// Phase 0: the ten preset Playing Styles are removed (GDD 10.2 is now
+/// "Custom Tactics"). [TeamTactics] composes three instruction groups —
+/// In Possession, Out of Possession and Transitions — delivered in
+/// phases 1-3. In phase 0 every group carries its defaults only, so the
+/// computed modifier bundle is the identity (all 1.00) and gameplay is
+/// bit-identical to the legacy Balanced preset. Legacy styles
+/// are NOT lost: each is rebuilt as an instruction combination (see the
+/// mapping table in GDD 10.2).
 library;
 
+import 'dart:convert';
 import 'dart:math' as math;
 
-/// Ten supported playing styles (GDD 10.2).
-///
-/// Balance-tuned by the §34 deep-balance simulation (see
-/// test/balance/match_engine_balance_test.dart): every style vs an
-/// identical balanced opponent lands in the 36-52% win-rate band with a
-/// real spread between strongest and weakest. The possession modifier is
-/// applied ONCE, inside the engine's possession competition (support ×
-/// modifier, raised to the power 1.4) — the multipliers below are the
-/// squared values of the pre-fix single-site numbers, chosen so each
-/// style's effective odds ratio (and therefore its measured possession
-/// and win rate) is preserved exactly under the single application.
-/// Gegenpressing and High Press sit below 50% by design: their
-/// 1.30/1.22 stamina multipliers are the real cost.
-enum PlayingStyle {
-  possession(
-    'Possession',
-    StyleModifiers(
-      attack: 1.00,
-      defence: 1.00,
-      possession: 1.12,
-      chance: 0.95,
-      stamina: 1.00,
-      passAccuracy: 1.06,
-    ),
-  ),
-  tikiTaka(
-    'Tiki-Taka',
-    StyleModifiers(
-      attack: 0.95,
-      defence: 1.02,
-      possession: 1.17,
-      chance: 0.92,
-      stamina: 0.95,
-      passAccuracy: 1.10,
-    ),
-  ),
-  directPlay(
-    'Direct Play',
-    StyleModifiers(
-      attack: 1.08,
-      defence: 0.96,
-      possession: 0.88,
-      chance: 1.08,
-      stamina: 1.02,
-      passAccuracy: 0.92,
-    ),
-  ),
-  counterAttack(
-    'Counter Attack',
-    StyleModifiers(
-      attack: 1.12,
-      defence: 1.05,
-      possession: 0.77,
-      chance: 1.15,
-      stamina: 0.92,
-      passAccuracy: 0.90,
-    ),
-  ),
-  gegenpressing(
-    'Gegenpressing',
-    StyleModifiers(
-      attack: 1.10,
-      defence: 0.94,
-      possession: 1.06,
-      chance: 1.10,
-      stamina: 1.30,
-      passAccuracy: 0.94,
-    ),
-  ),
-  highPress(
-    'High Press',
-    StyleModifiers(
-      attack: 1.06,
-      defence: 0.92,
-      possession: 1.06,
-      chance: 1.06,
-      stamina: 1.22,
-      passAccuracy: 0.94,
-    ),
-  ),
-  wingPlay(
-    'Wing Play',
-    StyleModifiers(
-      attack: 1.06,
-      defence: 1.00,
-      possession: 0.96,
-      chance: 1.05,
-      stamina: 1.05,
-      passAccuracy: 0.98,
-    ),
-  ),
-  longBall(
-    'Long Ball',
-    StyleModifiers(
-      attack: 1.02,
-      defence: 1.03,
-      possession: 0.81,
-      chance: 1.02,
-      stamina: 0.94,
-      passAccuracy: 0.84,
-    ),
-  ),
-  lowBlock(
-    'Low Block',
-    StyleModifiers(
-      attack: 0.88,
-      defence: 1.14,
-      possession: 0.77,
-      chance: 0.88,
-      stamina: 0.85,
-      passAccuracy: 0.92,
-    ),
-  ),
-  balanced(
-    'Balanced',
-    StyleModifiers(
-      attack: 1.00,
-      defence: 1.00,
-      possession: 1.00,
-      chance: 1.00,
-      stamina: 1.00,
-      passAccuracy: 1.00,
-    ),
-  );
-
-  const PlayingStyle(this.displayName, this.modifiers);
-
-  final String displayName;
-  final StyleModifiers modifiers;
-
-  /// Human-visible effect summary (GDD 10.3: effects must be visible).
-  String get effectSummary => modifiers.effectSummary;
-}
-
-/// Percentage multipliers applied by a playing style (GDD 10.2 effects).
-class StyleModifiers {
-  const StyleModifiers({
-    required this.attack,
-    required this.defence,
-    required this.possession,
-    required this.chance,
-    required this.stamina,
-    required this.passAccuracy,
+/// The composed modifier bundle the engine consumes — the Custom Tactics
+/// successor of the removed style-modifier bundle. One place lists every axis
+/// the tactics system can move; the engine applies each axis at exactly
+/// one hook site (possession inside the power competition, chance at
+/// chance creation, passAccuracy at pass completion, stamina at the
+/// drain, shotQuality on the chance→goal conversion path from phase 1).
+class TacticModifiers {
+  const TacticModifiers({
+    this.attack = 1.00,
+    this.defence = 1.00,
+    this.possession = 1.00,
+    this.chance = 1.00,
+    this.stamina = 1.00,
+    this.passAccuracy = 1.00,
+    this.shotQuality = 1.00,
   });
 
   /// Multiplier on team Attack total.
@@ -159,7 +41,9 @@ class StyleModifiers {
   /// Multiplier on team Defence total.
   final double defence;
 
-  /// Multiplier on possession bias.
+  /// Multiplier on possession bias — applied ONCE, inside the engine's
+  /// possession power competition (`support × possession`, raised to the
+  /// power 1.4).
   final double possession;
 
   /// Multiplier on chance creation probability.
@@ -171,6 +55,26 @@ class StyleModifiers {
   /// Multiplier on pass completion probability.
   final double passAccuracy;
 
+  /// Multiplier on the quality of chances created (phase 1 hook on the
+  /// chance→goal conversion path).
+  final double shotQuality;
+
+  /// The identity bundle: every axis at 1.00, gameplay untouched.
+  static const TacticModifiers identity = TacticModifiers();
+
+  /// Composes two bundles multiplicatively (instruction groups stack by
+  /// multiplication, never by addition — the same rule the engine's
+  /// single-application sites enforce).
+  TacticModifiers operator *(TacticModifiers other) => TacticModifiers(
+    attack: attack * other.attack,
+    defence: defence * other.defence,
+    possession: possession * other.possession,
+    chance: chance * other.chance,
+    stamina: stamina * other.stamina,
+    passAccuracy: passAccuracy * other.passAccuracy,
+    shotQuality: shotQuality * other.shotQuality,
+  );
+
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
   ///
   /// The possession line is HONEST: it shows the estimated possession
@@ -179,7 +83,7 @@ class StyleModifiers {
   /// multiplier reads as a big number but swings the measured share by
   /// only ~5-6 points, and the UI must not promise more than the
   /// simulation delivers. The estimate tracks the measured share of a
-  /// seeded run within ±2 points for every style.
+  /// seeded run within ±2 points.
   String get effectSummary {
     final parts = <String>[];
 
@@ -197,10 +101,193 @@ class StyleModifiers {
     describe('Attack', attack);
     describe('Defence', defence);
     describe('Chances', chance);
+    describe('Shot quality', shotQuality);
     describe('Stamina use', stamina);
     describe('Passing', passAccuracy);
     return parts.isEmpty ? 'No modifiers' : parts.join(' · ');
   }
+}
+
+/// A team's full tactical setup (GDD 10.2 Custom Tactics): three
+/// instruction groups — what the team does with the ball, without it,
+/// and in the moments right after losing or winning it.
+///
+/// Phase 0 ships the framework with every group at its defaults, so
+/// [modifiers] is the identity bundle and matches played with it are
+/// bit-identical to the legacy Balanced style (same seeds → same
+/// results). Phases 1-3 add instruction fields to the three sub-classes;
+/// this class and the engine's hook sites never change shape again.
+class TeamTactics {
+  const TeamTactics({
+    this.inPossession = const InPossessionTactics(),
+    this.outOfPossession = const OutOfPossessionTactics(),
+    this.transitions = const TransitionTactics(),
+  });
+
+  /// What the team does with the ball (phase 1 fills the instructions).
+  final InPossessionTactics inPossession;
+
+  /// What the team does without the ball (phase 2 fills the instructions).
+  final OutOfPossessionTactics outOfPossession;
+
+  /// What the team does right after losing/winning the ball (phase 3
+  /// fills the instructions).
+  final TransitionTactics transitions;
+
+  /// The composed bundle the engine consumes at its hook points. Today
+  /// every group contributes the identity; each phase multiplies in its
+  /// own non-identity axes.
+  TacticModifiers get modifiers =>
+      inPossession.modifiers *
+      outOfPossession.modifiers *
+      transitions.modifiers;
+
+  /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  String get effectSummary => modifiers.effectSummary;
+
+  /// Short control-card label: how many instruction groups sit away
+  /// from their defaults. Localizable by the UI when it needs more
+  /// than this neutral form.
+  String get label {
+    var custom = 0;
+    if (!inPossession.isDefault) custom++;
+    if (!outOfPossession.isDefault) custom++;
+    if (!transitions.isDefault) custom++;
+    return custom == 0 ? 'Balanced' : 'Custom ($custom/3)';
+  }
+
+  /// Stable JSON payload for persistence (one column on the club row).
+  /// Phase 0 stores only the group defaults; later phases extend the
+  /// maps, and unknown/missing keys fall back to defaults on load.
+  Map<String, dynamic> toJson() => {
+    'inPossession': inPossession.toJson(),
+    'outOfPossession': outOfPossession.toJson(),
+    'transitions': transitions.toJson(),
+  };
+
+  /// Parses a persisted payload. Anything missing or malformed maps to
+  /// the group defaults — a save from any earlier phase keeps loading.
+  factory TeamTactics.fromJson(Map<String, dynamic> json) => TeamTactics(
+    inPossession: InPossessionTactics.fromJson(_asMap(json['inPossession'])),
+    outOfPossession: OutOfPossessionTactics.fromJson(
+      _asMap(json['outOfPossession']),
+    ),
+    transitions: TransitionTactics.fromJson(_asMap(json['transitions'])),
+  );
+
+  static Map<String, dynamic> _asMap(Object? value) =>
+      value is Map<String, dynamic> ? value : const {};
+
+  /// Maps a legacy persisted style name (the removed ten presets) to
+  /// default tactics. Every legacy style is rebuilt as a combination in
+  /// phases 1-3 (mapping table in GDD 10.2); at phase 0 the honest
+  /// equivalent of every removed style is the default setup — gameplay
+  /// until then is the old Balanced, whatever the save said.
+  factory TeamTactics.fromLegacyStyle(String? name) => const TeamTactics();
+
+  @override
+  bool operator ==(Object other) =>
+      other is TeamTactics &&
+      other.inPossession == inPossession &&
+      other.outOfPossession == outOfPossession &&
+      other.transitions == transitions;
+
+  @override
+  int get hashCode => Object.hash(inPossession, outOfPossession, transitions);
+}
+
+/// Parses a persisted club tactics column into [TeamTactics].
+///
+/// Every non-payload value loads as the default setup: the legacy
+/// playing-style names the column carried before v11, an empty/null
+/// column, or malformed JSON — a club row must never crash a match
+/// build, and phase-0 gameplay is default tactics anyway.
+TeamTactics tacticsFromDbPayload(String? raw) {
+  if (raw == null || raw.isEmpty || raw == '{}') return const TeamTactics();
+  Object? decoded;
+  try {
+    decoded = jsonDecode(raw);
+  } on FormatException {
+    return const TeamTactics();
+  }
+  if (decoded is! Map<String, dynamic>) return const TeamTactics();
+  return TeamTactics.fromJson(decoded);
+}
+
+/// In Possession instructions (GDD 10.2): build-up, tempo, width and
+/// final-third approach. Phase 0 scaffold — the fields arrive in
+/// phase 1, so this carries only the group identity.
+class InPossessionTactics {
+  const InPossessionTactics();
+
+  /// Whether every instruction sits at its default (phase 0: always).
+  bool get isDefault => true;
+
+  /// The group's contribution to the engine bundle.
+  TacticModifiers get modifiers => TacticModifiers.identity;
+
+  /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  String get effectSummary => modifiers.effectSummary;
+
+  Map<String, dynamic> toJson() => const {};
+
+  factory InPossessionTactics.fromJson(Map<String, dynamic> json) =>
+      const InPossessionTactics();
+
+  @override
+  bool operator ==(Object other) => other is InPossessionTactics;
+
+  @override
+  int get hashCode => 0;
+}
+
+/// Out of Possession instructions (GDD 10.2): line height, pressing,
+/// tackling and the offside trap. Phase 0 scaffold — the fields arrive
+/// in phase 2.
+class OutOfPossessionTactics {
+  const OutOfPossessionTactics();
+
+  bool get isDefault => true;
+
+  TacticModifiers get modifiers => TacticModifiers.identity;
+
+  /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  String get effectSummary => modifiers.effectSummary;
+
+  Map<String, dynamic> toJson() => const {};
+
+  factory OutOfPossessionTactics.fromJson(Map<String, dynamic> json) =>
+      const OutOfPossessionTactics();
+
+  @override
+  bool operator ==(Object other) => other is OutOfPossessionTactics;
+
+  @override
+  int get hashCode => 1;
+}
+
+/// Transitions instructions (GDD 10.2): counter-press, counter-attacking
+/// and rest defence. Phase 0 scaffold — the fields arrive in phase 3.
+class TransitionTactics {
+  const TransitionTactics();
+
+  bool get isDefault => true;
+
+  TacticModifiers get modifiers => TacticModifiers.identity;
+
+  /// Human-visible effect summary (GDD 10.3: effects must be visible).
+  String get effectSummary => modifiers.effectSummary;
+
+  Map<String, dynamic> toJson() => const {};
+
+  factory TransitionTactics.fromJson(Map<String, dynamic> json) =>
+      const TransitionTactics();
+
+  @override
+  bool operator ==(Object other) => other is TransitionTactics;
+
+  @override
+  int get hashCode => 2;
 }
 
 /// Seven mentalities (GDD 10.3): percentage changes to the team's Attack

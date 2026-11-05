@@ -7,6 +7,7 @@
 /// with promotion/relegation, rewards and next-season generation.
 library;
 
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
@@ -21,7 +22,8 @@ import '../match/match_forecast.dart';
 import '../match/match_session.dart';
 import '../match/pre_match_screen.dart' show PreMatchTacticSelection;
 import '../match/stamina.dart' show StaminaConfig, recoverStamina;
-import '../match/tactics.dart' show PlayingStyle, Mentality, MatchPepTalk;
+import '../match/tactics.dart'
+    show Mentality, MatchPepTalk, tacticsFromDbPayload;
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart' show PlayerCard;
 import 'season_engine.dart';
@@ -223,7 +225,7 @@ class SeasonStore {
                 managerName: def.managerName,
                 crestIndex: Value(def.crestIndex),
                 formationCode: Value(def.formationCode),
-                playingStyle: Value(def.style.name),
+                tactics: Value(jsonEncode(def.tactics.toJson())),
                 mentality: Value(def.mentality.name),
                 coins: 0,
                 isUser: const Value(false),
@@ -484,10 +486,7 @@ class SeasonStore {
       );
     }
 
-    final style = PlayingStyle.values.firstWhere(
-      (s) => s.name == club.playingStyle,
-      orElse: () => PlayingStyle.balanced,
-    );
+    final teamTactics = tacticsFromDbPayload(club.tactics);
     final mentality = Mentality.values.firstWhere(
       (m) => m.name == club.mentality,
       orElse: () => Mentality.balanced,
@@ -571,7 +570,7 @@ class SeasonStore {
       userPosition: positionOf(true),
       opponentKeyMen: keyMen,
       userFormationCode: club.formationCode,
-      userStyle: style,
+      userTactics: teamTactics,
       userMentality: mentality,
       userSquad: squad,
     );
@@ -595,7 +594,7 @@ class SeasonStore {
   /// drives it; call [commitFixtureResult] with the finished session.
   /// [preMatchTalk] applies its multipliers from kick-off (GDD 15.1).
   /// [tactics] carries the MATCH-ONLY setup chosen on the pre-match
-  /// screen (formation, style, mentality — GDD 10.4): the session is
+  /// screen (formation, custom tactics, mentality — GDD 10.4): the session is
   /// built from it and the club's saved default setup stays untouched.
   Future<MatchSession> startNextFixture(
     CollectionStore store, {
@@ -831,7 +830,7 @@ class SeasonStore {
         teamId: home.club.id,
         teamName: home.club.name,
         formationCode: home.club.formationCode,
-        style: _styleOf(home.club.playingStyle),
+        tactics: tacticsFromDbPayload(home.club.tactics),
         mentality: _mentalityOf(home.club.mentality),
         starters: home.starters,
         bench: home.bench,
@@ -841,7 +840,7 @@ class SeasonStore {
         teamId: away.club.id,
         teamName: away.club.name,
         formationCode: away.club.formationCode,
-        style: _styleOf(away.club.playingStyle),
+        tactics: tacticsFromDbPayload(away.club.tactics),
         mentality: _mentalityOf(away.club.mentality),
         starters: away.starters,
         bench: away.bench,
@@ -1250,11 +1249,6 @@ class SeasonStore {
   Future<List<MatchResult>> _resultsFor(int seasonId) => (db.select(
     db.matchResults,
   )..where((r) => r.seasonId.equals(seasonId))).get();
-
-  PlayingStyle _styleOf(String name) => PlayingStyle.values.firstWhere(
-    (s) => s.name == name,
-    orElse: () => PlayingStyle.balanced,
-  );
 
   Mentality _mentalityOf(String name) => Mentality.values.firstWhere(
     (m) => m.name == name,

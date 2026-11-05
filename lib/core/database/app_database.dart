@@ -57,8 +57,13 @@ class Clubs extends Table {
   TextColumn get managerName => text()();
   IntColumn get crestIndex => integer().withDefault(const Constant(0))();
   TextColumn get formationCode => text().withDefault(const Constant('4-3-3'))();
-  TextColumn get playingStyle =>
-      text().withDefault(const Constant('balanced'))();
+
+  /// Custom tactics (GDD 10.2): JSON payload of TeamTactics. Legacy saves
+  /// stored one of ten playing-style names here; the v10→v11 migration
+  /// swaps the column and every legacy value loads as default tactics
+  /// (the mapping to instruction combinations is documented in GDD 10.2
+  /// and filled by phases 1-3).
+  TextColumn get tactics => text().withDefault(const Constant('{}'))();
   TextColumn get mentality => text().withDefault(const Constant('balanced'))();
   IntColumn get coins => integer()();
   BoolColumn get isUser => boolean().withDefault(const Constant(true))();
@@ -274,7 +279,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -342,6 +347,15 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10) {
         // UI language preference (EN/AR; null follows the system).
         await m.addColumn(userSettings, userSettings.locale);
+      }
+      if (from < 11) {
+        // Custom Tactics replace the ten preset playing styles (GDD
+        // 10.2): the text name column becomes a JSON tactics payload.
+        // Every legacy value — all ten old style names — maps to the
+        // default (identity) setup; the legacy-style → combination
+        // mapping is documentation only, delivered with phases 1-3.
+        await m.addColumn(clubs, clubs.tactics);
+        await m.alterTable(TableMigration(clubs));
       }
     },
   );

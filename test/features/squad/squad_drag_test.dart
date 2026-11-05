@@ -79,13 +79,13 @@ Widget _host(
       body: SingleChildScrollView(
         child: TacticsSetupView(
           formationCode: '4-3-3',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           xi: xi,
           bench: bench,
           reserves: reserves,
           onFormation: (_) {},
-          onStyle: (_) {},
+          onTactics: (_) {},
           onMentality: (_) {},
           showStamina: false,
           showStats: false,
@@ -232,13 +232,13 @@ void main() {
           body: SingleChildScrollView(
             child: TacticsSetupView(
               formationCode: '4-3-3',
-              style: PlayingStyle.balanced,
+              tactics: const TeamTactics(),
               mentality: Mentality.balanced,
               xi: {for (var i = 0; i < 11; i++) i: squad[i]!},
               bench: [for (var i = 11; i < 18; i++) squad[i]!],
               reserves: [for (var i = 18; i < 23; i++) squad[i]!],
               onFormation: (_) {},
-              onStyle: (_) {},
+              onTactics: (_) {},
               onMentality: (_) {},
               showStamina: false,
               showStats: false,

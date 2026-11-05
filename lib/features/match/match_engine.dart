@@ -166,7 +166,7 @@ class MatchTeamInput {
     required this.teamId,
     required this.teamName,
     required this.formationCode,
-    required this.style,
+    required this.tactics,
     required this.mentality,
     required List<MatchPlayer> starters,
     required this.bench,
@@ -177,7 +177,7 @@ class MatchTeamInput {
   final int teamId;
   final String teamName;
   final String formationCode;
-  final PlayingStyle style;
+  final TeamTactics tactics;
   final Mentality mentality;
 
   /// Starting XI in formation-slot order (slot 0 = goalkeeper).
@@ -323,14 +323,14 @@ class ChangeFormationCommand extends MatchCommand {
   final String formationCode;
 }
 
-class ChangeStyleCommand extends MatchCommand {
-  const ChangeStyleCommand({
+class ChangeTacticsCommand extends MatchCommand {
+  const ChangeTacticsCommand({
     required super.atMinute,
     required super.side,
-    required this.style,
+    required this.tactics,
   });
 
-  final PlayingStyle style;
+  final TeamTactics tactics;
 }
 
 class ChangeMentalityCommand extends MatchCommand {
@@ -380,8 +380,8 @@ class PepTalkCommand extends MatchCommand {
 }
 
 /// Effective team totals (GDD 12.2): stamina-scaled individual attributes
-/// aggregated with slot role weights, then modified by mentality, playing
-/// style and home advantage — in that exact order.
+/// aggregated with slot role weights, then modified by mentality, custom
+/// tactics and home advantage — in that exact order.
 class TeamTotals {
   const TeamTotals({
     required this.attack,
@@ -548,8 +548,8 @@ class MatchEngine {
   /// active choice.
   String formationOf(MatchSide side) => _runtimeOf(side).formation.code;
 
-  /// Current playing style of [side] (GDD 10.2).
-  PlayingStyle styleOf(MatchSide side) => _runtimeOf(side).style;
+  /// Current custom tactics of [side] (GDD 10.2).
+  TeamTactics tacticsOf(MatchSide side) => _runtimeOf(side).tactics;
 
   /// Current mentality of [side] (GDD 10.3).
   Mentality mentalityOf(MatchSide side) => _runtimeOf(side).mentality;
@@ -652,7 +652,7 @@ class MatchEngine {
   List<MatchEvent> _simulateSegment(int minute) {
     final produced = <MatchEvent>[];
 
-    // 1. Possession (GDD 12.3 step 1): support-based, biased by style.
+    // 1. Possession (GDD 12.3 step 1): support-based, biased by tactics.
     //    A POWER competition, not a ratio: weaker support loses the ball
     //    disproportionately more, but the exponent (1.4) bounds it — a
     //    20-support-point gap swings possession ~61/39, never 90/10,
@@ -662,11 +662,11 @@ class MatchEngine {
     final homeTotals = totalsOf(MatchSide.home);
     final awayTotals = totalsOf(MatchSide.away);
     final homePoss = math.pow(
-      homeTotals.support * _home.style.modifiers.possession,
+      homeTotals.support * _home.tactics.modifiers.possession,
       1.4,
     );
     final awayPoss = math.pow(
-      awayTotals.support * _away.style.modifiers.possession,
+      awayTotals.support * _away.tactics.modifiers.possession,
       1.4,
     );
     final attackerSide = _random.chance(homePoss / (homePoss + awayPoss))
@@ -687,7 +687,7 @@ class MatchEngine {
     // complete 75-85%).
     final passesAttempted = 3 + _random.nextInt(8);
     final possessionAccuracy =
-        ((attTotals.support / 100) * att.style.modifiers.passAccuracy)
+        ((attTotals.support / 100) * att.tactics.modifiers.passAccuracy)
             .clamp(0.40, 0.92);
     var passesCompleted = (passesAttempted * possessionAccuracy).round();
 
@@ -770,7 +770,7 @@ class MatchEngine {
         (config.chanceBase +
                 config.chanceScale *
                     edgeFactor *
-                    att.style.modifiers.chance *
+                    att.tactics.modifiers.chance *
                     urgency *
                     _defensiveFatigue(attackerSide, minute))
             .clamp(0.05, config.chanceMax);
@@ -788,7 +788,7 @@ class MatchEngine {
         return produced;
       }
       final passAccuracy =
-          (attTotals.support / 100) * att.style.modifiers.passAccuracy;
+          (attTotals.support / 100) * att.tactics.modifiers.passAccuracy;
       final completed = (passesAttempted * passAccuracy.clamp(0.40, 0.92))
           .round();
       final md = <String, dynamic>{
@@ -1330,7 +1330,7 @@ class MatchEngine {
     for (final side in MatchSide.values) {
       final rt = _runtimeOf(side);
       final styleStamina =
-          rt.style.modifiers.stamina *
+          rt.tactics.modifiers.stamina *
           rt.mentality.staminaMod *
           _activeActionModifiersOf(side).stamina *
           rt.pepTalkModifiers.stamina;
@@ -1377,13 +1377,13 @@ class MatchEngine {
           side: command.side,
           metadata: {'change': 'formation', 'value': formationCode},
         );
-      case ChangeStyleCommand(:final style):
-        rt.style = style;
+      case ChangeTacticsCommand(:final tactics):
+        rt.tactics = tactics;
         event = _event(
           minute: minute,
           type: MatchEventType.tacticalChange,
           side: command.side,
-          metadata: {'change': 'style', 'value': style.name},
+          metadata: {'change': 'tactics', 'value': 'custom'},
         );
       case ChangeMentalityCommand(:final mentality):
         rt.mentality = mentality;
@@ -1756,7 +1756,7 @@ class _TeamRuntime {
     : teamId = input.teamId,
       teamName = input.teamName,
       formation = formationByCode(input.formationCode),
-      style = input.style,
+      tactics = input.tactics,
       mentality = input.mentality,
       aiControlled = input.aiControlled,
       onPitch = [for (final p in input.starters) p.clone()],
@@ -1766,7 +1766,7 @@ class _TeamRuntime {
   final int teamId;
   final String teamName;
   Formation formation;
-  PlayingStyle style;
+  TeamTactics tactics;
   Mentality mentality;
   final bool aiControlled;
 
@@ -1796,7 +1796,7 @@ class _TeamRuntime {
   );
 
   /// Team totals (GDD 12.2): 1. stamina scaling per player, 2. mentality,
-  /// 3. playing style, 4. home advantage — in this order.
+  /// 3. custom tactics, 4. home advantage — in this order.
   TeamTotals computeTotals({
     required bool isHome,
     required double homeAdvantage,
@@ -1831,7 +1831,7 @@ class _TeamRuntime {
     final attack =
         (attackW > 0 ? attackSum / attackW : 0) *
         mentality.attackMod *
-        style.modifiers.attack *
+        tactics.modifiers.attack *
         actionModifiers.attack *
         pepTalkModifiers.attack;
     final support =
@@ -1839,10 +1839,11 @@ class _TeamRuntime {
     final defence =
         (defenceW > 0 ? defenceSum / defenceW : 0) *
         mentality.defenceMod *
-        style.modifiers.defence *
+        tactics.modifiers.defence *
         actionModifiers.defence *
         pepTalkModifiers.defence;
-    final goalkeeping = gkEff * mentality.defenceMod * style.modifiers.defence;
+    final goalkeeping =
+        gkEff * mentality.defenceMod * tactics.modifiers.defence;
     final homeFactor = isHome ? homeAdvantage : 1.0;
     return TeamTotals(
       attack: attack * homeFactor,

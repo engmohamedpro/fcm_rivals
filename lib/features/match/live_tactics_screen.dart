@@ -2,7 +2,7 @@
 ///
 /// The tactics button in the live match header opens THIS: the same
 /// tactics surface the user knows from the pre-match phase and the
-/// Team tab — control card with formation / playing style / mentality
+/// Team tab — control card with formation / custom tactics / mentality
 /// (with their visible effects), the pitch with the CURRENT XI at
 /// formation coordinates and live stamina bars, and the bench strip.
 /// No reserves here: a live match only has the XI and the bench.
@@ -62,7 +62,7 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
     final formationCode = engine.formationOf(_side);
     final onPitch = engine.onPitchOf(_side);
     final bench = engine.benchOf(_side);
-    final style = engine.styleOf(_side);
+    final tactics = engine.tacticsOf(_side);
     final mentality = engine.mentalityOf(_side);
     final nextMinute = widget.minuteQueuedFrom;
 
@@ -142,7 +142,7 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
               // nobody beyond the bench).
               TacticsSetupView(
                 formationCode: formationCode,
-                style: style,
+                tactics: tactics,
                 mentality: mentality,
                 xi: xiCards,
                 bench: benchCards,
@@ -154,11 +154,11 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                     formationCode: code,
                   ),
                 ),
-                onStyle: (s) => _queue(
-                  ChangeStyleCommand(
+                onTactics: (t) => _queue(
+                  ChangeTacticsCommand(
                     atMinute: nextMinute,
                     side: _side,
-                    style: s,
+                    tactics: t,
                   ),
                 ),
                 onMentality: (m) => _queue(

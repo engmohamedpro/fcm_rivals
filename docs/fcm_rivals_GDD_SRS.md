@@ -513,28 +513,51 @@ The user selects the formation used by the team.
 
 Formation changes affect player positioning and match calculations.
 
-### 10.2 Playing Styles
+### 10.2 Custom Tactics
 
-Supported tactical styles:
+The ten preset Playing Styles are removed. The user builds his own
+tactics from instructions grouped into three phases of play:
 
-- Possession.
-- Tiki-Taka.
-- Direct Play.
-- Counter Attack.
-- Gegenpressing.
-- High Press.
-- Wing Play.
-- Long Ball.
-- Low Block.
-- Balanced.
+- **In Possession** — build-up style, tempo, width and final-third
+  approach. Delivered in phase 1.
+- **Out of Possession** — defensive line height, pressing intensity,
+  tackling aggression and the offside trap. Delivered in phase 2.
+- **Transitions** — counter-press, counter-attacking and rest defence.
+  Delivered in phase 3.
 
-Playing Style affects:
+Until a phase ships, its group carries its default (identity) state;
+the default `TeamTactics` reproduces the old Balanced style exactly
+(all multipliers 1.00), so gameplay is unchanged during the rollout.
+
+Custom Tactics affect:
 
 - Team performance.
 - Chance creation.
 - Defensive behavior.
 - Passing patterns.
 - Stamina consumption.
+- Chance quality (from phase 1).
+
+**Legacy style mapping.** Every removed style is rebuilt as an
+instruction combination (documentation only — no preset chips return):
+
+| Legacy style | Rebuilt by |
+|---|---|
+| Possession / Tiki-Taka | In Possession: Play Out + Slow + Narrow (phase 1) |
+| Direct Play / Long Ball | In Possession: Long Ball + Fast (phase 1) |
+| Wing Play | In Possession: Wide + Early Crosses (phase 1) |
+| Gegenpressing / High Press | Out of Possession: High Press (phase 2) + Transitions: Counter-Press (phase 3) |
+| Low Block | Out of Possession: Deep Line + Low Press (phase 2) |
+| Counter Attack | Transitions: Fast Counter (phase 3) |
+
+Persistence: the club row stores the tactics as one JSON payload;
+legacy saves that carried a style name load as the default setup, and
+the mapping table above tells the player how to rebuild his old style
+once the phases land.
+
+**Rule (GDD 10.3 also applies here): every instruction's effect summary
+is user-visible** — the UI shows the estimated possession share and the
+percentage effects of each chosen combination, never raw multipliers.
 
 ### 10.3 Mentality
 

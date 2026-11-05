@@ -189,4 +189,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String pepTalkRecoveryConfirmation(String pepTalk, int bonus) {
     return '$pepTalk (+$bonus% recovery)';
   }
+
+  @override
+  String get tacticsInPossessionTitle => 'In Possession';
+
+  @override
+  String get tacticsInPossessionSubtitle =>
+      'Build-up, tempo, width and final-third approach';
+
+  @override
+  String get tacticsOutOfPossessionTitle => 'Out of Possession';
+
+  @override
+  String get tacticsOutOfPossessionSubtitle =>
+      'Defensive line, pressing, tackling and the offside trap';
+
+  @override
+  String get tacticsTransitionsTitle => 'Transitions';
+
+  @override
+  String get tacticsTransitionsSubtitle =>
+      'Counter-press, counter-attacking and rest defence';
+
+  @override
+  String get tacticsSectionDefault => 'Default setup';
+
+  @override
+  String get tacticsLabel => 'Tactics';
 }

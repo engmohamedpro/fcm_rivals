@@ -3,14 +3,17 @@
 ///
 /// Extracted from CollectionStore: slot assignments, Auto Pick,
 /// formation changes (which re-run Auto Pick, GDD 6.4) and the
-/// saved style/mentality. Same database, same engines, same
+/// saved tactics/mentality. Same database, same engines, same
 /// behaviour — just a single-purpose home.
 library;
+
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/domain/players.dart' show BasePlayer, BaseStats, Position;
+import '../match/tactics.dart' show TeamTactics;
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart' show PlayerCard, SquadEngine;
 import 'collection_store.dart' show CollectionException;
@@ -113,9 +116,10 @@ class SquadStore {
   }
 
   /// Updates the club's tactical setup for future matches (GDD 10.2/10.3).
+  /// [tactics] persists as the JSON payload of [TeamTactics].
   Future<void> changeTactics({
     String? formationCode,
-    String? playingStyle,
+    TeamTactics? tactics,
     String? mentality,
   }) async {
     final club = await getClub();
@@ -127,14 +131,30 @@ class SquadStore {
         formationCode: formationCode != null
             ? Value(formationByCode(formationCode).code)
             : const Value.absent(),
-        playingStyle: playingStyle != null
-            ? Value(playingStyle)
+        tactics: tactics != null
+            ? Value(jsonEncode(tactics.toJson()))
             : const Value.absent(),
         mentality: mentality != null ? Value(mentality) : const Value.absent(),
       ),
     );
     if (formationCode != null) {
       await autoPickSquad();
+    }
+  }
+
+  /// The club's saved custom tactics (GDD 10.2). Any legacy payload —
+  /// including the pre-v11 playing-style names and a missing column —
+  /// loads as the default (identity) setup; malformed JSON falls back
+  /// the same way instead of crashing the club load.
+  TeamTactics tacticsOfClub(Club club) {
+    final raw = club.tactics;
+    if (raw.isEmpty || raw == '{}') return const TeamTactics();
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map<String, dynamic>) return const TeamTactics();
+    try {
+      return TeamTactics.fromJson(decoded);
+    } on FormatException {
+      return const TeamTactics();
     }
   }
 

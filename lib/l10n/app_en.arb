@@ -105,5 +105,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "tacticsInPossessionTitle": "In Possession",
+  "tacticsInPossessionSubtitle": "Build-up, tempo, width and final-third approach",
+  "tacticsOutOfPossessionTitle": "Out of Possession",
+  "tacticsOutOfPossessionSubtitle": "Defensive line, pressing, tackling and the offside trap",
+  "tacticsTransitionsTitle": "Transitions",
+  "tacticsTransitionsSubtitle": "Counter-press, counter-attacking and rest defence",
+  "tacticsSectionDefault": "Default setup",
+  "tacticsLabel": "Tactics"
 }

@@ -86,7 +86,7 @@ class PreMatchData {
     required this.userPosition,
     required this.opponentKeyMen,
     this.userFormationCode = '4-3-3',
-    this.userStyle = PlayingStyle.balanced,
+    this.userTactics = const TeamTactics(),
     this.userMentality = Mentality.balanced,
     this.userSquad = const {},
   });
@@ -124,10 +124,10 @@ class PreMatchData {
   >
   opponentKeyMen;
 
-  /// The club's persisted formation / playing style / mentality (GDD 10) —
-  /// the starting point of the pre-match tactics selection.
+  /// The club's persisted formation / custom tactics / mentality (GDD 10)
+  /// — the starting point of the pre-match tactics selection.
   final String userFormationCode;
-  final PlayingStyle userStyle;
+  final TeamTactics userTactics;
   final Mentality userMentality;
 
   /// The user's persisted squad (slot index → card) for the tactics phase:

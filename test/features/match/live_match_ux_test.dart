@@ -63,7 +63,7 @@ void main() {
           teamId: 1,
           teamName: 'Home',
           formationCode: '4-4-2',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           starters: team(100),
           bench: const [],
@@ -73,7 +73,7 @@ void main() {
           teamId: 2,
           teamName: 'Away',
           formationCode: '4-3-3',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           starters: team(300),
           bench: const [],
@@ -286,7 +286,7 @@ void main() {
           teamId: 1,
           teamName: 'Home',
           formationCode: '4-3-3',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           starters: team(100),
           bench: [
@@ -314,7 +314,7 @@ void main() {
           teamId: 2,
           teamName: 'Away',
           formationCode: '4-4-2',
-          style: PlayingStyle.balanced,
+          tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           starters: team(300),
           bench: const [],
@@ -335,11 +335,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       // The pre-match surface pieces are all there: the setup row
-      // (STYLE / MENTALITY + team rating) and the formation dropdown
+      // (TACTICS / MENTALITY + team rating) and the formation dropdown
       // DIRECTLY on the control card, showing the user side's shape.
       expect(find.byType(FcmDropdown<String>), findsOneWidget);
       expect(find.text('4-3-3'), findsOneWidget);
-      expect(find.text('STYLE'), findsOneWidget);
+      // The control card's setup label and its TACTICS button both
+      // carry the word — the label row and the action.
+      expect(find.text('TACTICS'), findsNWidgets(2));
       expect(find.text('MENTALITY'), findsOneWidget);
       expect(find.text('Bench (2/${Formation.benchSize})'), findsOneWidget);
       // Card strips render uppercased surnames ('Sub One' → 'ONE').
@@ -568,7 +570,7 @@ void main() {
             teamId: 1,
             teamName: 'Home',
             formationCode: '4-4-2',
-            style: PlayingStyle.balanced,
+            tactics: const TeamTactics(),
             mentality: Mentality.balanced,
             starters: team(100, 85),
             bench: const [],
@@ -578,7 +580,7 @@ void main() {
             teamId: 2,
             teamName: 'Away',
             formationCode: '4-3-3',
-            style: PlayingStyle.balanced,
+            tactics: const TeamTactics(),
             mentality: Mentality.balanced,
             starters: team(300, 45),
             bench: const [],

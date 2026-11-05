@@ -421,6 +421,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{pepTalk} (+{bonus}% recovery)'**
   String pepTalkRecoveryConfirmation(String pepTalk, int bonus);
+
+  /// No description provided for @tacticsInPossessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'In Possession'**
+  String get tacticsInPossessionTitle;
+
+  /// No description provided for @tacticsInPossessionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Build-up, tempo, width and final-third approach'**
+  String get tacticsInPossessionSubtitle;
+
+  /// No description provided for @tacticsOutOfPossessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Out of Possession'**
+  String get tacticsOutOfPossessionTitle;
+
+  /// No description provided for @tacticsOutOfPossessionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Defensive line, pressing, tackling and the offside trap'**
+  String get tacticsOutOfPossessionSubtitle;
+
+  /// No description provided for @tacticsTransitionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transitions'**
+  String get tacticsTransitionsTitle;
+
+  /// No description provided for @tacticsTransitionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Counter-press, counter-attacking and rest defence'**
+  String get tacticsTransitionsSubtitle;
+
+  /// No description provided for @tacticsSectionDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default setup'**
+  String get tacticsSectionDefault;
+
+  /// No description provided for @tacticsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tactics'**
+  String get tacticsLabel;
 }
 
 class _AppLocalizationsDelegate

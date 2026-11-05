@@ -189,4 +189,31 @@ class AppLocalizationsAr extends AppLocalizations {
   String pepTalkRecoveryConfirmation(String pepTalk, int bonus) {
     return '$pepTalk (+$bonus% استشفاء)';
   }
+
+  @override
+  String get tacticsInPossessionTitle => 'في الاستحواذ';
+
+  @override
+  String get tacticsInPossessionSubtitle =>
+      'بناء اللعب والإيقاع والعرض وأسلوب الثلث الأخير';
+
+  @override
+  String get tacticsOutOfPossessionTitle => 'بدون الاستحواذ';
+
+  @override
+  String get tacticsOutOfPossessionSubtitle =>
+      'خط الدفاع والضغط والالتحامات ومصيدة التسلل';
+
+  @override
+  String get tacticsTransitionsTitle => 'التحولات';
+
+  @override
+  String get tacticsTransitionsSubtitle =>
+      'الضغط المرتد والهجمات المرتدة والدفاع الاحتياطي';
+
+  @override
+  String get tacticsSectionDefault => 'الإعداد الافتراضي';
+
+  @override
+  String get tacticsLabel => 'الخطة';
 }

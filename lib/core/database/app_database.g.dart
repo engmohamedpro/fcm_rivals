@@ -1029,17 +1029,17 @@ class $ClubsTable extends Clubs with TableInfo<$ClubsTable, Club> {
     requiredDuringInsert: false,
     defaultValue: const Constant('4-3-3'),
   );
-  static const VerificationMeta _playingStyleMeta = const VerificationMeta(
-    'playingStyle',
+  static const VerificationMeta _tacticsMeta = const VerificationMeta(
+    'tactics',
   );
   @override
-  late final GeneratedColumn<String> playingStyle = GeneratedColumn<String>(
-    'playing_style',
+  late final GeneratedColumn<String> tactics = GeneratedColumn<String>(
+    'tactics',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('balanced'),
+    defaultValue: const Constant('{}'),
   );
   static const VerificationMeta _mentalityMeta = const VerificationMeta(
     'mentality',
@@ -1093,7 +1093,7 @@ class $ClubsTable extends Clubs with TableInfo<$ClubsTable, Club> {
     managerName,
     crestIndex,
     formationCode,
-    playingStyle,
+    tactics,
     mentality,
     coins,
     isUser,
@@ -1148,13 +1148,10 @@ class $ClubsTable extends Clubs with TableInfo<$ClubsTable, Club> {
         ),
       );
     }
-    if (data.containsKey('playing_style')) {
+    if (data.containsKey('tactics')) {
       context.handle(
-        _playingStyleMeta,
-        playingStyle.isAcceptableOrUnknown(
-          data['playing_style']!,
-          _playingStyleMeta,
-        ),
+        _tacticsMeta,
+        tactics.isAcceptableOrUnknown(data['tactics']!, _tacticsMeta),
       );
     }
     if (data.containsKey('mentality')) {
@@ -1214,9 +1211,9 @@ class $ClubsTable extends Clubs with TableInfo<$ClubsTable, Club> {
         DriftSqlType.string,
         data['${effectivePrefix}formation_code'],
       )!,
-      playingStyle: attachedDatabase.typeMapping.read(
+      tactics: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}playing_style'],
+        data['${effectivePrefix}tactics'],
       )!,
       mentality: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -1249,7 +1246,13 @@ class Club extends DataClass implements Insertable<Club> {
   final String managerName;
   final int crestIndex;
   final String formationCode;
-  final String playingStyle;
+
+  /// Custom tactics (GDD 10.2): JSON payload of TeamTactics. Legacy saves
+  /// stored one of ten playing-style names here; the v10→v11 migration
+  /// swaps the column and every legacy value loads as default tactics
+  /// (the mapping to instruction combinations is documented in GDD 10.2
+  /// and filled by phases 1-3).
+  final String tactics;
   final String mentality;
   final int coins;
   final bool isUser;
@@ -1260,7 +1263,7 @@ class Club extends DataClass implements Insertable<Club> {
     required this.managerName,
     required this.crestIndex,
     required this.formationCode,
-    required this.playingStyle,
+    required this.tactics,
     required this.mentality,
     required this.coins,
     required this.isUser,
@@ -1274,7 +1277,7 @@ class Club extends DataClass implements Insertable<Club> {
     map['manager_name'] = Variable<String>(managerName);
     map['crest_index'] = Variable<int>(crestIndex);
     map['formation_code'] = Variable<String>(formationCode);
-    map['playing_style'] = Variable<String>(playingStyle);
+    map['tactics'] = Variable<String>(tactics);
     map['mentality'] = Variable<String>(mentality);
     map['coins'] = Variable<int>(coins);
     map['is_user'] = Variable<bool>(isUser);
@@ -1289,7 +1292,7 @@ class Club extends DataClass implements Insertable<Club> {
       managerName: Value(managerName),
       crestIndex: Value(crestIndex),
       formationCode: Value(formationCode),
-      playingStyle: Value(playingStyle),
+      tactics: Value(tactics),
       mentality: Value(mentality),
       coins: Value(coins),
       isUser: Value(isUser),
@@ -1308,7 +1311,7 @@ class Club extends DataClass implements Insertable<Club> {
       managerName: serializer.fromJson<String>(json['managerName']),
       crestIndex: serializer.fromJson<int>(json['crestIndex']),
       formationCode: serializer.fromJson<String>(json['formationCode']),
-      playingStyle: serializer.fromJson<String>(json['playingStyle']),
+      tactics: serializer.fromJson<String>(json['tactics']),
       mentality: serializer.fromJson<String>(json['mentality']),
       coins: serializer.fromJson<int>(json['coins']),
       isUser: serializer.fromJson<bool>(json['isUser']),
@@ -1324,7 +1327,7 @@ class Club extends DataClass implements Insertable<Club> {
       'managerName': serializer.toJson<String>(managerName),
       'crestIndex': serializer.toJson<int>(crestIndex),
       'formationCode': serializer.toJson<String>(formationCode),
-      'playingStyle': serializer.toJson<String>(playingStyle),
+      'tactics': serializer.toJson<String>(tactics),
       'mentality': serializer.toJson<String>(mentality),
       'coins': serializer.toJson<int>(coins),
       'isUser': serializer.toJson<bool>(isUser),
@@ -1338,7 +1341,7 @@ class Club extends DataClass implements Insertable<Club> {
     String? managerName,
     int? crestIndex,
     String? formationCode,
-    String? playingStyle,
+    String? tactics,
     String? mentality,
     int? coins,
     bool? isUser,
@@ -1349,7 +1352,7 @@ class Club extends DataClass implements Insertable<Club> {
     managerName: managerName ?? this.managerName,
     crestIndex: crestIndex ?? this.crestIndex,
     formationCode: formationCode ?? this.formationCode,
-    playingStyle: playingStyle ?? this.playingStyle,
+    tactics: tactics ?? this.tactics,
     mentality: mentality ?? this.mentality,
     coins: coins ?? this.coins,
     isUser: isUser ?? this.isUser,
@@ -1368,9 +1371,7 @@ class Club extends DataClass implements Insertable<Club> {
       formationCode: data.formationCode.present
           ? data.formationCode.value
           : this.formationCode,
-      playingStyle: data.playingStyle.present
-          ? data.playingStyle.value
-          : this.playingStyle,
+      tactics: data.tactics.present ? data.tactics.value : this.tactics,
       mentality: data.mentality.present ? data.mentality.value : this.mentality,
       coins: data.coins.present ? data.coins.value : this.coins,
       isUser: data.isUser.present ? data.isUser.value : this.isUser,
@@ -1386,7 +1387,7 @@ class Club extends DataClass implements Insertable<Club> {
           ..write('managerName: $managerName, ')
           ..write('crestIndex: $crestIndex, ')
           ..write('formationCode: $formationCode, ')
-          ..write('playingStyle: $playingStyle, ')
+          ..write('tactics: $tactics, ')
           ..write('mentality: $mentality, ')
           ..write('coins: $coins, ')
           ..write('isUser: $isUser, ')
@@ -1402,7 +1403,7 @@ class Club extends DataClass implements Insertable<Club> {
     managerName,
     crestIndex,
     formationCode,
-    playingStyle,
+    tactics,
     mentality,
     coins,
     isUser,
@@ -1417,7 +1418,7 @@ class Club extends DataClass implements Insertable<Club> {
           other.managerName == this.managerName &&
           other.crestIndex == this.crestIndex &&
           other.formationCode == this.formationCode &&
-          other.playingStyle == this.playingStyle &&
+          other.tactics == this.tactics &&
           other.mentality == this.mentality &&
           other.coins == this.coins &&
           other.isUser == this.isUser &&
@@ -1430,7 +1431,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
   final Value<String> managerName;
   final Value<int> crestIndex;
   final Value<String> formationCode;
-  final Value<String> playingStyle;
+  final Value<String> tactics;
   final Value<String> mentality;
   final Value<int> coins;
   final Value<bool> isUser;
@@ -1441,7 +1442,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     this.managerName = const Value.absent(),
     this.crestIndex = const Value.absent(),
     this.formationCode = const Value.absent(),
-    this.playingStyle = const Value.absent(),
+    this.tactics = const Value.absent(),
     this.mentality = const Value.absent(),
     this.coins = const Value.absent(),
     this.isUser = const Value.absent(),
@@ -1453,7 +1454,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     required String managerName,
     this.crestIndex = const Value.absent(),
     this.formationCode = const Value.absent(),
-    this.playingStyle = const Value.absent(),
+    this.tactics = const Value.absent(),
     this.mentality = const Value.absent(),
     required int coins,
     this.isUser = const Value.absent(),
@@ -1468,7 +1469,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     Expression<String>? managerName,
     Expression<int>? crestIndex,
     Expression<String>? formationCode,
-    Expression<String>? playingStyle,
+    Expression<String>? tactics,
     Expression<String>? mentality,
     Expression<int>? coins,
     Expression<bool>? isUser,
@@ -1480,7 +1481,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
       if (managerName != null) 'manager_name': managerName,
       if (crestIndex != null) 'crest_index': crestIndex,
       if (formationCode != null) 'formation_code': formationCode,
-      if (playingStyle != null) 'playing_style': playingStyle,
+      if (tactics != null) 'tactics': tactics,
       if (mentality != null) 'mentality': mentality,
       if (coins != null) 'coins': coins,
       if (isUser != null) 'is_user': isUser,
@@ -1494,7 +1495,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     Value<String>? managerName,
     Value<int>? crestIndex,
     Value<String>? formationCode,
-    Value<String>? playingStyle,
+    Value<String>? tactics,
     Value<String>? mentality,
     Value<int>? coins,
     Value<bool>? isUser,
@@ -1506,7 +1507,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
       managerName: managerName ?? this.managerName,
       crestIndex: crestIndex ?? this.crestIndex,
       formationCode: formationCode ?? this.formationCode,
-      playingStyle: playingStyle ?? this.playingStyle,
+      tactics: tactics ?? this.tactics,
       mentality: mentality ?? this.mentality,
       coins: coins ?? this.coins,
       isUser: isUser ?? this.isUser,
@@ -1532,8 +1533,8 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     if (formationCode.present) {
       map['formation_code'] = Variable<String>(formationCode.value);
     }
-    if (playingStyle.present) {
-      map['playing_style'] = Variable<String>(playingStyle.value);
+    if (tactics.present) {
+      map['tactics'] = Variable<String>(tactics.value);
     }
     if (mentality.present) {
       map['mentality'] = Variable<String>(mentality.value);
@@ -1558,7 +1559,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
           ..write('managerName: $managerName, ')
           ..write('crestIndex: $crestIndex, ')
           ..write('formationCode: $formationCode, ')
-          ..write('playingStyle: $playingStyle, ')
+          ..write('tactics: $tactics, ')
           ..write('mentality: $mentality, ')
           ..write('coins: $coins, ')
           ..write('isUser: $isUser, ')
@@ -7559,7 +7560,7 @@ typedef $$ClubsTableCreateCompanionBuilder = ClubsCompanion Function({
   required String managerName,
   Value<int> crestIndex,
   Value<String> formationCode,
-  Value<String> playingStyle,
+  Value<String> tactics,
   Value<String> mentality,
   required int coins,
   Value<bool> isUser,
@@ -7571,7 +7572,7 @@ typedef $$ClubsTableUpdateCompanionBuilder = ClubsCompanion Function({
   Value<String> managerName,
   Value<int> crestIndex,
   Value<String> formationCode,
-  Value<String> playingStyle,
+  Value<String> tactics,
   Value<String> mentality,
   Value<int> coins,
   Value<bool> isUser,
@@ -7611,8 +7612,8 @@ class $$ClubsTableFilterComposer extends Composer<_$AppDatabase, $ClubsTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get playingStyle => $composableBuilder(
-    column: $table.playingStyle,
+  ColumnFilters<String> get tactics => $composableBuilder(
+    column: $table.tactics,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7671,8 +7672,8 @@ class $$ClubsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get playingStyle => $composableBuilder(
-    column: $table.playingStyle,
+  ColumnOrderings<String> get tactics => $composableBuilder(
+    column: $table.tactics,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7727,10 +7728,8 @@ class $$ClubsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get playingStyle => $composableBuilder(
-    column: $table.playingStyle,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get tactics =>
+      $composableBuilder(column: $table.tactics, builder: (column) => column);
 
   GeneratedColumn<String> get mentality =>
       $composableBuilder(column: $table.mentality, builder: (column) => column);
@@ -7778,7 +7777,7 @@ class $$ClubsTableTableManager
                 Value<String> managerName = const Value.absent(),
                 Value<int> crestIndex = const Value.absent(),
                 Value<String> formationCode = const Value.absent(),
-                Value<String> playingStyle = const Value.absent(),
+                Value<String> tactics = const Value.absent(),
                 Value<String> mentality = const Value.absent(),
                 Value<int> coins = const Value.absent(),
                 Value<bool> isUser = const Value.absent(),
@@ -7789,7 +7788,7 @@ class $$ClubsTableTableManager
                 managerName: managerName,
                 crestIndex: crestIndex,
                 formationCode: formationCode,
-                playingStyle: playingStyle,
+                tactics: tactics,
                 mentality: mentality,
                 coins: coins,
                 isUser: isUser,
@@ -7802,7 +7801,7 @@ class $$ClubsTableTableManager
                 required String managerName,
                 Value<int> crestIndex = const Value.absent(),
                 Value<String> formationCode = const Value.absent(),
-                Value<String> playingStyle = const Value.absent(),
+                Value<String> tactics = const Value.absent(),
                 Value<String> mentality = const Value.absent(),
                 required int coins,
                 Value<bool> isUser = const Value.absent(),
@@ -7813,7 +7812,7 @@ class $$ClubsTableTableManager
                 managerName: managerName,
                 crestIndex: crestIndex,
                 formationCode: formationCode,
-                playingStyle: playingStyle,
+                tactics: tactics,
                 mentality: mentality,
                 coins: coins,
                 isUser: isUser,

@@ -25,6 +25,7 @@ import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
 import '../collection/player_detail_sheet.dart' show rarityOf;
 import '../match/tactics.dart';
+import '../match/tactics_sections.dart';
 import 'formations.dart';
 import 'pitch_layout.dart';
 import 'squad_drag.dart';
@@ -40,13 +41,13 @@ class TacticsSetupView extends StatelessWidget {
   const TacticsSetupView({
     super.key,
     required this.formationCode,
-    required this.style,
+    required this.tactics,
     required this.mentality,
     required this.xi,
     required this.bench,
     required this.reserves,
     required this.onFormation,
-    required this.onStyle,
+    required this.onTactics,
     required this.onMentality,
     this.onAutoPick,
     this.showStamina = true,
@@ -59,8 +60,8 @@ class TacticsSetupView extends StatelessWidget {
   /// Currently selected formation code (e.g. '4-3-3').
   final String formationCode;
 
-  /// Current playing style / mentality selections (GDD 10.2/10.3).
-  final PlayingStyle style;
+  /// Current custom tactics / mentality selections (GDD 10.2/10.3).
+  final TeamTactics tactics;
   final Mentality mentality;
 
   /// Starting XI assignments: slot index → card.
@@ -73,7 +74,7 @@ class TacticsSetupView extends StatelessWidget {
   /// Tactic change callbacks — the owner defines whether they persist
   /// (Team tab) or apply to one match only (pre-match phase).
   final ValueChanged<String> onFormation;
-  final ValueChanged<PlayingStyle> onStyle;
+  final ValueChanged<TeamTactics> onTactics;
   final ValueChanged<Mentality> onMentality;
 
   /// Shows the Auto Pick button (GDD 6.3) when non-null — the Team tab
@@ -116,15 +117,15 @@ class TacticsSetupView extends StatelessWidget {
           child: _ControlCard(
             teamRating: teamRating,
             formationCode: formationCode,
-            style: style,
+            tactics: tactics,
             mentality: mentality,
             onFormation: onFormation,
             onAutoPick: onAutoPick,
             onTactics: () => showTacticsOptionsSheet(
               context,
-              style: style,
+              tactics: tactics,
               mentality: mentality,
-              onStyle: onStyle,
+              onTactics: onTactics,
               onMentality: onMentality,
             ),
           ),
@@ -196,7 +197,7 @@ class _ControlCard extends StatelessWidget {
   const _ControlCard({
     required this.teamRating,
     required this.formationCode,
-    required this.style,
+    required this.tactics,
     required this.mentality,
     required this.onFormation,
     required this.onTactics,
@@ -205,7 +206,7 @@ class _ControlCard extends StatelessWidget {
 
   final int teamRating;
   final String formationCode;
-  final PlayingStyle style;
+  final TeamTactics tactics;
   final Mentality mentality;
   final ValueChanged<String> onFormation;
   final VoidCallback onTactics;
@@ -222,7 +223,7 @@ class _ControlCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Flexible(child: _info('STYLE', style.displayName)),
+              Flexible(child: _info('TACTICS', tactics.label)),
               const SizedBox(width: 12),
               Flexible(child: _info('MENTALITY', mentality.displayName)),
               const Spacer(),
@@ -329,16 +330,16 @@ class _ControlCard extends StatelessWidget {
   );
 }
 
-/// Opens the tactic options sheet (GDD 10): the playing style dropdown
+/// Opens the tactic options sheet (GDD 10): the custom-tactics sections
 /// and the mentality scale slider — every option listing its visible
 /// percentage effects. The formation lives directly on the control
 /// card, not here. Selections apply immediately through the owner's
 /// callbacks (mentality commits on drag release); DONE closes the sheet.
 Future<void> showTacticsOptionsSheet(
   BuildContext context, {
-  required PlayingStyle style,
+  required TeamTactics tactics,
   required Mentality mentality,
-  required ValueChanged<PlayingStyle> onStyle,
+  required ValueChanged<TeamTactics> onTactics,
   required ValueChanged<Mentality> onMentality,
 }) {
   return showModalBottomSheet<void>(
@@ -349,9 +350,9 @@ Future<void> showTacticsOptionsSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (_) => _TacticsOptionsSheet(
-      initialStyle: style,
+      initialTactics: tactics,
       initialMentality: mentality,
-      onStyle: onStyle,
+      onTactics: onTactics,
       onMentality: onMentality,
     ),
   );
@@ -359,15 +360,15 @@ Future<void> showTacticsOptionsSheet(
 
 class _TacticsOptionsSheet extends StatefulWidget {
   const _TacticsOptionsSheet({
-    required this.initialStyle,
+    required this.initialTactics,
     required this.initialMentality,
-    required this.onStyle,
+    required this.onTactics,
     required this.onMentality,
   });
 
-  final PlayingStyle initialStyle;
+  final TeamTactics initialTactics;
   final Mentality initialMentality;
-  final ValueChanged<PlayingStyle> onStyle;
+  final ValueChanged<TeamTactics> onTactics;
   final ValueChanged<Mentality> onMentality;
 
   @override
@@ -375,7 +376,7 @@ class _TacticsOptionsSheet extends StatefulWidget {
 }
 
 class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
-  late PlayingStyle _style = widget.initialStyle;
+  late TeamTactics _tactics = widget.initialTactics;
   late int _mentalityScale = mentalityToScale(widget.initialMentality);
 
   /// The last mentality handed to the owner — drags that land back on
@@ -401,94 +402,90 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
   @override
   Widget build(BuildContext context) {
     final mentality = mentalityFromScale(_mentalityScale);
+    // The three instruction sections plus the mentality scale can grow
+    // past the viewport (phases 1-3 add controls), so the sheet scrolls
+    // inside a height cap instead of overflowing.
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: FcmColors.bronze.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(3),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: FcmColors.bronze.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'TACTIC OPTIONS',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: FcmColors.gold,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
+              const SizedBox(height: 10),
+              const Text(
+                'TACTIC OPTIONS',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: FcmColors.gold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                ),
               ),
-            ),
-            const SizedBox(height: 14),
-            _labeledRow(
-              label: 'PLAYING STYLE',
-              child: FcmDropdown<PlayingStyle>(
-                icon: Icons.directions_run_rounded,
-                items: [
-                  for (final s in PlayingStyle.values)
-                    FcmDropdownItem(
-                      value: s,
-                      label: s.displayName,
-                      subtitle: s.effectSummary,
-                    ),
-                ],
-                selected: _style,
-                onChanged: (v) => setState(() {
-                  _style = v;
-                  widget.onStyle(v);
+              const SizedBox(height: 14),
+              TacticsGroupScaffold(
+                tactics: _tactics,
+                onChanged: (t) => setState(() {
+                  _tactics = t;
+                  widget.onTactics(t);
                 }),
               ),
-            ),
-            const SizedBox(height: 12),
-            // Mentality as a 0–100 scale: Very Defensive at 0, Very
-            // Attacking at 100, Balanced dead centre — the marker's
-            // label names the step it rides on, and the effect summary
-            // under the track updates as steps are crossed (GDD 10.3:
-            // effects must be visible).
-            _labeledRow(
-              label: 'MENTALITY',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  FcmScaleSlider(
-                    value: _mentalityScale,
-                    valueLabel: (v) => mentalityFromScale(v).displayName,
-                    minLabel: Mentality.veryDefensive.displayName,
-                    maxLabel: Mentality.veryAttacking.displayName,
-                    semanticsLabel: 'Mentality',
-                    onChanged: (v) => setState(() => _mentalityScale = v),
-                    onChangeEnd: _commitMentality,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    mentality.effectSummary,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: FcmColors.gold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+              const SizedBox(height: 12),
+              // Mentality as a 0–100 scale: Very Defensive at 0, Very
+              // Attacking at 100, Balanced dead centre — the marker's
+              // label names the step it rides on, and the effect summary
+              // under the track updates as steps are crossed (GDD 10.3:
+              // effects must be visible).
+              _labeledRow(
+                label: 'MENTALITY',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FcmScaleSlider(
+                      value: _mentalityScale,
+                      valueLabel: (v) => mentalityFromScale(v).displayName,
+                      minLabel: Mentality.veryDefensive.displayName,
+                      maxLabel: Mentality.veryAttacking.displayName,
+                      semanticsLabel: 'Mentality',
+                      onChanged: (v) => setState(() => _mentalityScale = v),
+                      onChangeEnd: _commitMentality,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    Text(
+                      mentality.effectSummary,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: FcmColors.gold,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            FcmButton(
-              icon: Icons.check_rounded,
-              label: 'DONE',
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
+              const SizedBox(height: 16),
+              FcmButton(
+                icon: Icons.check_rounded,
+                label: 'DONE',
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
         ),
       ),
     );

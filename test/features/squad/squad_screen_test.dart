@@ -98,7 +98,8 @@ void main() {
     expect(find.byType(SquadPitch), findsOneWidget);
     expect(find.text('4-3-3'), findsWidgets);
     expect(find.text('TEAM RATING'), findsOneWidget);
-    expect(find.text('TACTICS'), findsOneWidget);
+    // The setup label and the control card's TACTICS button.
+    expect(find.text('TACTICS'), findsNWidgets(2));
 
     // Bench and reserves stay visible even with nothing assigned: full
     // quota of ghost placeholder cards — 7 bench slots, 5 reserve slots.

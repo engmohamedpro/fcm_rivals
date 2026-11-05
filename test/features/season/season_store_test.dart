@@ -137,7 +137,7 @@ void main() {
         await store.startSeason(division: 1);
         final clubBefore = await collection.getClub();
         final savedFormation = clubBefore!.formationCode;
-        final savedStyle = clubBefore.playingStyle;
+        final savedTactics = clubBefore.tactics;
         final savedMentality = clubBefore.mentality;
 
         // The match-only selection picked on the pre-match screen (GDD
@@ -145,7 +145,7 @@ void main() {
         // defaults.
         const tactics = PreMatchTacticSelection(
           formationCode: '5-3-2',
-          style: PlayingStyle.counterAttack,
+          tactics: TeamTactics(),
           mentality: Mentality.attacking,
         );
         final session = await store.startNextFixture(
@@ -158,7 +158,7 @@ void main() {
         // The session's engine started from the override...
         final clubAfter = await collection.getClub();
         expect(clubAfter!.formationCode, savedFormation);
-        expect(clubAfter.playingStyle, savedStyle);
+        expect(clubAfter.tactics, savedTactics);
         expect(clubAfter.mentality, savedMentality);
         // ...and the persisted squad assignment is still the saved one.
         final squad = await collection.getSquad();

@@ -98,7 +98,7 @@ class MatchSession {
         teamId: -1,
         teamName: opponentName,
         formationCode: '4-3-3',
-        style: PlayingStyle.balanced,
+        tactics: const TeamTactics(),
         mentality: Mentality.balanced,
         starters: opponent,
         bench: const [],
@@ -126,9 +126,9 @@ class MatchSession {
   /// statistics/ratings carry the real club ids. [preMatchTalk] applies
   /// from kick-off (GDD 15.1). [tactics] carries the MATCH-ONLY setup
   /// chosen on the pre-match screen (GDD 10.4): the engine's formation,
-  /// style and mentality come from it instead of the club's saved
-  /// defaults, and when the formation differs the starting XI is re-picked
-  /// in memory — nothing is persisted.
+  /// custom tactics and mentality come from it instead of the club's
+  /// saved defaults, and when the formation differs the starting XI is
+  /// re-picked in memory — nothing is persisted.
   static Future<MatchSession> createAgainstClub({
     required CollectionStore store,
     required int seed,
@@ -141,10 +141,9 @@ class MatchSession {
     MatchEngineConfig config = defaultMatchEngineConfig,
   }) async {
     final inputs = await _userTeamInputs(store, tactics: tactics);
-    final style = PlayingStyle.values.firstWhere(
-      (s) => s.name == opponentClub.playingStyle,
-      orElse: () => PlayingStyle.balanced,
-    );
+    // The opponent club's persisted tactics payload: legacy values (the
+    // pre-v11 style names) load as the default setup.
+    final opponentTactics = tacticsFromDbPayload(opponentClub.tactics);
     final mentality = Mentality.values.firstWhere(
       (m) => m.name == opponentClub.mentality,
       orElse: () => Mentality.balanced,
@@ -153,7 +152,7 @@ class MatchSession {
       teamId: opponentClub.id,
       teamName: opponentClub.name,
       formationCode: opponentClub.formationCode,
-      style: style,
+      tactics: opponentTactics,
       mentality: mentality,
       starters: opponentStarters,
       bench: opponentBench,
@@ -187,9 +186,9 @@ class MatchSession {
 
   /// The user's engine input + club row, shared by both factories.
   /// [tactics] overrides the club's saved setup for this match only: its
-  /// style and mentality replace the club's, and a different formation
-  /// re-picks the whole squad in memory (same Auto Pick rules as the
-  /// Team tab) so the exact shape the user previewed kicks off.
+  /// custom tactics and mentality replace the club's, and a different
+  /// formation re-picks the whole squad in memory (same Auto Pick rules
+  /// as the Team tab) so the exact shape the user previewed kicks off.
   ///
   /// Campus training facilities (GDD 3.5) add their small permanent
   /// attribute fractions on top of every player's card values here —
@@ -205,12 +204,8 @@ class MatchSession {
     final campus = await store.getCampus();
     final fractions = campus.attributeFractions;
     final formationCode = tactics?.formationCode ?? club.formationCode;
-    final style =
-        tactics?.style ??
-        PlayingStyle.values.firstWhere(
-          (s) => s.name == club.playingStyle,
-          orElse: () => PlayingStyle.balanced,
-        );
+    final teamTactics =
+        tactics?.tactics ?? tacticsFromDbPayload(club.tactics);
     final mentality =
         tactics?.mentality ??
         Mentality.values.firstWhere(
@@ -255,7 +250,7 @@ class MatchSession {
         teamId: club.id,
         teamName: club.name,
         formationCode: formationCode,
-        style: style,
+        tactics: teamTactics,
         mentality: mentality,
         starters: starters,
         bench: bench,

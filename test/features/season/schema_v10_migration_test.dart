@@ -65,6 +65,26 @@ void main() {
         "'Legacy Star'",
       );
     }
+    // Clubs back to the pre-v11 shape: playing_style text column, no
+    // tactics payload — the v11 step (played_style → tactics JSON)
+    // must run against the real legacy column set.
+    await db.customStatement(
+      'CREATE TABLE clubs_v10 (id INTEGER PRIMARY KEY AUTOINCREMENT, '
+      'name TEXT NOT NULL, manager_name TEXT NOT NULL, '
+      'crest_index INTEGER NOT NULL DEFAULT 0, '
+      'formation_code TEXT NOT NULL DEFAULT \'4-3-3\', '
+      'playing_style TEXT NOT NULL DEFAULT \'balanced\', '
+      'mentality TEXT NOT NULL DEFAULT \'balanced\', '
+      'coins INTEGER NOT NULL, is_user INTEGER NOT NULL DEFAULT 1, '
+      'created_at INTEGER NOT NULL)',
+    );
+    await db.customStatement(
+      "INSERT INTO clubs_v10 (name, manager_name, playing_style, coins, "
+      "created_at) VALUES ('Legacy FC', 'Old Manager', 'lowBlock', 500, "
+      "1700000000000)",
+    );
+    await db.customStatement('DROP TABLE clubs');
+    await db.customStatement('ALTER TABLE clubs_v10 RENAME TO clubs');
     await db.customStatement('PRAGMA user_version = $version');
     await db.close();
     return file;
@@ -106,6 +126,13 @@ void main() {
     expect((await columnsOf(db, 'ai_players')).contains('real_player_id'),
         isTrue);
     expect((await columnsOf(db, 'user_settings')).contains('locale'), isTrue);
+    // The v11 step swapped the clubs style column for the tactics
+    // payload — the legacy row survives it.
+    final clubColumns = await columnsOf(db, 'clubs');
+    expect(clubColumns.contains('tactics'), isTrue);
+    expect(clubColumns.contains('playing_style'), isFalse);
+    final clubRows = await db.select(db.clubs).get();
+    expect(clubRows.single.name, 'Legacy FC');
 
     // The columns accept values for newly written rows.
     await db.customStatement(
@@ -150,9 +177,11 @@ void main() {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
-    expect(db.schemaVersion, 10);
+    expect(db.schemaVersion, 11);
     expect((await columnsOf(db, 'ai_players')).contains('real_player_id'),
         isTrue);
     expect((await columnsOf(db, 'user_settings')).contains('locale'), isTrue);
+    expect((await columnsOf(db, 'clubs')).contains('tactics'), isTrue);
+    expect((await columnsOf(db, 'clubs')).contains('playing_style'), isFalse);
   });
 }

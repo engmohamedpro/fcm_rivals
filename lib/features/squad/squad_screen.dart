@@ -6,7 +6,7 @@ import '../../l10n/l10n_context.dart';
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
-import '../../features/match/tactics.dart';
+import '../match/tactics.dart';
 import 'formations.dart';
 import 'player_card_reveal.dart';
 import 'squad_drag.dart' show SquadSwapping;
@@ -59,10 +59,7 @@ class SquadScreen extends ConsumerWidget {
           Formation.startingXiSize + Formation.benchSize,
           Formation.squadSize,
         );
-        final style = PlayingStyle.values.firstWhere(
-          (s) => s.name == club?.playingStyle,
-          orElse: () => PlayingStyle.balanced,
-        );
+        final tactics = tacticsFromDbPayload(club?.tactics);
         final mentality = Mentality.values.firstWhere(
           (m) => m.name == club?.mentality,
           orElse: () => Mentality.balanced,
@@ -90,14 +87,13 @@ class SquadScreen extends ConsumerWidget {
               ),
             TacticsSetupView(
               formationCode: club?.formationCode ?? '4-3-3',
-              style: style,
+              tactics: tactics,
               mentality: mentality,
               xi: xi,
               bench: bench,
               reserves: reserves,
               onFormation: (code) => _changeFormation(context, ref, code),
-              onStyle: (s) =>
-                  _changeTactics(context, ref, playingStyle: s.name),
+              onTactics: (t) => _changeTactics(context, ref, tactics: t),
               onMentality: (m) =>
                   _changeTactics(context, ref, mentality: m.name),
               onAutoPick: () => _autoPick(context, ref),
@@ -175,15 +171,15 @@ class SquadScreen extends ConsumerWidget {
   }
 
   /// Persists the club's tactical setup (GDD 10.2/10.3) — used by the
-  /// playing-style and mentality dropdowns on this tab.
+  /// custom-tactics sheet and the mentality scale on this tab.
   Future<void> _changeTactics(
     BuildContext context,
     WidgetRef ref, {
-    String? playingStyle,
+    TeamTactics? tactics,
     String? mentality,
   }) async {
     final store = await ref.read(collectionStoreProvider.future);
-    await store.changeTactics(playingStyle: playingStyle, mentality: mentality);
+    await store.changeTactics(tactics: tactics, mentality: mentality);
     ref.invalidate(squadProvider);
   }
 
