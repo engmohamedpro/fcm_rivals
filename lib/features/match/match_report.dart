@@ -49,6 +49,7 @@ class CommentaryLine {
     required this.importance,
     this.kind = CommentaryKind.none,
     this.detail,
+    this.side,
   });
 
   final int minute;
@@ -64,6 +65,12 @@ class CommentaryLine {
   /// Secondary broadcast line: the running score after a goal
   /// ('Rivers United 1 - 0 Al Ahly').
   final String? detail;
+
+  /// The team this line is about — the side whose colours the live
+  /// moment card wears. Null on the referee's whistle moments
+  /// (kick-off, half time, full time): those belong to the match, not
+  /// to either team.
+  final MatchSide? side;
 }
 
 /// Per-team match statistics (GDD 13.2), accumulated from events.
@@ -812,6 +819,7 @@ List<CommentaryLine> generateCommentary(
               second: e.second,
               text: '${team(e)} keep the ball and look for an opening.',
               importance: 0,
+              side: e.side,
             ),
           );
         }
@@ -827,6 +835,7 @@ List<CommentaryLine> generateCommentary(
             text:
                 '${name(e.primaryPlayerId)} ${extras.join(' and ')} for ${team(e)}.',
             importance: 0,
+            side: e.side,
           ),
         );
       case MatchEventType.dispossessed:
@@ -840,6 +849,7 @@ List<CommentaryLine> generateCommentary(
             text:
                 '${name(e.primaryPlayerId)} $action against ${name(e.secondaryPlayerId)}.',
             importance: 0,
+            side: e.side,
           ),
         );
       case MatchEventType.offside:
@@ -850,6 +860,7 @@ List<CommentaryLine> generateCommentary(
             text: '${name(e.primaryPlayerId)} is caught offside.',
             importance: 0,
             kind: CommentaryKind.offside,
+            side: e.side,
           ),
         );
       case MatchEventType.foul:
@@ -867,6 +878,7 @@ List<CommentaryLine> generateCommentary(
                 '${name(e.primaryPlayerId)} brings down ${name(e.secondaryPlayerId)} $where.',
             importance: inBox ? 2 : 0,
             kind: inBox ? CommentaryKind.penalty : CommentaryKind.foul,
+            side: e.side,
           ),
         );
       case MatchEventType.penaltyAwarded:
@@ -877,6 +889,7 @@ List<CommentaryLine> generateCommentary(
             text: 'PENALTY to ${team(e)}! ${name(e.primaryPlayerId)} steps up.',
             importance: 2,
             kind: CommentaryKind.penalty,
+            side: e.side,
           ),
         );
       case MatchEventType.corner:
@@ -887,6 +900,7 @@ List<CommentaryLine> generateCommentary(
             text: 'Corner for ${team(e)}, taken by ${name(e.primaryPlayerId)}.',
             importance: 0,
             kind: CommentaryKind.corner,
+            side: e.side,
           ),
         );
       case MatchEventType.shot:
@@ -897,6 +911,7 @@ List<CommentaryLine> generateCommentary(
               second: e.second,
               text: '${name(e.primaryPlayerId)} shoots — off target.',
               importance: 0,
+              side: e.side,
             ),
           );
         } else if (e.shotOutcome == ShotOutcome.blocked) {
@@ -906,6 +921,7 @@ List<CommentaryLine> generateCommentary(
               second: e.second,
               text: '${name(e.primaryPlayerId)}\u2019s effort is blocked.',
               importance: 0,
+              side: e.side,
             ),
           );
         } else if (e.shotOutcome == ShotOutcome.saved) {
@@ -917,6 +933,7 @@ List<CommentaryLine> generateCommentary(
                   'Save! ${name(e.primaryPlayerId)} forces a stop from ${name(e.metadata['gkPlayerId'] as int?)}${e.metadata['isBigChance'] == true ? ' from a big chance' : ''}.',
               importance: 1,
               kind: CommentaryKind.save,
+              side: e.side,
             ),
           );
         }
@@ -944,6 +961,7 @@ List<CommentaryLine> generateCommentary(
             importance: 2,
             kind: CommentaryKind.goal,
             detail: '$homeTeamName $goalsHome - $goalsAway $awayTeamName',
+            side: e.side,
           ),
         );
       case MatchEventType.card:
@@ -957,6 +975,7 @@ List<CommentaryLine> generateCommentary(
                 : '${name(e.primaryPlayerId)} is booked.',
             importance: red ? 2 : 1,
             kind: red ? CommentaryKind.redCard : CommentaryKind.yellowCard,
+            side: e.side,
           ),
         );
       case MatchEventType.substitution:
@@ -968,6 +987,7 @@ List<CommentaryLine> generateCommentary(
                 'Substitution for ${team(e)}: ${name(e.secondaryPlayerId)} replaces ${name(e.primaryPlayerId)}.',
             importance: 1,
             kind: CommentaryKind.substitution,
+            side: e.side,
           ),
         );
       case MatchEventType.tacticalChange:
@@ -982,6 +1002,7 @@ List<CommentaryLine> generateCommentary(
                 : '${team(e)} change their $change to $value.',
             importance: 1,
             kind: CommentaryKind.tactical,
+            side: e.side,
           ),
         );
       case MatchEventType.liveAction:
@@ -993,6 +1014,7 @@ List<CommentaryLine> generateCommentary(
             text: '${team(e)} are told to $action.',
             importance: 1,
             kind: CommentaryKind.order,
+            side: e.side,
           ),
         );
     }

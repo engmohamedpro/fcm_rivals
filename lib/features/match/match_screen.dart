@@ -11,6 +11,7 @@ import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
 import '../../l10n/l10n_context.dart';
 import '../../l10n/pep_talk_l10n.dart';
+import 'commentary_ticker.dart';
 import 'live_match_views.dart';
 import 'match_audio.dart';
 import 'match_engine.dart';
@@ -25,8 +26,8 @@ import 'tactics.dart';
 typedef MatchFullTimeCallback = Future<void> Function(MatchReportResult report);
 
 /// Live match screen (GDD 13, GDD 16): minute-by-minute simulation with
-/// the momentum bar, commentary feed, live tactical changes and the
-/// post-match report with the pep talk choice (GDD 11.6).
+/// the momentum bar, the live commentary ticker, live tactical changes
+/// and the post-match report with the pep talk choice (GDD 11.6).
 ///
 /// The match plays itself: a ticker-driven clock advances one minute per
 /// [_minuteDuration] of elapsed time, multiplied by the selected speed
@@ -36,14 +37,15 @@ typedef MatchFullTimeCallback = Future<void> Function(MatchReportResult report);
 ///
 /// Layout: the compact [MatchHeader] (score + clock + controls fused
 /// into one panel), the momentum bar (per-minute spikes — home above
-/// the baseline, away below) and the commentary feed — newest at the
-/// bottom, the whole history scrolls up above it.
+/// the baseline, away below) and the commentary ticker — one moment at
+/// a time, lower-third style: the newest line replaces the last, no
+/// scrolling history (the report at full time keeps the full record).
 ///
 /// Performance: one setState per match minute (800ms at 1x, 267ms at
-/// 3x) — every row is a plain stateless widget, no per-row entrance
-/// animations or controllers (the old side-slide-in rows were the jank
-/// source at top speed), and the momentum series is recomputed from the
-/// minutes played so far, not the whole event list each time.
+/// 3x) — the ticker is one fixed-height bar (text never wraps, so a
+/// swap never re-measures), and the momentum series is recomputed from
+/// the minutes played so far, not the whole event list each time. The
+/// goal flash runs one controller that is disposed on swap.
 ///
 /// Pushed as a full-screen route over the caller (league fixtures are
 /// launched from the Season tab). The [session] arrives ready to play —
@@ -109,14 +111,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// matches without team ids; the bar then stays on its baseline.
   List<double>? _momentumSeries;
 
-  /// The user's crest colour (momentum bar user spikes). Null until the
-  /// club row loads; brand gold stands in for that blink.
+  /// The user's crest colour (momentum bar user spikes, ticker tint).
+  /// Null until the club row loads; brand gold stands in for that
+  /// blink.
   Color? _userTeamColor;
-
-  /// Auto-scroll: whether the feed should keep the newest line in view.
-  /// Turns off the moment the user scrolls up to read history and back
-  /// on when they return to the bottom.
-  bool _followLatest = true;
 
   /// Match-day sound (GDD 13): the stadium ambience loops from kick-off
   /// to full time and a cheer plays over it on every goal. Decorative —
@@ -127,10 +125,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// time at 1x; the speed multiplier divides it (800ms → 200ms at 4x).
   late final Ticker _ticker;
   static const Duration _minuteDuration = Duration(milliseconds: 800);
-
-  /// The commentary feed's scroll controller — pinned so the feed can
-  /// jump to the newest line without a lookup.
-  final ScrollController _feedScroll = ScrollController();
 
   /// Playback speed: 1, 2, 3 or 4.
   int _speed = 1;
@@ -146,11 +140,13 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   Duration _budget = Duration.zero;
   Duration _lastElapsed = Duration.zero;
 
+  /// The newest commentary moment — the ONE line the ticker shows.
+  CommentaryLine? get _latest => _lines.isEmpty ? null : _lines.last;
+
   @override
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick)..start();
-    _feedScroll.addListener(_onFeedScrolled);
     // Kick-off: the ambience starts with the first half. From there the
     // whistle events drive it — half time ends it for the break, the
     // second-half kick-off brings it back, full time ends it for good —
@@ -191,9 +187,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   @override
   void dispose() {
     _ticker.dispose();
-    _feedScroll
-      ..removeListener(_onFeedScrolled)
-      ..dispose();
     unawaited(_audio.dispose());
     // The screen went away while the recovery card was still up: unblock
     // the parked finish instead of leaving it awaiting forever.
@@ -204,23 +197,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       );
     }
     super.dispose();
-  }
-
-  /// Follow-mode: on when the feed sits at (or within a row of) the
-  /// bottom, off as soon as the user scrolls up into history.
-  void _onFeedScrolled() {
-    if (!_feedScroll.hasClients) return;
-    final pos = _feedScroll.position;
-    final atBottom = pos.pixels >= pos.maxScrollExtent - 48;
-    if (atBottom != _followLatest) _followLatest = atBottom;
-  }
-
-  /// Pins the feed to the newest line after a minute appends entries —
-  /// only while in follow mode (the user reading history keeps their
-  /// place).
-  void _jumpToLatest() {
-    if (!_followLatest || !_feedScroll.hasClients) return;
-    _feedScroll.position.jumpTo(_feedScroll.position.maxScrollExtent);
   }
 
   /// The auto-play heartbeat: converts elapsed real time × speed into
@@ -281,7 +257,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         awayTeamName: session.awayTeamName,
         keyEventsOnly: true,
       );
-      // One rebuild per minute: rows and the momentum bar update
+      // One rebuild per minute: the ticker and the momentum bar swap
       // together.
       setState(() {
         _lines.addAll(lines);
@@ -300,9 +276,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
           );
         }
       });
-      // Auto-follow: land the newest line in view after the frame
-      // measures the grown list.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLatest());
       // Every event in the minute just simulated drives its sound. Each
       // goal rings out its own cheer over the bed — home goals at the
       // home crowd's volume, away goals much quieter — and the whistle
@@ -674,11 +647,11 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               ),
                             ),
                           ],
-                          // Commentary feed / report: newest at the
-                          // bottom, the whole history scrolls up above
-                          // it. Plain forward list — rows render in
-                          // place, no entrance animation, stable keys so
-                          // minutes append cheaply.
+                          // Commentary ticker / report: ONE moment at a
+                          // time, lower-third style — the newest line
+                          // replaces the last over the open pitch, no
+                          // scrolling history (the full record stays in
+                          // the engine and the report).
                           Expanded(
                             child: _finished && _report != null
                                 ? MatchReportView(
@@ -693,7 +666,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                     onContinue: () =>
                                         Navigator.of(context).pop(),
                                   )
-                                : _lines.isEmpty
+                                : _latest == null
                                 ? Center(
                                     child: Text(
                                       _paused
@@ -708,20 +681,30 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                       ),
                                     ),
                                   )
-                                : ListView.builder(
-                                    controller: _feedScroll,
-                                    padding: const EdgeInsets.fromLTRB(
-                                      14,
-                                      6,
-                                      14,
-                                      16,
-                                    ),
-                                    itemCount: _lines.length,
-                                    itemBuilder: (context, index) =>
-                                        CommentaryRow(
-                                          key: ValueKey('line-$index'),
-                                          line: _lines[index],
+                                : Column(
+                                    children: [
+                                      // The pitch breathes between the
+                                      // panels; the ticker sits low,
+                                      // broadcast lower-third style.
+                                      const Spacer(),
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          14,
+                                          0,
+                                          14,
+                                          14,
                                         ),
+                                        child: CommentaryTicker(
+                                          line: _latest!,
+                                          homeColor: userIsHome
+                                              ? userColor
+                                              : opponentMomentumColor,
+                                          awayColor: userIsHome
+                                              ? opponentMomentumColor
+                                              : userColor,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                           ),
                         ],

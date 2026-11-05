@@ -198,6 +198,18 @@ void main() {
           isTrue,
           reason: 'detail must be a running scoreline: ${g.detail}',
         );
+        // Team attribution: the moment carries the side it is about —
+        // the live ticker tints itself from this. Goals come in order,
+        // so the i-th goal line belongs to the i-th goal event.
+        expect(g.side, isNotNull);
+        final i = feed
+            .where((l) => l.kind == CommentaryKind.goal)
+            .toList()
+            .indexOf(g);
+        final goalEvents = events
+            .where((e) => e.type == MatchEventType.goal)
+            .toList();
+        expect(g.side, goalEvents[i].side);
       }
       // And the last goal's detail matches the final score.
       if (goals.isNotEmpty) {
@@ -369,78 +381,6 @@ void main() {
       expect(find.text('ATT'), findsNothing);
       expect(find.text('SUP'), findsNothing);
       expect(find.text('DEF'), findsNothing);
-    });
-  });
-
-  group('broadcast commentary design', () {
-    testWidgets('a goal renders as an elevated GOAL card with the '
-        'scoreline badge; cards and saves get icon chips', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ListView(
-              children: const [
-                CommentaryRow(
-                  line: CommentaryLine(
-                    minute: 1,
-                    second: 0,
-                    text: 'Kick-off! Home vs Away.',
-                    importance: 1,
-                    kind: CommentaryKind.kickoff,
-                  ),
-                ),
-                CommentaryRow(
-                  line: CommentaryLine(
-                    minute: 23,
-                    second: 10,
-                    text: 'GOAL! P 9 scores for Home! Assist: P 7.',
-                    importance: 2,
-                    kind: CommentaryKind.goal,
-                    detail: 'Home 1 - 0 Away',
-                  ),
-                ),
-                CommentaryRow(
-                  line: CommentaryLine(
-                    minute: 61,
-                    second: 5,
-                    text: 'P 4 is booked.',
-                    importance: 1,
-                    kind: CommentaryKind.yellowCard,
-                  ),
-                ),
-                CommentaryRow(
-                  line: CommentaryLine(
-                    minute: 72,
-                    second: 30,
-                    text: 'Save! P 10 forces a stop from P 0.',
-                    importance: 1,
-                    kind: CommentaryKind.save,
-                  ),
-                ),
-                CommentaryRow(
-                  line: CommentaryLine(
-                    minute: 90,
-                    second: 0,
-                    text: 'Full time! The referee blows the final whistle.',
-                    importance: 1,
-                    kind: CommentaryKind.fullTime,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      // The goal is a full card: GOAL header, gold football badge and
-      // the running score under the line.
-      expect(find.text('GOAL'), findsOneWidget);
-      expect(find.text('Home 1 - 0 Away'), findsOneWidget);
-      expect(find.byIcon(Icons.sports_soccer_rounded), findsOneWidget);
-      // Yellow card + save rows carry their icon chips.
-      expect(find.byIcon(Icons.style_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.sports_handball_rounded), findsOneWidget);
     });
   });
 

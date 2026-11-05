@@ -2,13 +2,13 @@
 //
 //  * the header fuses scoreboard, clock and controls into one panel —
 //    no separate controls block below it;
-//  * the MOMENTUM bar sits above the commentary feed — one vertical
-//    line per minute, home pressure above the baseline, away pressure
-//    below it (the broadcast stats rows are gone entirely);
-//  * the commentary feed is a plain forward list: the full history is
-//    scrollable upward, entries render in place — no per-row entrance
-//    animation (the jank source at 4x speed);
-//  * the feed follows the newest line until the user scrolls up.
+//  * the MOMENTUM bar sits above the commentary — one vertical line
+//    per minute, home pressure above the baseline, away pressure below
+//    it (the broadcast stats rows are gone entirely);
+//  * the commentary is ONE moment at a time, lower-third style
+//    (Football Manager style): the newest line replaces the last over
+//    the open pitch — no scrolling history, no per-row entrance
+//    animation (the jank source at 4x speed).
 //
 // The match drives itself on a real ticker, so frames are pumped in
 // bounded loops — the backdrop's 34s loop never settles.
@@ -24,6 +24,7 @@ import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
+import 'package:fcm_rivals/features/match/commentary_ticker.dart';
 import 'package:fcm_rivals/features/match/live_match_views.dart';
 import 'package:fcm_rivals/features/match/match_screen.dart';
 import 'package:fcm_rivals/features/match/match_session.dart';
@@ -127,8 +128,8 @@ void main() {
   setUp(installAudioplayersMocks);
   tearDown(clearAudioplayersMocks);
 
-  testWidgets('compact header, momentum bar and scrollable commentary '
-      'history with no entrance animations', (WidgetTester tester) async {
+  testWidgets('compact header, momentum bar and one-moment commentary '
+      'ticker with no scrolling history', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -173,21 +174,29 @@ void main() {
     expect(find.text('Corners'), findsNothing);
     expect(find.text('Match stats'), findsNothing);
 
-    // Commentary rows are plain in-place widgets — no entrance wrappers
-    // (the old side-slide-in was the jank source at speed).
-    expect(find.byType(CommentaryRow), findsWidgets);
+    // Commentary is ONE moment at a time, lower-third style — the
+    // newest line replaces the last; there is no scrolling history.
+    expect(find.byType(CommentaryTicker), findsOneWidget);
+    final first = tester
+        .widget<CommentaryTicker>(find.byType(CommentaryTicker))
+        .line;
 
-    // Play a few more minutes: the feed grows, the bar repaints in
-    // place.
-    final before = find.byType(CommentaryRow).evaluate().length;
+    // Play a few more minutes: the moment swaps, the bar repaints in
+    // place, and the ticker never multiplies.
     await _play(tester, frames: 80);
-    expect(find.byType(CommentaryRow).evaluate().length, greaterThan(before));
-
-    // The full history scrolls up: dragging the feed up keeps earlier
-    // rows alive — a forward list, not a bottom-pinned window.
-    await tester.drag(find.byType(CommentaryRow).last, const Offset(0, 300));
-    await tester.pump();
-    expect(find.byType(CommentaryRow), findsWidgets);
+    expect(find.byType(CommentaryTicker), findsOneWidget);
+    final later = tester
+        .widget<CommentaryTicker>(find.byType(CommentaryTicker))
+        .line;
+    // The moment moved on: a later minute, a different line — but the
+    // bar never stacked a second ticker.
+    expect(later.minute, greaterThan(first.minute));
+    // No scrolling surface exists any more — the pitch owns the space.
+    expect(
+      find.byType(Scrollable),
+      findsNothing,
+      reason: 'the ticker replaced the scrolling history feed',
+    );
   });
 
   testWidgets('full-time report: user team ratings tab opens first, '
@@ -456,8 +465,9 @@ void main() {
     expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
   });
 
-  testWidgets('recovery card: ad-boosted recovery after a defeat',
-      (WidgetTester tester) async {
+  testWidgets('recovery card: ad-boosted recovery after a defeat', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -485,15 +495,9 @@ void main() {
     }
 
     expect(find.textContaining('Full time:'), findsOneWidget);
-    expect(
-      find.textContaining('Ad-boosted recovery applied'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Ad-boosted recovery applied'), findsOneWidget);
     // The boost replaced the pep talk (mutually exclusive, GDD 19.4).
-    expect(
-      find.textContaining(PepTalk.restEveryone.displayName),
-      findsNothing,
-    );
+    expect(find.textContaining(PepTalk.restEveryone.displayName), findsNothing);
   });
 
   testWidgets('recovery card: scrim skip demands a second tap — the '
@@ -535,10 +539,7 @@ void main() {
 
     expect(find.textContaining('Full time:'), findsOneWidget);
     // Skipped: neither a pep talk nor the ad boost was applied.
-    expect(
-      find.textContaining(PepTalk.restEveryone.displayName),
-      findsNothing,
-    );
+    expect(find.textContaining(PepTalk.restEveryone.displayName), findsNothing);
     expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
   });
 
@@ -559,10 +560,7 @@ void main() {
     final session = await lossSession(store);
 
     await pumpMatch(tester, session, locale: const Locale('ar'));
-    await driveToRecoveryCard(
-      tester,
-      cardTitle: 'الاستشفاء بعد المباراة',
-    );
+    await driveToRecoveryCard(tester, cardTitle: 'الاستشفاء بعد المباراة');
 
     // Every option row renders localized copy, not enum displayNames.
     expect(find.text('راحة، الجميع يستحقها!'), findsOneWidget);
