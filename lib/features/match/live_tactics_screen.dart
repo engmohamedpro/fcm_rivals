@@ -137,9 +137,10 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                     style: TextStyle(color: FcmColors.textDim, fontSize: 12),
                   ),
                 ),
-              // The SAME surface as the pre-match tactics phase: control
-              // card + pitch + bench (no reserves — a live match has
-              // nobody beyond the bench).
+              // The SAME surface as the Team tab, with match-day fitness
+              // on: control card + pitch with stamina + bench (no stat
+              // rows, no reserves — a live match has nobody beyond the
+              // bench).
               TacticsSetupView(
                 formationCode: formationCode,
                 tactics: tactics,
@@ -169,7 +170,7 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                   ),
                 ),
                 showStamina: true,
-                showStats: true,
+                showStats: false,
                 showReserves: false,
                 onPlayerTap: _onPlayerTap,
               ),

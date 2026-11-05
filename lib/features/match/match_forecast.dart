@@ -131,8 +131,8 @@ class PreMatchData {
   final Mentality userMentality;
 
   /// The user's persisted squad (slot index → card) for the tactics phase:
-  /// the starting XI, bench and reserves re-rendered exactly like the
-  /// Team tab, stamina bars included (GDD 11).
+  /// the starting XI, bench and reserves rendered like the Team tab plus
+  /// match-day stamina bars (GDD 11).
   final Map<int, PlayerCard> userSquad;
 }
 

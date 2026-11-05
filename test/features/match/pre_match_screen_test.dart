@@ -13,11 +13,14 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fcm_rivals/core/ui/player_card.dart';
+import 'package:fcm_rivals/core/domain/players.dart';
+import 'package:fcm_rivals/core/ui/player_card.dart'
+    show FcmPlayerCard, FcmMiniCard;
 import 'package:fcm_rivals/features/match/match_engine.dart' show TeamTotals;
 import 'package:fcm_rivals/features/match/match_forecast.dart';
 import 'package:fcm_rivals/features/match/pre_match_screen.dart';
 import 'package:fcm_rivals/features/match/tactics.dart';
+import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
 
 MatchForecast get _forecast => MatchForecast(
   samples: 100,
@@ -74,6 +77,45 @@ PreMatchData get _data => PreMatchData(
       goalkeeping: 83,
     ),
   ],
+  // Enough owned players to fill the tactics phase's strips: a starting
+  // XI for the 4-3-3 slots, plus one bench and one reserve card.
+  userSquad: {
+    0: _card(0, 'GK Guy', Position.gk, 82),
+    1: _card(1, 'LB Lad', Position.lb, 78),
+    2: _card(2, 'CB One', Position.cb, 80),
+    3: _card(3, 'CB Two', Position.cb, 79),
+    4: _card(4, 'RB Man', Position.rb, 77),
+    5: _card(5, 'CM Ace', Position.cm, 81),
+    6: _card(6, 'CM Two', Position.cm, 76),
+    7: _card(7, 'CAM Star', Position.cam, 83),
+    8: _card(8, 'LW Wing', Position.lw, 79),
+    9: _card(9, 'ST Finisher', Position.st, 85),
+    10: _card(10, 'RW Rover', Position.rw, 78),
+    11: _card(11, 'Bench Boy', Position.st, 74),
+    12: _card(12, 'Reserve Guy', Position.cm, 70),
+  },
+);
+
+/// One owned card for the tactics-phase fixture: [slot] is the map key,
+/// [name]/[pos]/[rating] build the base player.
+PlayerCard _card(int slot, String name, Position pos, int rating) => PlayerCard(
+  ownedId: slot,
+  upgradeLevel: 0,
+  staminaPercent: 90,
+  base: BasePlayer(
+    playerId: slot,
+    name: name,
+    position: pos,
+    nationality: '',
+    marketValueEur: 0,
+    baseStats: BaseStats(
+      attack: rating - 4,
+      support: rating,
+      defence: rating - 6,
+      goalkeeping: pos == Position.gk ? rating : 10,
+      overall: rating,
+    ),
+  ),
 );
 
 /// Marker page the pre-match route is pushed on top of.
@@ -218,5 +260,35 @@ void main() {
       findsOneWidget,
       reason: 'BACK steps back one phase, not out of the matchday',
     );
+  });
+
+  testWidgets('tactics phase is the Team tab surface plus stamina', (
+    WidgetTester tester,
+  ) async {
+    await _openPreMatch(tester);
+    await tester.tap(find.text('CONTINUE'));
+    await _settle(tester, frames: 12);
+    expect(find.text('Set up for this match'), findsOneWidget);
+
+    // The full 23-man strip: XI, bench and RESERVES all render.
+    expect(find.textContaining('Reserves'), findsOneWidget);
+
+    // Every FILLED card carries the match-day fitness bar and NO stat
+    // row: the pre-match surface is the Team tab's plus stamina, nothing
+    // else. Stamina comes from the fixture (90), stats are null. Ghost
+    // cards (empty slots) are placeholders and carry neither.
+    final cards = tester
+        .widgetList<FcmMiniCard>(find.byType(FcmMiniCard))
+        .where((c) => !c.ghost)
+        .toList();
+    expect(cards, isNotEmpty, reason: 'the tactics phase shows its squad');
+    for (final c in cards) {
+      expect(c.stamina, 90, reason: 'every card carries the stamina bar');
+      expect(c.stats, isNull, reason: 'no stat rows on this surface');
+    }
+    // No stat-row labels leaked in through any other widget.
+    expect(find.text('ATT'), findsNothing);
+    expect(find.text('SUP'), findsNothing);
+    expect(find.text('DEF'), findsNothing);
   });
 }

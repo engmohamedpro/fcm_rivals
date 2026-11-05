@@ -4,9 +4,10 @@
 //     every pass, tackle and offside (FR-031 refinement).
 //  2. The chosen match speed persists forever (user_settings row,
 //     GDD 26.2): a fresh store reads back the written speed.
-//  3. The live tactics editor uses the SAME surface as the pre-match
-//     phase — control card, XI pitch with live stamina, bench — and
-//     NO reserves section (a live match has nobody beyond the bench).
+//  3. The live tactics editor uses the SAME surface as the Team tab —
+//     control card, XI pitch, bench — plus live stamina bars, and NO
+//     stat rows and NO reserves section (a live match has nobody
+//     beyond the bench).
 //  4. The half-time card is unmistakably half time: a score banner,
 //     and an Edit Tactics button that opens the live editor without
 //     dismissing the pending pep-talk choice.
@@ -18,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmDropdown;
+import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/match/live_match_views.dart';
 import 'package:fcm_rivals/features/match/live_tactics_screen.dart';
 import 'package:fcm_rivals/features/match/match_engine.dart';
@@ -251,7 +253,7 @@ void main() {
     });
   });
 
-  group('live tactics editor mirrors the pre-match surface (GDD 10.4/16)', () {
+  group('live tactics editor mirrors the Team tab surface (GDD 10.4/16)', () {
     testWidgets('shows XI pitch, bench strip and no reserves section', (
       tester,
     ) async {
@@ -349,6 +351,24 @@ void main() {
       expect(find.text('TWO'), findsOneWidget);
       // ...and the reserves section is NOT part of the live editor.
       expect(find.textContaining('Reserves'), findsNothing);
+
+      // The live editor is the Team tab surface plus match-day fitness,
+      // minus reserves: every FILLED card carries a stamina bar (the
+      // engine's live stamina for starters and bench) and NO stat row.
+      // Ghost cards (empty bench slots) are placeholders with neither.
+      final cards = tester
+          .widgetList<FcmMiniCard>(find.byType(FcmMiniCard))
+          .where((c) => !c.ghost)
+          .toList();
+      expect(cards, isNotEmpty, reason: 'the live editor shows its squad');
+      for (final c in cards) {
+        expect(c.stamina, isNotNull, reason: 'every card carries stamina');
+        expect(c.stats, isNull, reason: 'no stat rows on this surface');
+      }
+      // No stat-row labels leaked in through any other widget.
+      expect(find.text('ATT'), findsNothing);
+      expect(find.text('SUP'), findsNothing);
+      expect(find.text('DEF'), findsNothing);
     });
   });
 

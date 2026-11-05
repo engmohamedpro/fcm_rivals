@@ -140,8 +140,9 @@ List<List<int>> pitchRows(Formation formation) {
 
 /// Solves the layout of [formation] on a pitch of [width] × [height].
 /// [showStats] / [showStamina] say whether the cards carry the stat row
-/// and the stamina bar (the Team tab shows neither, the pre-match phase
-/// both) — taller cards mean fewer rows fit, so the size adapts.
+/// and the stamina bar (no surface shows stat rows today; the tactics
+/// surfaces show stamina, the Team tab shows neither) — taller cards
+/// mean fewer rows fit, so the size adapts.
 PitchLayout computePitchLayout({
   required Formation formation,
   required double width,

@@ -81,14 +81,14 @@ class TacticsSetupView extends StatelessWidget {
   /// persists a re-picked squad; pre-match hides it.
   final VoidCallback? onAutoPick;
 
-  /// Whether cards carry their stamina bar. The pre-match phase shows
-  /// match-day fitness; the Team tab hides it — the saved setup is
-  /// about identity, not current match state.
+  /// Whether cards carry their stamina bar. The pre-match and live
+  /// tactics surfaces show match-day fitness; the Team tab hides it —
+  /// the saved setup is about identity, not current match state.
   final bool showStamina;
 
   /// Whether cards carry their three-column stat row (ATT/SUP/DEF …).
-  /// The pre-match phase shows it for match-day decisions; the Tactics
-  /// tab hides it — the setup surface stays about shape, not attributes.
+  /// No surface shows it today — the setup surfaces stay about shape,
+  /// not attributes; kept for callers that opt in.
   final bool showStats;
 
   /// Whether the reserves strip renders at all. The Team tab and the

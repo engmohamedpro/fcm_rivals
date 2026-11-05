@@ -834,6 +834,9 @@ class _TacticsPhase extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
+        // Same shared surface as the Team tab, with one difference:
+        // match-day fitness. Stamina on, stat rows off, full 23-man
+        // strip including reserves.
         TacticsSetupView(
           formationCode: formationCode,
           tactics: tactics,
@@ -844,6 +847,9 @@ class _TacticsPhase extends StatelessWidget {
           onFormation: onFormation,
           onTactics: onTactics,
           onMentality: onMentality,
+          showStamina: true,
+          showStats: false,
+          showReserves: true,
         ),
       ],
     );
