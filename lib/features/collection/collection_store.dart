@@ -25,6 +25,10 @@ import '../match/stamina.dart'
     show StaminaConfig, PepTalk, recoverStamina, applyPepTalkBonus;
 import '../match/tactics.dart' show TeamTactics;
 import '../packs/pack_engine.dart';
+import 'collection_results.dart';
+import 'pack_catalog.dart';
+
+export 'collection_results.dart';
 import '../player_database/player_database.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
@@ -32,141 +36,7 @@ import 'campus_store.dart';
 import 'club_store.dart';
 import 'squad_store.dart';
 import '../upgrades/upgrade_engine.dart';
-import '../../core/ui/fcm_style.dart' show CardRarity;
 
-/// Thrown when an operation would leave persistent state inconsistent.
-class CollectionException implements Exception {
-  const CollectionException(this.message);
-  final String message;
-
-  @override
-  String toString() => 'CollectionException: $message';
-}
-
-/// The players drawn from one opened pack, in reveal order.
-class PackOpenResult {
-  const PackOpenResult({
-    required this.players,
-    this.tiers = const [],
-    this.ownedIds = const [],
-  });
-
-  /// Drawn players (one per pack).
-  final List<BasePlayer> players;
-
-  /// Market Value tier each player was drawn from (0 low, 1 mid, 2 high),
-  /// index-aligned with [players]. Drives reveal effects (GDD 5.6).
-  final List<int> tiers;
-
-  /// Owned-player row ids of the drawn players, index-aligned with
-  /// [players] — the handle for sell- straight-from-the-reveal.
-  final List<int> ownedIds;
-}
-
-/// One buyable pack in the store (GDD 5.5): category, scope, store tier
-/// and the Economy-Engine-derived coin price.
-class StorePackOffer {
-  const StorePackOffer({
-    required this.category,
-    required this.title,
-    required this.scopeValue,
-    required this.tier,
-    required this.price,
-    required this.eligibleCount,
-  });
-
-  final PackCategory category;
-
-  /// Store tier: bronze / silver / gold odds variety (GDD 5.5).
-  final PackTier tier;
-
-  /// Display title, e.g. 'ST Position Pack'.
-  final String title;
-
-  /// Scope filter value (position code), null for the global pack.
-  final String? scopeValue;
-
-  /// Coin price from `PackEngine.packPriceFor`.
-  final int price;
-
-  /// Number of eligible players in the pool.
-  final int eligibleCount;
-}
-
-/// Players sold back to the system with the total credit.
-class SaleResult {
-  const SaleResult({required this.soldOwnedIds, required this.credit});
-
-  final List<int> soldOwnedIds;
-  final int credit;
-}
-
-/// One merged duplicate outcome.
-class MergeResult {
-  const MergeResult({
-    required this.targetOwnedId,
-    required this.duplicateOwnedId,
-    required this.newUpgradeLevel,
-    required this.attributeGain,
-  });
-
-  final int targetOwnedId;
-  final int duplicateOwnedId;
-  final int newUpgradeLevel;
-  final Map<PlayerAttribute, int> attributeGain;
-}
-
-/// Removed-player compensation entry (GDD 4.8 step 6: notify with name).
-class RemovalCompensation {
-  const RemovalCompensation({
-    required this.playerName,
-    required this.upgradeLevel,
-    required this.coins,
-  });
-
-  final String playerName;
-  final int upgradeLevel;
-  final int coins;
-}
-
-/// Result of applying a dataset update to the persisted world.
-class DatasetUpdateReport {
-  const DatasetUpdateReport({
-    required this.importResult,
-    required this.compensations,
-  });
-
-  final ImportResult importResult;
-  final List<RemovalCompensation> compensations;
-
-  int get totalCompensation => compensations.fold(0, (a, c) => a + c.coins);
-}
-
-/// Result of buying one upgrade level with coins (GDD 8.4).
-class UpgradePurchaseResult {
-  const UpgradePurchaseResult({
-    required this.ownedId,
-    required this.playerName,
-    required this.upgradeLevel,
-    required this.coins,
-    required this.fullCost,
-    required this.discountApplied,
-  });
-
-  final int ownedId;
-  final String playerName;
-  final int upgradeLevel;
-
-  /// Coins actually charged (the discounted price when an ad discount
-  /// applied).
-  final int coins;
-
-  /// Undiscounted Economy Engine price.
-  final int fullCost;
-
-  /// Whether the GDD 19.3 ad discount was applied (and consumed).
-  final bool discountApplied;
-}
 
 class CollectionStore {
   CollectionStore({
@@ -564,72 +434,8 @@ class CollectionStore {
       db.packs,
     )..where((p) => p.clubId.equals(club.id) & p.opened.equals(false))).get();
   }
-
-  /// The store's buyable packs (GDD 5.5): one section per position, each
-  /// tier with its own odds of better players and its own price from the
-  /// Economy Engine's expected-contents formula (better odds cost more).
-  /// Prices are stable per dataset.
-  ///
-  /// A tier only goes on the shelf when the position's pool actually
-  /// contains players of that pack's rarity — no legendary players in
-  /// the pool, no legendary pack (the dataset's LM and RM pools hold no
-  /// 82+ players, so those sections show Rare and Epic only).
-  Future<List<StorePackOffer>> getStoreOffers() async {
-    final registry = await _ensureRegistry();
-    final pool = registry.all.toList(growable: false);
-
-    CardRarity rarityOf(PackTier tier) => switch (tier) {
-      PackTier.rare => CardRarity.rare,
-      PackTier.epic => CardRarity.epic,
-      PackTier.legendary => CardRarity.legendary,
-    };
-
-    StorePackOffer? offerFor(
-      PackCategory category,
-      String? scopeValue,
-      PackTier tier,
-      String baseTitle,
-    ) {
-      final scope = PackScope(
-        category: category,
-        position: category == PackCategory.position && scopeValue != null
-            ? Position.fromCode(scopeValue)
-            : null,
-        tier: tier,
-      );
-      final eligible = pool.where(scope.matches).toList(growable: false);
-      if (!eligible.any(
-        (p) => CardRarity.fromOverall(p.baseStats.overall) == rarityOf(tier),
-      )) {
-        return null;
-      }
-      return StorePackOffer(
-        category: category,
-        title: '${tier.label} $baseTitle',
-        scopeValue: scopeValue,
-        tier: tier,
-        price: PackEngine(
-          random: math.Random(0),
-          economy: economy,
-        ).packPriceFor(scope, eligible),
-        eligibleCount: eligible.length,
-      );
-    }
-
-    final offers = <StorePackOffer>[];
-    for (final position in Position.values) {
-      for (final tier in PackTier.values) {
-        final offer = offerFor(
-          PackCategory.position,
-          position.code,
-          tier,
-          '${position.code} Position Pack',
-        );
-        if (offer != null) offers.add(offer);
-      }
-    }
-    return offers;
-  }
+  Future<List<StorePackOffer>> getStoreOffers() async =>
+      storeOffersFor(await _ensureRegistry(), economy);
 
   /// Buys one pack with Coins (GDD 5.5: prices come from the Economy
   /// Engine's expected-contents formula — driven by the pack's [tier] —
