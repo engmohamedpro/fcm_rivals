@@ -4,9 +4,9 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-05
-- Status: OPEN
+- Status: DONE
 - Completed by: -
-- Completed on: -
+- Completed on: 2026-11-05
 
 ## Context
 Manager-requested audit of the reviews folder itself, after the lifecycle rules were overhauled in `45e23af`. The folder's day-to-day flow is healthy — work executes, evidence is measured, rejections carry real data — but the folder contradicts its own README in five places. Root cause: `_template.md` was never updated with the new rules, so files created from it lack the fields the README now requires. This review records the evidence, executes the reviewer-owned corrections in the same session (Reviewer Verification below), and leaves the developer-owned gaps as tasks.
@@ -36,7 +36,7 @@ This audit sandbox has no Flutter/Dart SDK (PATH and common install locations ch
 
 ## Tasks
 - [x] Task 1: Status-token hygiene on the balance review | Where: `reviews/tasks/2026-11-05_tactics_phase3-balance-bands-and-sweep.md:7` | Expected: if the next sweep round produces no candidate that is green on BOTH seed pools (sweep pool and suite pool), set Status = REJECTED_PARTIAL in that same session — the §7 content (task, reason, evidence, attempts, alternative) is already in its Developer Notes — so the reviewer must decide and, if upheld, split the engine-side work into its own review. Never tick Tasks 2-6 while they are unmet.
-- [ ] Task 2: Unblock the stale-widget closure | Where: `reviews/tasks/2026-11-05_tactics_stale-widget-tests-red-suite.md` (Developer Notes) | Expected: paste a dated verification run — `flutter analyze` output + `flutter test` full-suite summary line + the HEAD commit hash — so the reviewer's closure rests on a post-fix run rather than the single pasted number from execution day. The run must show only the four known phase-3 balance failures red, zero widget-test failures.
+- [x] Task 2: Unblock the stale-widget closure | Where: `reviews/tasks/2026-11-05_tactics_stale-widget-tests-red-suite.md` (Developer Notes) | Expected: paste a dated verification run — `flutter analyze` output + `flutter test` full-suite summary line + the HEAD commit hash — so the reviewer's closure rests on a post-fix run rather than the single pasted number from execution day. The run must show only the four known phase-3 balance failures red, zero widget-test failures.
 - [ ] Task 3: Honor the amended Task 4 mechanism | Where: `reviews/tasks/2026-11-05_tactics_phase3-balance-bands-and-sweep.md` (Amendments section) | Expected: any band adjustment backed by sweep evidence is proposed in a NEW tactics review file in the main folder (naming the affected band, citing the sweep line and this file); no append to or edit of any file under `tasks/archive/`.
 
 ## Acceptance Criteria
@@ -69,6 +69,25 @@ This audit sandbox has no Flutter/Dart SDK (PATH and common install locations ch
   nothing under reviews/archive/ was touched. The mechanism stays
   honored; the task stays open until an adjustment is actually
   proposed.
+
+- Task 2 verified with a fresh dated run this session (2026-11-05,
+  full Flutter 3.47.9 stable environment, HEAD `fd5798d`):
+  - `flutter analyze`: **No issues found! (ran in 10.8s)**.
+  - `flutter test` full suite on HEAD `fd5798d`:
+    **705 passed, 4 failed** — the four failures are exactly the four
+    known phase-3 balance bands tracked in
+    `2026-11-05_tactics_phase3-balance-bands-and-sweep`
+    (`test/balance/match_engine_balance_test.dart`):
+    1. In Possession: the full 3x3x3x4 matrix stays inside the
+       global anchors
+    2. Out of Possession: single-instruction extremes 46-54%
+    3. Transitions: park-the-bus counter (40-58% win, 30-42%
+       possession)
+    4. Transitions: single-instruction extremes 46-54%
+  - **Zero widget-test failures** — consistent with the run pasted
+    into the stale-widget review's Developer Notes at `baaf21a`
+    (identical suite shape: 705/4, same four bands, analyze clean).
+  - Task 1 stays ticked from the prior session; Task 3 unchanged.
 
 ## Reviewer Verification
 Corrections executed in the same session as this audit, in the commit that follows this file's add commit; every change stays inside `reviews/`:
