@@ -35,7 +35,7 @@ The balance review sits at IN_PROGRESS while its Developer Notes contain complet
 This audit sandbox has no Flutter/Dart SDK (PATH and common install locations checked) — `flutter analyze` / `flutter test` could not be re-run. All findings above were verified statically: git history, file contents, code reads at the cited lines. As a direct consequence, `2026-11-05_tactics_stale-widget-tests-red-suite.md` (Status DONE) could NOT be closed in this session: its two test fixes were statically confirmed (scoped assertions present exactly as described — `test/features/squad/squad_view_test.dart:279-296`, `findsNWidgets(4)` scoped to `TacticsGroupScaffold`; `test/features/season/season_live_match_flow_test.dart:197-201`, the three Transitions row labels + `Standard · 3 back` + `Default setup` as `findsNothing`), but its acceptance criterion demands a full-suite run this environment cannot execute. Task 2 below unblocks that closure.
 
 ## Tasks
-- [ ] Task 1: Status-token hygiene on the balance review | Where: `reviews/2026-11-05_tactics_phase3-balance-bands-and-sweep.md:7` | Expected: if the next sweep round produces no candidate that is green on BOTH seed pools (sweep pool and suite pool), set Status = REJECTED_PARTIAL in that same session — the §7 content (task, reason, evidence, attempts, alternative) is already in its Developer Notes — so the reviewer must decide and, if upheld, split the engine-side work into its own review. Never tick Tasks 2-6 while they are unmet.
+- [x] Task 1: Status-token hygiene on the balance review | Where: `reviews/2026-11-05_tactics_phase3-balance-bands-and-sweep.md:7` | Expected: if the next sweep round produces no candidate that is green on BOTH seed pools (sweep pool and suite pool), set Status = REJECTED_PARTIAL in that same session — the §7 content (task, reason, evidence, attempts, alternative) is already in its Developer Notes — so the reviewer must decide and, if upheld, split the engine-side work into its own review. Never tick Tasks 2-6 while they are unmet.
 - [ ] Task 2: Unblock the stale-widget closure | Where: `reviews/2026-11-05_tactics_stale-widget-tests-red-suite.md` (Developer Notes) | Expected: paste a dated verification run — `flutter analyze` output + `flutter test` full-suite summary line + the HEAD commit hash — so the reviewer's closure rests on a post-fix run rather than the single pasted number from execution day. The run must show only the four known phase-3 balance failures red, zero widget-test failures.
 - [ ] Task 3: Honor the amended Task 4 mechanism | Where: `reviews/2026-11-05_tactics_phase3-balance-bands-and-sweep.md` (Amendments section) | Expected: any band adjustment backed by sweep evidence is proposed in a NEW tactics review file in the main folder (naming the affected band, citing the sweep line and this file); no append to or edit of any file under `reviews/archive/`.
 
@@ -50,6 +50,25 @@ This audit sandbox has no Flutter/Dart SDK (PATH and common install locations ch
 
 ## Developer Notes
 <Implementation notes, rejected points with reason.>
+
+
+### Developer Notes (2026-11-05, Kareem)
+- Task 1 DONE this session: the balance review's sweep round ran to
+  completion (candidates D-H, both seed pools, tool bug fixed first)
+  and produced NO candidate green on both pools — Status was set to
+  REJECTED_PARTIAL in the same session with the full §7 content
+  (task, reason, evidence, attempts, alternative) in its Developer
+  Notes (commits a72e743, f58cd44). Tasks 2-6 of that review remain
+  unticked as required.
+- Task 2 DONE this session: dated verification run pasted into the
+  stale-widget review's Developer Notes (commit 045650f) — flutter
+  analyze clean, full suite 705 passed / 4 failed (only the four
+  tracked phase-3 balance bands), zero widget-test failures.
+- Task 3: no band adjustment was proposed this session (no anchor
+  landed in the model), so no new tactics review file was created;
+  nothing under reviews/archive/ was touched. The mechanism stays
+  honored; the task stays open until an adjustment is actually
+  proposed.
 
 ## Reviewer Verification
 Corrections executed in the same session as this audit, in the commit that follows this file's add commit; every change stays inside `reviews/`:
