@@ -524,9 +524,9 @@ tactics from instructions grouped into three phases of play:
   | Instruction | Options | Anchor effects (harness-tuned) |
   |---|---|---|
   | Build-up | Play Out from the Back / Mixed / Long Ball | Play Out: possession 1.06, passing 1.05, chances 0.94 · Long Ball: possession 0.95, passing 0.91, chances 1.06, stamina 0.96 |
-  | Tempo | Slow / Standard / Fast | Slow: possession 1.03, chances 0.95, stamina 0.94 · Fast: possession 0.97, passing 0.97, chances 1.05, stamina 1.04 |
+  | Tempo | Slow / Standard / Fast | Slow: possession 1.03, chances 0.95, stamina 0.94 · Fast: possession 0.97, passing 0.99, chances 1.06, stamina 1.02 |
   | Width | Narrow / Standard / Wide | Narrow: passing 1.04, chances 0.96 · Wide: passing 0.96, chances 1.03 |
-  | Final third | Work Ball into Box / Balanced / Early Crosses / Shoot on Sight | Work Ball: chances 0.92, shot quality 1.08 · Early Crosses: passing 0.96, chances 1.04, shot quality 0.95 · Shoot on Sight: chances 1.04, shot quality 0.94 |
+  | Final third | Work Ball into Box / Balanced / Early Crosses / Shoot on Sight | Work Ball: chances 0.92, shot quality 1.10 · Early Crosses: passing 0.96, chances 1.04, shot quality 0.95 · Shoot on Sight: chances 1.04, shot quality 0.94 |
 
   Shot quality is a per-side hook on the chance→goal conversion path —
   the only way Work Ball vs Shoot on Sight are tellable apart.
@@ -541,8 +541,8 @@ tactics from instructions grouped into three phases of play:
 
   | Instruction | Options | Anchor effects (harness-tuned) |
   |---|---|---|
-  | Defensive line | Deep / Standard / High | Deep: own possession 0.90, defence 1.05 · High: own possession 1.04, defence 0.94 |
-  | Pressing | Low / Mid / High | Low: own possession 0.88, defence 1.02, stamina 0.88 · High: chances 1.16, defence 1.34, stamina 1.30 (§34 anchor) — the defence lift pays for the drain; the late-match bill arrives through the fatigue term |
+  | Defensive line | Deep / Standard / High | Deep: own possession 0.92, defence 1.05 · High: own possession 1.04, defence 0.94 |
+  | Pressing | Low / Mid / High | Low: own possession 0.86, defence 1.02, stamina 0.88 · High: chances 1.16, defence 1.34, stamina 1.30 (§34 anchor) — the defence lift pays for the drain; the late-match bill arrives through the fatigue term |
   | Tackling | Clean / Balanced / Aggressive | Aggressive: defence 1.04, fouls ×1.30, yellows ×1.04 (composed with fouls ≈ +36%) · Clean: defence 0.98, fouls ×0.75, yellows ×0.70 |
   | Offside trap | Off / On | While on: conceded-chance quality ×0.94, beaten-trap events (6%) ×1.15 |
 
@@ -562,7 +562,7 @@ tactics from instructions grouped into three phases of play:
   | Instruction | Options | Anchor effects (harness-tuned) |
   |---|---|---|
   | Counter-press | Retreat to Shape / Balanced / Immediate | Retreat: chances 0.95, defence 1.03, stamina 0.92 · Immediate: chances 1.06, defence 1.09, stamina 1.14 |
-  | Attack on recovery | Patient / Balanced / Fast Counter | Patient: possession 1.05, chances 0.94 · Fast Counter: possession 0.91, chances 1.12, shot quality 1.03 |
+  | Attack on recovery | Patient / Balanced / Fast Counter | Patient: possession 1.05, chances 0.96 · Fast Counter: possession 0.91, chances 1.12, shot quality 1.03 |
   | Rest defence | Conservative (4 back) / Standard (3 back) / Aggressive (2 back) | Conservative: own chances 0.96, defence 1.04 · Aggressive: own chances 1.03, defence 0.96 |
 
   Fast Counter's chance bonus applies once per possession change (no

@@ -21,26 +21,30 @@
 ///    goals 2.4-3.2, draws 20-34%, allAttack no-collapse (W ≥ 38%);
 ///  * global anchors: default-vs-default goals 2.6-2.9, draws 22-30%.
 ///
-/// SEARCH ORDER (coordinate descent, documented per review Task 1):
-///  S1 cost damp (0.70 shipped → 0.78/0.85): moves multi-instruction
-///     stacks toward linear costs — lowers the max-possession stack
-///     (its chance bills bite harder) and lifts allAttack (its chance
-///     benefits compose stronger);
-///  S2 possession hoarding damp (1.0 shipped → 0.85/0.7/0.55): tames
-///     the playOut×slow stack only;
-///  S3 the review's named offenders: high-press stamina/defence
-///     (1.30/1.28 → 1.24-1.16), Fast Counter possession (0.85 →
-///     0.90/0.92);
-///  S4 park-the-bus compensation: deep 0.91 → 0.88, low 0.94 → 0.90
-///     (keeps the counter stack's possession share in 30-42 after S3
-///     raises the Fast Counter bill);
-///  S5 possession-anchor trims (playOut/slow) only if the matrix worst
-///     still rides the 60 boundary;
-///  S6 press-bill slope — last resort, never taken unless S1-S5 leave
-///     fails (the coefficient moved twice already; the review forbids
-///     a third move while per-instruction anchors can move instead).
+/// SEARCH ORDER (coordinate descent, anchor pass 2026-11-06 on the
+/// ALIGNED harness — the four suite reds it targets: `fast` single
+/// 45.3% W, matrix worst 61.0% W, allDefence goals 2.38, gegenpress
+/// late ratio 1.118):
+///  R1 fast single W (band 46-54): AttackTempo.fast chance
+///     1.05 → 1.06/1.07 — lifts the fast single and the fast-carrying
+///     stacks (maxDirect, allAttack, the matrix fast rows);
+///  R2 matrix worst (band ≤60): playOut possession 1.06 → 1.05 or
+///     slow possession 1.03 → 1.02 — shaves the hoarding combos while
+///     keeping each single's own W row in band;
+///  R3 allDefence goals (band ≥2.4): workBall shotQuality 1.08 →
+///     1.09/1.10 — a conversion-side lever: more finished goals
+///     without moving chance creation, so the W rows barely move;
+///  R4 gegenpress late ≥ +15%: staminaStackDamp 0.55 → 0.60/0.65 —
+///     the stacked-stamina compose factor moves the gegenpress and
+///     allAttack BILL without touching any single (singles never
+///     stack); the press-bill slope stays frozen per the review's
+///     third-move ban;
+///  R5 hpStamina 1.30 → 1.32, R4's fallback (moves the highPress
+///     single as well — only if the compose lever proves short).
 /// Each step is accepted only if the SCREEN fails count drops; the
-/// accepted candidate then gets a FULL-precision validation run.
+/// accepted candidate then gets a FULL-precision validation run on
+/// BOTH pools — the suite pool first, because on the aligned harness
+/// it IS the suite's ground truth.
 ///
 /// USAGE (the engine chain imports flutter/foundation, so this runs
 /// under the flutter test runner like tool/simulation_report_test.dart):
@@ -647,7 +651,15 @@ List<CaseRow> scoreBands({
                 finalThird: f,
               ),
             );
-            final b = runSweepBatch(n(320), _seedBase('matrix'), homeTactics: tac);
+            // Matrix N mirrors the suite block EXACTLY (300 sims/combo
+            // at seed base 25000, match_engine_balance_test.dart) so a
+            // suite-pool run reproduces the suite's matrix test
+            // seed-for-seed. The previous 320/combo spacing sampled a
+            // different distribution and scored the matrix row green
+            // while the suite ran red at 61.0% (anchor pass
+            // 2026-11-06, task
+            // `2026-11-06_tactics_phase3-anchor-pass-and-gates`).
+            final b = runSweepBatch(n(300), _seedBase('matrix'), homeTactics: tac);
             if (!_inBand(b.homeWinRate, .38, .60)) out++;
             if (b.homeWinRate > worst) {
               worst = b.homeWinRate;
@@ -710,19 +722,30 @@ void _printRows(String label, List<CaseRow> rows) {
 
 class SweepCandidate {
   /// Defaults mirror the CURRENT shipped anchors in tactics.dart
-  /// (verified 2026-11-06 against every enum constant after the
-  /// anchor pass landed: cost 0.84, stamina 0.55, possession linear,
-  /// hp 1.34/1.16/1.30, fc 0.91/1.12/1.03, deep 0.92, low 0.86,
-  /// playOut 1.06, slow 1.03, fast tempo chance 1.05, press-bill
-  /// slope 4.2). A candidate object that changes ONE knob therefore
-  /// departs from shipped on exactly that knob — the search steps
-  /// stay interpretable. (The previous revision carried attempt-3
+  /// (verified 2026-11-06 against every enum constant after the final
+  /// trims landed: cost 0.84, stamina 0.60, possession hoard 0.70 /
+  /// cede 1.0, hp 1.34/1.16/1.30, fc 0.91/1.12/1.03, deep 0.92, low
+  /// 0.86, playOut 1.06, slow 1.03, fast 1.06/0.97/0.99/1.02, work
+  /// ball shot quality 1.10, patient 1.05/0.96, press-bill slope 4.2).
+  /// A candidate object that changes ONE knob therefore departs from
+  /// shipped on exactly that knob — the search steps stay
+  /// interpretable. (The pre-alignment revision carried attempt-3
   /// values here while claiming to mirror shipped, which confounded
   /// every "single-knob" screen of that search.)
+  ///
+  /// Final-trim knobs (anchor pass 2026-11-06): `fastChance`,
+  /// `fastPoss`, `fastPassAcc` and `fastStamina` mirror the
+  /// `AttackTempo.fast` bundle, `workBallShotQ` mirrors
+  /// `FinalThirdApproach.workBallIntoBox.shotQuality` and
+  /// `patientChance` mirrors `AttackOnRecovery.patient.chance` — the
+  /// levers the final trims needed: the first group addresses the
+  /// `fast` single, the last two address the allDefence goals floor
+  /// (transitions never appear in the matrix, so `patientChance` is
+  /// isolated from the matrix worst combo) without editing the model.
   const SweepCandidate({
     this.costDamp = 0.84,
-    this.staminaDamp = 0.55,
-    this.aboveDamp = 1.0,
+    this.staminaDamp = 0.60,
+    this.aboveDamp = 0.70,
     this.belowDamp = 1.0,
     this.hpStamina = 1.30,
     this.hpDefence = 1.34,
@@ -731,10 +754,16 @@ class SweepCandidate {
     this.fcChance = 1.12,
     this.fcShot = 1.03,
     this.patientPoss = 1.05,
+    this.patientChance = 0.96,
     this.deepPoss = 0.92,
     this.lowPoss = 0.86,
     this.playOutPoss = 1.06,
     this.slowPoss = 1.03,
+    this.fastChance = 1.06,
+    this.fastPoss = 0.97,
+    this.fastPassAcc = 0.99,
+    this.fastStamina = 1.02,
+    this.workBallShotQ = 1.10,
     this.pbSlope = 4.2,
   });
 
@@ -749,10 +778,16 @@ class SweepCandidate {
   final double fcChance;
   final double fcShot;
   final double patientPoss;
+  final double patientChance;
   final double deepPoss;
   final double lowPoss;
   final double playOutPoss;
   final double slowPoss;
+  final double fastChance;
+  final double fastPoss;
+  final double fastPassAcc;
+  final double fastStamina;
+  final double workBallShotQ;
   final double pbSlope;
 
   Map<InstructionOption, TacticModifiers> _instructions() => {
@@ -768,7 +803,7 @@ class SweepCandidate {
     ),
     AttackOnRecovery.patient: TacticModifiers(
       possession: patientPoss,
-      chance: 0.94,
+      chance: patientChance,
     ),
     DefensiveLine.deep: TacticModifiers(defence: 1.05, possession: deepPoss),
     PressingIntensity.low: TacticModifiers(
@@ -785,6 +820,16 @@ class SweepCandidate {
       possession: slowPoss,
       chance: 0.95,
       stamina: 0.94,
+    ),
+    AttackTempo.fast: TacticModifiers(
+      possession: fastPoss,
+      chance: fastChance,
+      passAccuracy: fastPassAcc,
+      stamina: fastStamina,
+    ),
+    FinalThirdApproach.workBallIntoBox: TacticModifiers(
+      chance: 0.92,
+      shotQuality: workBallShotQ,
     ),
   };
 
@@ -807,8 +852,9 @@ class SweepCandidate {
   String get fingerprint =>
       'cost=$costDamp sta=$staminaDamp above=$aboveDamp below=$belowDamp '
       'hp=$hpDefence/$hpChance/$hpStamina fc=$fcPoss/$fcChance/$fcShot '
-      'pat=$patientPoss deep=$deepPoss low=$lowPoss po=$playOutPoss '
-      'slow=$slowPoss pb=$pbSlope';
+      'pat=$patientPoss/$patientChance deep=$deepPoss low=$lowPoss po=$playOutPoss '
+      'slow=$slowPoss fast=$fastChance/$fastPoss/$fastPassAcc/$fastStamina '
+      'wb=$workBallShotQ pb=$pbSlope';
 
   static SweepCandidate fromEnv() {
     double d(String k, double fallback) {
@@ -819,8 +865,8 @@ class SweepCandidate {
 
     return SweepCandidate(
       costDamp: d('SWEEP_COST', 0.84),
-      staminaDamp: d('SWEEP_STAMINA_DAMP', 0.55),
-      aboveDamp: d('SWEEP_ABOVE', 1.0),
+      staminaDamp: d('SWEEP_STAMINA_DAMP', 0.60),
+      aboveDamp: d('SWEEP_ABOVE', 0.70),
       belowDamp: d('SWEEP_BELOW', 1.0),
       hpStamina: d('SWEEP_HP_STAMINA', 1.30),
       hpDefence: d('SWEEP_HP_DEFENCE', 1.34),
@@ -829,10 +875,16 @@ class SweepCandidate {
       fcChance: d('SWEEP_FC_CHANCE', 1.12),
       fcShot: d('SWEEP_FC_SHOT', 1.03),
       patientPoss: d('SWEEP_PATIENT_POSS', 1.05),
+      patientChance: d('SWEEP_PATIENT_CHANCE', 0.96),
       deepPoss: d('SWEEP_DEEP_POSS', 0.92),
       lowPoss: d('SWEEP_LOW_POSS', 0.86),
       playOutPoss: d('SWEEP_PLAYOUT_POSS', 1.06),
       slowPoss: d('SWEEP_SLOW_POSS', 1.03),
+      fastChance: d('SWEEP_FAST_CHANCE', 1.06),
+      fastPoss: d('SWEEP_FAST_POSS', 0.97),
+      fastPassAcc: d('SWEEP_FAST_PASSACC', 0.99),
+      fastStamina: d('SWEEP_FAST_STAMINA', 1.02),
+      workBallShotQ: d('SWEEP_WORKBALL_SHOTQ', 1.10),
       pbSlope: d('SWEEP_PB_SLOPE', 4.2),
     );
   }
@@ -891,148 +943,65 @@ void main() {
 // ---------------------------------------------------------------------------
 
 void _runSearch() {
-  // Screen = full-precision bands at half N, no matrix, no globals.
+  // Screens RANK candidates (half N, bands only); ONLY a full-precision
+  // run on BOTH pools accepts one. R2's matrix row is invisible to the
+  // bands-only screen, so it gets its own half-N matrix screen.
   int screen(SweepCandidate c) {
     c.install();
-    return _fails(scoreBands(precision: 0.5, matrix: false, globals: false));
+    final rows = scoreBands(precision: 0.5, matrix: false, globals: false);
+    _printRows('SCREEN ${c.fingerprint}', rows);
+    return _fails(rows);
   }
 
+  int screenMatrix(SweepCandidate c) {
+    c.install();
+    final rows = scoreBands(precision: 0.5, matrix: true, globals: false);
+    _printRows('MATRIX SCREEN ${c.fingerprint}', rows);
+    return _fails(rows);
+  }
+
+  TuningOverrides.current = TuningOverrides.none;
   var best = const SweepCandidate();
-  best.install();
-  var bestFails = _fails(
-    scoreBands(precision: 0.5, matrix: false, globals: false),
-  );
+  var bestFails = screen(best);
   // ignore: avoid_print
-  print('S0 baseline screen: $bestFails fails');
+  print('R0 baseline screen: $bestFails fails');
 
-  // S1: cost damp (linear-ize stacked costs/benefits).
-  for (final v in [0.78, 0.85]) {
-    final c = SweepCandidate(costDamp: v);
+  // R1: the `fast` single (45.3% suite at shipped, band 46-54).
+  for (final v in [1.06, 1.07]) {
+    final c = SweepCandidate(fastChance: v);
     final f = screen(c);
     if (f < bestFails) {
       bestFails = f;
       best = c;
     }
     // ignore: avoid_print
-    print('S1 cost=$v -> $f (best $bestFails)');
+    print('R1 fastChance=$v -> $f (best $bestFails)');
   }
 
-  // S2: possession-hoarding damp.
-  for (final v in [0.85, 0.7, 0.55]) {
-    final c = SweepCandidate(costDamp: best.costDamp, aboveDamp: v);
-    final f = screen(c);
+  // R2: the matrix worst combo (61.0% suite, band <=60). Screened WITH
+  // the matrix at half N; possession trims on top of the accepted R1.
+  for (final c in [
+    SweepCandidate(fastChance: best.fastChance, playOutPoss: 1.05),
+    SweepCandidate(fastChance: best.fastChance, slowPoss: 1.02),
+  ]) {
+    final f = screenMatrix(c);
     if (f < bestFails) {
       bestFails = f;
       best = c;
     }
     // ignore: avoid_print
-    print('S2 above=$v -> $f (best $bestFails)');
-  }
-
-  // S3a: high-press stamina, then defence.
-  for (final s in [1.24, 1.20, 1.16]) {
-    final c = SweepCandidate(
-      costDamp: best.costDamp,
-      aboveDamp: best.aboveDamp,
-      hpStamina: s,
+    print(
+      'R2 po=${c.playOutPoss} slow=${c.slowPoss} -> $f (best $bestFails)',
     );
-    final f = screen(c);
-    if (f < bestFails) {
-      bestFails = f;
-      best = c;
-    }
-    // ignore: avoid_print
-    print('S3a hpStamina=$s -> $f (best $bestFails)');
-  }
-  for (final dv in [1.22, 1.16]) {
-    final c = SweepCandidate(
-      costDamp: best.costDamp,
-      aboveDamp: best.aboveDamp,
-      hpStamina: best.hpStamina,
-      hpDefence: dv,
-    );
-    final f = screen(c);
-    if (f < bestFails) {
-      bestFails = f;
-      best = c;
-    }
-    // ignore: avoid_print
-    print('S3b hpDefence=$dv -> $f (best $bestFails)');
   }
 
-  // S3c: Fast Counter possession bill.
-  for (final p in [0.90, 0.92, 0.94]) {
+  // R3: the allDefence goals floor (2.38 suite, band >=2.4).
+  for (final v in [1.09, 1.10]) {
     final c = SweepCandidate(
-      costDamp: best.costDamp,
-      aboveDamp: best.aboveDamp,
-      hpStamina: best.hpStamina,
-      hpDefence: best.hpDefence,
-      fcPoss: p,
-    );
-    final f = screen(c);
-    if (f < bestFails) {
-      bestFails = f;
-      best = c;
-    }
-    // ignore: avoid_print
-    print('S3c fcPoss=$p -> $f (best $bestFails)');
-  }
-
-  // S4: park-the-bus compensation (deep + low possession).
-  for (final (dp, lp) in [(0.88, 0.92), (0.88, 0.90), (0.86, 0.90)]) {
-    final c = SweepCandidate(
-      costDamp: best.costDamp,
-      aboveDamp: best.aboveDamp,
-      hpStamina: best.hpStamina,
-      hpDefence: best.hpDefence,
-      fcPoss: best.fcPoss,
-      deepPoss: dp,
-      lowPoss: lp,
-    );
-    final f = screen(c);
-    if (f < bestFails) {
-      bestFails = f;
-      best = c;
-    }
-    // ignore: avoid_print
-    print('S4 deep=$dp low=$lp -> $f (best $bestFails)');
-  }
-
-  // S5: possession-anchor trims if the maxPossession stack still rides.
-  for (final (po, sl) in [(1.04, 1.02), (1.04, 1.03), (1.05, 1.02)]) {
-    final c = SweepCandidate(
-      costDamp: best.costDamp,
-      aboveDamp: best.aboveDamp,
-      hpStamina: best.hpStamina,
-      hpDefence: best.hpDefence,
-      fcPoss: best.fcPoss,
-      deepPoss: best.deepPoss,
-      lowPoss: best.lowPoss,
-      playOutPoss: po,
-      slowPoss: sl,
-    );
-    final f = screen(c);
-    if (f < bestFails) {
-      bestFails = f;
-      best = c;
-    }
-    // ignore: avoid_print
-    print('S5 playOut=$po slow=$sl -> $f (best $bestFails)');
-  }
-
-  // S6: press-bill slope, only if still red.
-  for (final v in [1.8, 1.6]) {
-    final c = SweepCandidate(
-      costDamp: best.costDamp,
-      aboveDamp: best.aboveDamp,
-      hpStamina: best.hpStamina,
-      hpDefence: best.hpDefence,
-      fcPoss: best.fcPoss,
-      deepPoss: best.deepPoss,
-      lowPoss: best.lowPoss,
+      fastChance: best.fastChance,
       playOutPoss: best.playOutPoss,
       slowPoss: best.slowPoss,
-      pbSlope: v,
+      workBallShotQ: v,
     );
     final f = screen(c);
     if (f < bestFails) {
@@ -1040,7 +1009,47 @@ void _runSearch() {
       best = c;
     }
     // ignore: avoid_print
-    print('S6 pbSlope=$v -> $f (best $bestFails)');
+    print('R3 workBallShotQ=$v -> $f (best $bestFails)');
+  }
+
+  // R4: the gegenpress late bill (1.118 suite, >=1.15 required).
+  for (final v in [0.60, 0.65]) {
+    final c = SweepCandidate(
+      fastChance: best.fastChance,
+      playOutPoss: best.playOutPoss,
+      slowPoss: best.slowPoss,
+      workBallShotQ: best.workBallShotQ,
+      staminaDamp: v,
+    );
+    final f = screen(c);
+    if (f < bestFails) {
+      bestFails = f;
+      best = c;
+    }
+    // ignore: avoid_print
+    print('R4 staminaDamp=$v -> $f (best $bestFails)');
+  }
+
+  // R5 fallback: hpStamina, only if R4 left the bill red.
+  if (_fails(scoreBands(precision: 0.5, matrix: false, globals: false)) >
+      0) {
+    for (final v in [1.32]) {
+      final c = SweepCandidate(
+        fastChance: best.fastChance,
+        playOutPoss: best.playOutPoss,
+        slowPoss: best.slowPoss,
+        workBallShotQ: best.workBallShotQ,
+        staminaDamp: best.staminaDamp,
+        hpStamina: v,
+      );
+      final f = screen(c);
+      if (f < bestFails) {
+        bestFails = f;
+        best = c;
+      }
+      // ignore: avoid_print
+      print('R5 hpStamina=$v -> $f (best $bestFails)');
+    }
   }
 
   // ignore: avoid_print

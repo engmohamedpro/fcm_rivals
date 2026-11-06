@@ -71,11 +71,12 @@ class TacticModifiers {
   /// first, so extreme combos stay playable.
   ///
   /// The damp factors come from [TuningOverrides.current.compose]; the
-  /// shipped [ComposeRule] carries 0.70 (costs), 0.55 (stamina) and
-  /// 1.0 (possession, both directions — LINEAR: a low-block counter
-  /// side's identity IS ceding the ball, and hoarding instructions
-  /// stack at full strength), so this method is bit-identical to the
-  /// no-seam build in production.
+  /// shipped [ComposeRule] carries 0.84 (costs), 0.60 (stamina), 0.70
+  /// on stacked possession-HOARDING and 1.0 on stacked possession-
+  /// ceding (linear — a low-block counter side's identity IS ceding
+  /// the ball), anchor-pass tuned (task
+  /// `2026-11-06_tactics_phase3-anchor-pass-and-gates`), so this
+  /// method is bit-identical to the no-seam build in production.
   TacticModifiers operator *(TacticModifiers other) {
     final c = TuningOverrides.current.compose;
     return TacticModifiers(
@@ -102,9 +103,11 @@ class TacticModifiers {
   /// Possession composes through the same damp rule as the other axes,
   /// with its own per-direction factors so the sweep can damp the
   /// hoarding direction (>1 stacks) and the ceding direction (<1
-  /// stacks) independently (review Task 2 options a/b). Both shipped
-  /// factors are 1.0, so the compose stays LINEAR in production and
-  /// this method returns the plain product bit-identically.
+  /// stacks) independently (review Task 2 options a/b). The ceding
+  /// factor ships 1.0 (linear), the hoarding factor 0.70 (anchor pass
+  /// 2026-11-06, task `2026-11-06_tactics_phase3-anchor-pass-and-gates`:
+  /// the lever that pulled the playOut×slow matrix combos off the 60%
+  /// ceiling) — see [ComposeRule.possessionStackDampAbove].
   static double _dampedPossession(double a, double b, ComposeRule c) {
     final product = a * b;
     if ((a - 1) * (b - 1) <= 0) return product;
@@ -172,18 +175,27 @@ abstract interface class InstructionOption {
 /// `2026-11-06_tactics_phase3-anchor-pass-and-gates` — mechanism
 /// guard cited per the `2026-11-05_reviews_lifecycle-compliance-audit`
 /// Task 3 amendment). The shipped rule: cost axes damp stacked excess
-/// at 0.84, stamina at 0.55, possession composes LINEARLY (both
-/// directions at 1.0). Cost-damp sweep line (per-group seeds, both
-/// pools): 0.70 shipped -> allAttack no-collapse 32.9% (red, band
-/// >=38); 0.82 -> 35.4 with gegenpress late 111% (red); 0.84 ->
-/// allAttack 40.5% green with late goals 117% green, matrix worst
-/// 57.8 (0 combos out) once hpDefence 1.34/hpChance 1.16 landed —
-/// 0.84 is the probe that held all three families on both pools.
+/// at 0.84, stamina at 0.60, possession hoarding at 0.70 and ceding
+/// at 1.0 (linear). Sweep lines (aligned harness — the tool's matrix
+/// block re-mirrored the suite's 300/combo; per-group seeds, both
+/// pools):
+///  * cost damp 0.70 -> allAttack no-collapse 32.9% (red, band >=38);
+///    0.84 -> allAttack 40.5% green with matrix worst 57.8 once
+///    hpDefence 1.34/hpChance 1.16 landed (phase-3 landing line);
+///  * stamina damp 0.55 -> gegenpress late goals 112% (red, >=1.15
+///    required) on the suite pool; 0.60 -> 122% green with gegenpress
+///    W 49.6 (<=58), stamina@75 69.7 < 76.4 and allAttack no-collapse
+///    42.3 (>=38) — the singles never stack, so the lever moves the
+///    stacked bills and no single row;
+///  * possession hoard damp 1.0 -> matrix worst (playOut+slow+wide+
+///    workBall) 61.0% W (red, 1 combo out of 38-60); 0.70 -> 59.3%
+///    (0 out) — the damp reads only stacked HOARDING pairs, so every
+///    single and every ceding stack is untouched.
 class ComposeRule {
   const ComposeRule({
     this.costStackDamp = 0.84,
-    this.staminaStackDamp = 0.55,
-    this.possessionStackDampAbove = 1.0,
+    this.staminaStackDamp = 0.60,
+    this.possessionStackDampAbove = 0.70,
     this.possessionStackDampBelow = 1.0,
   });
 
@@ -194,15 +206,21 @@ class ComposeRule {
   /// (attack/defence/chance/passAccuracy/shotQuality).
   final double costStackDamp;
 
-  /// Damp on stacked stamina costs (the gegenpress bill).
+  /// Damp on stacked stamina costs (the gegenpress bill). Anchor pass
+  /// 2026-11-06: 0.55 -> 0.60 (sweep line above) — the surgical fix
+  /// for the gegenpress late-goals band while the press-bill slope
+  /// stays frozen (the review's third-move ban).
   final double staminaStackDamp;
 
   /// Damp on stacked possession-HOARDING pushes (both factors > 1).
-  /// 1.0 = linear, the shipped rule.
+  /// Anchor pass 2026-11-06: 1.0 -> 0.70 (sweep line above) — the
+  /// possession-hoarding matrix combos had stacked at full strength
+  /// and rode over the 60% ceiling.
   final double possessionStackDampAbove;
 
   /// Damp on stacked possession-CEDING pushes (both factors < 1).
-  /// 1.0 = linear, the shipped rule.
+  /// 1.0 = linear, the shipped rule: a low-block side's ceded share
+  /// is its identity and stacks at full strength.
   final double possessionStackDampBelow;
 }
 
@@ -238,14 +256,14 @@ class TuningOverrides {
   /// pressing side's stamina bill multiplies the late-match fatigue
   /// term. Shipped 4.2 — anchor pass 2026-11-06 (task
   /// `2026-11-06_tactics_phase3-anchor-pass-and-gates`): the decoupled
-  /// bill reads the composed bundle's excess (0.53 on the shipped
-  /// gegenpress stack, was 0.60 on the raw constant). Sweep line
-  /// (per-group seeds, both pools): slope 2.4 with hpDefence 1.28 ->
-  /// SUITE gegenpress late band 1.135 (red, >=1.15 required); raising
-  /// hpDefence to 1.34 to close highPress/allAttack pushed late to
-  /// 106-111% (red) at slopes 2.8-3.8; slope 4.2 with hpChance 1.16 ->
-  /// 117% green with W 48.6%, stamina@75 69.4 < 76.4 — the slope pays
-  /// for the defence lift's all-minute goals suppression.
+  /// bill reads the composed bundle's excess; raising hpDefence to
+  /// 1.34 to close highPress/allAttack pushed the suite-pool
+  /// gegenpress late band to 106-112% (red) at slopes 2.8-3.8, so the
+  /// slope moved 2.0 -> 4.2 to pay for the defence lift. FROZEN here:
+  /// the review bans a third slope move, and the aligned-harness
+  /// re-check (suite pool) closed the late-goals band through
+  /// [ComposeRule.staminaStackDamp] 0.55 -> 0.60 (112% -> 122%) with
+  /// the slope untouched.
   final double pressBillSlope;
 
   /// The instruction's effective bundle: the sweep's override for it,
@@ -423,15 +441,21 @@ enum AttackTempo implements InstructionOption {
   standard('Standard', TacticModifiers.identity),
   fast(
     'Fast',
-    // Anchor pass 2026-11-06: chance 1.03 -> 1.05 (the GDD rule-14
-    // placeholder value). Sweep line (SWEEP_MODE=baseline, both
-    // pools): `fast` single 45.6% W (red, band 46-54) before ->
-    // 46.5% W green after; no other row left its band.
+    // Final trim 2026-11-06 (anchor pass, task
+    // `2026-11-06_tactics_phase3-anchor-pass-and-gates`): chance
+    // 1.05 -> 1.06, passing 0.97 -> 0.99, stamina 1.04 -> 1.02
+    // (possession stays 0.97). Aligned-harness sweep lines (suite
+    // pool = the suite's own seeds; sweep pool disjoint): `fast`
+    // single 45.3% W (red, band 46-54) at 1.05/0.97/1.04; chance
+    // alone 1.06 moved it only to 45.4 (+0.1pp); the combined trim ->
+    // 47.3% W green, sweep pool 47.4% green. Stack rows held:
+    // maxDirect 45.5/47.8, allAttack no-collapse 42.3/43.7 (band
+    // >=38), corners allAttack goals 2.65/2.60 (<=3.2).
     TacticModifiers(
       possession: 0.97,
-      chance: 1.05,
-      passAccuracy: 0.97,
-      stamina: 1.04,
+      chance: 1.06,
+      passAccuracy: 0.99,
+      stamina: 1.02,
     ),
   );
 
@@ -459,7 +483,16 @@ enum AttackWidth implements InstructionOption {
 enum FinalThirdApproach implements InstructionOption {
   workBallIntoBox(
     'Work Ball into Box',
-    TacticModifiers(chance: 0.92, shotQuality: 1.08),
+    // Final trim 2026-11-06 (anchor pass): shot quality 1.08 -> 1.10.
+    // Aligned-harness sweep lines: allDefence goals 2.38 (red, band
+    // >=2.4) -> 2.41 green with the patient chance trim landed
+    // together (see AttackOnRecovery.patient); the row is the
+    // cross-phase corners floor. Matrix note: shot quality rides the
+    // playOut+slow+wide+workBall combo (+0.3pp W at 1.10) — covered
+    // by the possession-hoard damp close (ComposeRule comment);
+    // maxPossession goals 2.80/2.84 (band 2.4-3.1), `workBall` single
+    // 49.8/50.6 green on both pools.
+    TacticModifiers(chance: 0.92, shotQuality: 1.10),
   ),
   balanced('Balanced', TacticModifiers.identity),
   earlyCrosses(
@@ -596,11 +629,11 @@ class InPossessionTactics {
 /// in phase 2.
 /// Defensive line height (GDD 10.2 Out of Possession).
 enum DefensiveLine implements InstructionOption {
-  // Anchor pass 2026-11-06: deep possession 0.91 -> 0.92. Sweep
-  // line (per-group seeds, both pools): `deep` single 45.6% W (red,
-  // band 46-54) at 0.90 -> 46.3% W green at 0.92; parkTheBus
-  // possession stays green (39.5) because the low-press trim landed
-  // together (0.86).
+  // Phase-3 landing 2026-11-06: deep possession 0.91 -> 0.92. Sweep
+  // line (aligned harness, both pools): `deep` single 47.8% W suite
+  // pool / 46.3% sweep pool (green, band 46-54) at 0.92; parkTheBus
+  // possession 41.8/41.9 stays green (band 30-42) — the low-press
+  // trim landed together (0.86, see PressingIntensity.low).
   deep('Deep Line', TacticModifiers(defence: 1.05, possession: 0.92)),
   standard('Standard', TacticModifiers.identity),
   high('High Line', TacticModifiers(defence: 0.94, possession: 1.04));
@@ -616,18 +649,23 @@ enum DefensiveLine implements InstructionOption {
 /// to the §34 gegenpress cost of 1.30.
 enum PressingIntensity implements InstructionOption {
   // Anchor pass 2026-11-06 on the High Press bundle: defence
-  // 1.28 -> 1.34, chance 1.04 -> 1.16. Sweep line (per-group seeds,
-  // both pools): `highPress` single 43.7% W (red, band 46-54) at
-  // 1.28/1.04 -> 46.6% W green at 1.34/1.16; allAttack no-collapse
-  // 32.9% -> 40.5% green (the stack's press finally pays its way);
-  // gegenpress late goals held 117% green because the press-bill
-  // slope compensates (see TuningOverrides.pressBillSlope).
+  // 1.28 -> 1.34, chance 1.04 -> 1.16. Sweep line (aligned harness,
+  // both pools): `highPress` single 48.6% suite pool / 46.6% sweep
+  // pool W (green, band 46-54) at 1.34/1.16; allAttack no-collapse
+  // 42.3/43.7 green (the stack's press finally pays its way);
+  // gegenpress late goals close through the stamina-stack damp and
+  // the press-bill slope (see ComposeRule and TuningOverrides
+  // comments — the slope moved 2.0 -> 4.2 in the phase-3 landing and
+  // is frozen since).
   low(
     'Low Press',
-    // Anchor pass 2026-11-06: possession 0.94 -> 0.88. Sweep line
-    // (both pools): parkTheBus possession 43.0 (red, band 30-42) at
-    // 0.92 -> 41.9 green at 0.88; `lowPress` single stays green
-    // (48.5-50.0% W, band 46-54) across the whole 0.88-0.92 range.
+    // Final trim 2026-11-06 (anchor pass): possession 0.94 -> 0.86.
+    // Aligned-harness sweep lines (both pools): parkTheBus possession
+    // 41.8/41.9 green (band 30-42) at 0.86 with the deep-line and
+    // fast-counter trims landed; `lowPress` single 47.9/46.5% W
+    // (band 46-54) across the landed range. (An earlier comment here
+    // recorded 0.88 while the constant carried 0.86 — the pre-alignment
+    // tool's numbers; corrected to the landed value.)
     TacticModifiers(defence: 1.02, stamina: 0.88, possession: 0.86),
   ),
   mid('Mid Press', TacticModifiers.identity),
@@ -819,15 +857,27 @@ enum CounterPress implements InstructionOption {
 
 /// What the team does with a recovered ball.
 enum AttackOnRecovery implements InstructionOption {
-  patient('Patient', TacticModifiers(possession: 1.05, chance: 0.94)),
+  patient(
+    'Patient',
+    // Final trim 2026-11-06 (anchor pass): chance 0.94 -> 0.96.
+    // Aligned-harness sweep line: allDefence goals 2.38 (red, band
+    // >=2.4) -> +0.01 alone (2.39), -> 2.41 green with the work-ball
+    // shot-quality trim landed together; transitions never enter the
+    // in-possession matrix, so the lever is isolated from the matrix
+    // worst combo. `patient` single stays green: 48.9/50.3 W (band
+    // 46-54, both pools).
+    TacticModifiers(possession: 1.05, chance: 0.96),
+  ),
   balanced('Balanced', TacticModifiers.identity),
   fast(
     'Fast Counter',
-    // Anchor pass 2026-11-06: possession 0.85 -> 0.91. Sweep line
-    // (candidate then landed baseline, both pools): `fastCounter`
-    // single 44.8% W (red, band 46-54) at 0.85 -> 49.0% W green at
-    // 0.91; parkTheBus possession 42.2 (red, band 30-42) ->
-    // 41.9 green; allAttack no-collapse 32.3% -> 38.1% green.
+    // Phase-3 landing 2026-11-06: possession 0.85 -> 0.91. Sweep line
+    // (aligned harness, both pools): `fastCounter` single 49.6%
+    // suite pool / 50.0% sweep pool W (green, band 46-54) at 0.91;
+    // parkTheBus possession 41.8/41.9 green (band 30-42); allAttack
+    // no-collapse 42.3/43.7 green (band >=38). (The pre-alignment
+    // tool carried different seeds; the 49.0 figure it printed is
+    // superseded by the aligned numbers here.)
     TacticModifiers(possession: 0.91, chance: 1.12, shotQuality: 1.03),
   );
 

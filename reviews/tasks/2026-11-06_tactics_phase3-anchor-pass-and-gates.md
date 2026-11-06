@@ -4,8 +4,8 @@
 - Type: Balance
 - Priority: Critical
 - Created: 2026-11-06
-- Status: IN_PROGRESS
-- Completed on: -
+- Status: DONE
+- Completed on: 2026-11-06
 
 ## Context
 Closing follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (SPLIT 2026-11-06, rejection upheld per §6.B). After the engine-side fatigue decoupling lands (`2026-11-06_match-engine_fatigue-decoupling`), re-run the two-pool sweep, land the final anchor set, sync GDD 10.2 and make the full suite green — the suite has been red on the same four balance bands since `0218dc7`.
@@ -22,15 +22,15 @@ Closing follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (SPLIT 
 `flutter test` on main: 4 balance-band failures (matrix, out-of-possession singles, park-the-bus possession, transitions singles). `flutter test tool/tactics_tuning_sweep.dart`: 4 fails sweep pool / 5 fails suite pool at shipped constants.
 
 ## Task
-- [ ] Land the final anchor set on the decoupled engine and close the gates | Where: `lib/features/match/tactics.dart` (anchors), `docs/fcm_rivals_GDD_SRS.md:524-535`, `test/` | Expected: two-pool sweep (grid or coordinate descent; accept a candidate ONLY if green on BOTH pools — one comment per changed anchor citing its sweep line, GDD-rule-14 style); GDD 10.2 anchor rows regenerated from the code (zero drift, tables marked "harness-tuned" like phase 2); `flutter analyze` zero issues; `flutter test` full suite ALL green; final summary line pasted in Developer Notes. Band adjustments only with sweep evidence (bands stay as written by default).
+- [x] Land the final anchor set on the decoupled engine and close the gates | Where: `lib/features/match/tactics.dart` (anchors), `docs/fcm_rivals_GDD_SRS.md:524-535`, `test/` | Expected: two-pool sweep (grid or coordinate descent; accept a candidate ONLY if green on BOTH pools — one comment per changed anchor citing its sweep line, GDD-rule-14 style); GDD 10.2 anchor rows regenerated from the code (zero drift, tables marked "harness-tuned" like phase 2); `flutter analyze` zero issues; `flutter test` full suite ALL green; final summary line pasted in Developer Notes. Band adjustments only with sweep evidence (bands stay as written by default).
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] All pinned bands green on BOTH pools: matrix 38-60% W; singles 46-54%; gegenpress ≤58% W with stamina@75' < baseline and late goals ≥ +15%; park-the-bus 40-58% W and 30-42% possession; corners no-collapse with goals 2.4-3.1; globals goals 2.6-2.9, draws 22-30%
-- [ ] GDD 10.2 anchor tables match `tactics.dart` constants exactly and are marked harness-tuned; every changed constant committed with its justifying sweep line; final suite summary line pasted in Developer Notes
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified where applicable (N/A — the diff touches engine constants, the tuning tool and one GDD doc section; no UI/l10n surface)
+- [x] No performance or application-size regression (constants and comments only; no new dependencies, no hot-path code added)
+- [x] All pinned bands green on BOTH pools: matrix 38-60% W; singles 46-54%; gegenpress ≤58% W with stamina@75' < baseline and late goals ≥ +15%; park-the-bus 40-58% W and 30-42% possession; corners no-collapse with goals 2.4-3.1; globals goals 2.6-2.9, draws 22-30%
+- [x] GDD 10.2 anchor tables match `tactics.dart` constants exactly and are marked harness-tuned; every changed constant committed with its justifying sweep line; final suite summary line pasted in Developer Notes
 
 ## Developer Notes
 - FINAL LANDING (2026-11-06). Anchor set landed on `tactics.dart`
@@ -94,6 +94,86 @@ Closing follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (SPLIT 
   trims with per-anchor sweep lines, then paste the full-suite
   summary line here. AC2 (full suite ALL green) is NOT yet met; do
   not close this task.
+- SECOND PASS (2026-11-06, aligned-harness close — the NEXT SESSION
+  plan above, executed). Entry point: the first pass's full-suite run
+  (705/4) and its sweep evidence could not both be true — the tool's
+  matrix block ran 320 sims/combo against the suite's 300, so the two
+  harnesses sampled different distributions and every un-aligned
+  "suite pool" number above is superseded.
+- SWEEP TOOL ALIGNED with the suite blocks
+  (`tool/tactics_tuning_sweep.dart`): matrix 320 -> 300/combo at seed
+  base 25000 — after the first pass's groupSeeds fix this was the
+  ONLY remaining N/seed mismatch. Proof of alignment:
+  `flutter test --dart-define=SWEEP_SEEDS_SUITE=true
+  tool/tactics_tuning_sweep.dart` (SWEEP_MODE=baseline) now
+  reproduces the suite's four reds EXACTLY, seed for seed — `fast`
+  45.3%, gegenpress late 112%, allDefence goals 2.38, matrix worst
+  61.0% (1 combo out). The tool also gained live knobs for the
+  final-trim anchors (SWEEP_FAST_CHANCE/POSS/PASSACC/STAMINA,
+  SWEEP_WORKBALL_SHOTQ, SWEEP_PATIENT_CHANCE) and its search driver
+  was re-pointed at the four current reds (R1-R5, documented in the
+  header).
+- COORDINATE DESCENT (full precision, suite pool per probe — on the
+  aligned harness that IS the suite ground truth): chance alone
+  measured +0.1pp on `fast` (45.3 -> 45.4 at 1.06) and the playOut
+  possession trim alone -0.3pp on the matrix combo (61.0 -> 60.7 at
+  1.05) — both single-axis levers were too weak, so the accepted set
+  composes one lever per red family, each surgical by construction:
+- FINAL ANCHOR SET (every change cited with its aligned sweep line at
+  the constant in `tactics.dart`; mechanism guard
+  `2026-11-05_reviews_lifecycle-compliance-audit` Task 3):
+  * `ComposeRule.staminaStackDamp` 0.55 -> 0.60: gegenpress late
+    112% (red, >=115) -> 122% suite / 128% sweep green; gegenpress W
+    49.6/48.0 (<=58); stamina@75 69.7/69.8 < baseline; allAttack
+    no-collapse 42.3/43.7 (>=38). Singles never stack, so no single
+    row moves. The press-bill slope stays FROZEN at 4.2 (the review's
+    third-move ban).
+  * `ComposeRule.possessionStackDampAbove` 1.0 -> 0.70: matrix worst
+    61.0% (1 combo out of 38-60) -> 59.3% suite / 58.0% sweep (0
+    out). The damp reads only stacked HOARDING pairs (playOut x
+    slow), so every single and every ceding stack is untouched.
+  * `AttackTempo.fast`: chance 1.05 -> 1.06, passing 0.97 -> 0.99,
+    stamina 1.04 -> 1.02 (possession 0.97 kept): `fast` single 45.3%
+    (red, 46-54) -> 47.3% suite / 47.4% sweep green; stack rows held
+    (maxDirect 45.5/47.8, allAttack no-collapse 42.3/43.7, corners
+    allAttack goals 2.65/2.60).
+  * `FinalThirdApproach.workBallIntoBox` shotQuality 1.08 -> 1.10 +
+    `AttackOnRecovery.patient` chance 0.94 -> 0.96: allDefence goals
+    2.38 (red, >=2.4) -> 2.41 suite / 2.44 sweep green. Transitions
+    never enter the in-possession matrix (isolation of the patient
+    lever); shotQuality costs the hoarding combo +0.3pp (covered by
+    the hoard damp). Singles stay green: workBall 49.8/50.6, patient
+    48.9/50.3.
+- FULL VALIDATION (SWEEP_MODE=candidate, full precision, landed
+  constants): **0 fails of 44 pinned rows on BOTH pools** — suite
+  pool AND sweep pool. Key margins: fast 47.3/47.4 (floor 46), matrix
+  worst 59.3/58.0 (ceiling 60), allDefence goals 2.41/2.44 (floor
+  2.4), gegenpress late 122%/128% (floor 115), parkTheBus possession
+  41.8/41.9 (ceiling 42), allAttack no-collapse 42.3/43.7 (floor 38),
+  maxPossession W 53.8/54.7 (ceiling 58), default goals 2.78/2.75,
+  draws 25.3/25.3.
+- GDD 10.2 anchor tables regenerated from the code (zero drift): the
+  Fast row (passing 0.99, chances 1.06, stamina 1.02), the Work Ball
+  row (shot quality 1.10) and the Patient row (chances 0.96) carry
+  the landed values; TWO PRE-EXISTING drifts from the un-aligned pass
+  also fixed (Deep row said possession 0.90 vs code 0.92; Low row
+  said 0.88 vs code 0.86). Tables remain marked harness-tuned. Stale
+  comment claims in `tactics.dart` (operator * doc said cost damp
+  0.70; low-press comment said 0.88) corrected to the landed values.
+- `flutter analyze` (whole project): No issues found!
+- FINAL SUITE SUMMARY LINE: `flutter test` ->
+  `05:29 +709: All tests passed!` — 709/709 ALL GREEN, zero failures,
+  including `engine_snapshot_test.dart` ("engine profile matches the
+  committed snapshot") and `engine_calibration_test.dart`: default-
+  vs-default tactics never touch the composed axes (the identity
+  bundle has no stacking), so the compose-rule changes are
+  bit-identical at production defaults. No test edits were needed —
+  the alignment made the existing suite pass at shipped constants.
+- Files changed: `lib/features/match/tactics.dart` (ComposeRule
+  defaults + three instruction anchors + honest comment refresh),
+  `tool/tactics_tuning_sweep.dart` (matrix alignment, new knobs,
+  search driver, candidate defaults re-mirrored to shipped),
+  `docs/fcm_rivals_GDD_SRS.md` (10.2 rows), this task file.
 
 ## Reviewer Verification
 <Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
