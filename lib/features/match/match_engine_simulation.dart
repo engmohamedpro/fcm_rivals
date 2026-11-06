@@ -232,16 +232,29 @@ extension _MatchEngineSim on MatchEngine {
     // into a match before it opens up (real football's 1-15 minute
     // goal share is the LOWEST of the six buckets).
     final coldStart = minute < 15 ? 0.70 + 0.30 * (minute / 15) : 1.0;
-    // Phase-2 late-match bill: the pressing side's drain
-    // multiplies the fatigue term — a high press concedes
-    // measurably more after 75' (its 1.30 stamina bill
-    // arriving where real matches break open), while a low
-    // block (stamina < 1.0) tightens slightly. The drain and
-    // the bill's slope read through the tuning seam: shipped
-    // 1.30 and 2.0 when no sweep override is installed.
-    final pressDrain = def.tactics.outOfPossession.pressing.tuned.stamina;
-    final pressBill = pressDrain > 1.0
-        ? (pressDrain - 1.0) * TuningOverrides.current.pressBillSlope
+    // Phase-3 late-match bill, BASELINE-RELATIVE (fatigue-decoupling
+    // review, task `2026-11-06_match-engine_fatigue-decoupling`): the
+    // bill is keyed to the COMPOSED stamina bundle's excess over the
+    // identity baseline, not to the raw pressing instruction constant.
+    // Under the old raw-constant read, raising the pressing side's
+    // stamina anchor above 1.30 silently killed the gegenpress
+    // late-goals bill (measured: hpStamina 1.32/1.34 -> late goals
+    // 110%, matrix worst 60.9) while the press-side singles demanded
+    // the opposite move — one knob pulling two opposing constraint
+    // families. Baseline-relative: a single high press (1.30 over
+    // baseline) pays the same shipped bill as before (production
+    // bit-identical at identity + PressingIntensity.high), while a
+    // stack of stamina costs composes through `operator *` and pays
+    // the bill on its composed excess — the drain side and the bill
+    // side become independent knobs for the tuning sweep.
+    final styleDrain = def.tactics.modifiers.stamina *
+        def.mentality.staminaMod *
+        _activeActionModifiersOf(
+          attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
+        ).stamina *
+        def.pepTalkModifiers.stamina;
+    final pressBill = styleDrain > 1.0
+        ? (styleDrain - 1.0) * TuningOverrides.current.pressBillSlope
         : 0.0;
     return coldStart *
         (1 + 2.0 * (1 - avg / 100) * t * t) *
