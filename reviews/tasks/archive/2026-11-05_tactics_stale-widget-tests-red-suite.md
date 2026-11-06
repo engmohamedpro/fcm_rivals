@@ -4,7 +4,7 @@
 - Priority: Critical
 - Reviewer: Coach Hady
 - Created: 2026-11-05
-- Status: DONE
+- Status: CLOSED
 - Completed by: Kareem
 - Completed on: 2026-11-05
 
@@ -73,4 +73,4 @@ Re-verification of the tactics phases ran the full suite on main (`0218dc7`): 68
     balance failures may remain red, zero widget-test failures".
 
 ## Reviewer Verification
-<Filled by reviewer before setting CLOSED.>
+Verified 2026-11-06 — CLOSED on a static + recorded-run basis. Implementation commits: `0d6dcae` (scoped assertions + README developer rule 9), `045650f` (dated verification run). Checks performed: (1) static, re-confirmed today on d0fbb88 — `test/features/squad/squad_view_test.dart:298` asserts `findsNWidgets(4)` scoped to `TacticsGroupScaffold` with the chip sources enumerated; `test/features/season/season_live_match_flow_test.dart:201` asserts the real Transitions structure with `Default setup` as `findsNothing` — both structure-based, so they survive future instruction rows; (2) two independent dated full-suite runs corroborate the criterion: HEAD `baaf21a` (2026-11-05, Developer Notes above) and HEAD `fd5798d` (2026-11-05, audit file addendum) — both `flutter analyze` clean and `flutter test` 705 passed / 4 failed with exactly the four tracked phase-3 balance bands, zero widget-test failures; (3) commits after `baaf21a` touch only `tool/` tuning scripts and review documentation — no widget or engine-behaviour changes (verified via git log). Limitation: this sandbox has no Flutter SDK, so the suite was not re-run here; closure rests on the two dated developer runs corroborated by static inspection — the strongest available verification per §6.A. All Acceptance Criteria met.
