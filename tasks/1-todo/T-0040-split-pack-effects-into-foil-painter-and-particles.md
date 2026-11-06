@@ -2,8 +2,8 @@
 id: T-0040
 title: Split pack_effects.dart into the foil painter and the particle painters
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-06
 completed:
@@ -49,5 +49,9 @@ Expected: every listed file ≤800 lines; analyzer clean; packs suite and full s
 ---
 
 ## Developer Notes
+- **Summary of changes:** Split `pack_effects.dart` (980 lines) verbatim into three family libraries — `pack_effect_palette.dart` (85: `kPackAspect`, the once-decoded brand-logo cache + `precachePackLogo`, and the silhouette geometry helpers), `foil_pack_painter.dart` (757: `FoilPackPainter` + its private helpers `_paintCardFan`/`_paintSunburst`/`_starPath`) and `pack_particles.dart` (161: `LightRaysPainter`, `Spark`, `ParticleBurstPainter`, `ShockwavePainter`) — with `pack_effects.dart` kept as a 16-line barrel so every existing consumer import (`main.dart`, `packs_screen.dart`, `pack_opening_screen*.dart`, `player_card_reveal.dart`, `pack_effects_test.dart`) works unchanged. Relocation done by a one-time line-slice script kept outside the repo with a multiset verifier proving every original code/doc line relocated exactly once; the only new content is per-file library docs and import/export lines. Three visibility renames were forced by Dart library privacy (same pattern as T-0039): `_packPath`→`packPath`, `_chamfered`→`chamfered`, `_packLogo`→`packLogo` (negative-lookahead rename kept `_packLogoRequested` private to the palette library). The palette allocation follows the measured evidence: the particle family uses nothing from the old header, and header+foil together measured ≈811 lines (>800), so the header could not ride with the foil painter — the task Context's warning was numerically correct.
+- **Files changed:** `lib/features/packs/pack_effects.dart` (now barrel), `lib/features/packs/pack_effect_palette.dart` (new), `lib/features/packs/foil_pack_painter.dart` (new), `lib/features/packs/pack_particles.dart` (new), `README.md` (new "Pack visual effects" row after the UI kit row).
+- **How I tested it:** Baseline on the unmodified tree (commit `791a312`, the same tree that passed the post-T-0039 full suite `+709: All tests passed!` exit 0 ~40 min earlier on this machine): `flutter analyze` No issues found + packs/reveal/mini-card smoke (`test/features/packs/`, `player_card_reveal_test.dart`, `mini_card_test.dart`) 53/53 passed. After the split: the `wc -l` gate lists all four files ≤800 (max 757); `flutter analyze` No issues found; the same smoke again 53/53 passed; full `flutter test` → `+709: All tests passed!` exit 0 (~5m20s) — identical test count to the baseline, zero test edits.
+- **Concerns / assumptions:** (1) `packLogo` is now a public mutable global read by `FoilPackPainter` — matches the codebase's existing pattern (`TuningOverrides.current` is a public mutable static); writing to it stays the palette library's job via `precachePackLogo`. (2) The full-suite baseline was not re-run pre-split: the tree is byte-identical to the one that passed +709 on this machine earlier in the session, so the post-split run against the same suite count is the meaningful comparison. (3) No Drift codegen involved. None blocking.
 
 ## Review Log
