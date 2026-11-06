@@ -2,11 +2,11 @@
 id: T-0030
 title: Move the season data classes out of SeasonStore
 priority: medium
-status: todo
+status: done
 attempts: 0
 depends_on: [T-0036]
 created: 2026-11-05
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-05_app-structure_split-season-models.md
 ---
 
@@ -85,3 +85,7 @@ Verified 2026-11-06 on commit `52cd716` — implementation GOOD, closure BLOCKED
 - Depends on: None
 - Follows: `2026-11-04_app-structure_remaining-oversized-files`
 - Follow-up: `2026-11-06_app-structure_finish-season-store-split`
+
+### Review 2026-11-06: CLOSED (hand-over complete)
+- Follow-up(s) T-0036 (finish-season-store-split) passed independent verification on main `3f4b86c` and are archived: `flutter analyze` clean, full suite 709/709, sweep 44/44 on both pools.
+- Closure follows the old-board §7 rule: a SPLIT task closes when its handed-over work is complete in follow-up files that are themselves closed. No executable work remains in this record shell; its acceptance-criteria lines are the historical record of the original attempt and are left as written.
