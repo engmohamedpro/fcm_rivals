@@ -4,7 +4,7 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-05
-- Status: DONE
+- Status: SPLIT
 - Completed on: 2026-11-05
 
 ## Context
@@ -25,12 +25,12 @@ Not applicable.
 - [x] Extract the result models and pack catalog from the CollectionStore facade | Where: `lib/features/collection/collection_store.dart` (1,244 lines on 2026-11-05; anchors above) | Expected: `collection_results.dart` (the seven result/exception classes) and `pack_catalog.dart` (offer building/pricing over the registry); the facade composes `ClubStore`/`SquadStore`/`CampusStore` plus the new catalog and lands ≤900 lines; schema and behaviour unchanged — store/facilities/economy suites green with zero test edits.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Resulting files ≤800 lines; the `CollectionStore` facade ≤900 lines
-- [ ] Schema unchanged; store/facilities/economy suites green with zero test edits
+- [x] Compiles with zero analyzer warnings
+- [ ] Tests added or updated; full `flutter test` suite passes — NOT EVIDENCED for this commit: no full-suite summary pasted (the Developer Notes flag it; carried into the follow-up)
+- [x] EN/AR localization complete and RTL verified where applicable (extraction only, no localization surface)
+- [x] No performance or application-size regression (pure relocation)
+- [ ] Resulting files ≤800 lines; the `CollectionStore` facade ≤900 lines — UNMET: facade still 1,049 lines (Reviewer Verification)
+- [x] Schema unchanged; store/facilities/economy suites green with zero test edits
 
 ## Developer Notes
 - Extracted from `collection_store.dart` (1,244 -> 1,051 lines):
@@ -60,12 +60,12 @@ Not applicable.
 
 
 ## Reviewer Verification
-<Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
+Verified 2026-11-06 on commit `d0fbb88` — extraction GOOD, closure BLOCKED (§6.A). Checks: (1) `git show d0fbb88 --name-only` — only the three collection files and this task file; (2) measured 2026-11-06: `collection_results.dart` 144 ✓, `pack_catalog.dart` 77 ✓, facade 1,049 ✗ against the ≤900 criterion (1,244 → 1,049; the results/catalog extraction alone could not reach the budget); (3) scoped suites reported green (34 collection+facilities, 21 economy balance) with zero test edits; (4) full-suite summary NOT pasted for this commit — the Developer Notes themselves request a reviewer re-run, which this sandbox cannot perform (no Flutter SDK); the gap is carried into the follow-up's acceptance criteria. Failure evidence: AC "facade ≤900" unmet + full-suite evidence gap. Action per §6.A: correction task `2026-11-06_app-structure_finish-collection-facade-split` created; this file → SPLIT and closes when the follow-up is CLOSED.
 
 ## Links
 - Depends on: None
 - Follows: `2026-11-04_app-structure_remaining-oversized-files`
-- Follow-up: None
+- Follow-up: `2026-11-06_app-structure_finish-collection-facade-split`
 
 ## Amendments
-<Reviewer-owned, append-only. Add dated entries correcting the task's target or mechanism; never rewrite the original task text.>
+- 2026-11-06 (reviewer, verification of the DONE claim): Status DONE → SPLIT — the results/catalog extraction is verified good, but the "facade ≤900 lines" criterion is unmet (1,049 measured) and no full-suite summary was pasted for this commit. The remaining work and the evidence gap live in `2026-11-06_app-structure_finish-collection-facade-split`; the task text above is unchanged historical record.
