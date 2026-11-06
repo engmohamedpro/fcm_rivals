@@ -4,7 +4,7 @@
 - Priority: Major
 - Reviewer: Coach Hady
 - Created: 2026-11-05
-- Status: DONE
+- Status: CLOSED
 - Completed by: -
 - Completed on: 2026-11-05
 
@@ -99,6 +99,12 @@ Corrections executed in the same session as this audit, in the commit that follo
 6. `2026-11-05_tactics_stale-widget-tests-red-suite.md`: static verification of Tasks 1-2 recorded in the Verification-debt note above; the file intentionally stays DONE pending Task 2's run. Its commit hygiene is correct (`0d6dcae` staged only the related test files, the review file and the README rule it added).
 
 Addendum 2026-11-06 (verification of the DONE claim): Tasks 1 and 2 verified — Task 1's token transition was executed and recorded (balance review is REJECTED_PARTIAL since `a72e743`, now SPLIT with the §6.B decision), and Task 2's dated run was pasted at `045650f` and independently corroborated by the fresh run at HEAD `fd5798d` in the Developer Notes above (same shape: 705/4, zero widget failures). The stale-widget file is CLOSED and archived on that basis. Two records stay open on purpose: Task 3 is a standing mechanism guard (it engages only when a band adjustment is actually proposed — the balance follow-up `2026-11-06_tactics_phase3-anchor-pass-and-gates` is the vehicle it names), and the "no archive edits after the backfill" criterion was breached once, by the documented directory-layout refactor `8695388` adjusting archive path references (recorded then; no archive file edited since — verified by grep over the log). The file therefore stays DONE rather than CLOSED until the reviewer waives that exception or Task 3 discharges.
+
+Addendum 2026-11-06 (closure decision): CLOSED on the waiver path the addendum above defines. Two records settle it:
+1. Waiver of the archive-edit exception: a full archive-path log re-check on this date shows every write under `tasks/archive/` since the backfill was record-sync, each documented — `8695388` (path-reference adjustments, recorded above), `191b804` (the stale-widget closure verification this addendum itself cites), and the three `chore(reviews): archive` git-mv renames of the split files (content untouched by definition). No unsanctioned content edit exists. The archive criterion stays unticked because the breach happened; it is waived, not denied.
+2. Task 3 status: deliberately NOT ticked — its final element (the anchor-pass landing carrying the audit citation) is not verifiable yet. The mechanism is active and honored: `2026-11-06_tactics_phase3-anchor-pass-and-gates` (IN_PROGRESS) is the new-file vehicle proposing band adjustments backed by sweep evidence, and the required audit citation was added to its Amendments (commit `792849c`, verified this session). The guard lives on in that file; its closure will confirm the citation landed with the final per-anchor sweep lines.
+
+Limitation unchanged: this is a records closure — the audit's own work (template fix, transition execution, record backfills) was completed and verified in the addenda above; no suites were re-run (no Flutter/Dart SDK in this sandbox).
 
 ## Links
 - Follows: -
