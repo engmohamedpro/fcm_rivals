@@ -44,8 +44,8 @@ This audit sandbox has no Flutter/Dart SDK (PATH and common install locations ch
 - [ ] Tests added or updated
 - [ ] EN/AR localized, RTL verified
 - [ ] No performance regression
-- [ ] Task 1 executed the next time the balance review's search stalls (token transition only, no task ticks)
-- [ ] Task 2's pasted run shows zero widget-test failures and only the four tracked balance failures
+- [x] Task 1 executed the next time the balance review's search stalls (token transition only, no task ticks)
+- [x] Task 2's pasted run shows zero widget-test failures and only the four tracked balance failures
 - [ ] No file under `tasks/archive/` is edited by anyone after this audit's backfill commit (the audit's own corrections to status token, Links and Reviewer Verification of record are the only exceptions, all documented in this file)
 
 ## Developer Notes
@@ -97,6 +97,8 @@ Corrections executed in the same session as this audit, in the commit that follo
 4. Archived tactics phases 0/1/2: Reviewer Verification backfilled, Status DONE → CLOSED. Each entry cites the closure record (commit `05346c2`), today's static re-checks, and states plainly that the suites were NOT re-run in this sandbox. Static re-checks performed: `InPossessionTactics` at `lib/features/match/tactics.dart:470` (with its four instruction enums at :381-:439), `OutOfPossessionTactics` at :676 (enums at :578-:658), `TransitionTactics` at :823, `TeamTactics` at :268; `grep -rn "PlayingStyle\|StyleModifiers" lib/ test/` returns zero matches; the legacy-style loader `tacticsFromDbPayload` and its migration test `test/features/season/schema_v11_migration_test.dart` exist; GDD 10.2's three group tables and the legacy mapping are at `docs/fcm_rivals_GDD_SRS.md:516-600`; the balance/calibration/snapshot suites are present under `test/`. §8.4 rationale: this is record synchronization to match a closure the git history already declares, not a correction of the reviewed work; any correction to the work itself still goes through a new review in the main folder.
 5. `tasks/archive/2026-11-04_app-structure_god-files-and-route-table.md`: `Follow-up:` link backfilled to `2026-11-04_app-structure_remaining-oversized-files.md`, which gained its `Follows:` field — completing the pair that the god-files verification text already names. No other archived file had an unlinked split pair (verified by grep across `tasks/archive/`).
 6. `2026-11-05_tactics_stale-widget-tests-red-suite.md`: static verification of Tasks 1-2 recorded in the Verification-debt note above; the file intentionally stays DONE pending Task 2's run. Its commit hygiene is correct (`0d6dcae` staged only the related test files, the review file and the README rule it added).
+
+Addendum 2026-11-06 (verification of the DONE claim): Tasks 1 and 2 verified — Task 1's token transition was executed and recorded (balance review is REJECTED_PARTIAL since `a72e743`, now SPLIT with the §6.B decision), and Task 2's dated run was pasted at `045650f` and independently corroborated by the fresh run at HEAD `fd5798d` in the Developer Notes above (same shape: 705/4, zero widget failures). The stale-widget file is CLOSED and archived on that basis. Two records stay open on purpose: Task 3 is a standing mechanism guard (it engages only when a band adjustment is actually proposed — the balance follow-up `2026-11-06_tactics_phase3-anchor-pass-and-gates` is the vehicle it names), and the "no archive edits after the backfill" criterion was breached once, by the documented directory-layout refactor `8695388` adjusting archive path references (recorded then; no archive file edited since — verified by grep over the log). The file therefore stays DONE rather than CLOSED until the reviewer waives that exception or Task 3 discharges.
 
 ## Links
 - Follows: -
