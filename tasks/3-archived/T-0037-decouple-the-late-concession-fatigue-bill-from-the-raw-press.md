@@ -2,11 +2,11 @@
 id: T-0037
 title: Decouple the late-concession/fatigue bill from the raw pressing constant
 priority: critical
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-06_match-engine_fatigue-decoupling.md
 ---
 
@@ -34,12 +34,12 @@ Prerequisite follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (S
 - Any change to production-default behaviour: snapshot/calibration output must stay bit-identical.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes (only the four tracked phase-3 balance bands may remain red until the anchor pass lands)
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] `engine_snapshot_test.dart` and `engine_calibration_test.dart` green with bit-identical output at production defaults
-- [ ] With the new lever exposed via `TuningOverrides`, the sweep demonstrates BOTH constraint families satisfiable on both seed pools (winning mechanism + sweep lines documented in Developer Notes); zero new fails among the 44 pinned cases at shipped constants
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes (only the four tracked phase-3 balance bands may remain red until the anchor pass lands)
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] `engine_snapshot_test.dart` and `engine_calibration_test.dart` green with bit-identical output at production defaults
+- [x] With the new lever exposed via `TuningOverrides`, the sweep demonstrates BOTH constraint families satisfiable on both seed pools (winning mechanism + sweep lines documented in Developer Notes); zero new fails among the 44 pinned cases at shipped constants
 
 ## How to Verify
 ```bash
@@ -125,3 +125,10 @@ Decision: the task stays DONE, not CLOSED. Close it in the same verification pas
 - Depends on: None
 - Follows: `2026-11-05_tactics_phase3-balance-bands-and-sweep`
 - Follow-up: None
+
+### Review 2026-11-06, attempt 1: PASS
+- Ran on main `3f4b86c` (Flutter 3.47.9 stable, fresh clone): `flutter analyze` -> `No issues found!`; `flutter test` -> `+709: All tests passed!` (full suite, zero failures).
+- Tactics sweep baseline: 44/44 pinned rows PASS on BOTH pools (`flutter test tool/tactics_tuning_sweep.dart` and `--dart-define=SWEEP_SEEDS_SUITE=true`).
+- Determinism harness `flutter test tool/simulation_report_test.dart` green.
+- Static: implementation commit `b24e163` scope clean (one method + task file). The closure blocker recorded below (fifth red band owned by the anchor pass) is resolved: the full suite is now ALL green, so this file closes in the same pass as T-0038, exactly as decided in the static verification.
+- All acceptance criteria verified against real behaviour; archived per the reviewer workflow.
