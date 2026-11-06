@@ -2,8 +2,8 @@
 id: T-0039
 title: Split tactics.dart into modifier math, phase families and team config
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-06
 completed:
@@ -52,5 +52,9 @@ Expected: every listed file ≤800 lines; analyzer reports no issues; full suite
 ---
 
 ## Developer Notes
+- **Summary of changes:** Split `tactics.dart` (1,201 lines) verbatim into five family libraries — `tactic_modifiers.dart` (282: `TacticModifiers`, `InstructionOption`, `ComposeRule`, `TuningOverrides`, `TunedInstruction`), `in_possession_tactics.dart` (227: the four in-possession enums + `InPossessionTactics`), `out_of_possession_tactics.dart` (219: `DefensiveLine`, `PressingIntensity`, `TacklingAggression`, `OffsideTrapToggles`, `OutOfPossessionTactics`), `transition_tactics.dart` (157: `CounterPress`, `AttackOnRecovery`, `RestDefence`, `TransitionTactics`) and `team_tactics.dart` (348: `TeamTactics`, `tacticsFromDbPayload`, `Mentality` + scale helpers, `LiveMatchAction`, `ActionModifiers`, `MatchPepTalk`, the pep-talk catalogs) — with `tactics.dart` kept as a 27-line barrel so all 37 existing consumer imports (lib/tool/test) work unchanged. Relocation was done by a one-time line-slice script kept outside the repo with a multiset verifier proving every original code/doc line relocated exactly once; the only new content is per-file library docs and import/export lines. One forced API delta: the JSON helper `InPossessionTactics._enumOr` became public `InPossessionTactics.enumOr` (11 occurrences) — Dart library privacy forbids calling an underscore-private static across separate libraries, and this is the minimal change preserving bit-identical behaviour. Also updated the stale README Tactics row (it still claimed "10 playing styles", removed since T-0015) to name the new module files.
+- **Files changed:** `lib/features/match/tactics.dart` (now barrel), `lib/features/match/tactic_modifiers.dart` (new), `lib/features/match/in_possession_tactics.dart` (new), `lib/features/match/out_of_possession_tactics.dart` (new), `lib/features/match/transition_tactics.dart` (new), `lib/features/match/team_tactics.dart` (new), `README.md` (Tactics row).
+- **How I tested it:** Toolchain freshly installed in this sandbox at the exact README pin (Flutter 3.47.9 stable / Dart 3.13.7). Baseline on the unmodified tree first: `flutter pub get` + `flutter analyze` (No issues found) + `flutter test` → `+709: All tests passed!` exit 0 (~5m35s). After the split: the `wc -l` gate lists all six files ≤800 (max 348); `flutter analyze` → No issues found; tactics-dependent smoke (`match_engine`, `engine_snapshot`, `engine_calibration`, `squad_view`) 53/53 passed; full `flutter test` → `+709: All tests passed!` exit 0 — identical test count to baseline, zero test edits; `flutter test tool/simulation_report_test.dart` → `+1: All tests passed!` with `REPORT_WRITTEN: simulation_report.md` (determinism gate PASS).
+- **Concerns / assumptions:** (1) The `_enumOr` → `enumOr` visibility change is the only touch on a declaration name; no test or call site outside the five split files references it. (2) The sandbox toolchain is newly installed; to rule out environment noise the full suite was run twice on the same machine (pre-split baseline and post-split) with identical +709 results. (3) No Drift codegen involved (`tactics.dart` has no schema parts), so no `build_runner` run was needed. None blocking.
 
 ## Review Log
