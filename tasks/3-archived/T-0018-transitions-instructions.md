@@ -2,11 +2,11 @@
 id: T-0018
 title: Transitions Instructions
 priority: high
-status: todo
+status: done
 attempts: 0
 depends_on: [T-0032]
 created: 2026-11-04
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-04_tactics_phase-3-transitions.md
 ---
 
@@ -112,3 +112,7 @@ Developer addendum 2026-11-05: the sweep tool is now committed and rerunnable (`
 ## Historical Links
 - Follows: -
 - Follow-up: `2026-11-05_tactics_phase3-balance-bands-and-sweep`
+
+### Review 2026-11-06: CLOSED (hand-over complete)
+- Follow-up(s) T-0032 (balance-bands chain (closed via its own follow-ups)) passed independent verification on main `3f4b86c` and are archived: `flutter analyze` clean, full suite 709/709, sweep 44/44 on both pools.
+- Closure follows the old-board §7 rule: a SPLIT task closes when its handed-over work is complete in follow-up files that are themselves closed. No executable work remains in this record shell; its acceptance-criteria lines are the historical record of the original attempt and are left as written.
