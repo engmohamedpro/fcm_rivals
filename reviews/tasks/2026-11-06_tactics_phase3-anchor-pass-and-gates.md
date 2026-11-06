@@ -4,7 +4,7 @@
 - Type: Balance
 - Priority: Critical
 - Created: 2026-11-06
-- Status: OPEN
+- Status: IN_PROGRESS
 - Completed on: -
 
 ## Context
@@ -33,7 +33,32 @@ Closing follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (SPLIT 
 - [ ] GDD 10.2 anchor tables match `tactics.dart` constants exactly and are marked harness-tuned; every changed constant committed with its justifying sweep line; final suite summary line pasted in Developer Notes
 
 ## Developer Notes
-<Implementation summary, files changed, exact test commands/results, and rejection reason/evidence if applicable. Implement this task only, create one task-specific commit, and push it before starting another task.>
+- CHECKPOINT (2026-11-06, session ended mid-task — next session starts
+  from this evidence, not from scratch).
+- Coordinate-descent search ran on the decoupled engine
+  (`b24e163`): `SWEEP_MODE=search` winner at 3 screen-fails
+  (fc=0.90/deep=0.88/low=0.90); manual refinement reached a better
+  family. Best full-precision candidates so far (sweep pool):
+  - fc=0.91 deep=0.90 low=0.88 cost=0.78 pb=2.4: only `fast` (45.6%,
+    needs +0.4) and `allAttack no-collapse` (37.9%, needs +0.1) red —
+    everything else green incl. parkTheBus possession 41.9, fastCounter
+    49.0, gegenpress late 118%, matrix 0-out.
+  - fc=0.92 deep=0.90 low=0.88 cost=0.78 pb=2.4: allAttack 38.3 GREEN
+    but parkTheBus possession 42.3 red by 0.3.
+  - cost=0.85 variant fixes allAttack (39.0) but breaks gegenpress
+    late (111%) and allDefence goals (2.38) — cost damp must stay
+    ≤0.78.
+- The `fast` single is stuck at 45.6-45.7 across every candidate —
+  its lever is NOT in the sweep candidate set (AttackTempo.fast has
+  possession 0.97/chance 1.03; only slowPoss is swept). Next session:
+  either trim fast.chance/passAccuracy anchors directly in
+  tactics.dart with a justifying sweep line, or add a fastPoss lever
+  to the tool.
+- Remaining for closure: land final anchor set in tactics.dart (with
+  per-anchor sweep-line comments), verify the winner on BOTH pools at
+  full precision, regenerate GDD 10.2 anchor tables, full suite ALL
+  green, then commit. NOT DONE YET — do not close.
+
 
 ## Reviewer Verification
 <Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
