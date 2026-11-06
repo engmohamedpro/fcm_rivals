@@ -2,9 +2,9 @@
 id: T-0021
 title: Enforce the ~800-line convention mechanically
 priority: medium
-status: blocked
+status: todo
 attempts: 1
-depends_on: [T-0025, T-0026, T-0027, T-0030, T-0028, T-0022, T-0024, T-0029, T-0023]
+depends_on: [T-0025, T-0026, T-0027, T-0030, T-0028, T-0022, T-0024, T-0029, T-0023, T-0039, T-0040, T-0041, T-0042, T-0043, T-0044, T-0045]
 created: 2026-11-05
 completed:
 # migrated from: reviews/tasks/2026-11-05_app-structure_enforce-line-budget.md
@@ -71,6 +71,14 @@ Expected: the `find`/`wc` check lists only consciously-cleared exceptions (none 
 - Migrated from `reviews/` to the `tasks/` board as `T-0021` (was `reviews/tasks/2026-11-05_app-structure_enforce-line-budget.md`, status OPEN).
 
 - 2026-11-06 (reviewer, evidence refresh): the task premise "none expected" is no longer the measured truth — `find lib -name "*.dart" ! -name "*.g.dart" -exec wc -l {} + | awk '$1>800 && $2!="total"'` on `d0fbb88` lists TWELVE files: three with open task files (pre_match_screen 1,187, live_match_views 853, match_report 1,026 — `2026-11-05_app-structure_split-pre-match-screen`, `split-live-match-views`, `split-commentary`), three with SPLIT correction follow-ups (season_store 1,167, collection_store 1,049, pack_opening_screen 892 — the `2026-11-06_app-structure_finish-*` files), and SIX uncovered by any task file (tactics.dart 1,110, pack_effects.dart 980, packs_screen.dart 901, squad_view.dart 890, season_engine.dart 846, season_screen.dart 803). Each uncovered file needs its own §1-compliant task file created after §4 investigation before work starts; note `tactics.dart` is also the subject of the pending balance chain (`2026-11-06_match-engine_fatigue-decoupling`) — sequence its split after that lands or coordinate explicitly. The enforcement criterion itself is unchanged; it simply cannot pass until the above is resolved.
+
+### 2026-11-06 — reviewer/board pass: unblock via explicit task chain
+- Responding to the developer block (attempt 1, commit `b2c0a27`): the blocker was that six over-800 files had no task files and `collection_store.dart` had no decision — both outside the developer's remit.
+- Planner pass (delegated by the repo owner per HOW_TO_WRITE_TASKS.md): created seven §-compliant split tasks measured on `b2c0a27` — T-0039 (tactics.dart 1201 → five families + barrel), T-0040 (pack_effects.dart 980 → palette/foil/particles + barrel), T-0041 (packs_screen.dart 901 → shell/grid/price), T-0042 (squad_view.dart 890 → setup/pitch + barrel), T-0043 (season_engine.dart 846 → AI models out), T-0044 (season_screen.dart 803 → pre-match route out), T-0045 (collection_store.dart 854 → finish below 800 via the T-0034 part-file pattern).
+- Decision on collection_store (854): split below 800 via T-0045, following the T-0035/T-0036 precedent, instead of blessing a documented exception — keeps this gate's "none expected" premise intact.
+- depends_on extended with T-0039..T-0045 so sequencing is mechanical (the developer skips this task via the dependency rule until all seven archive); status back to `todo` — the missing-task-files blocker no longer exists.
+- tactics.dart sequencing precondition from the evidence refresh is satisfied (T-0037/T-0038 archived).
+- Goal, Requirements, Acceptance Criteria and How to Verify unchanged.
 
 ## Historical Links
 - Depends on: `2026-11-05_app-structure_split-match-engine`, `2026-11-05_app-structure_split-match-screen-report`, `2026-11-05_app-structure_split-pack-reveal-widgets`, `2026-11-05_app-structure_split-season-models`, `2026-11-05_app-structure_split-player-card`, `2026-11-05_app-structure_split-collection-results-catalog`, `2026-11-05_app-structure_split-live-match-views`, `2026-11-05_app-structure_split-pre-match-screen`, `2026-11-05_app-structure_split-commentary`
