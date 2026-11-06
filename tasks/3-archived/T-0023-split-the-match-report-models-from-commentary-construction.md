@@ -2,11 +2,11 @@
 id: T-0023
 title: Split the match report models from commentary construction
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-05
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-05_app-structure_split-commentary.md
 ---
 
@@ -85,3 +85,10 @@ Expected: analyzer reports no issues; the full test suite passes. Per-task check
 - Depends on: None
 - Follows: `2026-11-04_app-structure_remaining-oversized-files`
 - Follow-up: None
+
+### Review 2026-11-06, attempt 1: PASS
+- Ran on main `3f4b86c` (Flutter 3.47.9 stable, fresh clone): `flutter analyze` -> `No issues found!`; `flutter test` -> `+709: All tests passed!` (full suite, zero failures).
+- Tactics sweep baseline: 44/44 pinned rows PASS on BOTH pools (`flutter test tool/tactics_tuning_sweep.dart` and `--dart-define=SWEEP_SEEDS_SUITE=true`).
+- Determinism harness `flutter test tool/simulation_report_test.dart` green.
+- Static: `match_report.dart` 690 / `commentary.dart` 355 lines, both <= 800 as claimed; implementation commit `34a5fed` touches only the two source files + the task file; suite count 709 unchanged = zero test edits.
+- All acceptance criteria verified against real behaviour; archived per the reviewer workflow.
