@@ -2,11 +2,11 @@
 id: T-0040
 title: Split pack_effects.dart into the foil painter and the particle painters
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 ---
 
 # T-0040: Split pack_effects.dart into the foil painter and the particle painters
@@ -30,12 +30,12 @@ If the shared header moves with `FoilPackPainter` the file would measure ≈833 
 - Splitting `pack_opening_screen.dart` or any other file.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes with zero test edits
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines; `pack_effects.dart` barrel keeps consumer imports stable
-- [ ] `README.md` architecture table row for the packs UI family updated for the new module files
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes with zero test edits
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] Every resulting file ≤800 lines; `pack_effects.dart` barrel keeps consumer imports stable
+- [x] `README.md` architecture table row for the packs UI family updated for the new module files
 
 ## How to Verify
 ```bash
@@ -55,3 +55,13 @@ Expected: every listed file ≤800 lines; analyzer clean; packs suite and full s
 - **Concerns / assumptions:** (1) `packLogo` is now a public mutable global read by `FoilPackPainter` — matches the codebase's existing pattern (`TuningOverrides.current` is a public mutable static); writing to it stays the palette library's job via `precachePackLogo`. (2) The full-suite baseline was not re-run pre-split: the tree is byte-identical to the one that passed +709 on this machine earlier in the session, so the post-split run against the same suite count is the meaningful comparison. (3) No Drift codegen involved. None blocking.
 
 ## Review Log
+
+### Review 2026-11-06, attempt 1: PASS
+- Independent verbatim-relocation check (multiset of all lines, original `791a312:lib/features/packs/pack_effects.dart` vs. the four HEAD files): only-in-original = the 10 lines containing `_packLogo`/`_packPath`/`_chamfered`; only-in-new executable lines = the same 10 renamed to `packLogo`/`packPath`/`chamfered`. Everything else is imports/exports/`library;`/doc comments. `_packLogoRequested` appears in neither diff set — unchanged and still private, as declared.
+- Rename scope: `grep -rn` confirms zero remaining private-name references and no `packLogo`/`packPath`/`chamfered` usages outside the palette (declaration) and foil painter (consumption); the extra "chamfered" grep hits are the English word in pre-existing comments/tests of `player_card_painters.dart` / `player_card_test.dart`.
+- Ran: `wc -l` on all four files → 16/85/757/161, all ≤800.
+- Ran: `flutter analyze` (Flutter 3.47.9 stable / Dart 3.13.7, README pin) → No issues found.
+- Ran: `flutter test test/features/packs/` → `+47: All tests passed!`.
+- Ran: `flutter test` → `+709: All tests passed!`, exit 0 — identical count to the archived baseline; `git diff 791a312..HEAD` touches no `test/` or `tool/` file, so zero test edits confirmed.
+- Scope: only the four lib files + README + this task file changed; no consumer edits, so the 16-line barrel kept all `pack_effects.dart` imports stable. README gained the "Pack visual effects" row after the UI kit row.
+- Notes: no localization strings in the diff and the multiset proves no string literal changed, so the EN/AR criterion is met vacuously; no determinism gate in this task's How to Verify (painter code, not engine) — consistent with the task text.
