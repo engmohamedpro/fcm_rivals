@@ -4,7 +4,7 @@
 - Priority: Critical
 - Reviewer: Coach Hady
 - Created: 2026-11-05
-- Status: REJECTED_PARTIAL
+- Status: SPLIT
 - Completed by: -
 - Completed on: -
 
@@ -192,11 +192,12 @@ above; the recommended path stays: an engine-side review decoupling
 the fatigue term / late-concession hook, then a short anchor pass.
 
 ## Reviewer Verification
-<To be filled when Tasks 2-6 land and the balance bands are green on both seed pools.>
+Decision 2026-11-06 (§6.B, rejection UPHELD — work still needed): the two search sessions recorded in Developer Notes (three coordinate-descent searches + ~50 screened candidates; then the corrected-baseline sensitivity mapping, candidate D, and the both-pool post-commit measurement) establish the structural finding — under the current fatigue formula the gegenpress late-goals bill and the press-side singles bands are one knob, so no constant set satisfies the bands on both seed pools. The suite remains red on the same four bands through `d0fbb88` (every implementation commit this session re-pasted 705/4). Verified statically in this sandbox (no Flutter SDK — `which flutter dart` finds nothing); the cited runs are the developer's, commits `a72e743`/`f58cd44` and this session's implementation commits. Action per §6.B row 1: the blocked work moves to follow-ups — prerequisite `2026-11-06_match-engine_fatigue-decoupling` (engine-side), then `2026-11-06_tactics_phase3-anchor-pass-and-gates`; Status → SPLIT. This file closes only when both follow-ups are CLOSED (§7).
 
 ## Links
 - Follows: `2026-11-04_tactics_phase-3-transitions`
-- Follow-up: -
+- Follow-up: `2026-11-06_match-engine_fatigue-decoupling`, `2026-11-06_tactics_phase3-anchor-pass-and-gates`
 
 ## Amendments
 - 2026-11-05 (Coach Hady, lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`, finding F4): Task 4 names `reviews/2026-11-04_tactics_phase-1-in-possession.md` and `reviews/2026-11-04_tactics_phase-3-transitions.md` as append targets. Both are now under `tasks/archive/` (read-only per README.md:118-119), and the phase-3 file is SPLIT with its remaining work handed over to THIS file — appending there would break README §6's one-active-place rule. Corrected mechanism: any band adjustment backed by sweep evidence is proposed in a NEW tactics review file in the main folder (naming the affected band, citing the sweep line and this file); archived files are never edited. The original task text above is unchanged historical record.
+- 2026-11-06 (reviewer decision per §6.B): Tasks 2-6 are handed over — the engine-side lever to `2026-11-06_match-engine_fatigue-decoupling`, the final anchor pass + GDD sync + suite gate to `2026-11-06_tactics_phase3-anchor-pass-and-gates`. The task text above is unchanged historical record; execute the work only in the follow-up files. The anchor-pass file is the "NEW tactics review file" vehicle the F4 amendment above called for, should any band adjustment be proposed with sweep evidence.
