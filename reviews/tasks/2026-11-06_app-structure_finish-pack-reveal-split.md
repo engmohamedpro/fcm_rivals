@@ -4,8 +4,8 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-06
-- Status: OPEN
-- Completed on: -
+- Status: DONE
+- Completed on: 2026-11-06
 
 ## Context
 Correction follow-up of `2026-11-05_app-structure_split-pack-reveal-widgets` (SPLIT 2026-11-06: the timeline/widgets extraction verified good, but its acceptance criterion "every resulting file ≤800 lines" is unmet — `pack_opening_screen.dart` still measures 892 lines). This task finishes the split to the README's ~800-line convention (README.md:72-74).
@@ -22,7 +22,7 @@ Correction follow-up of `2026-11-05_app-structure_split-pack-reveal-widgets` (SP
 Not applicable.
 
 ## Task
-- [ ] Extract cohesive pack-opening widget/method families below the 800-line budget | Where: `lib/features/packs/pack_opening_screen.dart` (892 lines on 2026-11-06) | Expected: `pack_opening_screen.dart` and every new file ≤800 lines; reveal animations frame-identical — pack opening/squad reveal suites green with zero test edits.
+- [x] Extract cohesive pack-opening widget/method families below the 800-line budget | Where: `lib/features/packs/pack_opening_screen.dart` (892 lines on 2026-11-06) | Expected: `pack_opening_screen.dart` and every new file ≤800 lines; reveal animations frame-identical — pack opening/squad reveal suites green with zero test edits.
 
 ## Acceptance Criteria
 - [ ] Compiles with zero analyzer warnings
@@ -33,7 +33,13 @@ Not applicable.
 - [ ] Reveal animations frame-identical; pack opening/squad reveal suites green with zero test edits
 
 ## Developer Notes
-<Implementation summary, files changed, exact test commands/results, and rejection reason/evidence if applicable. Implement this task only, create one task-specific commit, and push it before starting another task.>
+Implemented 2026-11-06. Followed the endorsed engine-split pattern (`5447a67`): the five reveal-stage view builders of `_PackOpeningScreenState` — `_buildPack`, `_buildMystery`, `_buildCaption`, `_buildWalkout`, `_buildCard` — moved VERBATIM (bodies byte-identical, machine-diffed against `HEAD` before the move; only the extension's own closing brace differs) into a new private extension `extension _PackRevealViews on _PackOpeningScreenState` inside part file `lib/features/packs/pack_opening_screen_reveal.dart` (`part of 'pack_opening_screen.dart'`; screen stays the importing barrel, so no consumer import churn and all private state members stay reachable). Chain/handoff presentation was already extracted in the predecessor task (`pack_opening_widgets.dart`), so the reveal view family was the only remaining mass. No behaviour, timeline, haptic, or animation change; no test edits; no localization strings touched (relocation only, EN/AR and RTL unaffected). Files changed: `lib/features/packs/pack_opening_screen.dart` (892 → 654 lines incl. new `part` directive) and `lib/features/packs/pack_opening_screen_reveal.dart` (new, 249 lines).
+
+Exact commands and results (2026-11-06, Flutter 3.47.9 stable / Dart 3.13.7, commit `43a488b` base):
+- `flutter analyze` → `No issues found! (ran in 12.7s)` — zero analyzer warnings.
+- `flutter test test/features/packs/pack_opening_screen_test.dart test/features/squad/player_card_reveal_test.dart test/features/packs/pack_effects_test.dart` → `+16: All tests passed!` with zero test edits.
+- Full suite: `flutter test` → `+709: All tests passed!` exit 0, run 2026-11-06 (~5m30s wall), zero failures, zero skips observed.
+- Line budget: `find lib -name "*.dart" ! -name "*.g.dart" -exec wc -l {} + | awk '$1>800 && $2!="total"'` no longer lists `pack_opening_screen.dart` (654) or the new part file (249); remaining >800 files are out of this task's scope (collection_store, season_store and the six files the 2026-11-06 enforcement amendment assigns to their own future task files).
 
 ## Reviewer Verification
 <Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
