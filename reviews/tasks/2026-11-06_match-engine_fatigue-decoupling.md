@@ -86,7 +86,18 @@ Prerequisite follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (S
 
 
 ## Reviewer Verification
-<Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
+Static verification 2026-11-06 on implementation commit `b24e163` (HEAD `89cb983`). This sandbox has no Flutter/Dart SDK, so `flutter analyze`, `flutter test` and the sweep could NOT be re-run; every check below is static code/record inspection plus the developer's pasted runs, and closure is gated accordingly.
+
+Checks performed and results:
+1. Diff scope: the commit touches only `_defensiveFatigue` (+ its comment) in `match_engine_simulation.dart` and this task file — no unrelated changes, no test edits. Matches Developer Notes.
+2. Mechanism matches option (a): the press bill now keys to the composed stamina bundle (`def.tactics.modifiers.stamina × def.mentality.staminaMod × defending-side active action modifiers × def.pepTalkModifiers.stamina`) instead of the raw `pressing.tuned.stamina` constant, and keeps flowing through the existing `TuningOverrides.pressBillSlope` seam (`tactics.dart:206-249`) — the sweep can move it without model edits.
+3. "Same bundle the legs drain" claim verified: `_drainStamina` (`match_engine_setpieces.dart:406-427`) computes styleStamina from exactly the same four factors for the same side — drain and bill now read one quantity.
+4. Production-defaults bit-identity, statically reasoned: at `TuningOverrides.none` every non-pressing factor is 1.00 and `modifiers.stamina` equals the pressing constant, so the bill is 0.0 at default pressing and 0.30×2.0 at `PressingIntensity.high` under BOTH formulas; corroborated by the developer-pasted golden runs (`engine_snapshot_test` + `engine_calibration_test` 21/21, zero test edits).
+5. AC walkthrough: AC1 analyzer clean (developer-pasted, not re-runnable here); AC3 N/A — engine-only diff, no UI/l10n surface; AC4 no perf/size surface touched (one method, no new dependencies); AC5 golden bit-identity (dev-pasted + item 4); AC6 sweep evidence internally consistent — 40/44 pinned PASS on BOTH pools with the 4 red identical to the pre-change reds, and both constraint families shown simultaneously satisfiable by the pasted candidates (hpStamina 1.38 → late goals 148% with highPress 43.9%; hpStamina 1.34 + pressBillSlope 2.4 → late goals 138% with the singles green).
+
+Blocker (prevents closure): AC2 is not met as written — the pasted full-suite run is 705 passed / 5 failed: the four tracked phase-3 bands PLUS the gegenpress rebuild band (late-goals 1.135 vs required >1.15), and AC2's exception allows only the four tracked reds. The fifth red is the declared intent of this task (non-default stacks now pay the bill on composed excess 0.53 instead of raw 0.60) and its closure is owned by the in-flight follow-up `2026-11-06_tactics_phase3-anchor-pass-and-gates`, whose ACs require the full suite ALL green. Per §6.A ("any failed Acceptance Criteria item prevents closure") no correction task is created: the remaining work is exactly that task's scope, and a second file would duplicate active work (§4.G.8).
+
+Decision: the task stays DONE, not CLOSED. Close it in the same verification pass that closes the anchor pass — once the full suite is all-green on the anchor landing commit and the pinned bands are green on both pools.
 
 ## Links
 - Depends on: None
