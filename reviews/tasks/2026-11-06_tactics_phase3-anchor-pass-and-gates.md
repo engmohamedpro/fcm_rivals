@@ -70,3 +70,5 @@ Closing follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (SPLIT 
 
 ## Amendments
 <Reviewer-owned, append-only. Add dated entries correcting the task's target or mechanism; never rewrite the original task text.>
+
+- 2026-11-06 (reviewer, pre-landing gate note): when the final anchor set lands, cite the standing mechanism guard `2026-11-05_reviews_lifecycle-compliance-audit` (its Task 3) alongside the per-anchor sweep lines — the audit requires band adjustments to ride a new review file that cites the sweep line AND the audit file, and that citation is what lets the audit's Task 3 discharge and the audit itself close. Bands stay as written by default (already in the Task text); this note only adds the audit citation currently missing from Links.
