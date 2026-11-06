@@ -2,11 +2,11 @@
 id: T-0038
 title: Final anchor pass on the decoupled engine, GDD sync and full-suite green gate
 priority: critical
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0037]
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-06_tactics_phase3-anchor-pass-and-gates.md
 ---
 
@@ -205,3 +205,10 @@ Expected: analyzer clean; sweep baseline 44/44 pinned rows PASS on both pools; f
 - Follows: `2026-11-05_tactics_phase3-balance-bands-and-sweep`
 - Mechanism guard cited per amendment: `2026-11-05_reviews_lifecycle-compliance-audit` (Task 3; band adjustments ride this file, which cites the sweep lines above)
 - Follow-up: None
+
+### Review 2026-11-06, attempt 1: PASS
+- Ran on main `3f4b86c` (Flutter 3.47.9 stable, fresh clone): `flutter analyze` -> `No issues found!`; `flutter test` -> `+709: All tests passed!` (full suite, zero failures).
+- Tactics sweep baseline: 44/44 pinned rows PASS on BOTH pools (`flutter test tool/tactics_tuning_sweep.dart` and `--dart-define=SWEEP_SEEDS_SUITE=true`).
+- Determinism harness `flutter test tool/simulation_report_test.dart` green.
+- Static: implementation commit `bc84ea6` scope clean (tactics.dart, sweep tool, GDD, task file); GDD 10.2 rows re-checked against the code (Fast 0.99/1.06/1.02, Work Ball 1.10, Patient 0.96, Fast Counter 0.91/1.12, pressBillSlope 4.2 frozen) — zero drift; sweep values reproduced (matrix worst 59.3% suite pool, allDefence goals 2.41, allAttack 42.3%).
+- All acceptance criteria verified against real behaviour; archived per the reviewer workflow.
