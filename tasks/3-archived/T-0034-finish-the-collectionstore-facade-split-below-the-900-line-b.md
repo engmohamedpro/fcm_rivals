@@ -2,11 +2,11 @@
 id: T-0034
 title: Finish the CollectionStore facade split below the 900-line budget
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-06_app-structure_finish-collection-facade-split.md
 ---
 
@@ -75,3 +75,10 @@ Exact commands and results (2026-11-06, Flutter 3.47.9 stable / Dart 3.13.7, bas
 - Depends on: None
 - Follows: `2026-11-05_app-structure_split-collection-results-catalog`
 - Follow-up: None
+
+### Review 2026-11-06, attempt 1: PASS
+- Ran on main `3f4b86c` (Flutter 3.47.9 stable, fresh clone): `flutter analyze` -> `No issues found!`; `flutter test` -> `+709: All tests passed!` (full suite, zero failures).
+- Tactics sweep baseline: 44/44 pinned rows PASS on BOTH pools (`flutter test tool/tactics_tuning_sweep.dart` and `--dart-define=SWEEP_SEEDS_SUITE=true`).
+- Determinism harness `flutter test tool/simulation_report_test.dart` green.
+- Static: facade `collection_store.dart` 854 <= 900; `collection_store_dataset.dart` 164 / `collection_store_internals.dart` 56 <= 800; implementation commit `1fe9900` scope clean; the full-suite evidence gap from the predecessor task is closed (709/709 re-run here).
+- All acceptance criteria verified against real behaviour; archived per the reviewer workflow.
