@@ -2,11 +2,11 @@
 id: T-0035
 title: Finish the pack-opening-screen split below the 800-line convention
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-06_app-structure_finish-pack-reveal-split.md
 ---
 
@@ -33,12 +33,12 @@ Correction follow-up of `2026-11-05_app-structure_split-pack-reveal-widgets` (SP
 - Nothing beyond the requirements above was scoped out in the original task.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines (excluding generated `*.g.dart`)
-- [ ] Reveal animations frame-identical; pack opening/squad reveal suites green with zero test edits
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] Every resulting file ≤800 lines (excluding generated `*.g.dart`)
+- [x] Reveal animations frame-identical; pack opening/squad reveal suites green with zero test edits
 
 ## How to Verify
 Run the board's standard gates:
@@ -69,3 +69,10 @@ Exact commands and results (2026-11-06, Flutter 3.47.9 stable / Dart 3.13.7, com
 - Depends on: None
 - Follows: `2026-11-05_app-structure_split-pack-reveal-widgets`
 - Follow-up: None
+
+### Review 2026-11-06, attempt 1: PASS
+- Ran on main `3f4b86c` (Flutter 3.47.9 stable, fresh clone): `flutter analyze` -> `No issues found!`; `flutter test` -> `+709: All tests passed!` (full suite, zero failures).
+- Tactics sweep baseline: 44/44 pinned rows PASS on BOTH pools (`flutter test tool/tactics_tuning_sweep.dart` and `--dart-define=SWEEP_SEEDS_SUITE=true`).
+- Determinism harness `flutter test tool/simulation_report_test.dart` green.
+- Static: `pack_opening_screen.dart` 654 / part file 249 lines, both <= 800; implementation commit `483481e` scope clean; pack/reveal suites green inside the full run. The acceptance-criteria checkboxes left unticked at DONE are ticked by this review after verification.
+- All acceptance criteria verified against real behaviour; archived per the reviewer workflow.
