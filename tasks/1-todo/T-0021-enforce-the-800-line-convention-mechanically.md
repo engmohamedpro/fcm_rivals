@@ -2,8 +2,8 @@
 id: T-0021
 title: Enforce the ~800-line convention mechanically
 priority: medium
-status: todo
-attempts: 0
+status: blocked
+attempts: 1
 depends_on: [T-0025, T-0026, T-0027, T-0030, T-0028, T-0022, T-0024, T-0029, T-0023]
 created: 2026-11-05
 completed:
@@ -50,6 +50,21 @@ flutter test
 Expected: the `find`/`wc` check lists only consciously-cleared exceptions (none expected); README architecture table matches the tree; analyzer clean; full suite green.
 
 ---
+
+## Developer Notes
+- **Summary of changes:** No code changes. Picked T-0021 per the board rules (all nine `depends_on` splits T-0022..T-0030 are in `tasks/3-archived/`; T-0002 was skipped because it depends on this task). Re-ran the enforcement check on current main (`7c4846c`) and the gate still lists seven files over 800 lines with no documented exceptions, so the task was blocked instead of expanding scope.
+- **Files changed:** `tasks/1-todo/T-0021-enforce-the-800-line-convention-mechanically.md` (front matter + this section only)
+- **How I tested it:**
+  - Dependencies: T-0022, T-0023, T-0024, T-0025, T-0026, T-0027, T-0028, T-0029, T-0030 all confirmed present in `tasks/3-archived/`.
+  - `find lib -name "*.dart" ! -name "*.g.dart" -exec wc -l {} + | awk '$1>800 && $2!="total"'` on HEAD `7c4846c` returns 7 files: `lib/features/match/tactics.dart` 1201, `lib/features/packs/pack_effects.dart` 980, `lib/features/packs/packs_screen.dart` 901, `lib/features/squad/squad_view.dart` 890, `lib/features/collection/collection_store.dart` 854, `lib/features/season/season_engine.dart` 846, `lib/features/season/season_screen.dart` 803.
+  - Header scan of all seven files: none documents a line-budget exception in its library doc.
+  - `flutter`/`dart` are not available in this environment, so `flutter analyze` and `flutter test` could not be run here.
+- **Concerns / assumptions:** BLOCKED — the acceptance criterion "the `wc -l` check returns only consciously-cleared exceptions (none expected)" cannot be met on main today:
+  1. Six of the seven files (tactics.dart, pack_effects.dart, packs_screen.dart, squad_view.dart, season_engine.dart, season_screen.dart) are uncovered by any task file, and splitting them is explicitly Out of Scope here; per the 2026-11-06 review log each needs its own §1-compliant task file created after §4 investigation before work starts. I did not create those task files: the developer-agent hard rules restrict me to the picked task file and to doing exactly what the Requirements say.
+  2. The tactics.dart sequencing precondition in the review log (wait for the fatigue-decoupling chain) is now satisfied — T-0037 and T-0038 are archived — so its split task file can be created immediately.
+  3. `collection_store.dart` (854) was consciously cleared at a ≤900 budget by archived T-0034, but it exceeds the 800 convention and has no documented exception in its library doc; the board must either bless it as a documented exception or task another split.
+  4. Fresh evidence vs the 2026-11-06 review log: of the twelve files it measured on `d0fbb88`, five are now under 800 on main (pre_match_screen, live_match_views, match_report, season_store, pack_opening_screen) — only collection_store remains above 800 among the covered files.
+  What I need: six §1-compliant split task files created and completed (or an explicit board decision to record documented exceptions), plus a decision on collection_store's 854, before this gate can pass. `flutter analyze` / `flutter test` must be run where the Flutter toolchain exists.
 
 ## Review Log
 ### 2026-11-06 — board migration
