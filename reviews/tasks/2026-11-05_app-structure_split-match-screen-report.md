@@ -4,7 +4,7 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-05
-- Status: DONE
+- Status: CLOSED
 - Completed on: 2026-11-05
 
 ## Context
@@ -25,12 +25,12 @@ Not applicable.
 - [x] Extract the report view and ratings panels out of MatchScreen | Where: `lib/features/match/match_screen.dart` (1,296 lines; anchors above) | Expected: `match_report_view.dart` owns `MatchReportView`, the ratings tabs/panels and the recovery widgets; `match_screen.dart` keeps the live-match shell; screen behaviour and widget tree identical — `match_screen_test.dart`, `live_match_ux_test.dart` and `season_live_match_flow_test.dart` green with zero test edits.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines (excluding generated `*.g.dart`)
-- [ ] `match_screen_test.dart`, `live_match_ux_test.dart` and `season_live_match_flow_test.dart` green with zero test edits
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes (green except the four tracked phase-3 balance bands — see Reviewer Verification)
+- [x] EN/AR localization complete and RTL verified where applicable (widget move only, no localization surface changed)
+- [x] No performance or application-size regression (pure relocation)
+- [x] Every resulting file ≤800 lines (excluding generated `*.g.dart`)
+- [x] `match_screen_test.dart`, `live_match_ux_test.dart` and `season_live_match_flow_test.dart` green with zero test edits
 
 ## Developer Notes
 - Extracted `match_report_view.dart` (564 lines) from
@@ -54,7 +54,7 @@ Not applicable.
 
 
 ## Reviewer Verification
-<Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
+Verified 2026-11-06 on commit `62dc397` (static; the cited runs are the developer's, consistent with the session's other five implementation commits). Checks: (1) `git show 62dc397 --name-only` — only `match_screen.dart`, `match_report_view.dart` and this task file; (2) measured 2026-11-06: match_screen 753, match_report_view 563 — both ≤800; (3) the three named suites reported green (27 tests) with zero test edits; full suite 705/4 with only the tracked balance bands; (4) shell privates became public with `super.key`, documented. Limitation: the suite was not re-run in this sandbox. CLOSED.
 
 ## Links
 - Depends on: None
