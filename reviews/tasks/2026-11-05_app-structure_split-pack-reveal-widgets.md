@@ -4,7 +4,7 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-05
-- Status: DONE
+- Status: SPLIT
 - Completed on: 2026-11-05
 
 ## Context
@@ -25,12 +25,12 @@ Not applicable.
 - [x] Extract the reveal timeline and painters from the pack opening screen | Where: `lib/features/packs/pack_opening_screen.dart` (1,272 lines on 2026-11-05; anchors above) | Expected: `pack_reveal_timeline.dart` (the `_Tl` spec) and `pack_opening_widgets.dart` (painter + chain buttons/handoff line); reveal animations frame-identical — the pack opening/squad reveal suites green with zero test edits.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines (excluding generated `*.g.dart`)
-- [ ] Reveal animations frame-identical; pack opening/squad reveal suites green with zero test edits
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes (green except the four tracked phase-3 balance bands — see Reviewer Verification)
+- [x] EN/AR localization complete and RTL verified where applicable (widget/painter move only)
+- [x] No performance or application-size regression (pure relocation plus identifier renames)
+- [ ] Every resulting file ≤800 lines (excluding generated `*.g.dart`) — UNMET: `pack_opening_screen.dart` still 892 lines (Reviewer Verification)
+- [x] Reveal animations frame-identical; pack opening/squad reveal suites green with zero test edits
 
 ## Developer Notes
 - Extracted from `pack_opening_screen.dart` (1,272 -> 893 lines):
@@ -58,12 +58,12 @@ Not applicable.
 
 
 ## Reviewer Verification
-<Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
+Verified 2026-11-06 on commit `35c953f` — extraction GOOD, closure BLOCKED by one acceptance criterion (§6.A). Checks: (1) `git show 35c953f --name-only` — only the three pack files and this task file; (2) measured 2026-11-06: `pack_reveal_timeline.dart` 161 ✓, `pack_opening_widgets.dart` 246 ✓, `pack_opening_screen.dart` 892 ✗ against the ≤800 criterion (1,272 → 892); (3) packs suites reported green (47 tests) with zero test edits; full suite 705/4 with only the tracked balance bands; (4) renames are identifier-visibility changes only (private → public), documented. Failure evidence: AC "Every resulting file ≤800 lines" unmet. Action per §6.A: correction task `2026-11-06_app-structure_finish-pack-reveal-split` created; this file → SPLIT and closes when the follow-up is CLOSED. Limitation: the suite was not re-run in this sandbox.
 
 ## Links
 - Depends on: None
 - Follows: `2026-11-04_app-structure_remaining-oversized-files`
-- Follow-up: None
+- Follow-up: `2026-11-06_app-structure_finish-pack-reveal-split`
 
 ## Amendments
-<Reviewer-owned, append-only. Add dated entries correcting the task's target or mechanism; never rewrite the original task text.>
+- 2026-11-06 (reviewer, verification of the DONE claim): Status DONE → SPLIT — the timeline/widgets extraction is verified good, but the "every resulting file ≤800 lines" criterion is unmet (pack_opening_screen.dart 892 measured). The remaining work lives in `2026-11-06_app-structure_finish-pack-reveal-split`; the task text above is unchanged historical record.
