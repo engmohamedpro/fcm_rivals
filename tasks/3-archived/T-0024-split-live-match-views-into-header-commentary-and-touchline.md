@@ -2,11 +2,11 @@
 id: T-0024
 title: Split live match views into header, commentary and touchline families
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-05
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-05_app-structure_split-live-match-views.md
 ---
 
@@ -96,3 +96,10 @@ Expected: analyzer reports no issues; the full test suite passes. Per-task check
 - Depends on: None
 - Follows: `2026-11-04_app-structure_remaining-oversized-files`
 - Follow-up: None
+
+### Review 2026-11-06, attempt 1: PASS
+- Ran on main `3f4b86c` (Flutter 3.47.9 stable, fresh clone): `flutter analyze` -> `No issues found!`; `flutter test` -> `+709: All tests passed!` (full suite, zero failures).
+- Tactics sweep baseline: 44/44 pinned rows PASS on BOTH pools (`flutter test tool/tactics_tuning_sweep.dart` and `--dart-define=SWEEP_SEEDS_SUITE=true`).
+- Determinism harness `flutter test tool/simulation_report_test.dart` green.
+- Static: `match_header.dart` 540 / `touchline_pep_talk.dart` 328 / barrel 18 lines, all <= 800; implementation commit `4ea2416` scope clean; suite count 709 unchanged = zero test edits.
+- All acceptance criteria verified against real behaviour; archived per the reviewer workflow.
