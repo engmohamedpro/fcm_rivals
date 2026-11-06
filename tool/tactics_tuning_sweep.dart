@@ -490,9 +490,23 @@ List<CaseRow> scoreBands({
   );
 
   // Singles: phases 1-3, one row each (the named offenders included).
+  // Each phase draws from ITS OWN seed base so a suite-pool run
+  // reproduces the balance suite's numbers exactly (p1 21000, p2
+  // 31000, p3 41000 — match_engine_balance_test.dart's blocks); the
+  // previous single p1singles base for all three masked the p2/p3
+  // suite rows the anchor pass must close.
+  const groupSeeds = {
+    _p1Singles: 'p1singles',
+    _p2Singles: 'p2singles',
+    _p3Singles: 'p3singles',
+  };
   for (final group in [_p1Singles, _p2Singles, _p3Singles]) {
     for (final e in group.entries) {
-      final b = runSweepBatch(n(2000), _seedBase('p1singles'), homeTactics: e.value);
+      final b = runSweepBatch(
+        n(2000),
+        _seedBase(groupSeeds[group]!),
+        homeTactics: e.value,
+      );
       addW(e.key, b.homeWinRate, .46, .54);
     }
   }
@@ -696,31 +710,32 @@ void _printRows(String label, List<CaseRow> rows) {
 
 class SweepCandidate {
   /// Defaults mirror the CURRENT shipped anchors in tactics.dart
-  /// (verified 2026-11-05 against every enum constant: cost 0.70,
-  /// stamina 0.55, possession linear, hp 1.28/1.04/1.30, fc
-  /// 0.85/1.10/1.03, deep 0.91, low 0.94, playOut 1.06, slow 1.03,
-  /// press-bill slope 2.0). A candidate object that changes ONE knob
-  /// therefore departs from shipped on exactly that knob — the search
-  /// steps stay interpretable. (The previous revision carried attempt-3
+  /// (verified 2026-11-06 against every enum constant after the
+  /// anchor pass landed: cost 0.84, stamina 0.55, possession linear,
+  /// hp 1.34/1.16/1.30, fc 0.91/1.12/1.03, deep 0.92, low 0.86,
+  /// playOut 1.06, slow 1.03, fast tempo chance 1.05, press-bill
+  /// slope 4.2). A candidate object that changes ONE knob therefore
+  /// departs from shipped on exactly that knob — the search steps
+  /// stay interpretable. (The previous revision carried attempt-3
   /// values here while claiming to mirror shipped, which confounded
   /// every "single-knob" screen of that search.)
   const SweepCandidate({
-    this.costDamp = 0.70,
+    this.costDamp = 0.84,
     this.staminaDamp = 0.55,
     this.aboveDamp = 1.0,
     this.belowDamp = 1.0,
     this.hpStamina = 1.30,
-    this.hpDefence = 1.28,
-    this.hpChance = 1.04,
-    this.fcPoss = 0.85,
-    this.fcChance = 1.10,
+    this.hpDefence = 1.34,
+    this.hpChance = 1.16,
+    this.fcPoss = 0.91,
+    this.fcChance = 1.12,
     this.fcShot = 1.03,
     this.patientPoss = 1.05,
-    this.deepPoss = 0.91,
-    this.lowPoss = 0.94,
+    this.deepPoss = 0.92,
+    this.lowPoss = 0.86,
     this.playOutPoss = 1.06,
     this.slowPoss = 1.03,
-    this.pbSlope = 2.0,
+    this.pbSlope = 4.2,
   });
 
   final double costDamp;
@@ -803,22 +818,22 @@ class SweepCandidate {
     }
 
     return SweepCandidate(
-      costDamp: d('SWEEP_COST', 0.70),
+      costDamp: d('SWEEP_COST', 0.84),
       staminaDamp: d('SWEEP_STAMINA_DAMP', 0.55),
       aboveDamp: d('SWEEP_ABOVE', 1.0),
       belowDamp: d('SWEEP_BELOW', 1.0),
       hpStamina: d('SWEEP_HP_STAMINA', 1.30),
-      hpDefence: d('SWEEP_HP_DEFENCE', 1.28),
-      hpChance: d('SWEEP_HP_CHANCE', 1.04),
-      fcPoss: d('SWEEP_FC_POSS', 0.85),
-      fcChance: d('SWEEP_FC_CHANCE', 1.10),
+      hpDefence: d('SWEEP_HP_DEFENCE', 1.34),
+      hpChance: d('SWEEP_HP_CHANCE', 1.16),
+      fcPoss: d('SWEEP_FC_POSS', 0.91),
+      fcChance: d('SWEEP_FC_CHANCE', 1.12),
       fcShot: d('SWEEP_FC_SHOT', 1.03),
       patientPoss: d('SWEEP_PATIENT_POSS', 1.05),
-      deepPoss: d('SWEEP_DEEP_POSS', 0.91),
-      lowPoss: d('SWEEP_LOW_POSS', 0.94),
+      deepPoss: d('SWEEP_DEEP_POSS', 0.92),
+      lowPoss: d('SWEEP_LOW_POSS', 0.86),
       playOutPoss: d('SWEEP_PLAYOUT_POSS', 1.06),
       slowPoss: d('SWEEP_SLOW_POSS', 1.03),
-      pbSlope: d('SWEEP_PB_SLOPE', 2.0),
+      pbSlope: d('SWEEP_PB_SLOPE', 4.2),
     );
   }
 }

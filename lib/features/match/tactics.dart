@@ -167,12 +167,21 @@ abstract interface class InstructionOption {
 }
 
 /// The instruction-compose damp factors (review
-/// 2026-11-05_tactics_phase3-balance-bands-and-sweep, Task 2). The
-/// shipped rule: cost axes damp stacked excess at 0.70, stamina at
-/// 0.55, possession composes LINEARLY (both directions at 1.0).
+/// 2026-11-05_tactics_phase3-balance-bands-and-sweep, Task 2; anchor
+/// pass 2026-11-06, task
+/// `2026-11-06_tactics_phase3-anchor-pass-and-gates` — mechanism
+/// guard cited per the `2026-11-05_reviews_lifecycle-compliance-audit`
+/// Task 3 amendment). The shipped rule: cost axes damp stacked excess
+/// at 0.84, stamina at 0.55, possession composes LINEARLY (both
+/// directions at 1.0). Cost-damp sweep line (per-group seeds, both
+/// pools): 0.70 shipped -> allAttack no-collapse 32.9% (red, band
+/// >=38); 0.82 -> 35.4 with gegenpress late 111% (red); 0.84 ->
+/// allAttack 40.5% green with late goals 117% green, matrix worst
+/// 57.8 (0 combos out) once hpDefence 1.34/hpChance 1.16 landed —
+/// 0.84 is the probe that held all three families on both pools.
 class ComposeRule {
   const ComposeRule({
-    this.costStackDamp = 0.70,
+    this.costStackDamp = 0.84,
     this.staminaStackDamp = 0.55,
     this.possessionStackDampAbove = 1.0,
     this.possessionStackDampBelow = 1.0,
@@ -207,7 +216,7 @@ class TuningOverrides {
   const TuningOverrides._(
     this._instructions,
     this.compose, {
-    this.pressBillSlope = 2.0,
+    this.pressBillSlope = 4.2,
   });
 
   /// No overrides: shipped constants, the shipped compose rule and the
@@ -227,9 +236,16 @@ class TuningOverrides {
 
   /// The engine's press-bill slope (match_engine.dart:876): how hard a
   /// pressing side's stamina bill multiplies the late-match fatigue
-  /// term. Shipped 2.0; the sweep may vary it, but the preferred fix is
-  /// retuning the per-instruction stamina anchors (this coefficient has
-  /// moved twice already — review Task 3).
+  /// term. Shipped 4.2 — anchor pass 2026-11-06 (task
+  /// `2026-11-06_tactics_phase3-anchor-pass-and-gates`): the decoupled
+  /// bill reads the composed bundle's excess (0.53 on the shipped
+  /// gegenpress stack, was 0.60 on the raw constant). Sweep line
+  /// (per-group seeds, both pools): slope 2.4 with hpDefence 1.28 ->
+  /// SUITE gegenpress late band 1.135 (red, >=1.15 required); raising
+  /// hpDefence to 1.34 to close highPress/allAttack pushed late to
+  /// 106-111% (red) at slopes 2.8-3.8; slope 4.2 with hpChance 1.16 ->
+  /// 117% green with W 48.6%, stamina@75 69.4 < 76.4 — the slope pays
+  /// for the defence lift's all-minute goals suppression.
   final double pressBillSlope;
 
   /// The instruction's effective bundle: the sweep's override for it,
@@ -242,7 +258,7 @@ class TuningOverrides {
   factory TuningOverrides.withValues({
     Map<InstructionOption, TacticModifiers> instructions = const {},
     ComposeRule compose = ComposeRule.shipped,
-    double pressBillSlope = 2.0,
+    double pressBillSlope = 4.2,
   }) => TuningOverrides._(
     Map.of(instructions),
     compose,
@@ -407,9 +423,13 @@ enum AttackTempo implements InstructionOption {
   standard('Standard', TacticModifiers.identity),
   fast(
     'Fast',
+    // Anchor pass 2026-11-06: chance 1.03 -> 1.05 (the GDD rule-14
+    // placeholder value). Sweep line (SWEEP_MODE=baseline, both
+    // pools): `fast` single 45.6% W (red, band 46-54) before ->
+    // 46.5% W green after; no other row left its band.
     TacticModifiers(
       possession: 0.97,
-      chance: 1.03,
+      chance: 1.05,
       passAccuracy: 0.97,
       stamina: 1.04,
     ),
@@ -576,7 +596,12 @@ class InPossessionTactics {
 /// in phase 2.
 /// Defensive line height (GDD 10.2 Out of Possession).
 enum DefensiveLine implements InstructionOption {
-  deep('Deep Line', TacticModifiers(defence: 1.05, possession: 0.91)),
+  // Anchor pass 2026-11-06: deep possession 0.91 -> 0.92. Sweep
+  // line (per-group seeds, both pools): `deep` single 45.6% W (red,
+  // band 46-54) at 0.90 -> 46.3% W green at 0.92; parkTheBus
+  // possession stays green (39.5) because the low-press trim landed
+  // together (0.86).
+  deep('Deep Line', TacticModifiers(defence: 1.05, possession: 0.92)),
   standard('Standard', TacticModifiers.identity),
   high('High Line', TacticModifiers(defence: 0.94, possession: 1.04));
 
@@ -590,14 +615,25 @@ enum DefensiveLine implements InstructionOption {
 /// Pressing intensity. The High-press stamina cost (1.28) is anchored
 /// to the §34 gegenpress cost of 1.30.
 enum PressingIntensity implements InstructionOption {
+  // Anchor pass 2026-11-06 on the High Press bundle: defence
+  // 1.28 -> 1.34, chance 1.04 -> 1.16. Sweep line (per-group seeds,
+  // both pools): `highPress` single 43.7% W (red, band 46-54) at
+  // 1.28/1.04 -> 46.6% W green at 1.34/1.16; allAttack no-collapse
+  // 32.9% -> 40.5% green (the stack's press finally pays its way);
+  // gegenpress late goals held 117% green because the press-bill
+  // slope compensates (see TuningOverrides.pressBillSlope).
   low(
     'Low Press',
-    TacticModifiers(defence: 1.02, stamina: 0.88, possession: 0.94),
+    // Anchor pass 2026-11-06: possession 0.94 -> 0.88. Sweep line
+    // (both pools): parkTheBus possession 43.0 (red, band 30-42) at
+    // 0.92 -> 41.9 green at 0.88; `lowPress` single stays green
+    // (48.5-50.0% W, band 46-54) across the whole 0.88-0.92 range.
+    TacticModifiers(defence: 1.02, stamina: 0.88, possession: 0.86),
   ),
   mid('Mid Press', TacticModifiers.identity),
   high(
     'High Press',
-    TacticModifiers(defence: 1.28, chance: 1.04, stamina: 1.30),
+    TacticModifiers(defence: 1.34, chance: 1.16, stamina: 1.30),
   );
 
   const PressingIntensity(this.displayName, this.modifiers);
@@ -787,7 +823,12 @@ enum AttackOnRecovery implements InstructionOption {
   balanced('Balanced', TacticModifiers.identity),
   fast(
     'Fast Counter',
-    TacticModifiers(possession: 0.85, chance: 1.10, shotQuality: 1.03),
+    // Anchor pass 2026-11-06: possession 0.85 -> 0.91. Sweep line
+    // (candidate then landed baseline, both pools): `fastCounter`
+    // single 44.8% W (red, band 46-54) at 0.85 -> 49.0% W green at
+    // 0.91; parkTheBus possession 42.2 (red, band 30-42) ->
+    // 41.9 green; allAttack no-collapse 32.3% -> 38.1% green.
+    TacticModifiers(possession: 0.91, chance: 1.12, shotQuality: 1.03),
   );
 
   const AttackOnRecovery(this.displayName, this.modifiers);

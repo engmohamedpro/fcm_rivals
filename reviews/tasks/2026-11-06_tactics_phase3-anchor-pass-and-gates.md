@@ -33,32 +33,67 @@ Closing follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (SPLIT 
 - [ ] GDD 10.2 anchor tables match `tactics.dart` constants exactly and are marked harness-tuned; every changed constant committed with its justifying sweep line; final suite summary line pasted in Developer Notes
 
 ## Developer Notes
-- CHECKPOINT (2026-11-06, session ended mid-task — next session starts
-  from this evidence, not from scratch).
-- Coordinate-descent search ran on the decoupled engine
-  (`b24e163`): `SWEEP_MODE=search` winner at 3 screen-fails
-  (fc=0.90/deep=0.88/low=0.90); manual refinement reached a better
-  family. Best full-precision candidates so far (sweep pool):
-  - fc=0.91 deep=0.90 low=0.88 cost=0.78 pb=2.4: only `fast` (45.6%,
-    needs +0.4) and `allAttack no-collapse` (37.9%, needs +0.1) red —
-    everything else green incl. parkTheBus possession 41.9, fastCounter
-    49.0, gegenpress late 118%, matrix 0-out.
-  - fc=0.92 deep=0.90 low=0.88 cost=0.78 pb=2.4: allAttack 38.3 GREEN
-    but parkTheBus possession 42.3 red by 0.3.
-  - cost=0.85 variant fixes allAttack (39.0) but breaks gegenpress
-    late (111%) and allDefence goals (2.38) — cost damp must stay
-    ≤0.78.
-- The `fast` single is stuck at 45.6-45.7 across every candidate —
-  its lever is NOT in the sweep candidate set (AttackTempo.fast has
-  possession 0.97/chance 1.03; only slowPoss is swept). Next session:
-  either trim fast.chance/passAccuracy anchors directly in
-  tactics.dart with a justifying sweep line, or add a fastPoss lever
-  to the tool.
-- Remaining for closure: land final anchor set in tactics.dart (with
-  per-anchor sweep-line comments), verify the winner on BOTH pools at
-  full precision, regenerate GDD 10.2 anchor tables, full suite ALL
-  green, then commit. NOT DONE YET — do not close.
-
+- FINAL LANDING (2026-11-06). Anchor set landed on `tactics.dart`
+  (every change cited with its sweep line in a code comment at the
+  constant):
+  - `AttackTempo.fast` chance 1.03 -> 1.05.
+  - `AttackOnRecovery.fast` (Fast Counter) possession 0.85 -> 0.91,
+    chance 1.10 -> 1.12.
+  - `DefensiveLine.deep` possession 0.91 -> 0.92.
+  - `PressingIntensity.low` possession 0.94 -> 0.86.
+  - `PressingIntensity.high` defence 1.28 -> 1.34, chance 1.04 -> 1.16.
+  - `ComposeRule.costStackDamp` 0.70 -> 0.84.
+  - `TuningOverrides.pressBillSlope` 2.0 -> 4.2 (the decoupled bill
+    reads the composed bundle's excess; the slope pays for the
+    defence lift's all-minute goals suppression).
+- SWEEP TOOL BUG FOUND AND FIXED FIRST: `scoreBands` ran ALL three
+  singles groups on the p1 seed base (21000) instead of each group's
+  own pool (p2 31000, p3 41000) — the tool's "green" was measured on
+  different seeds than the suite it mirrors, masking the deep/highPress
+  rows the anchor pass must close. Fix: `groupSeeds` map in
+  `tool/tactics_tuning_sweep.dart`; after the fix the suite-pool
+  numbers match the balance suite (deep 45.6, highPress 43.7 at the
+  old anchors). SweepCandidate defaults re-mirrored to the new
+  shipped anchors.
+- Coordinate descent across 14 full-precision probes (all rows, both
+  pools each): the binding trade was hpDefence 1.34/hpChance 1.16
+  closing highPress+allAttack while pushing gegenpress late to
+  106-111% (red) at slopes 2.8-3.8; slope 4.2 closes it. staminaDamp
+  probes (0.60/0.70) and hpStamina 1.36 lost more than they gained —
+  documented in the per-anchor comments.
+- SWEEP EVIDENCE (SWEEP_MODE=baseline, landed shipped constants):
+  44/44 pinned rows PASS on BOTH pools — sweep pool 44/0,
+  `SWEEP_SEEDS_SUITE=true` 44/0. Key rows: highPress 46.6%, deep
+  46.3%, fastCounter 46.5%, fast 46.5%, gegenpress W 48.6% / late
+  goals 117% / stamina@75 69.4 < 76.4, parkTheBus possession 39.5,
+  allAttack no-collapse 40.5%, matrix worst 57.8% (0 combos out),
+  allDefence goals 2.40, defaults green.
+- `flutter analyze` (whole project): No issues found!
+- GDD 10.2 tables regenerated from the code (zero drift): all three
+  phase tables carry the landed values; phase-1 label now
+  "harness-tuned". Mechanism guard cited per the amendment (Links
+  below + the ComposeRule comment in tactics.dart).
+- HONEST LIMITATION — full `flutter test` suite on the landed
+  anchors: 705 passed / 4 failed, NOT all green. The four reds
+  (p1 singles `fast` 45.3%; matrix playOut+slow+wide+workBall 61.0%;
+  gegenpress late ratio 1.118; cross-phase corners) sit inside rows
+  the SWEEP shows green at its own N/seed spacing — the suite's
+  matrix block runs 300/combo vs the sweep's 320, and the singles
+  block starts at the same seed base but walks a different match
+  count, so the two harnesses sample the same distribution
+  differently. Root cause candidates: (a) the sweep's N/seed spacing
+  needs to mirror the suite blocks exactly (matrix 300, singles
+  2000 at 21000/31000/41000 — seeds now aligned per-group, N and
+  matrix spacing still differ), or (b) the bands need a small-N
+  variance allowance. Two single-knob probes aimed at the `fast` and
+  matrix rows (fast chance 1.06, playOut poss 1.04) were tried and
+  REVERTED — unverified within the session's time budget, and the
+  revert restores the state the 44/44 sweep evidence describes.
+  NEXT SESSION: align the sweep's matrix/singles N with the suite
+  blocks, re-run the descent on the aligned tool, land the final
+  trims with per-anchor sweep lines, then paste the full-suite
+  summary line here. AC2 (full suite ALL green) is NOT yet met; do
+  not close this task.
 
 ## Reviewer Verification
 <Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
@@ -66,6 +101,7 @@ Closing follow-up of `2026-11-05_tactics_phase3-balance-bands-and-sweep` (SPLIT 
 ## Links
 - Depends on: `2026-11-06_match-engine_fatigue-decoupling`
 - Follows: `2026-11-05_tactics_phase3-balance-bands-and-sweep`
+- Mechanism guard cited per amendment: `2026-11-05_reviews_lifecycle-compliance-audit` (Task 3; band adjustments ride this file, which cites the sweep lines above)
 - Follow-up: None
 
 ## Amendments
