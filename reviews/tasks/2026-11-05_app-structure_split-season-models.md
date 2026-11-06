@@ -4,7 +4,7 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-05
-- Status: DONE
+- Status: SPLIT
 - Completed on: 2026-11-05
 
 ## Context
@@ -25,12 +25,12 @@ Not applicable.
 - [x] Move the season data classes out of SeasonStore | Where: `lib/features/season/season_store.dart` (1,257 lines on 2026-11-05; anchors above) | Expected: `season_models.dart` holds the data classes; `SeasonStore` keeps lifecycle/logic only; season suites and simulation harness green with zero test edits.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines (excluding generated `*.g.dart`)
-- [ ] Season suites and `flutter test tool/simulation_report_test.dart` green with zero test edits, determinism PASS
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes (green except the four tracked phase-3 balance bands — see Reviewer Verification)
+- [x] EN/AR localization complete and RTL verified where applicable (data-class move only, no localization surface)
+- [x] No performance or application-size regression (pure relocation)
+- [ ] Every resulting file ≤800 lines (excluding generated `*.g.dart`) — UNMET: `season_store.dart` still 1,167 lines (Reviewer Verification)
+- [x] Season suites and `flutter test tool/simulation_report_test.dart` green with zero test edits, determinism PASS
 
 ## Developer Notes
 - Extracted `season_models.dart` (103 lines) from `season_store.dart`
@@ -53,12 +53,12 @@ Not applicable.
 
 
 ## Reviewer Verification
-<Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
+Verified 2026-11-06 on commit `52cd716` — implementation GOOD, closure BLOCKED by one acceptance criterion (§6.A: any failed AC prevents closure). Checks: (1) `git show 52cd716 --name-only` — only `season_store.dart`, `season_models.dart` and this task file; (2) measured 2026-11-06: `season_models.dart` 102 ✓ but `season_store.dart` 1,167 ✗ against the ≤800 criterion — the task moved only the data classes (~90 lines), leaving the store far above budget; (3) season+simulation suites reported green (71 tests) and the full suite 705/4 with only the tracked balance bands, zero test edits. Failure evidence: AC "Every resulting file ≤800 lines" unmet. Action per §6.A: correction task `2026-11-06_app-structure_finish-season-store-split` created (method-family extraction — class-level extraction is exhausted, the file holds a single `SeasonStore` class); this file → SPLIT and closes when the follow-up is CLOSED. Limitation: the suite was not re-run in this sandbox.
 
 ## Links
 - Depends on: None
 - Follows: `2026-11-04_app-structure_remaining-oversized-files`
-- Follow-up: None
+- Follow-up: `2026-11-06_app-structure_finish-season-store-split`
 
 ## Amendments
-<Reviewer-owned, append-only. Add dated entries correcting the task's target or mechanism; never rewrite the original task text.>
+- 2026-11-06 (reviewer, verification of the DONE claim): Status DONE → SPLIT — the extraction itself is verified good, but the "every resulting file ≤800 lines" criterion is unmet (season_store.dart 1,167 measured). The remaining work lives in `2026-11-06_app-structure_finish-season-store-split`; the task text above is unchanged historical record.
