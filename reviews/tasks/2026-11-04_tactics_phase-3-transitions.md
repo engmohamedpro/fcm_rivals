@@ -21,14 +21,14 @@ Third and final custom-tactics group (execute after `2026-11-04_tactics_phase-2-
 - [x] Task 3: Transitions tab UI | Where: `lib/features/match/pre_match_screen.dart`, `lib/features/match/live_tactics_screen.dart` | Expected: segmented controls for the three instructions with visible effect summaries; the rest-defence control explains the trade-off in one line (cover vs numbers forward). EN/AR, RTL verified, in-match changes via `ChangeTacticsCommand`.
 - [x] Task 4: Balance verification — including the full gegenpress rebuild | Where: `test/balance/match_engine_balance_test.dart` (extend the harness) | Expected: 10,000 seeded sims per case, even strength vs default tactics. (a) Single-instruction extremes: win rate 46–54%. (b) The extreme combo Immediate Counter-Press + High press + High line + Aggressive rest defence (the full gegenpress rebuild) lands ≤ 58% AND its stamina bill is real: average team stamina at 75' measurably below baseline and goals conceded after 75' ≥ 15% above baseline — the style must win by pressing, not for free. (c) Fast Counter + Deep line + Low press (park-the-bus counter): win rate 40–58%, measured possession share within 30–42%. (d) Global anchors unchanged: goals 2.6–2.9, conversion 10–11%, draws 22–30%.
 - [x] Task 5: Cross-phase interaction sweep | Where: `test/balance/match_engine_balance_test.dart` | Expected: with all three groups live, run the seeded 10k harness over the corner cases of the combined instruction space (all-Standard, all-extreme-attack, all-extreme-defence, and the two rebuilds from Task 4). No configuration exceeds 58% win rate vs default at even strength; no configuration drops total goals outside 2.4–3.1. This sweep is the regression net for every future tuning change.
-- [ ] Task 6: GDD documentation | Where: `docs/fcm_rivals_GDD_SRS.md` (section 10.2) | Expected: the Transitions group documented with options, anchors and the gegenpress-rebuild balance bands; the legacy mapping table from phase 0 is confirmed complete — every removed style reproducible as a combination.
+- [x] Task 6: GDD documentation | Where: `docs/fcm_rivals_GDD_SRS.md` (section 10.2) | Expected: the Transitions group documented with options, anchors and the gegenpress-rebuild balance bands; the legacy mapping table from phase 0 is confirmed complete — every removed style reproducible as a combination.
 
 ## Acceptance Criteria
 - [x] Compiles with zero analyzer warnings
 - [x] Tests added or updated
 - [x] EN/AR localized, RTL verified
 - [x] No performance regression
-- [ ] Every option's effect summary visible in the UI (GDD 10.3)
+- [x] Every option's effect summary visible in the UI (GDD 10.3)
 - [ ] Gegenpress rebuild ≤ 58% win rate with measurable stamina/late-goal cost; cross-phase sweep green (10k seeded sims)
 
 ## Developer Notes
@@ -84,3 +84,4 @@ Developer addendum 2026-11-05: the sweep tool is now committed and rerunnable (`
 
 ## Amendments
 - 2026-11-05 (Coach Hady, lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`, finding F2): Status REJECTED_PARTIAL → SPLIT, executing the transition README.md:64/:72 requires once the rejection was upheld — the decision itself (follow-up created, tasks handed over) was already recorded above in Reviewer Verification at commit `05346c2`; only the status token and the formal Follow-up link were missing. The developer addendum above predates this change and its "stays REJECTED_PARTIAL" wording is historical record, not current status. Tasks 4/5 live exclusively in the follow-up file now.
+- 2026-11-06 (record sync): Task 6 and the "effect summary visible in the UI" criterion ticked to match the verification recorded above ("Tasks 1-3, 6 verified good", "GDD table shipped", "EN/AR + trade-off hint") — no work changed. The remaining unticked criterion (gegenpress bands + cross-phase sweep) is the handed-over work now living in `2026-11-06_tactics_phase3-anchor-pass-and-gates`.
