@@ -2,11 +2,11 @@
 id: T-0032
 title: Balance bands red on main — compose-rule root cause, sweep tooling and GDD sync
 priority: critical
-status: todo
+status: done
 attempts: 0
 depends_on: [T-0037, T-0038]
 created: 2026-11-05
-completed:
+completed: 2026-11-06
 # migrated from: reviews/tasks/2026-11-05_tactics_phase3-balance-bands-and-sweep.md
 ---
 
@@ -227,3 +227,7 @@ Decision 2026-11-06 (§6.B, rejection UPHELD — work still needed): the two sea
 ## Historical Links
 - Follows: `2026-11-04_tactics_phase-3-transitions`
 - Follow-up: `2026-11-06_match-engine_fatigue-decoupling`, `2026-11-06_tactics_phase3-anchor-pass-and-gates`
+
+### Review 2026-11-06: CLOSED (hand-over complete)
+- Follow-up(s) T-0037 + T-0038 (fatigue-decoupling and anchor-pass) passed independent verification on main `3f4b86c` and are archived: `flutter analyze` clean, full suite 709/709, sweep 44/44 on both pools.
+- Closure follows the old-board §7 rule: a SPLIT task closes when its handed-over work is complete in follow-up files that are themselves closed. No executable work remains in this record shell; its acceptance-criteria lines are the historical record of the original attempt and are left as written.
