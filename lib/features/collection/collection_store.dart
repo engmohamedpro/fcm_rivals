@@ -37,6 +37,8 @@ import 'club_store.dart';
 import 'squad_store.dart';
 import '../upgrades/upgrade_engine.dart';
 
+part 'collection_store_dataset.dart';
+part 'collection_store_internals.dart';
 
 class CollectionStore {
   CollectionStore({
@@ -185,157 +187,6 @@ class CollectionStore {
       }
       return clubId;
     });
-  }
-  /// pack drawing before any update was applied in this session).
-  Future<PlayerDatabase> _ensureRegistry() async {
-    if (_registryLoaded) return _registry;
-    final rows = await db.select(db.players).get();
-    if (rows.isNotEmpty) {
-      final dataset = PlayerDataset(
-        version:
-            (await db.select(db.datasetVersions).getSingleOrNull())?.version ??
-            0,
-        asOf: '',
-        rows: [
-          for (final r in rows)
-            PlayerDatasetRow(
-              playerId: r.playerId,
-              name: r.name,
-              position: Position.fromCode(r.position),
-              nationality: r.nationality,
-              marketValueEur: r.marketValueEur,
-            ),
-        ],
-      );
-      _registry.importDataset(dataset);
-    }
-    _registryLoaded = true;
-    return _registry;
-  }
-
-  /// Imports the bundled dataset into SQLite (idempotent per version) and
-  /// primes the in-memory registry. The caller owns parsing — the app
-  /// bootstrap decodes on a background isolate (see providers.dart).
-  Future<void> importBundledDataset(PlayerDataset dataset) async {
-    final current = await db.select(db.datasetVersions).getSingleOrNull();
-    if (current != null && current.version >= dataset.version) return;
-    await applyDatasetUpdate(dataset);
-  }
-
-  /// Applies a dataset update transactionally (FR-004..FR-008, NFR-003):
-  /// registry update rules, upsert of player rows, removed-player
-  /// compensation at the exact upgraded selling formula, squad slot cleanup.
-  Future<DatasetUpdateReport> applyDatasetUpdate(PlayerDataset dataset) async {
-    await _ensureRegistry();
-    final importResult = _registry.importDataset(dataset);
-
-    final club = await (db.select(
-      db.clubs,
-    )..where((c) => c.isUser.equals(true))).getSingleOrNull();
-    final compensations = <RemovalCompensation>[];
-
-    await db.transaction(() async {
-      // Upsert current rows (regenerated stats included per GDD 4.6) in
-      // ONE batched statement instead of ~20,876 awaited round trips:
-      // the batch is atomic with the rest of this transaction, so
-      // dataset updates and removed-player compensation still commit
-      // or roll back together (FR-004..FR-008, NFR-003).
-      await db.batch((batch) {
-        batch.insertAll(
-          db.players,
-          [
-            for (final player in [
-              ...importResult.added,
-              ...importResult.updated,
-              ...importResult.regenerated,
-            ])
-              PlayersCompanion.insert(
-                playerId: Value(player.playerId),
-                name: player.name,
-                position: player.position.code,
-                nationality: player.nationality,
-                marketValueEur: player.marketValueEur,
-                overall: player.baseStats.overall,
-                attack: player.baseStats.attack,
-                support: player.baseStats.support,
-                defence: player.baseStats.defence,
-                goalkeeping: player.baseStats.goalkeeping,
-              ),
-          ],
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-
-      // Removed players: compensate owners, drop copies and squad slots
-      // (GDD 4.8) — inside the same transaction as the data update.
-      if (club != null) {
-        for (final removed in importResult.removed) {
-          final owned =
-              await (db.select(db.ownedPlayers)..where(
-                    (o) =>
-                        o.playerId.equals(removed.playerId) &
-                        o.status.equals('owned'),
-                  ))
-                  .get();
-          for (final copy in owned) {
-            final coins = economy.sellPriceOfUpgraded(
-              removed,
-              copy.upgradeLevel,
-            );
-            compensations.add(
-              RemovalCompensation(
-                playerName: removed.name,
-                upgradeLevel: copy.upgradeLevel,
-                coins: coins,
-              ),
-            );
-            await (db.delete(
-              db.ownedPlayers,
-            )..where((o) => o.id.equals(copy.id))).go();
-          }
-        }
-        if (compensations.isNotEmpty) {
-          final total = compensations.fold<int>(0, (a, c) => a + c.coins);
-          // Relative update — a concurrent coin movement (a pack
-          // purchase, a match reward) can no longer be overwritten by
-          // this credit (see coin_ops.dart). The legacy coinLedger
-          // re-selects the row itself, so its balanceAfter is correct.
-          await db.customUpdate(
-            'UPDATE clubs SET coins = coins + ? WHERE id = ?',
-            variables: [
-              Variable.withInt(total),
-              Variable.withInt(club.id),
-            ],
-            updates: {db.clubs},
-            updateKind: UpdateKind.update,
-          );
-          await db.coinLedger(
-            club.id,
-            total,
-            reason: 'removal_compensation',
-            detail: '${compensations.length} players removed by dataset update',
-          );
-        }
-      }
-
-      await db
-          .into(db.datasetVersions)
-          .insertOnConflictUpdate(
-            DatasetVersionsCompanion.insert(
-              version: Value(dataset.version),
-              asOf: dataset.asOf,
-              digest: Value(dataset.digest),
-              importedAt: DateTime.now(),
-              playerCount: dataset.count,
-            ),
-          );
-    });
-
-    _registryLoaded = true;
-    return DatasetUpdateReport(
-      importResult: importResult,
-      compensations: compensations,
-    );
   }
 
   // ---------------------------------------------------------------------------
@@ -958,22 +809,6 @@ class CollectionStore {
     });
   }
 
-  /// Adapts a persisted player row to the domain model.
-  BasePlayer _toBasePlayer(Player row) => BasePlayer(
-    playerId: row.playerId,
-    name: row.name,
-    position: Position.fromCode(row.position),
-    nationality: row.nationality,
-    marketValueEur: row.marketValueEur,
-    baseStats: BaseStats(
-      overall: row.overall,
-      attack: row.attack,
-      support: row.support,
-      defence: row.defence,
-      goalkeeping: row.goalkeeping,
-    ),
-  );
-
   // --- Club / squad / campus: delegated to the focused stores ----------
   // (the bodies live in club_store.dart, squad_store.dart and
   // campus_store.dart; these members are the compatibility facade)
@@ -1016,35 +851,4 @@ class CollectionStore {
     FacilitiesCosts costs = defaultFacilitiesCosts,
   }) =>
       _campus.upgradeFacility(facility, costs: costs);
-}
-
-extension on AppDatabase {
-  /// Appends one ledger row for [amount] credited to [clubId]. Must be
-  /// called AFTER the balance update inside the same transaction so
-  /// balanceAfter reflects the post-transaction state (FR-016).
-  ///
-  /// Kept for call sites that update the balance inside their own larger
-  /// transaction (e.g. applyMatchResult's stamina writes share it); new
-  /// coin movements should prefer [CoinOps.spendCoins]/[CoinOps.creditCoins]
-  /// which are relative and race-free.
-  Future<void> coinLedger(
-    int clubId,
-    int amount, {
-    required String reason,
-    String? detail,
-  }) async {
-    final club = await (select(
-      clubs,
-    )..where((c) => c.id.equals(clubId))).getSingle();
-    await into(coinTransactions).insert(
-      CoinTransactionsCompanion.insert(
-        clubId: clubId,
-        amount: amount,
-        balanceAfter: club.coins,
-        reason: reason,
-        detail: Value(detail),
-        createdAt: DateTime.now(),
-      ),
-    );
-  }
 }

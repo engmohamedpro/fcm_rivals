@@ -4,8 +4,8 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-06
-- Status: OPEN
-- Completed on: -
+- Status: DONE
+- Completed on: 2026-11-06
 
 ## Context
 Correction follow-up of `2026-11-05_app-structure_split-collection-results-catalog` (SPLIT 2026-11-06: the results/catalog extraction verified good, but its acceptance criterion "the CollectionStore facade ≤900 lines" is unmet — the facade still measures 1,049 lines; additionally that task's full-suite summary was never pasted). This task finishes the split to the agreed budget and closes the verification gap.
@@ -22,18 +22,30 @@ Correction follow-up of `2026-11-05_app-structure_split-collection-results-catal
 Not applicable.
 
 ## Task
-- [ ] Extract cohesive CollectionStore method families below the 900-line budget and paste the full-suite run | Where: `lib/features/collection/collection_store.dart` (1,049 lines on 2026-11-06) | Expected: the facade ≤900 lines and every new file ≤800 lines (candidates: dataset import/validation family, store-composition helpers); pure relocation, no behaviour change, schema unchanged — store/facilities/economy suites green with zero test edits, and a dated full-suite `flutter test` summary line pasted in Developer Notes (expected 705+ passed / only the tracked balance bands red).
+- [x] Extract cohesive CollectionStore method families below the 900-line budget and paste the full-suite run | Where: `lib/features/collection/collection_store.dart` (1,049 lines on 2026-11-06) | Expected: the facade ≤900 lines and every new file ≤800 lines (candidates: dataset import/validation family, store-composition helpers); pure relocation, no behaviour change, schema unchanged — store/facilities/economy suites green with zero test edits, and a dated full-suite `flutter test` summary line pasted in Developer Notes (expected 705+ passed / only the tracked balance bands red).
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Resulting files ≤800 lines; the `CollectionStore` facade ≤900 lines
-- [ ] Schema unchanged; store/facilities/economy suites green with zero test edits; dated full-suite summary pasted in Developer Notes
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] Resulting files ≤800 lines; the `CollectionStore` facade ≤900 lines
+- [x] Schema unchanged; store/facilities/economy suites green with zero test edits; dated full-suite summary pasted in Developer Notes
 
 ## Developer Notes
-<Implementation summary, files changed, exact test commands/results, and rejection reason/evidence if applicable. Implement this task only, create one task-specific commit, and push it before starting another task.>
+Implemented 2026-11-06. Followed the endorsed engine-split pattern (`5447a67`) — part files with `collection_store.dart` as the importing barrel, moved blocks byte-identical (machine-asserted against the HEAD blob before writing; the facade's whole diff against HEAD is the removal of the moved blocks plus two `part` lines):
+
+- `collection_store_dataset.dart` (NEW, 164 lines): the dataset import/validation family — `_ensureRegistry`, `importBundledDataset`, `applyDatasetUpdate` — as public-named `extension DatasetImportOps on CollectionStore` (public-named because these members are the facade's public API called by providers, the simulator and tests; bodies unchanged).
+- `collection_store_internals.dart` (NEW, 56 lines): library-private internals only — `_toBasePlayer` (as private `extension _RowMapping`) and the unnamed `extension on AppDatabase` ledger append.
+- `collection_store.dart`: 1,049 → **854 lines** (≤900 with margin 46).
+
+Deviation from the task's candidate list, with evidence: the store-composition helpers (the club/squad/campus pass-through family) were extracted first but had to be RESTORED into the class. Dart extension scope does not propagate through re-imports: `squad_screen.dart`, `main.dart`, `campus_screen.dart`, `match_screen.dart` call these members via `app/providers.dart` without importing `collection_store.dart`, so extension-declared members did not resolve there (`flutter analyze`: 7 `undefined_method` errors, e.g. `getClub` at match_screen.dart:166, `saveSquad` at squad_screen.dart:166). Moving public API to extensions would have forced import edits across consumers and tests, breaking the zero-test-edits criterion; the engine precedent only ever moved private members. The budget was reached via the dataset family (151 lines) + private internals (46 lines) instead. No behaviour, schema, transaction, or localization change (relocation only); no test edits.
+
+Exact commands and results (2026-11-06, Flutter 3.47.9 stable / Dart 3.13.7, base `517724b`):
+- `flutter analyze` → `No issues found! (ran in 2.0s)` — zero analyzer warnings.
+- `flutter test test/features/collection/collection_store_test.dart test/core/database/coin_ops_test.dart test/balance/economy_balance_test.dart test/features/facilities` → `+59: All tests passed!` with zero test edits.
+- Full suite: `flutter test` → `+709: All tests passed!` exit 0, dated 2026-11-06 (~5m38s wall), zero failures — NO tracked balance bands red in this run.
+- Line budget: facade 854 ≤ 900; new files 164 and 56 ≤ 800; `find lib … awk '$1>800'` no longer lists anything in `lib/features/collection/`.
 
 ## Reviewer Verification
 <Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
