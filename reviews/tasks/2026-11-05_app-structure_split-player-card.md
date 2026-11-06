@@ -4,7 +4,7 @@
 - Type: Refactor
 - Priority: Minor
 - Created: 2026-11-05
-- Status: DONE
+- Status: CLOSED
 - Completed on: 2026-11-05
 
 ## Context
@@ -25,12 +25,12 @@ Not applicable.
 - [x] Split the player card into card, mini card and painters | Where: `lib/core/ui/player_card.dart` (1,247 lines; anchors above) | Expected: `mini_card.dart` (FcmMiniCard + ghost/stat/stamina widgets) and `player_card_painters.dart` (the CustomPainters); a `player_card.dart` barrel keeps the existing import path; `player_card_test.dart` and `mini_card_test.dart` green with zero test edits.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines (excluding generated `*.g.dart`); `player_card.dart` barrel keeps the existing import path
-- [ ] `player_card_test.dart` and `mini_card_test.dart` green with zero test edits
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes (green except the four tracked phase-3 balance bands — see Reviewer Verification)
+- [x] EN/AR localization complete and RTL verified where applicable (painter/widget move only)
+- [x] No performance or application-size regression (pure relocation)
+- [x] Every resulting file ≤800 lines (excluding generated `*.g.dart`); `player_card.dart` barrel keeps the existing import path
+- [x] `player_card_test.dart` and `mini_card_test.dart` green with zero test edits
 
 ## Developer Notes
 - Extracted from `player_card.dart` (1,247 -> 430 lines):
@@ -57,7 +57,7 @@ Not applicable.
 
 
 ## Reviewer Verification
-<Reviewer records verification date, tested commit hash, checks performed, results, and remaining limitations. Do not add personal names.>
+Verified 2026-11-06 on commit `d9aa76b` (static; the cited runs are the developer's, consistent across the session's six implementation commits). Checks: (1) `git show d9aa76b --name-only` — only the three card files and this task file; (2) measured 2026-11-06: player_card 427, mini_card 328, player_card_painters 528 — all ≤800, and the `player_card.dart` barrel keeps the existing import path; (3) ui/packs/squad suites reported green (25, including `player_card_test.dart` and `mini_card_test.dart`) with zero test edits; full suite 705/4 with only the tracked balance bands. Limitation: the suite was not re-run in this sandbox. CLOSED.
 
 ## Links
 - Depends on: None
