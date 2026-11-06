@@ -2,11 +2,11 @@
 id: T-0039
 title: Split tactics.dart into modifier math, phase families and team config
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 ---
 
 # T-0039: Split tactics.dart into modifier math, phase families and team config
@@ -32,13 +32,13 @@ The fatigue-decoupling chain (T-0037/T-0038) is archived, so no pending balance 
 - Splitting any other file; editing `MatchEngine` or `engine_config` beyond import fixes.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes with zero test edits
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines; `tactics.dart` barrel keeps consumer imports stable
-- [ ] `README.md` architecture table row for the tactics family updated for the new module files
-- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes with zero test edits
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] Every resulting file ≤800 lines; `tactics.dart` barrel keeps consumer imports stable
+- [x] `README.md` architecture table row for the tactics family updated for the new module files
+- [x] `flutter test tool/simulation_report_test.dart` determinism PASS
 
 ## How to Verify
 ```bash
@@ -58,3 +58,12 @@ Expected: every listed file ≤800 lines; analyzer reports no issues; full suite
 - **Concerns / assumptions:** (1) The `_enumOr` → `enumOr` visibility change is the only touch on a declaration name; no test or call site outside the five split files references it. (2) The sandbox toolchain is newly installed; to rule out environment noise the full suite was run twice on the same machine (pre-split baseline and post-split) with identical +709 results. (3) No Drift codegen involved (`tactics.dart` has no schema parts), so no `build_runner` run was needed. None blocking.
 
 ## Review Log
+
+### Review 2026-11-06, attempt 1: PASS
+- Independent verbatim-relocation check (multiset of all lines, original `db17520:lib/features/match/tactics.dart` vs. the six HEAD files): the only lines present in the original but not the new set are the 11 `_enumOr` lines; the only executable lines present in the new set but not the original are the same 11 renamed to `enumOr`. Everything else is imports/exports/`library;`/doc comments. Confirms the developer's declared single API delta; all 11 `enumOr` occurrences stay inside the split files, none outside.
+- Ran: `wc -l` on all six files → 27/282/227/219/157/348, all ≤800.
+- Ran: `flutter analyze` (Flutter 3.47.9 stable / Dart 3.13.7, README pin) → No issues found.
+- Ran: `flutter test` → `+709: All tests passed!`, exit 0 — identical count to the archived baseline, and `git diff db17520..HEAD -- test/ tool/` is empty, so zero test edits confirmed.
+- Ran: `flutter test tool/simulation_report_test.dart` → `+1: All tests passed!`, `REPORT_WRITTEN: simulation_report.md` — determinism PASS.
+- Scope: `git diff --stat db17520..HEAD` shows only the six lib files + README Tactics row + this task file; no consumer edits, so the barrel kept all import paths stable. README Tactics row correctly replaced the stale "10 playing styles" text.
+- Notes: EN/AR l10n untouched (no localization file in the diff; multiset proves no string literal changed), so the localization criterion is met vacuously.
