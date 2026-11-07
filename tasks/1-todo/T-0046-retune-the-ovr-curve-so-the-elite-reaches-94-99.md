@@ -25,7 +25,7 @@ Current curve (`lib/core/domain/base_stats_generator.dart:37-46` config, `:185-1
 ## Requirements
 1. Curve retune lives in `BaseStatsConfig` + `baseRatingFor` only (`base_stats_generator.dart`); the GDD 4.5 doc comment updated to describe the final shape.
 2. `maxRating` raised 94 → 99; nothing in the code may cap OVR below 99.
-3. The dataset band contract is asserted by a new test loading `players_v1.json` (do not hardcode player names): top-5 by value each ≥ 96 and ≤ 99; €50M reference lands 84 (±1); median OVR 55-60; p90 OVR 70-74; ≤ 2% of the dataset clamped at the 30 floor (currently 0%); 80+ population within 2.0-3.5% (currently 2.44%); zero players above 99.
+3. The dataset band contract is asserted by a new test loading `players_v1.json` (do not hardcode player names): top-5 by value each ≥ 96 and ≤ 99; €50M reference lands 84 (±1); median OVR 55-60; p90 OVR 70-74; ≤ 2% of the dataset clamped at the 30 floor (currently 0%); 80+ population within 2.0-3.5% (currently 2.44%); zero players above 99. The test must also **print the 90+ population count and share** (measured 2026-11-07 against the proposed two-segment curve: 52 rows, 0.249%) — T-0049's red-tier band is set against that print, so the two tasks cannot drift apart silently.
 4. Update the locked band tests that encode the old ceiling: `test/core/domain/base_stats_generator_test.dart:30` (`expect(..., 94) // above ceiling`) and `:515` (`inInclusiveRange(30, 94)`) — a deliberate band change, not a threshold edit to sneak past a failure.
 5. Match/economy balance suites must stay green unchanged (see side-effect risk); if a locked band fails, retune the curve within the contract — do not touch the balance bands (out of scope).
 

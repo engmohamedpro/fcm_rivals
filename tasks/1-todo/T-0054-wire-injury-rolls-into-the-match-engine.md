@@ -1,0 +1,62 @@
+---
+id: T-0054
+title: Wire injury rolls into the match engine with forced substitutions
+priority: critical
+status: todo
+attempts: 0
+depends_on: [T-0053]
+created: 2026-11-07
+completed:
+---
+
+# T-0054: Wire injury rolls into the match engine with forced substitutions
+
+## Goal
+The match engine rolls the T-0053 risk model per minute for every on-pitch player (both sides): an injury fires an event, removes the player, forces the best available substitute (or plays short when none exists), and shows up in commentary, statistics and the report. Fatigue's gameplay bite becomes visible here — a drained squad starts losing players.
+
+## Context (evidence, main `3614c4a`)
+- The engine loop: `lib/features/match/match_engine.dart` (`advanceMinute` drains stamina at `:202-204`); the runtime holds `onPitch`/`bench`/`offPitch` per side (`match_engine_runtime.dart:120-258`) with `substitute()` (`:259+`) and the AI's greedy best-fit selection in `changeFormation`/AI-sub paths to reuse; the simulation consumes `TuningOverrides` and rolls events per minute in `match_engine_simulation.dart`.
+- Adding a `MatchEventType.injury` value (`lib/features/match/match_event.dart:17-33`) touches every exhaustive switch — verified switch sites: `commentary.dart`, `match_report.dart`, `match_screen.dart`, `match_engine_events.dart`, `match_engine_simulation.dart`, `match_engine_setpieces.dart`, `match_engine.dart`. Each must handle the new type explicitly; commentary gets one EN sentence family (knock/muscle/serious) with its AR counterpart — the only new l10n strings in the engine chain.
+- Empty-slot handling already exists for red cards: `onPitch` null slot = plays short (`match_engine_runtime.dart:127`). Injuries reuse it when the bench is empty or the substitution cap is spent — a forced injury sub MUST NOT consume the user's tactical-sub budget beyond the existing cap logic: if `substitutionsUsed >= maxSubstitutions` the injured player simply leaves the pitch (plays short), mirroring real football.
+- Forced-sub choice: best-fit by the same compatibility×rating score the AI subs use; the outgoing player stops draining, keeps minutes/ratings already earned; the incoming player starts at his persisted stamina and enters the drain/recovery paths from that minute.
+- Determinism: all rolls go through `MatchRandom` with the seeded pipeline — the same seed must reproduce the same injuries. The engine snapshot (`test/features/match/engine_snapshot.json`) locks the metric profile; injuries at baseline squads are rare-but-nonzero, so metrics move slightly → deliberate `REGEN_SNAPSHOT=1` regen with a recorded diff (same discipline as T-0052).
+- Persistence of the rolled injuries to the DB is T-0055 — the engine carries them on the event/session layer only. UI banner/badge is T-0056.
+
+## Requirements
+1. Per-minute injury roll for every on-pitch player of BOTH sides using `injuryChanceForMinute` (T-0053) with the player's current stamina, position workload and the configured Medical Centre reduction (level 0 in engine-level tests; the real level rides in via the session layer in T-0055).
+2. New `MatchEventType.injury` event carrying the injured player, the kind and `matchesOut`; every exhaustive switch handled; commentary text EN + AR; the report statistics include an injuries row per team and the injured player's line reflects the early exit.
+3. Forced substitution: valid bench candidate → `substitute()` with the best-fit score (not charged against the AI/user tactical choice, but `substitutionsUsed` increments — the cap is shared); no candidate → null slot (plays short). The substitution event follows the injury event in the same minute.
+4. AI squads suffer identical rolls (no asymmetric protection); the AI substitution gates (76/70) already react to stamina and keep working above the injury layer.
+5. New engine calibration group `injuries` in `engine_calibration_test.dart` with printed, band-locked rates: fresh squads (start ≥ 95 stamina) average < 0.05 injuries/team/match over ≥ 500 seeded matches; exhausted squads (start ≤ 55) land in a documented band ≥ 0.25; risk monotonic vs starting stamina across a 5-point grid; zero-injury determinism for a fixed seed; per-match cap never exceeded.
+6. Snapshot regen (deliberate, diff recorded) and all pre-existing calibration/balance bands pass unmodified — tune only `InjuryConfig` constants if the injury rates themselves need to move; any other band conflict → stop and record.
+
+## Out of Scope
+- DB persistence of injuries, recovery decrement, squad availability gating, Medical Centre level plumbing from stores (T-0055).
+- Any UI surface: live banner, badges, pre-match warnings (T-0056).
+- Changing the T-0053 risk model shapes (only its constants within the documented bands).
+
+## Acceptance Criteria
+- [ ] Compiles with zero analyzer warnings
+- [ ] New injury engine tests + calibration group green with printed rates; full `flutter test` suite passes with old bands unmodified
+- [ ] EN/AR localization complete and RTL verified — injury commentary lines exist in both languages and render correctly in the report view
+- [ ] No performance or application-size regression (per-minute roll is O(on-pitch players); budget printed for the profile run)
+- [ ] Same seed reproduces identical injuries; fresh squads are essentially injury-free; exhausted squads get measurably more
+- [ ] Engine snapshot regenerated deliberately and committed; diff recorded
+- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
+
+## How to Verify
+```bash
+flutter analyze
+flutter test test/features/match/engine_calibration_test.dart test/features/match/match_engine_test.dart test/features/match/match_report_test.dart 2>/dev/null || flutter test test/features/match/
+flutter test test/features/season/ test/balance/
+flutter test tool/simulation_report_test.dart
+flutter test
+```
+Expected: analyzer clean; injury calibration prints (fresh vs exhausted rates) and passes; season/balance suites green; determinism PASS.
+
+## Side-effect risk (medium)
+Forced subs change substitution volume and late-match squad strength — the AI substitutions suite (volume/cap/minute accounting) and the strength-gap ladder are the guards; the cap-sharing rule (Requirement 3) must not let injuries starve the AI's tactical subs in a way that moves the late-goal bands. If the injuries-per-match band forces frequent 10-men situations, re-tune `InjuryConfig` downward within the T-0053 bands — blowout-by-injury seasons are a real-football falsifier.
+
+## Developer Notes
+
+## Review Log
