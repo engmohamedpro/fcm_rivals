@@ -674,8 +674,7 @@ performance. All four primary attributes apply at full value whatever the
 player's stamina — a 70% starter performs exactly like a fresh one.
 
 Stamina stays the rotation currency and the substitute-management
-resource; its only gameplay effect is injury risk (the risk model and its
-specification land with the injury system tasks).
+resource; its only gameplay effect is injury risk (GDD 11.7).
 
 Example:
 
@@ -741,6 +740,46 @@ Only one choice can be selected.
 The game must show the affected player count and exact recovery effect before confirmation.
 
 Values remain configurable for balancing.
+
+---
+
+### 11.7 Injury System
+
+Owner decision (2026-11-07): with fatigue decoupled from performance
+(GDD 11.2), stamina's gameplay meaning is injury risk. Risk is computed
+per player-minute by the pure seeded model in
+`lib/features/match/injury.dart`; the match engine decides when to roll,
+inside its fixed seeded draw budget (GDD 12.5).
+
+Risk inputs:
+
+- Base per-minute risk at full stamina: 0.0002 (~0.018 per full match) —
+  "≈ 0", never zero.
+- Fatigue ramp: identity at/above the 70-stamina threshold, quadratic
+  below it — `risk = base × (1 + 14·t²)`, `t = (70 − stamina) / 70`
+  clamped to [0, 1]; hard per-minute ceiling 0.0035.
+- Position workload: the same multipliers as the stamina workload
+  (GDD 11.4) — midfielders 1.18×, keepers 0.55×.
+- Medical Centre: −0.6% per level, multiplicative (consumes the 0.6
+  percentage-points-per-level hook; level 5 = −3%).
+- Per-match cap guard: at most 2 injuries per team per match.
+
+Severity table (expected recovery stays short — a 38-round season with
+23-man squads cannot absorb long bills):
+
+| Kind    | Share | Matches out |
+|---------|-------|-------------|
+| knock   | 55%   | 1           |
+| muscle  | 35%   | 2–3         |
+| serious | 10%   | 4–6         |
+
+Expected matches missed ≈ 1.9. Recovery = matches missed, counted down
+per round by the post-match pipeline; the kind and the remaining matches
+persist as schema v12 columns on both the user's and the AI squads
+(SRS 25). All values are pre-balance placeholders (rule 14); the
+calibration gate is the wiring task's engine calibration group. The UI
+layer and the l10n keys (`injuryKindKnock` / `injuryKindMuscle` /
+`injuryKindSerious`) land with the injury-UI task.
 
 ---
 

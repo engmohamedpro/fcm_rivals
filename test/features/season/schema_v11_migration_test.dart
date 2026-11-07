@@ -15,9 +15,10 @@ import 'package:fcm_rivals/features/match/tactics.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  /// Rewinds the current on-disk schema to a hand-built v10 clubs table
-  /// carrying one of the ten legacy playing-style names, then reopens
-  /// through the real upgrade path.
+  /// Rewinds the current on-disk schema to hand-built v10-shaped
+  /// `clubs`, `owned_players` and `ai_players` tables (a real v10
+  /// install predates the tactics column AND the v12 injury columns),
+  /// then reopens through the real upgrade path.
   Future<File> rewindToV10(String playingStyle) async {
     final file = File(
       '${Directory.systemTemp.path}/v10_${playingStyle}_'
@@ -41,6 +42,38 @@ void main() {
     );
     await db.customStatement('DROP TABLE clubs');
     await db.customStatement('ALTER TABLE clubs_v10 RENAME TO clubs');
+    // The v12 migration (T-0053) adds the injury columns to these two
+    // tables — the fixture must present them at their pre-v12 shape or
+    // the ADD COLUMNs would hit duplicate columns on current-shape
+    // tables that a real v10 install never had.
+    await db.customStatement(
+      'CREATE TABLE owned_players_v11 (id INTEGER PRIMARY KEY AUTOINCREMENT, '
+      'club_id INTEGER NOT NULL, player_id INTEGER NOT NULL, '
+      'upgrade_level INTEGER NOT NULL DEFAULT 0, '
+      'upgraded_attack INTEGER NOT NULL DEFAULT 0, '
+      'upgraded_support INTEGER NOT NULL DEFAULT 0, '
+      'upgraded_defence INTEGER NOT NULL DEFAULT 0, '
+      'upgraded_goalkeeping INTEGER NOT NULL DEFAULT 0, '
+      'stamina_percent INTEGER NOT NULL DEFAULT 100, '
+      'squad_slot INTEGER NULL, status TEXT NOT NULL DEFAULT \'owned\', '
+      'acquisition_source TEXT NOT NULL DEFAULT \'pack\', '
+      'acquired_at INTEGER NOT NULL)',
+    );
+    await db.customStatement('DROP TABLE owned_players');
+    await db.customStatement(
+      'ALTER TABLE owned_players_v11 RENAME TO owned_players',
+    );
+    await db.customStatement(
+      'CREATE TABLE ai_players_v11 (id INTEGER PRIMARY KEY AUTOINCREMENT, '
+      'club_id INTEGER NOT NULL, player_name TEXT NOT NULL, '
+      'position TEXT NOT NULL, attack INTEGER NOT NULL, '
+      'support INTEGER NOT NULL, defence INTEGER NOT NULL, '
+      'goalkeeping INTEGER NOT NULL, '
+      'stamina_percent INTEGER NOT NULL DEFAULT 100, '
+      'real_player_id INTEGER NULL)',
+    );
+    await db.customStatement('DROP TABLE ai_players');
+    await db.customStatement('ALTER TABLE ai_players_v11 RENAME TO ai_players');
     await db.customStatement('PRAGMA user_version = 10');
     await db.close();
     return file;

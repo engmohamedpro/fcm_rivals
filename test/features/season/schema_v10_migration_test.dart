@@ -26,6 +26,19 @@ void main() {
     'DEFAULT 100)',
     'CREATE TABLE user_settings_v8 (id INTEGER NOT NULL, '
     'match_speed INTEGER NOT NULL DEFAULT 1)',
+    // OwnedPlayers gained no columns between v2 and v12 — the v8 shape
+    // IS the pre-injury-column shape the v12 step (T-0053) alters.
+    'CREATE TABLE owned_players_v8 (id INTEGER PRIMARY KEY AUTOINCREMENT, '
+    'club_id INTEGER NOT NULL, player_id INTEGER NOT NULL, '
+    'upgrade_level INTEGER NOT NULL DEFAULT 0, '
+    'upgraded_attack INTEGER NOT NULL DEFAULT 0, '
+    'upgraded_support INTEGER NOT NULL DEFAULT 0, '
+    'upgraded_defence INTEGER NOT NULL DEFAULT 0, '
+    'upgraded_goalkeeping INTEGER NOT NULL DEFAULT 0, '
+    'stamina_percent INTEGER NOT NULL DEFAULT 100, '
+    'squad_slot INTEGER NULL, status TEXT NOT NULL DEFAULT \'owned\', '
+    'acquisition_source TEXT NOT NULL DEFAULT \'pack\', '
+    'acquired_at INTEGER NOT NULL)',
   ];
 
   /// Rewinds the current on-disk schema to an older user_version by
@@ -48,13 +61,21 @@ void main() {
     await db.customStatement(
       "INSERT INTO user_settings_v8 (id, match_speed) VALUES (1, 3)",
     );
+    await db.customStatement(
+      'INSERT INTO owned_players_v8 (club_id, player_id, acquired_at) '
+      'VALUES (1, 99, 1700000000000)',
+    );
     await db.customStatement('DROP TABLE ai_players');
     await db.customStatement('DROP TABLE user_settings');
+    await db.customStatement('DROP TABLE owned_players');
     await db.customStatement(
       'ALTER TABLE ai_players_v8 RENAME TO ai_players',
     );
     await db.customStatement(
       'ALTER TABLE user_settings_v8 RENAME TO user_settings',
+    );
+    await db.customStatement(
+      'ALTER TABLE owned_players_v8 RENAME TO owned_players',
     );
     if (version >= 9) {
       await db.customStatement(
@@ -177,11 +198,17 @@ void main() {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
-    expect(db.schemaVersion, 11);
+    expect(db.schemaVersion, 12);
     expect((await columnsOf(db, 'ai_players')).contains('real_player_id'),
         isTrue);
     expect((await columnsOf(db, 'user_settings')).contains('locale'), isTrue);
     expect((await columnsOf(db, 'clubs')).contains('tactics'), isTrue);
     expect((await columnsOf(db, 'clubs')).contains('playing_style'), isFalse);
+    // The v12 injury columns (T-0053) exist on both squad tables.
+    expect(
+      (await columnsOf(db, 'owned_players')).contains('injury_matches_remaining'),
+      isTrue,
+    );
+    expect((await columnsOf(db, 'ai_players')).contains('injury_kind'), isTrue);
   });
 }

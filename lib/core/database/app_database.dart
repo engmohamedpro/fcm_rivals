@@ -6,6 +6,10 @@
 /// v2: division/season tables — seasons, league teams, fixtures and match
 /// results (SRS 25; AI clubs reuse [Clubs] with isUser = false, their
 /// squads reuse [OwnedPlayers] with status 'ai').
+/// v12: injury columns (GDD 11.7, T-0053) — `injuryMatchesRemaining`
+/// (matches still missed; 0/null = fit) + `injuryKind` (nullable, the
+/// InjuryKind name) on both [OwnedPlayers] and [AiPlayers]. Behaviours
+/// (writing/decrementing/gating) land with T-0055.
 library;
 
 import 'package:drift/drift.dart';
@@ -92,6 +96,14 @@ class OwnedPlayers extends Table {
 
   IntColumn get staminaPercent => integer().withDefault(const Constant(100))();
   IntColumn get squadSlot => integer().nullable()();
+
+  /// Injury state (GDD 11.7, schema v12): matches still missed — 0 or
+  /// null = fit. [injuryKind] is the InjuryKind name and is non-null
+  /// exactly while the player is currently injured. Written and
+  /// decremented by the post-match pipeline (T-0055).
+  IntColumn get injuryMatchesRemaining =>
+      integer().nullable().withDefault(const Constant(0))();
+  TextColumn get injuryKind => text().nullable()();
 
   /// owned | sold | merged (sold/merged rows kept for history).
   TextColumn get status => text().withDefault(const Constant('owned'))();
@@ -210,6 +222,13 @@ class AiPlayers extends Table {
   /// from the imported player database, and a promoted/relegated club
   /// keeps its squad — the identity survives across seasons.
   IntColumn get realPlayerId => integer().nullable()();
+
+  /// Injury state, same contract as [OwnedPlayers.injuryMatchesRemaining]
+  /// (GDD 11.7, schema v12): AI players sit out matches through the same
+  /// gating (T-0055).
+  IntColumn get injuryMatchesRemaining =>
+      integer().nullable().withDefault(const Constant(0))();
+  TextColumn get injuryKind => text().nullable()();
 }
 
 /// Rewarded-ad usage ledger (SRS 25: AdUsage; GDD 19.4, FR-040..FR-042).
@@ -279,7 +298,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -302,6 +321,9 @@ class AppDatabase extends _$AppDatabase {
         // Core player data slimmed to name/nationality/position/value:
         // age, club and leagueCode dropped. TableMigration rebuilds the
         // table, preserving every remaining row and column.
+        // drift 2.31 (the version resolvable on the shipped toolchain)
+        // marks TableMigration experimental; the API is stable here.
+        // ignore: experimental_member_use
         await m.alterTable(TableMigration(players));
       }
       if (from < 6) {
@@ -354,8 +376,19 @@ class AppDatabase extends _$AppDatabase {
         // Every legacy value — all ten old style names — maps to the
         // default (identity) setup; the legacy-style → combination
         // mapping is documentation only, delivered with phases 1-3.
+        // ignore: experimental_member_use
         await m.addColumn(clubs, clubs.tactics);
+        // ignore: experimental_member_use
         await m.alterTable(TableMigration(clubs));
+      }
+      if (from < 12) {
+        // Injury columns (GDD 11.7, T-0053): pure additions — every
+        // existing row keeps its values byte-for-byte and reads as fit
+        // (0 / null). Behaviours land with T-0055.
+        await m.addColumn(ownedPlayers, ownedPlayers.injuryMatchesRemaining);
+        await m.addColumn(ownedPlayers, ownedPlayers.injuryKind);
+        await m.addColumn(aiPlayers, aiPlayers.injuryMatchesRemaining);
+        await m.addColumn(aiPlayers, aiPlayers.injuryKind);
       }
     },
   );

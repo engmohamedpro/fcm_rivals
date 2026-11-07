@@ -1690,6 +1690,28 @@ class $OwnedPlayersTable extends OwnedPlayers
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _injuryMatchesRemainingMeta =
+      const VerificationMeta('injuryMatchesRemaining');
+  @override
+  late final GeneratedColumn<int> injuryMatchesRemaining = GeneratedColumn<int>(
+    'injury_matches_remaining',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _injuryKindMeta = const VerificationMeta(
+    'injuryKind',
+  );
+  @override
+  late final GeneratedColumn<String> injuryKind = GeneratedColumn<String>(
+    'injury_kind',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -1736,6 +1758,8 @@ class $OwnedPlayersTable extends OwnedPlayers
     upgradedGoalkeeping,
     staminaPercent,
     squadSlot,
+    injuryMatchesRemaining,
+    injuryKind,
     status,
     acquisitionSource,
     acquiredAt,
@@ -1831,6 +1855,21 @@ class $OwnedPlayersTable extends OwnedPlayers
         squadSlot.isAcceptableOrUnknown(data['squad_slot']!, _squadSlotMeta),
       );
     }
+    if (data.containsKey('injury_matches_remaining')) {
+      context.handle(
+        _injuryMatchesRemainingMeta,
+        injuryMatchesRemaining.isAcceptableOrUnknown(
+          data['injury_matches_remaining']!,
+          _injuryMatchesRemainingMeta,
+        ),
+      );
+    }
+    if (data.containsKey('injury_kind')) {
+      context.handle(
+        _injuryKindMeta,
+        injuryKind.isAcceptableOrUnknown(data['injury_kind']!, _injuryKindMeta),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -1903,6 +1942,14 @@ class $OwnedPlayersTable extends OwnedPlayers
         DriftSqlType.int,
         data['${effectivePrefix}squad_slot'],
       ),
+      injuryMatchesRemaining: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}injury_matches_remaining'],
+      ),
+      injuryKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}injury_kind'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -1940,6 +1987,13 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
   final int staminaPercent;
   final int? squadSlot;
 
+  /// Injury state (GDD 11.7, schema v12): matches still missed — 0 or
+  /// null = fit. [injuryKind] is the InjuryKind name and is non-null
+  /// exactly while the player is currently injured. Written and
+  /// decremented by the post-match pipeline (T-0055).
+  final int? injuryMatchesRemaining;
+  final String? injuryKind;
+
   /// owned | sold | merged (sold/merged rows kept for history).
   final String status;
   final String acquisitionSource;
@@ -1955,6 +2009,8 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
     required this.upgradedGoalkeeping,
     required this.staminaPercent,
     this.squadSlot,
+    this.injuryMatchesRemaining,
+    this.injuryKind,
     required this.status,
     required this.acquisitionSource,
     required this.acquiredAt,
@@ -1973,6 +2029,12 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
     map['stamina_percent'] = Variable<int>(staminaPercent);
     if (!nullToAbsent || squadSlot != null) {
       map['squad_slot'] = Variable<int>(squadSlot);
+    }
+    if (!nullToAbsent || injuryMatchesRemaining != null) {
+      map['injury_matches_remaining'] = Variable<int>(injuryMatchesRemaining);
+    }
+    if (!nullToAbsent || injuryKind != null) {
+      map['injury_kind'] = Variable<String>(injuryKind);
     }
     map['status'] = Variable<String>(status);
     map['acquisition_source'] = Variable<String>(acquisitionSource);
@@ -1994,6 +2056,12 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
       squadSlot: squadSlot == null && nullToAbsent
           ? const Value.absent()
           : Value(squadSlot),
+      injuryMatchesRemaining: injuryMatchesRemaining == null && nullToAbsent
+          ? const Value.absent()
+          : Value(injuryMatchesRemaining),
+      injuryKind: injuryKind == null && nullToAbsent
+          ? const Value.absent()
+          : Value(injuryKind),
       status: Value(status),
       acquisitionSource: Value(acquisitionSource),
       acquiredAt: Value(acquiredAt),
@@ -2018,6 +2086,10 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
       ),
       staminaPercent: serializer.fromJson<int>(json['staminaPercent']),
       squadSlot: serializer.fromJson<int?>(json['squadSlot']),
+      injuryMatchesRemaining: serializer.fromJson<int?>(
+        json['injuryMatchesRemaining'],
+      ),
+      injuryKind: serializer.fromJson<String?>(json['injuryKind']),
       status: serializer.fromJson<String>(json['status']),
       acquisitionSource: serializer.fromJson<String>(json['acquisitionSource']),
       acquiredAt: serializer.fromJson<DateTime>(json['acquiredAt']),
@@ -2037,6 +2109,8 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
       'upgradedGoalkeeping': serializer.toJson<int>(upgradedGoalkeeping),
       'staminaPercent': serializer.toJson<int>(staminaPercent),
       'squadSlot': serializer.toJson<int?>(squadSlot),
+      'injuryMatchesRemaining': serializer.toJson<int?>(injuryMatchesRemaining),
+      'injuryKind': serializer.toJson<String?>(injuryKind),
       'status': serializer.toJson<String>(status),
       'acquisitionSource': serializer.toJson<String>(acquisitionSource),
       'acquiredAt': serializer.toJson<DateTime>(acquiredAt),
@@ -2054,6 +2128,8 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
     int? upgradedGoalkeeping,
     int? staminaPercent,
     Value<int?> squadSlot = const Value.absent(),
+    Value<int?> injuryMatchesRemaining = const Value.absent(),
+    Value<String?> injuryKind = const Value.absent(),
     String? status,
     String? acquisitionSource,
     DateTime? acquiredAt,
@@ -2068,6 +2144,10 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
     upgradedGoalkeeping: upgradedGoalkeeping ?? this.upgradedGoalkeeping,
     staminaPercent: staminaPercent ?? this.staminaPercent,
     squadSlot: squadSlot.present ? squadSlot.value : this.squadSlot,
+    injuryMatchesRemaining: injuryMatchesRemaining.present
+        ? injuryMatchesRemaining.value
+        : this.injuryMatchesRemaining,
+    injuryKind: injuryKind.present ? injuryKind.value : this.injuryKind,
     status: status ?? this.status,
     acquisitionSource: acquisitionSource ?? this.acquisitionSource,
     acquiredAt: acquiredAt ?? this.acquiredAt,
@@ -2096,6 +2176,12 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
           ? data.staminaPercent.value
           : this.staminaPercent,
       squadSlot: data.squadSlot.present ? data.squadSlot.value : this.squadSlot,
+      injuryMatchesRemaining: data.injuryMatchesRemaining.present
+          ? data.injuryMatchesRemaining.value
+          : this.injuryMatchesRemaining,
+      injuryKind: data.injuryKind.present
+          ? data.injuryKind.value
+          : this.injuryKind,
       status: data.status.present ? data.status.value : this.status,
       acquisitionSource: data.acquisitionSource.present
           ? data.acquisitionSource.value
@@ -2119,6 +2205,8 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
           ..write('upgradedGoalkeeping: $upgradedGoalkeeping, ')
           ..write('staminaPercent: $staminaPercent, ')
           ..write('squadSlot: $squadSlot, ')
+          ..write('injuryMatchesRemaining: $injuryMatchesRemaining, ')
+          ..write('injuryKind: $injuryKind, ')
           ..write('status: $status, ')
           ..write('acquisitionSource: $acquisitionSource, ')
           ..write('acquiredAt: $acquiredAt')
@@ -2138,6 +2226,8 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
     upgradedGoalkeeping,
     staminaPercent,
     squadSlot,
+    injuryMatchesRemaining,
+    injuryKind,
     status,
     acquisitionSource,
     acquiredAt,
@@ -2156,6 +2246,8 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
           other.upgradedGoalkeeping == this.upgradedGoalkeeping &&
           other.staminaPercent == this.staminaPercent &&
           other.squadSlot == this.squadSlot &&
+          other.injuryMatchesRemaining == this.injuryMatchesRemaining &&
+          other.injuryKind == this.injuryKind &&
           other.status == this.status &&
           other.acquisitionSource == this.acquisitionSource &&
           other.acquiredAt == this.acquiredAt);
@@ -2172,6 +2264,8 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
   final Value<int> upgradedGoalkeeping;
   final Value<int> staminaPercent;
   final Value<int?> squadSlot;
+  final Value<int?> injuryMatchesRemaining;
+  final Value<String?> injuryKind;
   final Value<String> status;
   final Value<String> acquisitionSource;
   final Value<DateTime> acquiredAt;
@@ -2186,6 +2280,8 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
     this.upgradedGoalkeeping = const Value.absent(),
     this.staminaPercent = const Value.absent(),
     this.squadSlot = const Value.absent(),
+    this.injuryMatchesRemaining = const Value.absent(),
+    this.injuryKind = const Value.absent(),
     this.status = const Value.absent(),
     this.acquisitionSource = const Value.absent(),
     this.acquiredAt = const Value.absent(),
@@ -2201,6 +2297,8 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
     this.upgradedGoalkeeping = const Value.absent(),
     this.staminaPercent = const Value.absent(),
     this.squadSlot = const Value.absent(),
+    this.injuryMatchesRemaining = const Value.absent(),
+    this.injuryKind = const Value.absent(),
     this.status = const Value.absent(),
     this.acquisitionSource = const Value.absent(),
     required DateTime acquiredAt,
@@ -2218,6 +2316,8 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
     Expression<int>? upgradedGoalkeeping,
     Expression<int>? staminaPercent,
     Expression<int>? squadSlot,
+    Expression<int>? injuryMatchesRemaining,
+    Expression<String>? injuryKind,
     Expression<String>? status,
     Expression<String>? acquisitionSource,
     Expression<DateTime>? acquiredAt,
@@ -2234,6 +2334,9 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
         'upgraded_goalkeeping': upgradedGoalkeeping,
       if (staminaPercent != null) 'stamina_percent': staminaPercent,
       if (squadSlot != null) 'squad_slot': squadSlot,
+      if (injuryMatchesRemaining != null)
+        'injury_matches_remaining': injuryMatchesRemaining,
+      if (injuryKind != null) 'injury_kind': injuryKind,
       if (status != null) 'status': status,
       if (acquisitionSource != null) 'acquisition_source': acquisitionSource,
       if (acquiredAt != null) 'acquired_at': acquiredAt,
@@ -2251,6 +2354,8 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
     Value<int>? upgradedGoalkeeping,
     Value<int>? staminaPercent,
     Value<int?>? squadSlot,
+    Value<int?>? injuryMatchesRemaining,
+    Value<String?>? injuryKind,
     Value<String>? status,
     Value<String>? acquisitionSource,
     Value<DateTime>? acquiredAt,
@@ -2266,6 +2371,9 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
       upgradedGoalkeeping: upgradedGoalkeeping ?? this.upgradedGoalkeeping,
       staminaPercent: staminaPercent ?? this.staminaPercent,
       squadSlot: squadSlot ?? this.squadSlot,
+      injuryMatchesRemaining:
+          injuryMatchesRemaining ?? this.injuryMatchesRemaining,
+      injuryKind: injuryKind ?? this.injuryKind,
       status: status ?? this.status,
       acquisitionSource: acquisitionSource ?? this.acquisitionSource,
       acquiredAt: acquiredAt ?? this.acquiredAt,
@@ -2305,6 +2413,14 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
     if (squadSlot.present) {
       map['squad_slot'] = Variable<int>(squadSlot.value);
     }
+    if (injuryMatchesRemaining.present) {
+      map['injury_matches_remaining'] = Variable<int>(
+        injuryMatchesRemaining.value,
+      );
+    }
+    if (injuryKind.present) {
+      map['injury_kind'] = Variable<String>(injuryKind.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -2330,6 +2446,8 @@ class OwnedPlayersCompanion extends UpdateCompanion<OwnedPlayer> {
           ..write('upgradedGoalkeeping: $upgradedGoalkeeping, ')
           ..write('staminaPercent: $staminaPercent, ')
           ..write('squadSlot: $squadSlot, ')
+          ..write('injuryMatchesRemaining: $injuryMatchesRemaining, ')
+          ..write('injuryKind: $injuryKind, ')
           ..write('status: $status, ')
           ..write('acquisitionSource: $acquisitionSource, ')
           ..write('acquiredAt: $acquiredAt')
@@ -5525,6 +5643,28 @@ class $AiPlayersTable extends AiPlayers
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _injuryMatchesRemainingMeta =
+      const VerificationMeta('injuryMatchesRemaining');
+  @override
+  late final GeneratedColumn<int> injuryMatchesRemaining = GeneratedColumn<int>(
+    'injury_matches_remaining',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _injuryKindMeta = const VerificationMeta(
+    'injuryKind',
+  );
+  @override
+  late final GeneratedColumn<String> injuryKind = GeneratedColumn<String>(
+    'injury_kind',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5537,6 +5677,8 @@ class $AiPlayersTable extends AiPlayers
     goalkeeping,
     staminaPercent,
     realPlayerId,
+    injuryMatchesRemaining,
+    injuryKind,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5630,6 +5772,21 @@ class $AiPlayersTable extends AiPlayers
         ),
       );
     }
+    if (data.containsKey('injury_matches_remaining')) {
+      context.handle(
+        _injuryMatchesRemainingMeta,
+        injuryMatchesRemaining.isAcceptableOrUnknown(
+          data['injury_matches_remaining']!,
+          _injuryMatchesRemainingMeta,
+        ),
+      );
+    }
+    if (data.containsKey('injury_kind')) {
+      context.handle(
+        _injuryKindMeta,
+        injuryKind.isAcceptableOrUnknown(data['injury_kind']!, _injuryKindMeta),
+      );
+    }
     return context;
   }
 
@@ -5679,6 +5836,14 @@ class $AiPlayersTable extends AiPlayers
         DriftSqlType.int,
         data['${effectivePrefix}real_player_id'],
       ),
+      injuryMatchesRemaining: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}injury_matches_remaining'],
+      ),
+      injuryKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}injury_kind'],
+      ),
     );
   }
 
@@ -5704,6 +5869,12 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
   /// from the imported player database, and a promoted/relegated club
   /// keeps its squad — the identity survives across seasons.
   final int? realPlayerId;
+
+  /// Injury state, same contract as [OwnedPlayers.injuryMatchesRemaining]
+  /// (GDD 11.7, schema v12): AI players sit out matches through the same
+  /// gating (T-0055).
+  final int? injuryMatchesRemaining;
+  final String? injuryKind;
   const AiPlayer({
     required this.id,
     required this.clubId,
@@ -5715,6 +5886,8 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     required this.goalkeeping,
     required this.staminaPercent,
     this.realPlayerId,
+    this.injuryMatchesRemaining,
+    this.injuryKind,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5730,6 +5903,12 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     map['stamina_percent'] = Variable<int>(staminaPercent);
     if (!nullToAbsent || realPlayerId != null) {
       map['real_player_id'] = Variable<int>(realPlayerId);
+    }
+    if (!nullToAbsent || injuryMatchesRemaining != null) {
+      map['injury_matches_remaining'] = Variable<int>(injuryMatchesRemaining);
+    }
+    if (!nullToAbsent || injuryKind != null) {
+      map['injury_kind'] = Variable<String>(injuryKind);
     }
     return map;
   }
@@ -5748,6 +5927,12 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
       realPlayerId: realPlayerId == null && nullToAbsent
           ? const Value.absent()
           : Value(realPlayerId),
+      injuryMatchesRemaining: injuryMatchesRemaining == null && nullToAbsent
+          ? const Value.absent()
+          : Value(injuryMatchesRemaining),
+      injuryKind: injuryKind == null && nullToAbsent
+          ? const Value.absent()
+          : Value(injuryKind),
     );
   }
 
@@ -5767,6 +5952,10 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
       goalkeeping: serializer.fromJson<int>(json['goalkeeping']),
       staminaPercent: serializer.fromJson<int>(json['staminaPercent']),
       realPlayerId: serializer.fromJson<int?>(json['realPlayerId']),
+      injuryMatchesRemaining: serializer.fromJson<int?>(
+        json['injuryMatchesRemaining'],
+      ),
+      injuryKind: serializer.fromJson<String?>(json['injuryKind']),
     );
   }
   @override
@@ -5783,6 +5972,8 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
       'goalkeeping': serializer.toJson<int>(goalkeeping),
       'staminaPercent': serializer.toJson<int>(staminaPercent),
       'realPlayerId': serializer.toJson<int?>(realPlayerId),
+      'injuryMatchesRemaining': serializer.toJson<int?>(injuryMatchesRemaining),
+      'injuryKind': serializer.toJson<String?>(injuryKind),
     };
   }
 
@@ -5797,6 +5988,8 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     int? goalkeeping,
     int? staminaPercent,
     Value<int?> realPlayerId = const Value.absent(),
+    Value<int?> injuryMatchesRemaining = const Value.absent(),
+    Value<String?> injuryKind = const Value.absent(),
   }) => AiPlayer(
     id: id ?? this.id,
     clubId: clubId ?? this.clubId,
@@ -5808,6 +6001,10 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     goalkeeping: goalkeeping ?? this.goalkeeping,
     staminaPercent: staminaPercent ?? this.staminaPercent,
     realPlayerId: realPlayerId.present ? realPlayerId.value : this.realPlayerId,
+    injuryMatchesRemaining: injuryMatchesRemaining.present
+        ? injuryMatchesRemaining.value
+        : this.injuryMatchesRemaining,
+    injuryKind: injuryKind.present ? injuryKind.value : this.injuryKind,
   );
   AiPlayer copyWithCompanion(AiPlayersCompanion data) {
     return AiPlayer(
@@ -5829,6 +6026,12 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
       realPlayerId: data.realPlayerId.present
           ? data.realPlayerId.value
           : this.realPlayerId,
+      injuryMatchesRemaining: data.injuryMatchesRemaining.present
+          ? data.injuryMatchesRemaining.value
+          : this.injuryMatchesRemaining,
+      injuryKind: data.injuryKind.present
+          ? data.injuryKind.value
+          : this.injuryKind,
     );
   }
 
@@ -5844,7 +6047,9 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
           ..write('defence: $defence, ')
           ..write('goalkeeping: $goalkeeping, ')
           ..write('staminaPercent: $staminaPercent, ')
-          ..write('realPlayerId: $realPlayerId')
+          ..write('realPlayerId: $realPlayerId, ')
+          ..write('injuryMatchesRemaining: $injuryMatchesRemaining, ')
+          ..write('injuryKind: $injuryKind')
           ..write(')'))
         .toString();
   }
@@ -5861,6 +6066,8 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
     goalkeeping,
     staminaPercent,
     realPlayerId,
+    injuryMatchesRemaining,
+    injuryKind,
   );
   @override
   bool operator ==(Object other) =>
@@ -5875,7 +6082,9 @@ class AiPlayer extends DataClass implements Insertable<AiPlayer> {
           other.defence == this.defence &&
           other.goalkeeping == this.goalkeeping &&
           other.staminaPercent == this.staminaPercent &&
-          other.realPlayerId == this.realPlayerId);
+          other.realPlayerId == this.realPlayerId &&
+          other.injuryMatchesRemaining == this.injuryMatchesRemaining &&
+          other.injuryKind == this.injuryKind);
 }
 
 class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
@@ -5889,6 +6098,8 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
   final Value<int> goalkeeping;
   final Value<int> staminaPercent;
   final Value<int?> realPlayerId;
+  final Value<int?> injuryMatchesRemaining;
+  final Value<String?> injuryKind;
   const AiPlayersCompanion({
     this.id = const Value.absent(),
     this.clubId = const Value.absent(),
@@ -5900,6 +6111,8 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     this.goalkeeping = const Value.absent(),
     this.staminaPercent = const Value.absent(),
     this.realPlayerId = const Value.absent(),
+    this.injuryMatchesRemaining = const Value.absent(),
+    this.injuryKind = const Value.absent(),
   });
   AiPlayersCompanion.insert({
     this.id = const Value.absent(),
@@ -5912,6 +6125,8 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     required int goalkeeping,
     this.staminaPercent = const Value.absent(),
     this.realPlayerId = const Value.absent(),
+    this.injuryMatchesRemaining = const Value.absent(),
+    this.injuryKind = const Value.absent(),
   }) : clubId = Value(clubId),
        playerName = Value(playerName),
        position = Value(position),
@@ -5930,6 +6145,8 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     Expression<int>? goalkeeping,
     Expression<int>? staminaPercent,
     Expression<int>? realPlayerId,
+    Expression<int>? injuryMatchesRemaining,
+    Expression<String>? injuryKind,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5942,6 +6159,9 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
       if (goalkeeping != null) 'goalkeeping': goalkeeping,
       if (staminaPercent != null) 'stamina_percent': staminaPercent,
       if (realPlayerId != null) 'real_player_id': realPlayerId,
+      if (injuryMatchesRemaining != null)
+        'injury_matches_remaining': injuryMatchesRemaining,
+      if (injuryKind != null) 'injury_kind': injuryKind,
     });
   }
 
@@ -5956,6 +6176,8 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     Value<int>? goalkeeping,
     Value<int>? staminaPercent,
     Value<int?>? realPlayerId,
+    Value<int?>? injuryMatchesRemaining,
+    Value<String?>? injuryKind,
   }) {
     return AiPlayersCompanion(
       id: id ?? this.id,
@@ -5968,6 +6190,9 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
       goalkeeping: goalkeeping ?? this.goalkeeping,
       staminaPercent: staminaPercent ?? this.staminaPercent,
       realPlayerId: realPlayerId ?? this.realPlayerId,
+      injuryMatchesRemaining:
+          injuryMatchesRemaining ?? this.injuryMatchesRemaining,
+      injuryKind: injuryKind ?? this.injuryKind,
     );
   }
 
@@ -6004,6 +6229,14 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
     if (realPlayerId.present) {
       map['real_player_id'] = Variable<int>(realPlayerId.value);
     }
+    if (injuryMatchesRemaining.present) {
+      map['injury_matches_remaining'] = Variable<int>(
+        injuryMatchesRemaining.value,
+      );
+    }
+    if (injuryKind.present) {
+      map['injury_kind'] = Variable<String>(injuryKind.value);
+    }
     return map;
   }
 
@@ -6019,7 +6252,9 @@ class AiPlayersCompanion extends UpdateCompanion<AiPlayer> {
           ..write('defence: $defence, ')
           ..write('goalkeeping: $goalkeeping, ')
           ..write('staminaPercent: $staminaPercent, ')
-          ..write('realPlayerId: $realPlayerId')
+          ..write('realPlayerId: $realPlayerId, ')
+          ..write('injuryMatchesRemaining: $injuryMatchesRemaining, ')
+          ..write('injuryKind: $injuryKind')
           ..write(')'))
         .toString();
   }
@@ -7045,30 +7280,32 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ];
 }
 
-typedef $$PlayersTableCreateCompanionBuilder = PlayersCompanion Function({
-  Value<int> playerId,
-  required String name,
-  required String position,
-  required String nationality,
-  required int marketValueEur,
-  required int overall,
-  required int attack,
-  required int support,
-  required int defence,
-  required int goalkeeping,
-});
-typedef $$PlayersTableUpdateCompanionBuilder = PlayersCompanion Function({
-  Value<int> playerId,
-  Value<String> name,
-  Value<String> position,
-  Value<String> nationality,
-  Value<int> marketValueEur,
-  Value<int> overall,
-  Value<int> attack,
-  Value<int> support,
-  Value<int> defence,
-  Value<int> goalkeeping,
-});
+typedef $$PlayersTableCreateCompanionBuilder =
+    PlayersCompanion Function({
+      Value<int> playerId,
+      required String name,
+      required String position,
+      required String nationality,
+      required int marketValueEur,
+      required int overall,
+      required int attack,
+      required int support,
+      required int defence,
+      required int goalkeeping,
+    });
+typedef $$PlayersTableUpdateCompanionBuilder =
+    PlayersCompanion Function({
+      Value<int> playerId,
+      Value<String> name,
+      Value<String> position,
+      Value<String> nationality,
+      Value<int> marketValueEur,
+      Value<int> overall,
+      Value<int> attack,
+      Value<int> support,
+      Value<int> defence,
+      Value<int> goalkeeping,
+    });
 
 class $$PlayersTableFilterComposer
     extends Composer<_$AppDatabase, $PlayersTable> {
@@ -7311,16 +7548,7 @@ class $$PlayersTableTableManager
                 goalkeeping: goalkeeping,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$PlayersTable, Player>(table),
-                  BaseReferences<_$AppDatabase, $PlayersTable, Player>(
-                    db,
-                    table,
-                    e,
-                  ),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -7521,16 +7749,7 @@ class $$DatasetVersionsTableTableManager
                 playerCount: playerCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$DatasetVersionsTable, DatasetVersion>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $DatasetVersionsTable,
-                    DatasetVersion
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -7554,30 +7773,32 @@ typedef $$DatasetVersionsTableProcessedTableManager =
       DatasetVersion,
       PrefetchHooks Function()
     >;
-typedef $$ClubsTableCreateCompanionBuilder = ClubsCompanion Function({
-  Value<int> id,
-  required String name,
-  required String managerName,
-  Value<int> crestIndex,
-  Value<String> formationCode,
-  Value<String> tactics,
-  Value<String> mentality,
-  required int coins,
-  Value<bool> isUser,
-  required DateTime createdAt,
-});
-typedef $$ClubsTableUpdateCompanionBuilder = ClubsCompanion Function({
-  Value<int> id,
-  Value<String> name,
-  Value<String> managerName,
-  Value<int> crestIndex,
-  Value<String> formationCode,
-  Value<String> tactics,
-  Value<String> mentality,
-  Value<int> coins,
-  Value<bool> isUser,
-  Value<DateTime> createdAt,
-});
+typedef $$ClubsTableCreateCompanionBuilder =
+    ClubsCompanion Function({
+      Value<int> id,
+      required String name,
+      required String managerName,
+      Value<int> crestIndex,
+      Value<String> formationCode,
+      Value<String> tactics,
+      Value<String> mentality,
+      required int coins,
+      Value<bool> isUser,
+      required DateTime createdAt,
+    });
+typedef $$ClubsTableUpdateCompanionBuilder =
+    ClubsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> managerName,
+      Value<int> crestIndex,
+      Value<String> formationCode,
+      Value<String> tactics,
+      Value<String> mentality,
+      Value<int> coins,
+      Value<bool> isUser,
+      Value<DateTime> createdAt,
+    });
 
 class $$ClubsTableFilterComposer extends Composer<_$AppDatabase, $ClubsTable> {
   $$ClubsTableFilterComposer({
@@ -7819,16 +8040,7 @@ class $$ClubsTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$ClubsTable, Club>(table),
-                  BaseReferences<_$AppDatabase, $ClubsTable, Club>(
-                    db,
-                    table,
-                    e,
-                  ),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -7861,6 +8073,8 @@ typedef $$OwnedPlayersTableCreateCompanionBuilder =
       Value<int> upgradedGoalkeeping,
       Value<int> staminaPercent,
       Value<int?> squadSlot,
+      Value<int?> injuryMatchesRemaining,
+      Value<String?> injuryKind,
       Value<String> status,
       Value<String> acquisitionSource,
       required DateTime acquiredAt,
@@ -7877,6 +8091,8 @@ typedef $$OwnedPlayersTableUpdateCompanionBuilder =
       Value<int> upgradedGoalkeeping,
       Value<int> staminaPercent,
       Value<int?> squadSlot,
+      Value<int?> injuryMatchesRemaining,
+      Value<String?> injuryKind,
       Value<String> status,
       Value<String> acquisitionSource,
       Value<DateTime> acquiredAt,
@@ -7938,6 +8154,16 @@ class $$OwnedPlayersTableFilterComposer
 
   ColumnFilters<int> get squadSlot => $composableBuilder(
     column: $table.squadSlot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get injuryMatchesRemaining => $composableBuilder(
+    column: $table.injuryMatchesRemaining,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get injuryKind => $composableBuilder(
+    column: $table.injuryKind,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8016,6 +8242,16 @@ class $$OwnedPlayersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get injuryMatchesRemaining => $composableBuilder(
+    column: $table.injuryMatchesRemaining,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get injuryKind => $composableBuilder(
+    column: $table.injuryKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -8083,6 +8319,16 @@ class $$OwnedPlayersTableAnnotationComposer
   GeneratedColumn<int> get squadSlot =>
       $composableBuilder(column: $table.squadSlot, builder: (column) => column);
 
+  GeneratedColumn<int> get injuryMatchesRemaining => $composableBuilder(
+    column: $table.injuryMatchesRemaining,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get injuryKind => $composableBuilder(
+    column: $table.injuryKind,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -8138,6 +8384,8 @@ class $$OwnedPlayersTableTableManager
                 Value<int> upgradedGoalkeeping = const Value.absent(),
                 Value<int> staminaPercent = const Value.absent(),
                 Value<int?> squadSlot = const Value.absent(),
+                Value<int?> injuryMatchesRemaining = const Value.absent(),
+                Value<String?> injuryKind = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String> acquisitionSource = const Value.absent(),
                 Value<DateTime> acquiredAt = const Value.absent(),
@@ -8152,6 +8400,8 @@ class $$OwnedPlayersTableTableManager
                 upgradedGoalkeeping: upgradedGoalkeeping,
                 staminaPercent: staminaPercent,
                 squadSlot: squadSlot,
+                injuryMatchesRemaining: injuryMatchesRemaining,
+                injuryKind: injuryKind,
                 status: status,
                 acquisitionSource: acquisitionSource,
                 acquiredAt: acquiredAt,
@@ -8168,6 +8418,8 @@ class $$OwnedPlayersTableTableManager
                 Value<int> upgradedGoalkeeping = const Value.absent(),
                 Value<int> staminaPercent = const Value.absent(),
                 Value<int?> squadSlot = const Value.absent(),
+                Value<int?> injuryMatchesRemaining = const Value.absent(),
+                Value<String?> injuryKind = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String> acquisitionSource = const Value.absent(),
                 required DateTime acquiredAt,
@@ -8182,21 +8434,14 @@ class $$OwnedPlayersTableTableManager
                 upgradedGoalkeeping: upgradedGoalkeeping,
                 staminaPercent: staminaPercent,
                 squadSlot: squadSlot,
+                injuryMatchesRemaining: injuryMatchesRemaining,
+                injuryKind: injuryKind,
                 status: status,
                 acquisitionSource: acquisitionSource,
                 acquiredAt: acquiredAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$OwnedPlayersTable, OwnedPlayer>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $OwnedPlayersTable,
-                    OwnedPlayer
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -8220,30 +8465,32 @@ typedef $$OwnedPlayersTableProcessedTableManager =
       OwnedPlayer,
       PrefetchHooks Function()
     >;
-typedef $$PacksTableCreateCompanionBuilder = PacksCompanion Function({
-  Value<int> id,
-  required int clubId,
-  required String category,
-  Value<String?> scopeValue,
-  Value<String> tier,
-  Value<int> price,
-  Value<String> source,
-  Value<bool> opened,
-  Value<DateTime?> openedAt,
-  required DateTime createdAt,
-});
-typedef $$PacksTableUpdateCompanionBuilder = PacksCompanion Function({
-  Value<int> id,
-  Value<int> clubId,
-  Value<String> category,
-  Value<String?> scopeValue,
-  Value<String> tier,
-  Value<int> price,
-  Value<String> source,
-  Value<bool> opened,
-  Value<DateTime?> openedAt,
-  Value<DateTime> createdAt,
-});
+typedef $$PacksTableCreateCompanionBuilder =
+    PacksCompanion Function({
+      Value<int> id,
+      required int clubId,
+      required String category,
+      Value<String?> scopeValue,
+      Value<String> tier,
+      Value<int> price,
+      Value<String> source,
+      Value<bool> opened,
+      Value<DateTime?> openedAt,
+      required DateTime createdAt,
+    });
+typedef $$PacksTableUpdateCompanionBuilder =
+    PacksCompanion Function({
+      Value<int> id,
+      Value<int> clubId,
+      Value<String> category,
+      Value<String?> scopeValue,
+      Value<String> tier,
+      Value<int> price,
+      Value<String> source,
+      Value<bool> opened,
+      Value<DateTime?> openedAt,
+      Value<DateTime> createdAt,
+    });
 
 class $$PacksTableFilterComposer extends Composer<_$AppDatabase, $PacksTable> {
   $$PacksTableFilterComposer({
@@ -8481,16 +8728,7 @@ class $$PacksTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$PacksTable, Pack>(table),
-                  BaseReferences<_$AppDatabase, $PacksTable, Pack>(
-                    db,
-                    table,
-                    e,
-                  ),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -8727,16 +8965,7 @@ class $$CoinTransactionsTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$CoinTransactionsTable, CoinTransaction>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $CoinTransactionsTable,
-                    CoinTransaction
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -8760,28 +8989,30 @@ typedef $$CoinTransactionsTableProcessedTableManager =
       CoinTransaction,
       PrefetchHooks Function()
     >;
-typedef $$SeasonsTableCreateCompanionBuilder = SeasonsCompanion Function({
-  Value<int> id,
-  required int division,
-  required int ordinal,
-  required int userClubId,
-  Value<String> status,
-  required DateTime startedAt,
-  Value<DateTime?> endedAt,
-  Value<int?> finalPosition,
-  Value<String?> outcome,
-});
-typedef $$SeasonsTableUpdateCompanionBuilder = SeasonsCompanion Function({
-  Value<int> id,
-  Value<int> division,
-  Value<int> ordinal,
-  Value<int> userClubId,
-  Value<String> status,
-  Value<DateTime> startedAt,
-  Value<DateTime?> endedAt,
-  Value<int?> finalPosition,
-  Value<String?> outcome,
-});
+typedef $$SeasonsTableCreateCompanionBuilder =
+    SeasonsCompanion Function({
+      Value<int> id,
+      required int division,
+      required int ordinal,
+      required int userClubId,
+      Value<String> status,
+      required DateTime startedAt,
+      Value<DateTime?> endedAt,
+      Value<int?> finalPosition,
+      Value<String?> outcome,
+    });
+typedef $$SeasonsTableUpdateCompanionBuilder =
+    SeasonsCompanion Function({
+      Value<int> id,
+      Value<int> division,
+      Value<int> ordinal,
+      Value<int> userClubId,
+      Value<String> status,
+      Value<DateTime> startedAt,
+      Value<DateTime?> endedAt,
+      Value<int?> finalPosition,
+      Value<String?> outcome,
+    });
 
 class $$SeasonsTableFilterComposer
     extends Composer<_$AppDatabase, $SeasonsTable> {
@@ -9005,16 +9236,7 @@ class $$SeasonsTableTableManager
                 outcome: outcome,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$SeasonsTable, Season>(table),
-                  BaseReferences<_$AppDatabase, $SeasonsTable, Season>(
-                    db,
-                    table,
-                    e,
-                  ),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -9228,16 +9450,7 @@ class $$LeagueTeamsTableTableManager
                 carriedOver: carriedOver,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$LeagueTeamsTable, LeagueTeam>(table),
-                  BaseReferences<_$AppDatabase, $LeagueTeamsTable, LeagueTeam>(
-                    db,
-                    table,
-                    e,
-                  ),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -9261,20 +9474,22 @@ typedef $$LeagueTeamsTableProcessedTableManager =
       LeagueTeam,
       PrefetchHooks Function()
     >;
-typedef $$FixturesTableCreateCompanionBuilder = FixturesCompanion Function({
-  Value<int> id,
-  required int seasonId,
-  required int round,
-  required int homeClubId,
-  required int awayClubId,
-});
-typedef $$FixturesTableUpdateCompanionBuilder = FixturesCompanion Function({
-  Value<int> id,
-  Value<int> seasonId,
-  Value<int> round,
-  Value<int> homeClubId,
-  Value<int> awayClubId,
-});
+typedef $$FixturesTableCreateCompanionBuilder =
+    FixturesCompanion Function({
+      Value<int> id,
+      required int seasonId,
+      required int round,
+      required int homeClubId,
+      required int awayClubId,
+    });
+typedef $$FixturesTableUpdateCompanionBuilder =
+    FixturesCompanion Function({
+      Value<int> id,
+      Value<int> seasonId,
+      Value<int> round,
+      Value<int> homeClubId,
+      Value<int> awayClubId,
+    });
 
 class $$FixturesTableFilterComposer
     extends Composer<_$AppDatabase, $FixturesTable> {
@@ -9430,16 +9645,7 @@ class $$FixturesTableTableManager
                 awayClubId: awayClubId,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$FixturesTable, Fixture>(table),
-                  BaseReferences<_$AppDatabase, $FixturesTable, Fixture>(
-                    db,
-                    table,
-                    e,
-                  ),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -9769,16 +9975,7 @@ class $$MatchResultsTableTableManager
                 playedAt: playedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$MatchResultsTable, MatchResult>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $MatchResultsTable,
-                    MatchResult
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -9802,30 +9999,36 @@ typedef $$MatchResultsTableProcessedTableManager =
       MatchResult,
       PrefetchHooks Function()
     >;
-typedef $$AiPlayersTableCreateCompanionBuilder = AiPlayersCompanion Function({
-  Value<int> id,
-  required int clubId,
-  required String playerName,
-  required String position,
-  required int attack,
-  required int support,
-  required int defence,
-  required int goalkeeping,
-  Value<int> staminaPercent,
-  Value<int?> realPlayerId,
-});
-typedef $$AiPlayersTableUpdateCompanionBuilder = AiPlayersCompanion Function({
-  Value<int> id,
-  Value<int> clubId,
-  Value<String> playerName,
-  Value<String> position,
-  Value<int> attack,
-  Value<int> support,
-  Value<int> defence,
-  Value<int> goalkeeping,
-  Value<int> staminaPercent,
-  Value<int?> realPlayerId,
-});
+typedef $$AiPlayersTableCreateCompanionBuilder =
+    AiPlayersCompanion Function({
+      Value<int> id,
+      required int clubId,
+      required String playerName,
+      required String position,
+      required int attack,
+      required int support,
+      required int defence,
+      required int goalkeeping,
+      Value<int> staminaPercent,
+      Value<int?> realPlayerId,
+      Value<int?> injuryMatchesRemaining,
+      Value<String?> injuryKind,
+    });
+typedef $$AiPlayersTableUpdateCompanionBuilder =
+    AiPlayersCompanion Function({
+      Value<int> id,
+      Value<int> clubId,
+      Value<String> playerName,
+      Value<String> position,
+      Value<int> attack,
+      Value<int> support,
+      Value<int> defence,
+      Value<int> goalkeeping,
+      Value<int> staminaPercent,
+      Value<int?> realPlayerId,
+      Value<int?> injuryMatchesRemaining,
+      Value<String?> injuryKind,
+    });
 
 class $$AiPlayersTableFilterComposer
     extends Composer<_$AppDatabase, $AiPlayersTable> {
@@ -9883,6 +10086,16 @@ class $$AiPlayersTableFilterComposer
 
   ColumnFilters<int> get realPlayerId => $composableBuilder(
     column: $table.realPlayerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get injuryMatchesRemaining => $composableBuilder(
+    column: $table.injuryMatchesRemaining,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get injuryKind => $composableBuilder(
+    column: $table.injuryKind,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9945,6 +10158,16 @@ class $$AiPlayersTableOrderingComposer
     column: $table.realPlayerId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get injuryMatchesRemaining => $composableBuilder(
+    column: $table.injuryMatchesRemaining,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get injuryKind => $composableBuilder(
+    column: $table.injuryKind,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AiPlayersTableAnnotationComposer
@@ -9993,6 +10216,16 @@ class $$AiPlayersTableAnnotationComposer
     column: $table.realPlayerId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get injuryMatchesRemaining => $composableBuilder(
+    column: $table.injuryMatchesRemaining,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get injuryKind => $composableBuilder(
+    column: $table.injuryKind,
+    builder: (column) => column,
+  );
 }
 
 class $$AiPlayersTableTableManager
@@ -10033,6 +10266,8 @@ class $$AiPlayersTableTableManager
                 Value<int> goalkeeping = const Value.absent(),
                 Value<int> staminaPercent = const Value.absent(),
                 Value<int?> realPlayerId = const Value.absent(),
+                Value<int?> injuryMatchesRemaining = const Value.absent(),
+                Value<String?> injuryKind = const Value.absent(),
               }) => AiPlayersCompanion(
                 id: id,
                 clubId: clubId,
@@ -10044,6 +10279,8 @@ class $$AiPlayersTableTableManager
                 goalkeeping: goalkeeping,
                 staminaPercent: staminaPercent,
                 realPlayerId: realPlayerId,
+                injuryMatchesRemaining: injuryMatchesRemaining,
+                injuryKind: injuryKind,
               ),
           createCompanionCallback:
               ({
@@ -10057,6 +10294,8 @@ class $$AiPlayersTableTableManager
                 required int goalkeeping,
                 Value<int> staminaPercent = const Value.absent(),
                 Value<int?> realPlayerId = const Value.absent(),
+                Value<int?> injuryMatchesRemaining = const Value.absent(),
+                Value<String?> injuryKind = const Value.absent(),
               }) => AiPlayersCompanion.insert(
                 id: id,
                 clubId: clubId,
@@ -10068,18 +10307,11 @@ class $$AiPlayersTableTableManager
                 goalkeeping: goalkeeping,
                 staminaPercent: staminaPercent,
                 realPlayerId: realPlayerId,
+                injuryMatchesRemaining: injuryMatchesRemaining,
+                injuryKind: injuryKind,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$AiPlayersTable, AiPlayer>(table),
-                  BaseReferences<_$AppDatabase, $AiPlayersTable, AiPlayer>(
-                    db,
-                    table,
-                    e,
-                  ),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -10100,20 +10332,22 @@ typedef $$AiPlayersTableProcessedTableManager =
       AiPlayer,
       PrefetchHooks Function()
     >;
-typedef $$AdUsagesTableCreateCompanionBuilder = AdUsagesCompanion Function({
-  Value<int> id,
-  required int clubId,
-  required String rewardKind,
-  required String rewardKey,
-  required DateTime completedAt,
-});
-typedef $$AdUsagesTableUpdateCompanionBuilder = AdUsagesCompanion Function({
-  Value<int> id,
-  Value<int> clubId,
-  Value<String> rewardKind,
-  Value<String> rewardKey,
-  Value<DateTime> completedAt,
-});
+typedef $$AdUsagesTableCreateCompanionBuilder =
+    AdUsagesCompanion Function({
+      Value<int> id,
+      required int clubId,
+      required String rewardKind,
+      required String rewardKey,
+      required DateTime completedAt,
+    });
+typedef $$AdUsagesTableUpdateCompanionBuilder =
+    AdUsagesCompanion Function({
+      Value<int> id,
+      Value<int> clubId,
+      Value<String> rewardKind,
+      Value<String> rewardKey,
+      Value<DateTime> completedAt,
+    });
 
 class $$AdUsagesTableFilterComposer
     extends Composer<_$AppDatabase, $AdUsagesTable> {
@@ -10269,16 +10503,7 @@ class $$AdUsagesTableTableManager
                 completedAt: completedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$AdUsagesTable, AdUsage>(table),
-                  BaseReferences<_$AppDatabase, $AdUsagesTable, AdUsage>(
-                    db,
-                    table,
-                    e,
-                  ),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -10473,16 +10698,7 @@ class $$FacilityLevelsTableTableManager
                 upgradedAt: upgradedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$FacilityLevelsTable, FacilityLevel>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $FacilityLevelsTable,
-                    FacilityLevel
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -10646,16 +10862,7 @@ class $$UserSettingsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$UserSettingsTable, UserSetting>(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $UserSettingsTable,
-                    UserSetting
-                  >(db, table, e),
-                ),
-              )
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: null,
         ),
