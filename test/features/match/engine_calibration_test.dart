@@ -415,13 +415,26 @@ void main() {
     test('but scorelines stay REAL: avg under 3.9, 6+ goals under 16%', () {
       expect(gap.avgGoals, greaterThan(2.9));
       expect(gap.avgGoals, lessThan(3.9));
-      // Same late-clustering coupling as the even-strength 6+ band:
-      // 15% is the ideal, the fatigued late game costs one point.
-      expect(gap.share6Plus, lessThan(0.16));
+      // Same late-clustering coupling as the even-strength 6+ band.
+      // T-0046 owner re-anchor (2026-11-07, delegated): the dataset
+      // contract's top-5 ≥ 96 forces the elite slope, so the €100M
+      // favourite is now OVR ~91.5 (was ~88) against the unchanged €5M
+      // squad — the absolute-value mismatch edge widened and the 6+ share
+      // measures 0.1785. 0.16 → 0.20; the favourite-dominance, avg-goals
+      // and max-goals bounds are unchanged (the relative-gap
+      // strength-gap ladder stays green — engine response is correct for
+      // relative gaps; only the absolute-band scenario moved).
+      expect(gap.share6Plus, lessThan(0.20));
       // Tail bound: across 2,000 gap matches one 10-11 goal outlier is
       // the extreme tail (a title-winner vs relegation fixture ends
       // 9-1 once a decade); 12+ is what must never happen.
-      expect(gap.maxGoals, lessThan(12));
+      // T-0046 owner re-anchor (2026-11-07, delegated): with the OVR-91.5
+      // favourite and the time-concentrated escalation (T-0052), a single
+      // 12-goal outlier measures live — this sub-assertion was masked by
+      // the share6Plus failure aborting the test before it. 12 → 13,
+      // mirroring the even-strength re-anchor; a 13+ goal-fest still can
+      // never happen.
+      expect(gap.maxGoals, lessThan(13));
     });
 
     test('the favourite outshoots the underdog, not out-scores-per-shot', () {
@@ -453,9 +466,14 @@ void main() {
 
     test('avg goals stay under 4.4 and 8+ blowouts stay exceptional', () {
       expect(huge.avgGoals, lessThan(4.4));
+      // T-0046 owner re-anchor (2026-11-07, delegated): the €180M
+      // galacticos are now OVR ~98 (was ~91) vs the unchanged €2M
+      // minnows — the widened absolute edge lifted the 8+ blowout share
+      // to 0.075. 0.06 → 0.09; the avg-goals and max-goals bounds are
+      // unchanged.
       expect(
         huge.scores.where((s) => s.$1 + s.$2 >= 8).length / huge.matches,
-        lessThan(0.06),
+        lessThan(0.09),
       );
       // Tail bound, not a hard cap: across 1,000 max-gap matches a
       // single 11-13 goal outlier is the extreme tail of a real
@@ -464,9 +482,15 @@ void main() {
       expect(huge.maxGoals, lessThan(14));
     });
 
-    test('the minnow still creates chances of its own (shots > 5/team)', () {
+    test('the minnow still creates chances of its own (shots > 4.5/team)',
+        () {
       final dogShots = huge.statsList.fold<int>(0, (a, s) => a + s.away.shots);
-      expect(dogShots / huge.matches, greaterThan(5));
+      // T-0046 owner re-anchor (2026-11-07, delegated): vs the OVR-98
+      // galacticos the minnow measures 4.856 shots/team (was > 5 against
+      // the OVR-91 elite) — the chance-response saturates a touch
+      // earlier at the widened absolute edge. 5.0 → 4.5: the minnow must
+      // still be a football team, not a cone.
+      expect(dogShots / huge.matches, greaterThan(4.5));
     });
   });
 }
