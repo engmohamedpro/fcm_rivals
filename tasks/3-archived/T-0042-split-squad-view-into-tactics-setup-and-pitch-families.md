@@ -2,11 +2,11 @@
 id: T-0042
 title: Split squad_view.dart into tactics setup and pitch families
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 ---
 
 # T-0042: Split squad_view.dart into tactics setup and pitch families
@@ -29,12 +29,12 @@ Follow the barrel pattern (`fcm_widgets.dart`) so consumer imports of `squad_vie
 - Splitting any other squad file.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes with zero test edits
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines; `squad_view.dart` barrel keeps consumer imports stable
-- [ ] `README.md` architecture table row for the squad UI family updated for the new module files
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes with zero test edits
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] Every resulting file ≤800 lines; `squad_view.dart` barrel keeps consumer imports stable
+- [x] `README.md` architecture table row for the squad UI family updated for the new module files
 
 ## How to Verify
 ```bash
@@ -54,3 +54,13 @@ Expected: every listed file ≤800 lines; analyzer clean; squad suite and full s
 - **Concerns / assumptions:** (1) `statsOf` sits between the two families in the original and the task map doesn't name it; I assigned it to the pitch file because its only callers are `SquadPitch` and `SquadCardRow`, and it stays public via the barrel — flagging the choice for the reviewer. (2) The setup file's `squad_swap.dart` import clause narrowed from `show SquadDropTarget, SquadZone` to `show SquadZone` because the setup family never uses `SquadDropTarget` (pitch-only); keeping the wider clause would also have been lint-clean. (3) The full-suite baseline was not re-run pre-split (tree byte-identical to the `b19b1c2` full-suite run on this machine), so the post-split run against the same suite count is the meaningful comparison. None blocking.
 
 ## Review Log
+
+### Review 2026-11-06, attempt 1: PASS
+- Independent verbatim-relocation check (multiset of all lines, original `676e6ad:lib/features/squad/squad_view.dart` vs. the three HEAD files): ONLY-IN-ORIGINAL IS EMPTY — every line of the original 890-line file relocated verbatim with correct multiplicity, independently confirming the zero-visibility-renames claim. Only-in-new = the two per-file headers (doc comments + imports, incl. the declared `show SquadZone` narrowing), the two export lines, `library;` directives and blank lines.
+- The flagged `statsOf` placement is confirmed sound: it appears in neither diff set (moved verbatim), its only callers are the pitch widgets, and it stays public via the barrel so any future consumer is unaffected.
+- Ran: `wc -l` on all three files → 19/498/400, all ≤800.
+- Ran: `flutter analyze` (Flutter 3.47.9 stable / Dart 3.13.7, README pin) → No issues found.
+- Ran: `flutter test test/features/squad/` → `+222: All tests passed!`.
+- Ran: `flutter test` → `+709: All tests passed!`, exit 0 — identical count to the archived baseline; `git diff 676e6ad..7665cb0` touches no `test/` or `tool/` file, so zero test edits confirmed.
+- Scope: only the three squad lib files + README + this task file changed; no consumer edits (`live_tactics_screen`, `pre_match_phases`, squad tests all untouched), so the 19-line barrel kept imports stable. README gained the "Squad UI" row naming both new module files.
+- Notes: no localization strings in the diff and the multiset proves no string literal changed, so the EN/AR criterion is met vacuously; no determinism gate in this task's How to Verify (UI view, not engine) — consistent with the task text.
