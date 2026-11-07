@@ -181,13 +181,14 @@ void main() {
       expect(low / n, inInclusiveRange(0.18, 0.30));
     });
 
-    test('legendary packs favour high but never guarantee it', () {
+    test('legendary packs guarantee the gold band (T-0047 owner rule)', () {
       const n = 20_000;
       final (low, mid, high) = drawTierRates(PackTier.legendary, n, 13);
-      // Weights [0.05, 0.45, 1.0] → ~3% low, 30% mid, 67% high.
-      expect(high / n, inInclusiveRange(0.60, 0.75));
-      expect(mid / n, inInclusiveRange(0.24, 0.38));
-      expect(low / n, inInclusiveRange(0.01, 0.08));
+      // Weights [0.0, 0.0, 1.0] → the pack rolls the high band only,
+      // whose every member is 80+ by the derived OVR-80 floor.
+      expect(high / n, 1.0);
+      expect(mid, 0);
+      expect(low, 0);
     });
 
     test('displayed odds are statistically calibrated (oddsFor vs open)', () {

@@ -82,6 +82,30 @@ class BaseStatsConfig {
   /// contract (top-5 in 96-99, 80+ population 2.0-3.5%).
   final double eliteRatingPerDoubling;
 
+  /// Inverse of the generator's rating curve on its unclamped form
+  /// (T-0047): the market value whose base rating is [rating] — the
+  /// standard segment inverts at or below the kink rating, the elite
+  /// segment above it, mirroring [BaseStatsGenerator.baseRatingFor]
+  /// exactly. Callers derive band boundaries (the pack high-band floor)
+  /// from this instead of hardcoding a euro figure the next curve retune
+  /// would silently invalidate.
+  int valueForRating(int rating) {
+    final kinkRating =
+        valueAtReference +
+        ratingPerDoubling *
+            BaseStatsGenerator._log2(eliteKinkValueEur / referenceValueEur);
+    if (rating <= kinkRating) {
+      return (referenceValueEur *
+              _pow2((rating - valueAtReference) / ratingPerDoubling))
+          .round();
+    }
+    return (eliteKinkValueEur *
+            _pow2((rating - kinkRating) / eliteRatingPerDoubling))
+        .round();
+  }
+
+  static double _pow2(double x) => math.pow(2, x).toDouble();
+
   /// How far an attribute may deviate from the overall rating because of
   /// its position weight: primary attributes land roughly
   /// `overall + attributeSpread * (weight - attributeAnchor)` — a striker's

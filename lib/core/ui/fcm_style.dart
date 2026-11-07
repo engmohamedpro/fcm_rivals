@@ -101,19 +101,14 @@ enum CardRarity {
   epic,
   legendary;
 
-  /// Rating thresholds: 82+ legendary, 70+ epic, otherwise rare.
+  /// Rating thresholds: 80+ legendary (the owner's 2026-11-07 regrade,
+  /// T-0047 — every player rated 80+ shows the golden legendary colour in
+  /// every surface), 70+ epic, otherwise rare.
   static CardRarity fromOverall(int overall) {
-    if (overall >= 82) return CardRarity.legendary;
+    if (overall >= 80) return CardRarity.legendary;
     if (overall >= 70) return CardRarity.epic;
     return CardRarity.rare;
   }
-
-  /// Legacy pack-tier mapping (0 low .. 2 high).
-  static CardRarity fromTier(int tier) => switch (tier) {
-    0 => CardRarity.rare,
-    1 => CardRarity.epic,
-    _ => CardRarity.legendary,
-  };
 
   String get label => switch (this) {
     CardRarity.rare => 'RARE',

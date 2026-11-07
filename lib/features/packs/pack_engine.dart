@@ -10,6 +10,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart' show Color;
 
+import '../../core/domain/base_stats_generator.dart';
 import '../../core/domain/players.dart';
 import '../economy/economy_engine.dart';
 
@@ -32,7 +33,9 @@ enum PackCategory {
 enum PackTier {
   rare('Rare', [1.0, 0.12, 0.0]),
   epic('Epic', [0.35, 1.0, 0.18]),
-  legendary('Legendary', [0.05, 0.45, 1.0]);
+  // T-0047 owner rule: a Legendary pack guarantees gold — it rolls the
+  // high band only, whose every member is 80+ by the derived floor.
+  legendary('Legendary', [0.0, 0.0, 1.0]);
 
   const PackTier(this.label, this.weights);
   final String label;
@@ -184,22 +187,33 @@ class _CacheKey {
 
 /// Draws packs from an eligible pool with value-weighted odds.
 class PackEngine {
+  /// Owner regrade rule (T-0047): OVR 80+ is the golden legendary tier
+  /// (CardRarity.fromOverall). Kept beside the floors so the pack band
+  /// and the card colour can never drift apart silently — the audit test
+  /// binds them by asserting legendary-pack pulls through the rarity API.
+  static const int legendaryOverall = 80;
+
   /// Default absolute tier floors (review 2026-11-04
-  /// economy_pack-tier-bands-and-elite-ceiling): low < €3M, mid €3–20M,
-  /// high ≥ €20M — a star is a star in every pool, so a Legendary pack
-  /// can actually contain one (the relative log-scale bands let a
-  /// €0.4–2.6M nationality pool label €2.5M players 'high tier').
-  static const List<double> defaultAbsoluteTierFloorEur = [
-    3_000_000,
-    20_000_000,
-  ];
+  /// economy_pack-tier-bands-and-elite-ceiling; high band re-derived by
+  /// T-0047): low < €3M, and the high band starts where the T-0046 curve
+  /// yields OVR 80 — a Legendary pack can only ever roll into a band
+  /// whose every member renders gold. Derived from
+  /// [BaseStatsConfig.valueForRating] at runtime (€25M under the shipped
+  /// curve), never hardcoded: the next curve retune moves the band with
+  /// it.
+  static List<double> absoluteTierFloorsEur({
+    BaseStatsConfig config = const BaseStatsConfig(),
+  }) => [3_000_000.0, config.valueForRating(legendaryOverall).toDouble()];
+
+  static final List<double> defaultAbsoluteTierFloorEur =
+      absoluteTierFloorsEur();
 
   PackEngine({
     this.tierBoundaries = const [0.15, 0.55],
     this.tierWeights = const [1.0, 1.0, 1.0],
     required this.random,
     this.economy = const EconomyEngine(),
-    this.absoluteTierFloorEur = defaultAbsoluteTierFloorEur,
+    this.absoluteTierFloorEur,
   }) : assert(
          tierBoundaries.length == 2 &&
              0 < tierBoundaries[0] &&
@@ -230,9 +244,11 @@ class PackEngine {
   final List<double> tierBoundaries;
 
   /// Absolute market-value tier floors in EUR (`[low/mid boundary,
-  /// mid/high boundary]`). When set, they OVERRIDE [tierBoundaries] for
-  /// pools spanning them: the high tier starts at a fixed star price
-  /// (default €20M) instead of 55% down every pool's own log-value range
+  /// mid/high boundary]`). They OVERRIDE [tierBoundaries] and are always
+  /// in effect: the caller may pin custom bands, otherwise the runtime-
+  /// derived defaults apply — low < €3M, high ≥ the curve's OVR-80 value
+  /// (T-0047) — so the high tier starts at a fixed star price instead of
+  /// 55% down every pool's own log-value range
   /// — a €0.4–2.6M nationality pool can no longer label a €2.5M player
   /// 'high tier'. Pools entirely below the first floor collapse into the
   /// low tier; pools entirely above the second floor put everything in
@@ -310,43 +326,21 @@ class PackEngine {
     );
   }
 
-  /// Splits a value-sorted eligible pool into low/mid/high tiers. When
-  /// [absoluteTierFloorEur] is set, the bands are absolute market values
-  /// (default low < €3M, mid €3–20M, high ≥ €20M) — the same star is a
-  /// star in every pool; otherwise the legacy log-scale relative bands
-  /// apply.
+  /// Splits a value-sorted eligible pool into low/mid/high tiers on the
+  /// absolute floors in effect (the caller's override, else the runtime-
+  /// derived defaults: low < €3M, mid €3M–OVR-80 value, high ≥ OVR-80
+  /// value, T-0047) — the same star is a star in every pool. Pools
+  /// entirely below or above a floor collapse into that side's tier; the
+  /// tier-roll fallback keeps every draw reachable.
   List<List<BasePlayer>> _splitIntoTiers(List<BasePlayer> sorted) {
     if (sorted.isEmpty) return const [[], [], []];
     final low = <BasePlayer>[], mid = <BasePlayer>[], high = <BasePlayer>[];
-    final floors = absoluteTierFloorEur;
-    if (floors != null) {
-      for (final p in sorted) {
-        final v = p.marketValueEur.toDouble();
-        if (v < floors[0]) {
-          low.add(p);
-        } else if (v < floors[1]) {
-          mid.add(p);
-        } else {
-          high.add(p);
-        }
-      }
-      return [low, mid, high];
-    }
-    final values = sorted.map((p) => p.marketValueEur).toList();
-    final minV = values.reduce(math.min).toDouble();
-    final maxV = values.reduce(math.max).toDouble();
-    if (minV <= 0 || maxV <= minV) {
-      // Degenerate pool: everything is one tier.
-      return [sorted, <BasePlayer>[], <BasePlayer>[]];
-    }
-    final logMin = math.log(minV);
-    final logMax = math.log(maxV);
+    final floors = absoluteTierFloorEur ?? defaultAbsoluteTierFloorEur;
     for (final p in sorted) {
-      final t =
-          (math.log(p.marketValueEur.toDouble()) - logMin) / (logMax - logMin);
-      if (t < tierBoundaries[0]) {
+      final v = p.marketValueEur.toDouble();
+      if (v < floors[0]) {
         low.add(p);
-      } else if (t < tierBoundaries[1]) {
+      } else if (v < floors[1]) {
         mid.add(p);
       } else {
         high.add(p);

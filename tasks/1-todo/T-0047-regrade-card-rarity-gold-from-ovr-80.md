@@ -2,8 +2,8 @@
 id: T-0047
 title: Regrade card rarity - gold from OVR 80, legendary packs guarantee gold
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0046]
 created: 2026-11-07
 completed:
@@ -52,5 +52,9 @@ Expected: no `fromTier` references; analyzer clean; pack/ui/domain suites green;
 Store shelves re-bucket: more players qualify as legendary, so legendary pools grow and mid-band pools shrink — the pack catalog's expected-value pricing may shift slightly. EconomySimulator multi-season runs must stay green unmodified; the 80-boundary move is small (~€23-24M vs €20M) but must be measured, not assumed.
 
 ## Developer Notes
+- **Summary of changes:** The owner regrade shipped. (1) `CardRarity.fromOverall` legendary threshold 82 → 80 (doc comment states the rule); `fromTier` deleted (grep: zero references). (2) `BaseStatsConfig.valueForRating(rating)` added — the exact inverse of the generator's two-segment curve, so band boundaries derive from config at runtime. (3) `PackEngine.absoluteTierFloorsEur()` derives the high-band floor from it: **€25M** under the shipped curve (the task's €23-24M estimate was for the superseded kink-€20M/slope-6.1 proposal); the field default became runtime-resolved (`?? defaultAbsoluteTierFloorEur` — the const-default constraint; no explicit-null callers exist, so the shipped absolute-band semantics are unchanged). (4) **Mechanism note (requirement 5's 100%-gold AC):** the floor derivation alone CANNOT guarantee gold — legendary packs rolled the mid tier ~30% with sub-80 cards. `PackTier.legendary` weights changed [0.05, 0.45, 1.0] → [0.0, 0.0, 1.0]: the Legendary pack rolls the gold band only. (5) The catalog auto-followed (verified): LM and RM gained legendary shelves (2 and 1 players) — 12×3 = 36 offers now, none emptied.
+- **Files changed:** `lib/core/ui/fcm_style.dart` (threshold + fromTier deletion); `lib/core/domain/base_stats_generator.dart` (valueForRating); `lib/features/packs/pack_engine.dart` (derived floors + legendary weights [0,0,1] + doc updates); `test/features/packs/pack_tier_bands_test.dart` (bands re-derived from the floor); `test/features/packs/legendary_regrade_audit_test.dart` (new audit); `test/features/packs/packs_screen_test.dart` (store now 36 offers — LM/RM shelves added); `test/balance/packs_and_generation_balance_test.dart` (legendary tier-rate test locks the guarantee); `test/balance/economy_balance_test.dart` (price bands re-anchored, see concern 1).
+- **How I tested it:** `flutter analyze` → No issues found. Grep `fromTier` → 0 hits. Audit (2,000 seeded packs per tier, full 20,876 pool): **Legendary 100.00% gold / 0 sub-80**, Epic 12.10%, Rare 0.05%; population gold share 493/20,876 = **2.36%** ∈ [1.5%, 3.5%] — the "few elite, large middle" shape holds; every position with a pre-regrade legendary pool keeps a bigger one (e.g. GK 7 → 21). Full `flutter test` → **739/739 ALL GREEN**; determinism PASS. "Interpretation note": the requirement's "overall gold share of all pulls within 1.5-3.5%" is structurally impossible across an equal-tier pull mix (Legendary deliberately oversamples stars — now by definition 100%) — the band is locked on the population the pull economy draws from, per GDD 4.5, and every pull-side share is printed in the audit.
+- **Concerns / assumptions:** (1) The gold-only legendary re-priced the store: big pools ~29-38k (was ~30k), tiny LM/RM gold pools ~15k (6.3 matches at par income) — the economy grind bands were re-anchored with measured comments (ladder ratio 9.25, scope spread 2.53 on legendary only); EconomySimulator multi-season suites stayed green unmodified, as required. Prices follow EV structurally, so future curve retunes re-price automatically. (2) Rarity labels ('RARE'/'EPIC'/'LEGENDARY') are hardcoded UI constants in `fcm_style.dart` — no ARB entries exist for them (pre-existing l10n gap, unchanged by this task; flagging for the injury-UI or a future l10n task). (3) EN/AR: no new strings required by this layer.
 
 ## Review Log

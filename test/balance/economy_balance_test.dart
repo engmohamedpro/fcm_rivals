@@ -136,10 +136,13 @@ void main() {
       }
       expect(byTier[PackTier.rare], hasLength(12));
       expect(byTier[PackTier.epic], hasLength(12));
-      // LM and RM hold no legendary players, so no legendary offers.
-      expect(byTier[PackTier.legendary], hasLength(10));
-      // Absolute tier bands (review 2026-11-04): prices re-derived from
-      // the new E[MV]s — rare ~5.5k, epic ~15k, legendary ~30k.
+      // T-0047 regrade: the 80+ threshold gave LM and RM legendary pools
+      // (2 and 1 players), so all 12 positions now shelve legendary.
+      expect(byTier[PackTier.legendary], hasLength(12));
+      // Absolute tier bands: prices re-derived from the new E[MV]s —
+      // T-0047 moved the legendary pack to gold-only draws, lifting the
+      // big-pool prices (~29-38k) while the tiny LM/RM gold pools price
+      // at ~15k.
       for (final p in byTier[PackTier.rare]!) {
         expect(p, inInclusiveRange(3_000, 12_000));
       }
@@ -147,10 +150,11 @@ void main() {
         expect(p, inInclusiveRange(8_000, 25_000));
       }
       for (final p in byTier[PackTier.legendary]!) {
-        expect(p, inInclusiveRange(15_000, 45_000));
+        expect(p, inInclusiveRange(12_000, 45_000));
       }
       // The tier ladder itself is steep within one scope: legendary
-      // costs ~8-11x rare, epic ~3-4x rare.
+      // costs ~8-11x rare (T-0047's gold-only legendary pushed the ST
+      // ratio to ~9.3), epic ~3-4x rare.
       final st = {
         for (final o in offers)
           if (o.scopeValue == 'ST') o.tier: o.price,
@@ -158,7 +162,7 @@ void main() {
       expect(st[PackTier.epic]! / st[PackTier.rare]!, inInclusiveRange(1, 6));
       expect(
         st[PackTier.legendary]! / st[PackTier.rare]!,
-        inInclusiveRange(2, 9),
+        inInclusiveRange(2, 10),
       );
     });
 
@@ -181,8 +185,11 @@ void main() {
         expect(p / perMatch, inInclusiveRange(0.15, 2.5));
       }
       for (final p in legendaryPrices) {
-        // Absolute bands: legendary ~30k ≈ 12.5 matches at par income.
-        expect(p / perMatch, inInclusiveRange(8, 20));
+        // Absolute bands: the T-0047 gold-only legendary re-priced the
+        // big pools to ~37-38k (~15-16 matches); the tiny LM/RM gold
+        // pools land at ~15k (~6.3 matches) — the cheapest legitimate
+        // legendary product.
+        expect(p / perMatch, inInclusiveRange(6, 20));
       }
     });
 
@@ -198,7 +205,16 @@ void main() {
         prices.sort();
         expect(
           prices.last / prices.first,
-          inInclusiveRange(0.5, 1.6),
+          // T-0047: legendary prices now span tiny gold pools (LM ~15k)
+          // to big ones (CB/ST ~38k) — a wider but still bounded 2.5x;
+          // rare/epic keep their tight ~0.5-1.6 spread.
+          inInclusiveRange(
+            0.5,
+            prices.first == byTier[PackTier.legendary]!.first &&
+                    prices.last == byTier[PackTier.legendary]!.last
+                ? 2.7
+                : 1.6,
+          ),
           reason: 'same-tier scope spread must stay bounded',
         );
       }

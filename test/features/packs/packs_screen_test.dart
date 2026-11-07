@@ -99,22 +99,26 @@ void main() {
     expect(find.text('FREE ×3'), findsNothing);
     // A tier only shelves when the position's pool holds a player of
     // that rarity: LM and RM have no 82+ players in the bundled dataset,
-    // so their sections show Rare and Epic cells only — every other
-    // position carries all three tiers.
+    // so their sections showed Rare and Epic cells only before the
+    // T-0047 regrade — the 80+ threshold gave both a (small) legendary
+    // pool, so every position now carries all three tiers.
     final offers = await tester.runAsync(() => store.getStoreOffers());
     expect(
       offers!.where((o) => o.scopeValue == 'LM').map((o) => o.tier),
-      containsAllInOrder([PackTier.rare, PackTier.epic]),
+      containsAllInOrder([PackTier.rare, PackTier.epic, PackTier.legendary]),
     );
     expect(
       offers.where((o) => o.scopeValue == 'RM').map((o) => o.tier),
-      containsAllInOrder([PackTier.rare, PackTier.epic]),
+      containsAllInOrder([PackTier.rare, PackTier.epic, PackTier.legendary]),
     );
     expect(
       offers.where((o) => o.scopeValue == 'ST').map((o) => o.tier),
       containsAllInOrder([PackTier.rare, PackTier.epic, PackTier.legendary]),
     );
-    expect(offers.length, 12 * 3 - 2);
+    // T-0047: 12 positions × 3 tiers — the regrade moved the legendary
+    // threshold 82 → 80, adding exactly the LM and RM legendary shelves
+    // (2 and 1 players respectively) and emptying none.
+    expect(offers.length, 12 * 3);
     // No pool sizes or player strips on the store anymore: the contents
     // list behind the players icon button is the one place the pool is
     // shown.
