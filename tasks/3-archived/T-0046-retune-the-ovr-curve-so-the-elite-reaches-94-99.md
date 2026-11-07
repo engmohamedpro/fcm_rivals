@@ -2,11 +2,11 @@
 id: T-0046
 title: Retune the market-value to OVR curve so the elite reaches 94-99
 priority: high
-status: needs-review
+status: done
 attempts: 2
 depends_on: []
 created: 2026-11-07
-completed:
+completed: 2026-11-07
 ---
 
 # T-0046: Retune the market-value to OVR curve so the elite reaches 94-99
@@ -36,7 +36,7 @@ Current curve (`lib/core/domain/base_stats_generator.dart:37-46` config, `:185-1
 
 ## Acceptance Criteria
 - [x] Compiles with zero analyzer warnings
-- [ ] New dataset band test + updated generator tests green; full `flutter test` suite passes
+- [x] New dataset band test + updated generator tests green; full `flutter test` suite passes
 - [x] EN/AR localization complete and RTL verified where applicable (no UI strings expected)
 - [x] No performance or application-size regression
 - [x] Band contract (Requirement 3) asserted and passing
@@ -78,3 +78,9 @@ Squad power gaps widen: the elite band rises from 92 to 96-99 while the median s
 **Independently verified (Python over `players_v1.json`, script kept outside the repo):** the shipped curve satisfies every Requirement-3 point on the real dataset — top-5 rounded OVRs [99, 99, 98, 96, 96]; €50M → 84; median 57; p90 72; floor clamp 0%; 80+ share 2.44%; zero above 99; 90+ population **31 rows (0.148%)**. The deviation from the recommended kink-€20M/slope-6.1 start is justified: that start lands €50M at 86.78, outside the 84±1 contract — the recommended starting point was internally inconsistent, the shipped kink-€50M/slope-7.5 is the correct in-contract shape. Test edits audited line-by-line: all are named deliberate band changes (Requirement 4 pattern); the `_valueForOverall` harness alignment inverts the curve only — no assertion band touched; the elite ladder thresholds (>12 → >8) are forced by the 99-clamp compression at OVR 92 (99 vs 88) and are scoped comments, not generation changes.
 **Expected vs got (FAIL ground):** acceptance criterion "full `flutter test` suite passes" — expected all green, got **12 failures**. 8 are T-0052's recorded conflicts (not this task's) and 1 is T-0052's even-strength outlier, but **3 are this task's own recorded curve-induced regressions** in `engine_calibration_test.dart`, confirmed live: (a) big power gaps "scorelines stay REAL: avg under 3.9, 6+ goals under 16%"; (b) extreme 90/10 gap "avg goals stay under 4.4"; (c) extreme 90/10 gap "the minnow still creates chances (shots > 5/team)". Mechanism confirmed: top-5 ≥ 96 forces the elite slope, widening raw-value mismatch edges (€100M favourite OVR 91.5 vs unchanged €5M; €180M OVR 98 vs €2M). The stop-and-record clause was followed correctly — no band was edited.
 **What to do:** the three calibration conflicts need an owner decision before this task can pass its own criteria: either (1) relax those three big/extreme-gap bands deliberately (they were tuned against a 92-ceiling elite), or (2) a follow-up task re-anchoring the chance-response/at-large-edges inside the engine's tuning seams (the strength-gap ladder itself stays green — the engine response is right for relative gaps, the absolute-band scenarios moved). Then resubmit. Two smaller notes for resubmission: (a) the test's header comment says "29 rows, 0.139%" — the live print and my measurement say **31 rows, 0.148%**; fix the comment; (b) this task's new test file was committed inside T-0052's implement commit (`8697e3c`) — history attribution is wrong (content is correct and on main); do not re-add or move it on resubmission, just reference it.
+
+### Review 2 — PASS (2026-11-07, reviewer)
+**Ran** (Flutter 3.47.9 stable, Dart 3.13.7 — freshly installed in the review sandbox, clean pull at `21746ef`): `flutter analyze` → "No issues found!". `flutter test test/core/domain/ test/features/simulation/` → **50/50 green** (incl. the dataset band contract with the corrected 31-rows/0.148% header and the 90+ print). `flutter test test/balance/` → **74/74 green** — the three Review-1 curve-induced calibration failures are fixed and measure inside the re-anchored bands (6+ share 0.1785 < 0.20; 8+ share 0.075 < 0.09; minnow shots 4.856 > 4.5; the unmasked big-gap maxGoals tail also green under < 13). `flutter test tool/simulation_report_test.dart` → **PASS** (deterministic replay). **Full `flutter test` → 725/725 ALL GREEN — first fully green suite run since the decoupling landed.**
+**Scope audit of the resubmission (`f99a24b` + rename `21746ef`):** touches exactly `test/features/match/engine_calibration_test.dart` (4 sub-assertions + test-name update, each with a scoped T-0046 re-anchor comment; bands, labels and the `_valueForOverall` scaffold untouched) and the task file — zero `lib/` changes (verified by `git diff` and `git log` on `base_stats_generator.dart`: last touched at the implement commit `a11ad31`). The calibration re-anchor is the owner-delegated Option A recorded in Developer Notes — accepted as a deliberate band change per the resubmission contract, not a balance-band edit.
+**Code audit:** shipped two-segment curve in `BaseStatsConfig` (kink AT the €50M reference so segments join exactly, elite slope 7.5, clamp [30, 99]) + `baseRatingFor` matches the documented shape; GDD §4.5 updated. Requirement-3 band contract asserted in `player_dataset_band_test.dart` with no hardcoded names. Locked generator anchors updated as commented deliberate changes (`base_stats_generator_test.dart` ceiling test + `inInclusiveRange(30, 99)`, packs/generation anchors). `season_engine.dart:425` clamp(35, 94) re-checked: it caps AI squad TARGETS, not the curve; shipped division-10 target 81 (54 + 9×3) with ±3 spread peaks at 84 ≤ kink, so every AI target inverts exactly under the standard segment — concern 3 confirmed sound. Review-1 note (b) honored: the dataset test file was not re-added, moved or reverted.
+**Result: every acceptance criterion met, every How-to-Verify step matches, resubmission fixed all Review-1 failures, no regressions, no out-of-scope changes. Status done, archived.**
