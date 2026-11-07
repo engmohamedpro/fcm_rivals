@@ -2,7 +2,7 @@
 id: T-0052
 title: Decouple fatigue from match performance - stamina drives injury risk only
 priority: critical
-status: needs-review
+status: todo
 attempts: 1
 depends_on: []
 created: 2026-11-07
@@ -37,13 +37,13 @@ Owner decision (2026-11-07): **fatigue must not affect player stats or match per
 - Any calibration-band edit (see Requirement 3).
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
+- [x] Compiles with zero analyzer warnings
 - [ ] New stamina-invariance + time-escalation tests green; full `flutter test` suite passes with all calibration/balance bands unmodified
-- [ ] EN/AR localization complete and RTL verified where applicable (no new strings expected)
-- [ ] No performance or application-size regression
-- [ ] No engine doc/comment may claim stamina affects attributes or concession any more
-- [ ] Engine snapshot regenerated deliberately and committed; diff recorded
-- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
+- [x] EN/AR localization complete and RTL verified where applicable (no new strings expected)
+- [x] No performance or application-size regression
+- [x] No engine doc/comment may claim stamina affects attributes or concession any more
+- [x] Engine snapshot regenerated deliberately and committed; diff recorded
+- [x] `flutter test tool/simulation_report_test.dart` determinism PASS
 
 ## How to Verify
 ```bash
@@ -76,3 +76,9 @@ The stamina-level term was one of two mechanisms holding the late-goal share up;
   4. No new l10n strings (commentary has zero stamina/tiredness strings — verified by grep). No size/perf regression: strictly fewer per-minute multiplications, no new packages.
 
 ## Review Log
+
+### Review 1 — FAIL (2026-11-07, reviewer)
+**Ran** (Flutter 3.47.9 stable, Dart 3.13.7, clean pull at `3c1a3b0`): both verify greps → **no hits** (`stamina / 100|stamina/100` and `tired defences`). `flutter analyze` → "No issues found!". `flutter test test/core/domain/` → 37/37 green. `flutter test test/balance/` → 66 passed / **8 failed**. `flutter test tool/simulation_report_test.dart` → **PASS**. Full `flutter test` → **713 passed / 12 failed**.
+**Code verified against the notes (diff-audited, commit `8697e3c`):** `computeTotals` sums attributes at full value with the documented modifier order; `_shoot` third coupling removed (shooter and keeper at full value); `_defensiveOpenness` rebuilt on the pure `lateGameOpenFactor` (`LateGameOpenConfig`, identity below 60', bounded 1 + slope 0.55); pressBill and cold-start untouched; `MatchEngineConfig` re-anchor values confirmed (onTargetBase 0.17→0.14, chanceSigmoidMid 4.0→4.76, steepness 0.085→0.0714) in `match_event.dart`; `stamina_invariance_test.dart` has exactly the 8 tests Requirement 6 asks for (invariance at minute 0 + after full drain, identity/increasing/pure/bounded/knob, byte-identical streams with empty bench); snapshot JSON movements confirmed (goalShare76to90 0.187→0.212, share6Plus 0.076→0.065, reds 0.161→0.139, sotShare 0.371→0.375); GDD §11.2/§12.2 and README updated. **Zero calibration/balance test files touched** — the Requirement-3 STOP clause was followed.
+**Expected vs got (FAIL ground):** every recorded conflict number reproduced EXACTLY in my run — press-late-goals ratio **0.672** vs band > 1.08; lowPress win rate **0.422** vs 46-54; restAggressive **0.4595** vs 46-54; highStack **0.596** and gegenpress **0.609** vs ≤ 0.58; parkTheBus **0.388** and allDefence goals **2.294** vs their bands; mentality ladder spread **0.0875** vs < 0.05; even-strength 12-goal outlier (the "6+ goal thrillers" calibration test). The acceptance criterion "full `flutter test` suite passes with all calibration/balance bands unmodified" is therefore **unmet by this task's own recorded, mechanism-documented conflicts** — correctly recorded, but unresolved. (The MatchSimulator value-band conflict listed in the notes self-resolved after T-0046's curve landed; simulation suite is green now.)
+**What to do:** (1) the 9 conflicting bands (8 balance + the even-strength outlier) need an owner decision: relax them deliberately as "freshness-dividend removed" re-anchors, or commission the tactics-modifier re-anchor task the notes propose (GDD §34 sweep, tactic-aware knobs) — until then the suite stays red on main; (2) bump `matchEngineVersion` 2 → 3 before resubmission — engine behavior changed materially for the same seed and the constant exists for replay records (concern 3 is correct); (3) scope note: this implement commit carries `test/core/domain/player_dataset_band_test.dart`, which is **T-0046's deliverable** (cross-contamination between the two parallel tasks — content is correct and already on main; record it, do not re-add or revert on resubmission).

@@ -2,7 +2,7 @@
 id: T-0046
 title: Retune the market-value to OVR curve so the elite reaches 94-99
 priority: high
-status: needs-review
+status: todo
 attempts: 1
 depends_on: []
 created: 2026-11-07
@@ -35,13 +35,13 @@ Current curve (`lib/core/domain/base_stats_generator.dart:37-46` config, `:185-1
 - Any economy anchor (coins, pack prices, rewards).
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
+- [x] Compiles with zero analyzer warnings
 - [ ] New dataset band test + updated generator tests green; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable (no UI strings expected)
-- [ ] No performance or application-size regression
-- [ ] Band contract (Requirement 3) asserted and passing
-- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
-- [ ] README/GDD doc comments updated where they describe the curve
+- [x] EN/AR localization complete and RTL verified where applicable (no UI strings expected)
+- [x] No performance or application-size regression
+- [x] Band contract (Requirement 3) asserted and passing
+- [x] `flutter test tool/simulation_report_test.dart` determinism PASS
+- [x] README/GDD doc comments updated where they describe the curve
 
 ## How to Verify
 ```bash
@@ -68,3 +68,9 @@ Squad power gaps widen: the elite band rises from 92 to 96-99 while the median s
   5. No EN/AR strings added (no UI). No size/perf regression: one extra comparison per rating conversion.
 
 ## Review Log
+
+### Review 1 — FAIL (2026-11-07, reviewer)
+**Ran** (Flutter 3.47.9 stable, Dart 3.13.7, clean pull at `3c1a3b0`): `flutter analyze` → "No issues found!". `flutter test test/core/domain/` → **37/37 green**, including `player_dataset_band_test.dart` (every Requirement-3 band asserted; the 90+ print present). `flutter test test/balance/` → 66 passed / **8 failed**. `flutter test tool/simulation_report_test.dart` → **PASS**. Full `flutter test` → **713 passed / 12 failed**.
+**Independently verified (Python over `players_v1.json`, script kept outside the repo):** the shipped curve satisfies every Requirement-3 point on the real dataset — top-5 rounded OVRs [99, 99, 98, 96, 96]; €50M → 84; median 57; p90 72; floor clamp 0%; 80+ share 2.44%; zero above 99; 90+ population **31 rows (0.148%)**. The deviation from the recommended kink-€20M/slope-6.1 start is justified: that start lands €50M at 86.78, outside the 84±1 contract — the recommended starting point was internally inconsistent, the shipped kink-€50M/slope-7.5 is the correct in-contract shape. Test edits audited line-by-line: all are named deliberate band changes (Requirement 4 pattern); the `_valueForOverall` harness alignment inverts the curve only — no assertion band touched; the elite ladder thresholds (>12 → >8) are forced by the 99-clamp compression at OVR 92 (99 vs 88) and are scoped comments, not generation changes.
+**Expected vs got (FAIL ground):** acceptance criterion "full `flutter test` suite passes" — expected all green, got **12 failures**. 8 are T-0052's recorded conflicts (not this task's) and 1 is T-0052's even-strength outlier, but **3 are this task's own recorded curve-induced regressions** in `engine_calibration_test.dart`, confirmed live: (a) big power gaps "scorelines stay REAL: avg under 3.9, 6+ goals under 16%"; (b) extreme 90/10 gap "avg goals stay under 4.4"; (c) extreme 90/10 gap "the minnow still creates chances (shots > 5/team)". Mechanism confirmed: top-5 ≥ 96 forces the elite slope, widening raw-value mismatch edges (€100M favourite OVR 91.5 vs unchanged €5M; €180M OVR 98 vs €2M). The stop-and-record clause was followed correctly — no band was edited.
+**What to do:** the three calibration conflicts need an owner decision before this task can pass its own criteria: either (1) relax those three big/extreme-gap bands deliberately (they were tuned against a 92-ceiling elite), or (2) a follow-up task re-anchoring the chance-response/at-large-edges inside the engine's tuning seams (the strength-gap ladder itself stays green — the engine response is right for relative gaps, the absolute-band scenarios moved). Then resubmit. Two smaller notes for resubmission: (a) the test's header comment says "29 rows, 0.139%" — the live print and my measurement say **31 rows, 0.148%**; fix the comment; (b) this task's new test file was committed inside T-0052's implement commit (`8697e3c`) — history attribution is wrong (content is correct and on main); do not re-add or move it on resubmission, just reference it.
