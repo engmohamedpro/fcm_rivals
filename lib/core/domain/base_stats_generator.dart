@@ -52,6 +52,9 @@ class BaseStatsConfig {
     this.attributeAnchor = 0.25,
     this.qualityNoise = 2.0,
     this.attributeNoise = 2.5,
+    this.eliteLadderStartOvr = 90,
+    this.eliteLadderFullOvr = 95,
+    this.eliteLadderGapFloor = 18,
   });
 
   /// Floor for the lowest-value professionals.
@@ -126,6 +129,25 @@ class BaseStatsConfig {
   /// shape — a striker with unusually good support, a full-back who can
   /// cross. Bounded, so a position's identity ordering never flips.
   final double attributeNoise;
+
+  /// OVR where the elite ladder widening (T-0048) starts ramping in:
+  /// below it the shipped [attributeSpread] applies unchanged, keeping
+  /// the low and mid dataset bands exactly where they were.
+  final double eliteLadderStartOvr;
+
+  /// OVR where the widened elite ladder reaches full strength (T-0048).
+  final double eliteLadderFullOvr;
+
+  /// Minimum primary-to-least ladder span the widened elite ladder
+  /// guarantees BEFORE the ±[attributeNoise] style noise (T-0048). The
+  /// shipped rule is a measured integer gap ≥ 12 at OVR 95+ across
+  /// thousands of seeded draws; the two opposed noise extremes can cost
+  /// 2 × [attributeNoise] and rounding the integers can cost one more —
+  /// 12 + 2 × 2.5 + 1 = 18. Because the shipped weight spans differ per
+  /// position (RB/LB 0.18 → 5.4 pts vs ST 0.54 → 16.2 pts), the
+  /// generator scales each position's deviations up to THIS floor near
+  /// the ceiling instead of applying one global factor.
+  final double eliteLadderGapFloor;
 }
 
 const BaseStatsConfig defaultBaseStatsConfig = BaseStatsConfig();
@@ -266,6 +288,20 @@ class BaseStatsGenerator {
   /// into goalkeeping. Zero-weight attributes (an outfield player's
   /// goalkeeping) stay at 0.
   ///
+  /// Elite ladder (T-0048): at the top of the scale the hard 99 clamp
+  /// used to flatten the ladder (an OVR-97 striker read 99/96/93). Two
+  /// ceiling-aware fixes, both inside this generator and fully
+  /// deterministic:
+  ///  1. From [BaseStatsConfig.eliteLadderStartOvr] the position's
+  ///     deviations ramp up so the primary-to-least span reaches
+  ///     [BaseStatsConfig.eliteLadderGapFloor] by
+  ///     [BaseStatsConfig.eliteLadderFullOvr] — per position, because the
+  ///     shipped weight spans differ widely.
+  ///  2. When the primary attribute would clamp at the 99 ceiling, the
+  ///     whole ladder shifts down by the excess instead of clamping, so
+  ///     the absolute gaps survive: the elite striker reads 99/85/82, not
+  ///     99/96/93.
+  ///
   /// With a [seed] the generation becomes probabilistic per player: one
   /// shared quality offset (±[BaseStatsConfig.qualityNoise]) and independent
   /// per-attribute style noise (±[BaseStatsConfig.attributeNoise]) are drawn
@@ -281,17 +317,46 @@ class BaseStatsGenerator {
     final rng = seed == null ? null : math.Random(seed);
     final quality = rng == null ? 0.0 : _triangle(rng) * config.qualityNoise;
 
-    final attrs = <PlayerAttribute, int>{};
+    // Ceiling-aware ladder scale (T-0048): ramp the position's deviations
+    // up between the start and full OVRs until the pre-noise span reaches
+    // the gap floor. Positions already wider than the floor (ST, GK, CB)
+    // keep their shipped spread (scale caps at 1× minimum).
+    final nonzero = weights.values.where((w) => w > 0).toList();
+    final span = nonzero.reduce(math.max) - nonzero.reduce(math.min);
+    final ladderBoost = math.max(
+      1.0,
+      config.eliteLadderGapFloor / (spread * span),
+    );
+    final engage =
+        ((base - config.eliteLadderStartOvr) /
+                (config.eliteLadderFullOvr - config.eliteLadderStartOvr))
+            .clamp(0.0, 1.0);
+    final scale = 1.0 + (ladderBoost - 1.0) * engage;
+
+    final raw = <PlayerAttribute, double>{};
     for (final entry in weights.entries) {
       final w = entry.value;
       if (w == 0) {
+        raw[entry.key] = 0;
+        continue;
+      }
+      final deviation = spread * (w - anchor) * scale;
+      final style = rng == null ? 0.0 : _triangle(rng) * config.attributeNoise;
+      raw[entry.key] = base + deviation + quality + style;
+    }
+    // Shift-down at the ceiling: when the primary would clamp, move the
+    // whole ladder down by the excess — the gaps survive the clamp and
+    // the primary still touches 99 (GDD 4.5: no softening of identity).
+    final maxRaw = raw.values.reduce(math.max);
+    final shift = math.max(0.0, maxRaw - config.maxRating);
+    final attrs = <PlayerAttribute, int>{};
+    for (final entry in weights.entries) {
+      if (entry.value == 0) {
         attrs[entry.key] = 0;
         continue;
       }
-      final deviation = spread * (w - anchor);
-      final style = rng == null ? 0.0 : _triangle(rng) * config.attributeNoise;
-      final v = (base + deviation + quality + style).round().clamp(1, 99);
-      attrs[entry.key] = v;
+      attrs[entry.key] =
+          (raw[entry.key]! - shift).round().clamp(1, config.maxRating);
     }
     return BaseStats(
       overall: base,

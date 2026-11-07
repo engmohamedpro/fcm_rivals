@@ -137,8 +137,15 @@ void main() {
       // Both are even matchups; metrics exist and differ in detail.
       expect(low.avgGoals, greaterThan(0));
       expect(high.avgGoals, greaterThan(0));
-      // Higher-quality football converts more of its shooting.
-      expect(high.goalConversion, greaterThan(low.goalConversion));
+      // Higher-quality football creates and scores more (T-0048
+      // re-anchor: the widened elite ladder trades per-chance purity for
+      // chance volume — elite attacks (99) now face wider-but-lower
+      // elite defences, so the conversion-per-shot ratio is no longer
+      // monotonic in squad value; the volume metrics are the stable
+      // band separators: ~24.8 shots / 9.6 SoT / 3.1 goals vs ~22.7 /
+      // 7.9 / 2.8).
+      expect(high.avgShotsOnTarget, greaterThan(low.avgShotsOnTarget));
+      expect(high.avgGoals, greaterThan(low.avgGoals));
     }, timeout: const Timeout(Duration(minutes: 2)));
   });
 }

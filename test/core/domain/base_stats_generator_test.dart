@@ -1,9 +1,11 @@
+import 'dart:io' as io;
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/base_stats_generator.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
+import 'package:fcm_rivals/features/player_database/player_database.dart';
 
 void main() {
   const gen = BaseStatsGenerator();
@@ -538,5 +540,227 @@ void main() {
 
   test('log2 sanity used by the curve', () {
     expect(math.log(8) / math.ln2, closeTo(3, 1e-12));
+  });
+
+  group('T-0048 elite ladder: position-true at every OVR tier', () {
+    const config = defaultBaseStatsConfig;
+    const ladderGen = BaseStatsGenerator();
+
+    int attrOf(BaseStats s, PlayerAttribute a) => switch (a) {
+          PlayerAttribute.attack => s.attack,
+          PlayerAttribute.support => s.support,
+          PlayerAttribute.defence => s.defence,
+          PlayerAttribute.goalkeeping => s.goalkeeping,
+        };
+
+    int valueForOvr(int ovr) => config.valueForRating(ovr);
+
+    /// The primary (highest-weight) attribute's value, the least value
+    /// and the second-largest value among the position's non-zero-weight
+    /// attributes.
+    (int, int, int) ladderOf(Position position, BaseStats s) {
+      final weights = positionWeights[position]!;
+      final ranked = weights.keys.toList()
+        ..sort((a, b) => weights[b]!.compareTo(weights[a]!));
+      final primary = ranked.first;
+      var least = 1 << 30;
+      var secondLargest = -1;
+      for (final k in ranked.skip(1)) {
+        if (weights[k]! == 0) continue;
+        final v = attrOf(s, k);
+        least = math.min(least, v);
+        secondLargest = math.max(secondLargest, v);
+      }
+      return (attrOf(s, primary), least, secondLargest);
+    }
+
+    test('ladder gap floor ≥ 12 at OVR 95/97/99 for every position '
+        '(2,000 seeded draws, extremes never invert)', () {
+      // Per draw the guarantee is primary > least: the scaled span (≥ 18)
+      // exceeds the opposed noise extremes (2 × 2.5) plus integer
+      // rounding, so the measured gap can dip to 12 but never through
+      // zero. Close-weight neighbours (CAM's support/attack, 0.48 vs
+      // 0.42) may swap per draw — that is the style noise the GDD
+      // sanctions; the EXPECTED profile below locks the exact ordering.
+      for (final position in Position.values) {
+        for (final ovr in const [95, 97, 99]) {
+          final value = valueForOvr(ovr);
+          var minGap = 1 << 30;
+          for (var seed = 0; seed < 2000; seed++) {
+            final s = ladderGen.generate(position, value, seed: seed);
+            final (primary, least, _) = ladderOf(position, s);
+            expect(primary, greaterThan(least),
+                reason:
+                    '${position.code} @$ovr seed $seed: the ladder extremes '
+                    'must never invert');
+            minGap = math.min(minGap, primary - least);
+          }
+          expect(minGap, greaterThanOrEqualTo(12),
+              reason: '${position.code} @$ovr: measured min gap $minGap');
+          // The expected (seedless) profile is strictly primary-first.
+          final expected = ladderGen.generate(position, value);
+          final (ePrimary, eLeast, eSecond) = ladderOf(position, expected);
+          expect(ePrimary, greaterThan(eSecond),
+              reason: '${position.code} @$ovr: the expected profile must '
+                  'have a strictly largest primary attribute');
+          expect(ePrimary - eLeast, greaterThanOrEqualTo(12),
+              reason: '${position.code} @$ovr: expected-profile gap');
+        }
+      }
+    });
+
+    test('measured ladder gaps printed at OVR 84 / 95 / 99', () {
+      // ignore: avoid_print
+      print('T-0048 ladder gaps (mean primary − least over 500 seeds):');
+      for (final ovr in const [84, 95, 99]) {
+        final value = valueForOvr(ovr);
+        final row = StringBuffer('  OVR $ovr:');
+        for (final position in Position.values) {
+          var total = 0;
+          for (var seed = 0; seed < 500; seed++) {
+            final s = ladderGen.generate(position, value, seed: seed);
+            final (primary, least, _) = ladderOf(position, s);
+            total += primary - least;
+          }
+          row.write(' ${position.code}=${(total / 500).toStringAsFixed(1)}');
+        }
+        // ignore: avoid_print
+        print(row);
+      }
+    });
+
+    test('expected formula holds exactly below every ceiling threshold '
+        '(no ramp, no shift at OVR 78)', () {
+      // OVR 78 keeps every position's raw maximum (including both noise
+      // extremes) under the 99 ceiling, so the pure shipped formula must
+      // come out exactly — the low/mid bands did not move.
+      final value = valueForOvr(78);
+      for (final position in Position.values) {
+        final s = ladderGen.generate(position, value);
+        for (final entry in positionWeights[position]!.entries) {
+          if (entry.value == 0) {
+            expect(attrOf(s, entry.key), 0, reason: position.code);
+            continue;
+          }
+          final expected = (78 +
+                  config.attributeSpread *
+                      (entry.value - config.attributeAnchor))
+              .round();
+          expect(attrOf(s, entry.key), expected,
+              reason: '${position.code} ${entry.key.name}');
+        }
+      }
+    });
+
+    test('range locks: σ > 0 and every draw stays within '
+        '±(qualityNoise + attributeNoise) of the expected value', () {
+      // OVR 78: below every ceiling threshold, so the expected value is
+      // the pure shipped formula and the ± bound is exact.
+      final value = valueForOvr(78);
+      const seeds = 1000;
+      final bound = config.qualityNoise + config.attributeNoise + 1;
+      for (final position in Position.values) {
+        for (final entry in positionWeights[position]!.entries) {
+          if (entry.value == 0) continue;
+          final expected = 78 +
+              config.attributeSpread * (entry.value - config.attributeAnchor);
+          final values = [
+            for (var seed = 0; seed < seeds; seed++)
+              attrOf(
+                ladderGen.generate(position, value, seed: seed),
+                entry.key,
+              ),
+          ];
+          final mean = values.fold<double>(0, (a, b) => a + b) / seeds;
+          final sigma =
+              math.sqrt(values.fold<double>(0, (a, b) {
+                    final d = b - mean;
+                    return a + d * d;
+                  }) /
+                  seeds);
+          expect(sigma, greaterThan(0),
+              reason:
+                  '${position.code} ${entry.key.name}: the style noise must '
+                  'produce real variance');
+          for (final v in values) {
+            expect((v - expected).abs(), lessThanOrEqualTo(bound),
+                reason:
+                    '${position.code} ${entry.key.name}: $v vs expected '
+                    '$expected');
+          }
+        }
+      }
+    });
+
+    test('identity ordering never inverts: 12 positions × 2,000 draws at '
+        'OVR 84 and 97 (extremes hold per draw; expected order is exact)',
+        () {
+      // Per draw: the ladder extremes can never cross (the span floor
+      // exceeds the noise bound). Close-weight neighbours may swap —
+      // the exact ordering is locked on the expected profile.
+      for (final ovr in const [84, 97]) {
+        final value = valueForOvr(ovr);
+        for (final position in Position.values) {
+          for (var seed = 0; seed < 2000; seed++) {
+            final s = ladderGen.generate(position, value, seed: seed);
+            final (primary, least, _) = ladderOf(position, s);
+            if (primary <= least) {
+              fail('${position.code} @$ovr seed $seed: ladder inverted');
+            }
+          }
+          // The expected profile orders attributes exactly by weight.
+          final expected = ladderGen.generate(position, value);
+          final weights = positionWeights[position]!;
+          final byWeight = weights.keys
+              .where((k) => weights[k]! > 0)
+              .toList()
+            ..sort((a, b) => weights[b]!.compareTo(weights[a]!));
+          for (var i = 0; i + 1 < byWeight.length; i++) {
+            expect(
+              attrOf(expected, byWeight[i]),
+              greaterThan(attrOf(expected, byWeight[i + 1])),
+              reason:
+                  '${position.code} @$ovr: expected ordering inverted at '
+                  '${byWeight[i].name}',
+            );
+          }
+        }
+      }
+    });
+
+    test('zero-weight attributes stay exactly 0', () {
+      final value = valueForOvr(97);
+      for (final position in Position.values) {
+        for (var seed = 0; seed < 50; seed++) {
+          final s = ladderGen.generate(position, value, seed: seed);
+          for (final entry in positionWeights[position]!.entries) {
+            if (entry.value == 0) {
+              expect(attrOf(s, entry.key), 0,
+                  reason: '${position.code} ${entry.key.name}');
+            }
+          }
+        }
+      }
+    });
+
+    test('the real dataset reaches attribute 99 in attack, defence and '
+        'goalkeeping', () {
+      final db = PlayerDatabase();
+      db.importDatasetFromJson(
+        io.File('assets/data/players_v1.json').readAsStringSync(),
+      );
+      var maxAttack = 0, maxDefence = 0, maxGoalkeeping = 0;
+      for (final p in db.all) {
+        maxAttack = math.max(maxAttack, p.baseStats.attack);
+        maxDefence = math.max(maxDefence, p.baseStats.defence);
+        maxGoalkeeping = math.max(maxGoalkeeping, p.baseStats.goalkeeping);
+      }
+      // ignore: avoid_print
+      print('T-0048 dataset attribute maxima: attack $maxAttack, '
+          'defence $maxDefence, goalkeeping $maxGoalkeeping');
+      expect(maxAttack, 99);
+      expect(maxDefence, 99);
+      expect(maxGoalkeeping, 99);
+    });
   });
 }
