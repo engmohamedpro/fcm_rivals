@@ -2,11 +2,11 @@
 id: T-0041
 title: Split packs_screen.dart into shell, store grid family and price widgets
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 ---
 
 # T-0041: Split packs_screen.dart into shell, store grid family and price widgets
@@ -30,12 +30,12 @@ The private underscore widgets become library-private in their new files or are 
 - Splitting any other packs file (T-0040 owns `pack_effects.dart`).
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes with zero test edits
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines
-- [ ] `README.md` architecture table row for the packs UI family updated for the new module files
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes with zero test edits
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] Every resulting file ≤800 lines
+- [x] `README.md` architecture table row for the packs UI family updated for the new module files
 
 ## How to Verify
 ```bash
@@ -55,3 +55,13 @@ Expected: every listed file ≤800 lines; analyzer clean; packs suite and full s
 - **Concerns / assumptions:** (1) The `super.key` additions are the one delta beyond pure relocation+renames — forced by the AC's "zero analyzer warnings" together with the Flutter lint on public widget constructors; no call site passes a key, so behaviour is unchanged. (2) The full-suite baseline was not re-run pre-split (tree byte-identical to the `ffcbec8` run on this machine), so the post-split run against the same suite count is the meaningful comparison. (3) `PackTierColor` appearing unused in `packs_screen.dart`'s `show` clause is pre-existing (it names the extension the file body uses implicitly); left verbatim. None blocking.
 
 ## Review Log
+
+### Review 2026-11-06, attempt 1: PASS
+- Independent verbatim-relocation check (multiset of all lines, original `ba2f249:lib/features/packs/packs_screen.dart` vs. the three HEAD files): only-in-original = the 9 lines carrying `_StoreGrid`/`_PricePlate`/`_ViewPlayersButton`; only-in-new executable lines = the same 9 renamed, plus the declared `super.key` additions (2 standalone constructor lines + 1 inline in `ViewPlayersButton`) and redistributed per-file imports (incl. `show PackTier, PackTierColor`). Everything else is `library;`/doc comments/blank lines. `_ScopeSection`, `_StorePackCell`, `_ChainTarget`, `_ChainReveal`, `_scopeKey` appear in neither diff set — moved verbatim and still library-private.
+- Rename/key scope: `grep` confirms zero remaining private-name references; `StoreGrid` is used by the shell (`packs_screen.dart:92`), `PricePlate`/`ViewPlayersButton` across the store/price file boundary (`packs_store_widgets.dart:302/153`); no call site passes a `key`, so the lint-forced constructor additions are behaviour-neutral.
+- Ran: `wc -l` on all three files → 491/314/126, all ≤800.
+- Ran: `flutter analyze` (Flutter 3.47.9 stable / Dart 3.13.7, README pin) → No issues found.
+- Ran: `flutter test test/features/packs/` → `+47: All tests passed!`.
+- Ran: `flutter test` → `+709: All tests passed!`, exit 0 — identical count to the archived baseline; `git diff ba2f249..HEAD` touches no `test/` or `tool/` file, so zero test edits confirmed.
+- Scope: only `packs_screen.dart` + the two new files + README + this task file changed; no consumer edits. README "Pack visual effects" row correctly became "Pack UI" and now names both new store module files.
+- Notes: no localization strings in the diff and the multiset proves no string literal changed, so the EN/AR criterion is met vacuously; no determinism gate in this task's How to Verify (UI screen, not engine) — consistent with the task text.
