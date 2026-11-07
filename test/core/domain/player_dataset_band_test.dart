@@ -7,7 +7,7 @@
 // The 90+ population is PRINTED, not banded: T-0049's red-premium tier
 // is calibrated against that print, so the two tasks cannot drift apart
 // silently (measured 2026-11-07 on the shipped two-segment curve:
-// 29 rows, 0.139%).
+// 31 rows, 0.148%).
 import 'dart:convert';
 import 'dart:io';
 
