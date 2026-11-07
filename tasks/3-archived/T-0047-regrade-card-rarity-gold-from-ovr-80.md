@@ -2,11 +2,11 @@
 id: T-0047
 title: Regrade card rarity - gold from OVR 80, legendary packs guarantee gold
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0046]
 created: 2026-11-07
-completed:
+completed: 2026-11-07
 ---
 
 # T-0047: Regrade card rarity — gold from OVR 80, legendary packs guarantee gold
@@ -31,13 +31,13 @@ Card rarity must be stable per player and match the owner's rule: **every player
 - The OVR curve itself (T-0046), attribute shapes (T-0048), pack pricing/coin economy.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Threshold and band tests updated; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable (rarity labels: check the AR layer for the RARE/EPIC/LEGENDARY strings still correct)
-- [ ] No performance or application-size regression
-- [ ] Zero references to `fromTier` remain; 80+ renders gold in reveal, contents, collection and pre-match surfaces
-- [ ] Pack audit test: 100% of legendary-pack pulls ≥ 80 OVR, shares band-locked
-- [ ] Determinism PASS (`tool/simulation_report_test.dart` unchanged bands)
+- [x] Compiles with zero analyzer warnings
+- [x] Threshold and band tests updated; full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified where applicable (rarity labels: check the AR layer for the RARE/EPIC/LEGENDARY strings still correct)
+- [x] No performance or application-size regression
+- [x] Zero references to `fromTier` remain; 80+ renders gold in reveal, contents, collection and pre-match surfaces
+- [x] Pack audit test: 100% of legendary-pack pulls ≥ 80 OVR, shares band-locked
+- [x] Determinism PASS (`tool/simulation_report_test.dart` unchanged bands)
 
 ## How to Verify
 ```bash
@@ -58,3 +58,10 @@ Store shelves re-bucket: more players qualify as legendary, so legendary pools g
 - **Concerns / assumptions:** (1) The gold-only legendary re-priced the store: big pools ~29-38k (was ~30k), tiny LM/RM gold pools ~15k (6.3 matches at par income) — the economy grind bands were re-anchored with measured comments (ladder ratio 9.25, scope spread 2.53 on legendary only); EconomySimulator multi-season suites stayed green unmodified, as required. Prices follow EV structurally, so future curve retunes re-price automatically. (2) Rarity labels ('RARE'/'EPIC'/'LEGENDARY') are hardcoded UI constants in `fcm_style.dart` — no ARB entries exist for them (pre-existing l10n gap, unchanged by this task; flagging for the injury-UI or a future l10n task). (3) EN/AR: no new strings required by this layer.
 
 ## Review Log
+
+### Review 1 — PASS (2026-11-07, reviewer)
+**Ran** (Flutter 3.47.9 stable, Dart 3.13.7 — freshly installed in the review sandbox, clean pull at `7948ab6`): `grep -rn "fromTier" lib/ test/` → **0 hits**. `flutter analyze` → "No issues found!". `flutter test test/features/packs/ test/core/ui/ test/core/domain/` → **110/110 green** (incl. the new `legendary_regrade_audit_test.dart`). `flutter test test/balance/` → **74/74 green** (the re-anchored economy price bands included). `flutter test tool/simulation_report_test.dart` → **PASS** (deterministic replay). **Full `flutter test` at HEAD → 746/746 ALL GREEN** (the run also covers T-0048 and T-0053, which landed in the same review batch).
+**Code audit (diff-audited at `8f92129`, scope exactly the 8 claimed files):** `fromOverall` legendary 82 → 80 with the owner-rule doc comment; `fromTier` deleted. `BaseStatsConfig.valueForRating` verified as the exact inverse of the two-segment curve (80 < kink rating 84 → €50M × 2^((80−84)/4) = **€25M** — the task's €23-24M estimate was for the superseded kink-€20M proposal; the derived figure is correct). `PackTier.legendary` weights [0.05, 0.45, 1.0] → [0, 0, 1.0] with the owner-rule comment; `legendaryOverall = 80` const bound kept beside the floors so pack band and card colour cannot drift; floors runtime-derived and no caller passes `absoluteTierFloorEur` explicitly (grep), so absolute-band semantics are unchanged. Audit test asserts the population gold band, every pre-regrade legendary shelf survives and pools only grow, 100% gold over 2,000 seeded openings per tier, and all pull-side shares printed. Economy edits audited: **price bands only** (12 legendary shelves, €12-45k, ratio 6-20 matches, legendary spread 2.7×) — each with a measured, commented reason; the grind/faucet/sink bands untouched.
+**Accepted interpretation (requirement 5):** "overall gold share of all pulls within 1.5-3.5%" is structurally impossible as literally written once the same requirement demands 100% gold from Legendary packs (an equal-tier pull mix is ≥ ~33% gold by construction). The shipped lock is on the population the pull economy draws from (493/20,876 = 2.36%, the GDD 4.5 "few elite, large middle" shape the requirement itself cites) with every pull-side share printed — a documented, requirement-consistent reading, accepted.
+**Follow-up flagged (concern 2, not this task's failure):** the 'RARE'/'EPIC'/'LEGENDARY' labels are hardcoded UI constants with no ARB entries — a pre-existing l10n gap worth a task when T-0056 lands.
+**Result: every acceptance criterion met, every How-to-Verify step matches, no regressions, no out-of-scope changes. Status done, archived.**

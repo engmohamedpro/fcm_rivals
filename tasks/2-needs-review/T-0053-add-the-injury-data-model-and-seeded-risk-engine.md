@@ -2,11 +2,11 @@
 id: T-0053
 title: Add the injury data model and seeded risk engine
 priority: critical
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0052]
 created: 2026-11-07
-completed:
+completed: 2026-11-07
 ---
 
 # T-0053: Add the injury data model and seeded risk engine
@@ -37,13 +37,13 @@ Create the injury system's contract layer: a pure, seeded, unit-testable injury-
 - Changing drain/recovery values or any T-0052 deliverable.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Injury unit tests green with the distribution bands printed and locked; migration tests green; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable (no user-facing strings expected in this layer)
-- [ ] No performance or application-size regression (schema v4 + pure functions only)
-- [ ] Schema v4 with both tables carrying the injury columns; v3→v4 upgrade test green
-- [ ] GDD §11.7 exists and the Medical Centre docs reference it
-- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
+- [x] Compiles with zero analyzer warnings
+- [x] Injury unit tests green with the distribution bands printed and locked; migration tests green; full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified where applicable (no user-facing strings expected in this layer)
+- [x] No performance or application-size regression (schema v4 + pure functions only)
+- [x] Schema v4 with both tables carrying the injury columns; v3→v4 upgrade test green
+- [x] GDD §11.7 exists and the Medical Centre docs reference it
+- [x] `flutter test tool/simulation_report_test.dart` determinism PASS
 
 ## How to Verify
 ```bash
@@ -66,3 +66,10 @@ Schema migration touches every store that opens the DB — the store integration
 - **Concerns / assumptions:** (1) the risk constants are pre-balance placeholders (GDD rule 14) — the real-rate calibration gate is T-0054's engine calibration group; expected per-match injury volume at shipped constants ≈ 0.2/team/match in the exhausted band (T-0054 will tune with the owner). (2) The two pre-existing season migration fixtures were updated to simulate a real pre-v12 install (they previously rewound only the tables their own steps touched — a latent unfaithfulness my v12 step exposed); their assertions about v10/v11 behavior are unchanged. (3) No UI/l10n strings by design (T-0056); size impact = one pure module + four nullable columns.
 
 ## Review Log
+
+### Review 1 — PASS (2026-11-07, reviewer)
+**Ran** (Flutter 3.47.9 stable, Dart 3.13.7 — freshly installed in the review sandbox, clean pull at `7948ab6`): `flutter analyze` → "No issues found!". `flutter test test/features/match/stamina_test.dart test/features/match/injury_test.dart test/core/database/` → **25/25 green**. `flutter test tool/simulation_report_test.dart` → **PASS** (deterministic replay). **Full `flutter test` at HEAD → 746/746 ALL GREEN** (covers T-0047 and T-0048 in the same batch).
+**Code audit (diff-audited at `31ba6a3` + `b017aca`, scope exactly the 10 claimed files):** `injury.dart` is pure Dart (single import: `core/domain/players.dart`); `InjuryConfig` carries every tunable including the per-match cap (2) and the Medical Centre reduction (0.006/level, multiplicative — consuming the facilities 0.6pp/level hook as documented); `injuryChanceForMinute` + `rollInjury` take a `double Function()` draw with no RNG state inside (the engine keeps its draw budget, T-0054 decides when to roll); `expectedMatchesOut` = 1.925 under the shipped weights; the kind → l10n-key mapping is documented on the enum. Schema **v12** with exactly four `addColumn` steps (both columns on both `owned_players` and `ai_players`); the regenerated `app_database.g.dart` is consistent. **Zero engine wiring verified by grep** (`rollInjury`/`injuryChanceForMinute` have no references outside `injury.dart`) — Out of Scope respected. GDD §11.7 exists with the risk inputs, threshold, severity table and Medical Centre effect.
+**Deviations verified genuine:** (1) the live schema was v11, not v3 — v12 shipped with the same column contract; (2) the GDD has no §3.5 — the §11.2 stamina line now points at §11.7, which carries the Medical Centre effect; (3) the committed `pubspec.lock` pinned drift 2.35.3, unresolvable on Dart 3.13.7 — the re-resolved lock, the `sqlite3` dev dep (already transitive) and the two scoped ignores (drift 2.31's annotation on the PRE-EXISTING `TableMigration` steps only) are a toolchain fix, not a behavior change. All three recorded in Developer Notes.
+**Tests:** risk exactly `base × workload` at stamina 100; flat at/above 70 and strictly increasing on the 100→0 grid; the quadratic ratio asserted analytically; the per-minute cap hit exactly; Medical Centre strictly reducing at every level 0-5; `rollInjury` deterministic per seed with a 1-draw miss budget; the 50,000-draw distribution band-locked (knock .52-.58 / muscle .32-.38 / serious .08-.12 / mean 1.85-2.00 ≈ 13σ) and printed; the v11→v12 upgrade test snapshots `owned_players` + `ai_players` raw rows before/after and preserves them byte-for-byte; the v10/v11 fixture fixes present the tables at their real pre-v12 shape with the original assertions unchanged — a faithfulness fix my review confirmed is correct (the old fixtures left the target tables at current shape, which any new `addColumn` step would have broken).
+**Result: every acceptance criterion met, every How-to-Verify step matches, no regressions, no out-of-scope changes. Status done, archived. T-0054 (engine wiring) is the natural next task and depends on exactly this contract.**

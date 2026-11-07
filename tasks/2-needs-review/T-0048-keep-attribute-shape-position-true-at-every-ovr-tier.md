@@ -2,11 +2,11 @@
 id: T-0048
 title: Keep attribute shape position-true at every OVR tier
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0046]
 created: 2026-11-07
-completed:
+completed: 2026-11-07
 ---
 
 # T-0048: Keep attribute shape position-true at every OVR tier
@@ -31,13 +31,13 @@ The owner's design — market value → OVR, then attributes generated from OVR 
 - The OVR curve values (T-0046), rarity thresholds/colours (T-0047), match-engine attribute usage.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] New/updated generator tests green; full `flutter test` suite passes; T-0046 band test green **unmodified**
-- [ ] EN/AR localization complete and RTL verified where applicable (no UI strings expected)
-- [ ] No performance or application-size regression
-- [ ] Ladder-gap floor (Requirement 1) asserted by test at OVR 95+
-- [ ] Range/variance/zero-weight/attribute-99 locks (Requirement 3) all asserted
-- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
+- [x] Compiles with zero analyzer warnings
+- [x] New/updated generator tests green; full `flutter test` suite passes; T-0046 band test green **unmodified**
+- [x] EN/AR localization complete and RTL verified where applicable (no UI strings expected)
+- [x] No performance or application-size regression
+- [x] Ladder-gap floor (Requirement 1) asserted by test at OVR 95+
+- [x] Range/variance/zero-weight/attribute-99 locks (Requirement 3) all asserted
+- [x] `flutter test tool/simulation_report_test.dart` determinism PASS
 
 ## How to Verify
 ```bash
@@ -59,3 +59,11 @@ Match engine reads these attributes: widening the elite ladder changes elite-clu
 - **Concerns / assumptions:** (1) The widened elite ladder legitimately re-shaped elite-match statistics: high-vs-low squads now create and score MORE (24.8 shots / 9.6 SoT / 3.1 goals vs 22.7 / 7.9 / 2.8 per match) but the conversion-per-shot ratio flipped (0.324 vs 0.356) — chance volume over per-chance purity, since elite attacks (99) now face wider-but-lower elite defences (~82). The GDD-30 directional check was re-anchored to the stable volume metrics (~15-20% measured margins instead of the old ~1%); the old per-shot premise is no longer true by design and is documented in the test. (2) Per-draw swaps between close-weight neighbours (CAM support 0.48 / attack 0.42) are the GDD-sanctioned style noise (±2.5 exceeds their 1.8-pt expected gap); "orderings never invert" is therefore locked as: ladder extremes never cross per draw (span floor 18 > noise bound 5 + rounding) + the EXPECTED profile orders exactly by weight, strictly. Per-draw strictness between close-weight neighbours would require absurd ladders (floor ≥ 31 for CAM) and is recorded as the honest reading of requirement 3. (3) No UI strings — nothing to localize.
 
 ## Review Log
+
+### Review 1 — PASS (2026-11-07, reviewer)
+**Ran** (Flutter 3.47.9 stable, Dart 3.13.7 — freshly installed in the review sandbox, clean pull at `7948ab6`): `flutter analyze` → "No issues found!". `flutter test test/core/domain/ ...` → covered by the combined batch runs: domain suite green inside the 110/110 packs/ui/domain run and the **full `flutter test` at HEAD → 746/746 ALL GREEN**; `flutter test tool/simulation_report_test.dart` → **PASS**. `test/balance/` → 74/74 **unmodified** (the named guard `match_engine_balance_test.dart` untouched by this task's diff and green). The T-0046 dataset band test is **not in this task's diff** and passes unmodified.
+**Code audit (diff-audited at `5863080`, scope exactly the 4 claimed files):** three config fields (`eliteLadderStartOvr` 90 / `eliteLadderFullOvr` 95 / `eliteLadderGapFloor` 18) documented with the 12 + 2×2.5 + 1 derivation. The ramp engages only at OVR ≥ 90 (`scale = 1.0` below — bit-identical, locked by the exact-formula test); per-position boost caps at 1.0 for positions whose shipped span already exceeds the floor (GK); the shift-down moves the whole ladder by the clamp excess with the final [1, 99] clamp intact; the RNG draw order is unchanged (quality, then one style draw per nonzero weight in map order), so per-seed determinism is preserved. The T-0048 test group asserts every Requirement-1/3 lock: measured gap ≥ 12 per position at OVR 95/97/99 × 2,000 seeds (primary strictly largest), gaps printed at 84/95/99, exact expected formula below every threshold with zero-weight = 0, σ > 0 and |v − expected| ≤ quality+attribute noise over 1,000 seeds, extreme-order non-crossing across 12 positions × 2,000 draws, and dataset 99s in attack, defence and goalkeeping.
+**Requirement 4 decision recorded:** consensus OVR kept (attributes carry the ±2.0/±2.5 noise) — the value↔OVR mapping is load-bearing (store EV pricing, the T-0046 contract, id-seeded regeneration), folding the offset in would re-band every consumer of `overall` for zero gameplay gain. Accepted.
+**Accepted reading (concern 2):** "orderings never invert" is locked as per-draw extreme non-crossing + strict expected-profile ordering — per-draw strictness between close-weight neighbours (CAM's 1.8-pt expected gap vs ±2.5 style noise) was never true in the pre-existing range design this task must preserve; the reading is the only coherent one and is documented.
+**Sim-test re-anchor audited (`match_simulator_test.dart`):** the GDD-30 directional check moved from per-shot conversion (its premise — per-chance purity monotonic in squad value — is invalidated by the widened elite ladder by design) to the stable volume metrics, with the mechanism and measured margins in the comment. The named balance guard stayed untouched; accepted.
+**Result: every acceptance criterion met, every How-to-Verify step matches, no regressions, no out-of-scope changes. Status done, archived.**
