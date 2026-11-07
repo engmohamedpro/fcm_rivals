@@ -47,7 +47,7 @@ engines as pure Dart with no UI dependencies, atomic coin transactions.
 | Pack UI | `lib/features/packs/` | the painters split into `pack_effect_palette.dart` (aspect spec, brand-logo priming, silhouette geometry), `foil_pack_painter.dart` and `pack_particles.dart` re-exported through the `pack_effects.dart` barrel; the store screen split into `packs_store_widgets.dart` (grid family) and `pack_price_widgets.dart` (price plate + view-players button) |
 | Squad UI | `lib/features/squad/` | the shared tactical setup surface split into `tactics_setup_view.dart` (setup column + tactic options sheet) and `squad_pitch_view.dart` (pitch, bench/reserves card rows, pitch painter) re-exported through the `squad_view.dart` barrel |
 | Route table | `lib/app/routes.dart` | `AppRoutes` owns every full-screen `MaterialPageRoute` (pre-match, league match, live tactics, pack reveal, pack contents); screens never construct routes inline |
-| Focused stores | `lib/features/collection/{club,squad,campus}_store.dart` | `ClubStore`, `SquadStore`, `CampusStore` — single-purpose APIs over the same database; `CollectionStore` is the composing facade |
+| Focused stores | `lib/features/collection/{club,squad,campus}_store.dart` | `ClubStore`, `SquadStore`, `CampusStore` — single-purpose APIs over the same database; `CollectionStore` is the composing facade over its `part` files (`collection_store_dataset.dart`, `collection_store_internals.dart`, `collection_store_match.dart`) |
 
 All engines are pure Dart with no Flutter UI dependencies, ready for the
 future authoritative server port (GDD §29). All balancing constants live in
