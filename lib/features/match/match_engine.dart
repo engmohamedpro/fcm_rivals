@@ -55,8 +55,11 @@ part 'match_engine_simulation.dart';
 part 'match_engine_setpieces.dart';
 part 'match_engine_events.dart';
 
-/// Engine identity for deterministic replay records (GDD 12.5).
-const int matchEngineVersion = 2;
+/// Engine identity for deterministic replay records (GDD 12.5). Bumped
+/// 2 → 3 (T-0052 review 1): the fatigue decoupling changed engine
+/// behavior materially for the same seed — replays of pre-decoupling
+/// records must be labeled with the old version.
+const int matchEngineVersion = 3;
 
 /// The deterministic match simulator.
 class MatchEngine {
