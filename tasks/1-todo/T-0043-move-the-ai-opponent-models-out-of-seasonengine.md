@@ -2,8 +2,8 @@
 id: T-0043
 title: Move the AI opponent models out of SeasonEngine
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-06
 completed:
@@ -50,5 +50,10 @@ Expected: every listed file ≤800 lines; analyzer clean; season/simulation suit
 ---
 
 ## Developer Notes
+- **Summary of changes:** Moved the AI opponent model family — `AiPoolPlayer`, `AiClubDefinition`, `AiPlayerDefinition`, `AiSquadPlayer` with their docs, original lines 141-255 — verbatim into a new pure-Dart `season_ai_models.dart` (127 lines), and rewrote `season_engine.dart` (846 → 733 lines) to keep everything else. Relocation by a one-time line-slice script kept outside the repo with a multiset verifier proving every original code/doc line lands exactly once; the only new content is the models-file header and two plumbing lines in the engine. **Zero code renames or edits** — the engine's generation/lineup/pool-tracker code references these classes unchanged.
+- **The export decision (flag for the reviewer):** `season_engine.dart` both imports and re-exports `season_ai_models.dart`. The import is required (the engine constructs these objects throughout); the export is required because `season_store.dart`, `season_store_opponent.dart` and `test/features/season/season_engine_test.dart` obtain the AI classes through their `season_engine.dart` import — without the export, consumer imports would break and test edits would be needed, violating the zero-test-edit requirement. This matches the established repo pattern (`season_store.dart` already exports `season_models.dart`; `tactics.dart` exports its five tactic files).
+- **Files changed:** `lib/features/season/season_engine.dart` (now 733 lines, imports + re-exports the models), `lib/features/season/season_ai_models.dart` (new, 127 lines), `README.md` (Season Engine architecture row now names `season_ai_models.dart` and the re-export).
+- **How I tested it:** Baseline on the unmodified tree: `flutter analyze` No issues found + the combined focused run `flutter test test/features/season/ test/features/simulation/ tool/simulation_report_test.dart` → `+72: All tests passed!` exit 0, with the determinism run writing its report (`REPORT_WRITTEN: simulation_report.md`). After the split: the `wc -l` gate lists 733/127, both ≤800; `flutter analyze` No issues found (the models file needs only `Position` via `players.dart show Position` and `TeamTactics`/`Mentality` via `../match/tactics.dart` — verified by symbol grep before writing the header); the same combined focused run → `+72: All tests passed!` exit 0 (identical count, determinism PASS included, zero test edits); full `flutter test` → `+709: All tests passed!` exit 0 (~5m23s) — identical test count to the baseline, zero test edits.
+- **Concerns / assumptions:** The task text says only "season_engine.dart imports it"; the added re-export goes one step further than the letter of the requirement but is the minimal change that keeps consumer imports (including the test file) stable — dropping it would force edits in `season_store.dart`/`season_store_opponent.dart`/the test. No other judgment calls. None blocking.
 
 ## Review Log

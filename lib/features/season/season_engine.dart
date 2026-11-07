@@ -13,6 +13,9 @@ import '../../core/domain/players.dart';
 import '../match/tactics.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
+import 'season_ai_models.dart';
+
+export 'season_ai_models.dart';
 
 /// Tunable season parameters — pre-balance placeholders (GDD rule 14).
 class SeasonConfig {
@@ -137,122 +140,6 @@ class SeasonConfig {
 }
 
 const SeasonConfig defaultSeasonConfig = SeasonConfig();
-
-/// A real player from the imported dataset, offered to the AI-club
-/// generator as a squad candidate (GDD 9.4: AI squads are built from the
-/// same player database the user collects — real names, real positions,
-/// real attributes). Built by the SeasonStore from the persisted Players
-/// rows; the engine stays pure Dart.
-class AiPoolPlayer {
-  const AiPoolPlayer({
-    required this.playerId,
-    required this.name,
-    required this.position,
-    required this.overall,
-    required this.attack,
-    required this.support,
-    required this.defence,
-    required this.goalkeeping,
-  });
-
-  final int playerId;
-  final String name;
-  final Position position;
-
-  /// Base-stats overall rating (drives division banding).
-  final int overall;
-  final int attack;
-  final int support;
-  final int defence;
-  final int goalkeeping;
-}
-
-/// A generated AI club definition (GDD 9.4): identity, tactics and squad
-/// for one division, before persistence.
-class AiClubDefinition {
-  const AiClubDefinition({
-    required this.name,
-    required this.managerName,
-    required this.crestIndex,
-    required this.formationCode,
-    required this.tactics,
-    required this.mentality,
-    required this.players,
-    required this.targetAverageOverall,
-  });
-
-  final String name;
-  final String managerName;
-  final int crestIndex;
-  final String formationCode;
-  final TeamTactics tactics;
-  final Mentality mentality;
-
-  /// 18 players: starting XI in formation slot order plus 7 bench players
-  /// (a smaller squad than the user's 23 — AI clubs don't open packs).
-  /// With a real-player pool available these are REAL dataset players
-  /// ([AiPlayerDefinition.realPlayerId] set); tiny test pools fall back
-  /// to synthetic generation through the same attribute curve.
-  final List<AiPlayerDefinition> players;
-
-  final int targetAverageOverall;
-}
-
-/// One AI squad player (GDD 9.4): a real dataset player when
-/// [realPlayerId] is set, otherwise a synthetic player generated through
-/// the same BaseStatsGenerator curve as real players — inverted from the
-/// target overall — so AI teams always have attribute parity with user
-/// squads.
-class AiPlayerDefinition {
-  const AiPlayerDefinition({
-    required this.name,
-    required this.position,
-    required this.attack,
-    required this.support,
-    required this.defence,
-    required this.goalkeeping,
-    this.realPlayerId,
-  });
-
-  final String name;
-  final Position position;
-  final int attack;
-  final int support;
-  final int defence;
-  final int goalkeeping;
-
-  /// The real dataset player this squad entry represents, or null for the
-  /// synthetic fallback. Persisted on AiPlayers so promoted/relegated
-  /// clubs keep their identity across seasons.
-  final int? realPlayerId;
-}
-
-/// One persisted AI squad player with live condition, as needed for
-/// between-match rotation decisions (the store maps database rows to
-/// this; the engine picks the lineup).
-class AiSquadPlayer {
-  const AiSquadPlayer({
-    required this.realPlayerId,
-    required this.name,
-    required this.position,
-    required this.attack,
-    required this.support,
-    required this.defence,
-    required this.goalkeeping,
-    required this.stamina,
-  });
-
-  final int? realPlayerId;
-  final String name;
-  final Position position;
-  final int attack;
-  final int support;
-  final int defence;
-  final int goalkeeping;
-
-  /// Current condition 0..100.
-  final double stamina;
-}
 
 /// Fixture scheduling result for one round.
 class FixturePairing {
