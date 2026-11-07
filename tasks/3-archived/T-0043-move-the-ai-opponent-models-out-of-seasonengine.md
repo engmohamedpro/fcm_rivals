@@ -2,11 +2,11 @@
 id: T-0043
 title: Move the AI opponent models out of SeasonEngine
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 ---
 
 # T-0043: Move the AI opponent models out of SeasonEngine
@@ -29,13 +29,13 @@ Measured on main `b2c0a27` (2026-11-06): `season_engine.dart` = 846 lines. Top-l
 - Splitting `season_store.dart`, `season_screen.dart` (T-0044 owns that) or `season_models.dart` beyond imports.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes with zero test edits
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Every resulting file ≤800 lines
-- [ ] `README.md` architecture table row for the season engine updated for the new module file
-- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes with zero test edits
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] Every resulting file ≤800 lines
+- [x] `README.md` architecture table row for the season engine updated for the new module file
+- [x] `flutter test tool/simulation_report_test.dart` determinism PASS
 
 ## How to Verify
 ```bash
@@ -57,3 +57,14 @@ Expected: every listed file ≤800 lines; analyzer clean; season/simulation suit
 - **Concerns / assumptions:** The task text says only "season_engine.dart imports it"; the added re-export goes one step further than the letter of the requirement but is the minimal change that keeps consumer imports (including the test file) stable — dropping it would force edits in `season_store.dart`/`season_store_opponent.dart`/the test. No other judgment calls. None blocking.
 
 ## Review Log
+
+### Review 2026-11-06, attempt 1: PASS
+- Independent verbatim-relocation check (multiset of all lines, original `7665cb0:lib/features/season/season_engine.dart` vs. the HEAD engine + `season_ai_models.dart`): ONLY-IN-ORIGINAL IS EMPTY — every line of the original 846-line engine relocated verbatim, independently confirming the zero-renames claim. Only-in-new = the models-file header (doc + `library;` + the two `show`-narrowed imports) and the engine's declared plumbing (`import 'season_ai_models.dart';` + `export 'season_ai_models.dart';`) plus blanks.
+- The flagged re-export decision is accepted: verified that `season_store.dart`, `season_store_opponent.dart` and `test/features/season/season_engine_test.dart` obtain the AI classes through their `season_engine.dart` import, so dropping the export would force test/consumer edits; the re-export matches the existing repo pattern (`season_store.dart` → `season_models.dart`, `tactics.dart` barrel).
+- Ran: `wc -l` → engine 733 / models 127, both ≤800 (T-0044/T-0045 verified not to touch these two files, so HEAD measurement is valid for this task's gate).
+- Ran: `flutter analyze` (Flutter 3.47.9 stable / Dart 3.13.7, README pin) → No issues found.
+- Ran: `flutter test test/features/season/ test/features/simulation/` → `+71: All tests passed!`.
+- Ran: `flutter test tool/simulation_report_test.dart` → `+1: All tests passed!`, `REPORT_WRITTEN: simulation_report.md` — determinism PASS.
+- Ran: `flutter test` → `+709: All tests passed!`, exit 0 — identical count to the archived baseline; the T-0043 diff (`7665cb0..c1e4e53`) touches no `test/` or `tool/` file, so zero test edits confirmed.
+- Scope: only the two season lib files + README + this task file changed. README Season Engine row correctly names `season_ai_models.dart` and the re-export.
+- Notes: no localization strings in the diff and the multiset proves no string literal changed, so the EN/AR criterion is met vacuously; models file is pure Dart per the GDD §36 rule (only `Position` and `TeamTactics`/`Mentality` imports, both domain-layer).
