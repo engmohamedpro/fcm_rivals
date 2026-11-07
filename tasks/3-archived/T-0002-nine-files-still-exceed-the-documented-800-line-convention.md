@@ -2,11 +2,11 @@
 id: T-0002
 title: Nine files still exceed the documented ~800-line convention
 priority: medium
-status: todo
+status: done
 attempts: 0
 depends_on: [T-0025, T-0026, T-0027, T-0030, T-0028, T-0022, T-0024, T-0029, T-0023, T-0021]
 created: 2026-11-04
-completed:
+completed: 2026-11-07
 # migrated from: reviews/tasks/2026-11-04_app-structure_remaining-oversized-files.md
 ---
 
@@ -61,6 +61,11 @@ Expected: analyzer reports no issues; the full test suite passes. Per-task check
 - Record shell: executable work lives in the `depends_on` follow-ups.
 
 - 2026-11-05 (structural split per README §1 — one file per independently executable task): the ten bundled tasks are each independently executable and now live in ten follow-up files under `reviews/tasks/` (listed under Follow-up). Status OPEN → SPLIT. Each follow-up copies its requirements, targets and evidence per README §7 so no work is reconstructed from this file; the enforcement task additionally declares `Depends on` the nine splits. The task text above is unchanged historical record; execute the work only in the follow-up files.
+
+### 2026-11-07 — record shell closed (all dependencies archived; reviewer closure per repo-owner instruction)
+- All `depends_on` tasks are in `tasks/3-archived/`: the nine split follow-ups (T-0022..T-0030) and the mechanical enforcement gate T-0021 (closed 2026-11-07 with full gate evidence: over-800 check returns zero files on main `c552ad6`, README table matches the tree, `flutter analyze` clean, `flutter test` +709 all passed exit 0).
+- Its designed closure condition — "closes only when all of its `depends_on` tasks are archived" — is met. Acceptance criteria verified as part of T-0021's closure: no file in `lib/` (excluding `*.g.dart`) exceeds 800 lines (largest remaining: `lib/l10n/app_localizations.dart` 788); no documented exceptions required; suite green; determinism PASS recorded in the T-0043 review log (REPORT_WRITTEN); README architecture table matches the post-split tree (27 path tokens + 15 directories checked).
+- No code change was ever required in this file (record shell, Out of Scope: any implementation here); attempts stays 0 by design. Task closed and archived — the god-file cleanup campaign is complete.
 
 ## Historical Links
 - Follows: `2026-11-04_app-structure_god-files-and-route-table` (backfilled 2026-11-05 by the lifecycle audit `2026-11-05_reviews_lifecycle-compliance-audit`; the prose reference above predates the formal field)

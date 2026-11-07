@@ -2,11 +2,11 @@
 id: T-0021
 title: Enforce the ~800-line convention mechanically
 priority: medium
-status: todo
+status: done
 attempts: 1
 depends_on: [T-0025, T-0026, T-0027, T-0030, T-0028, T-0022, T-0024, T-0029, T-0023, T-0039, T-0040, T-0041, T-0042, T-0043, T-0044, T-0045]
 created: 2026-11-05
-completed:
+completed: 2026-11-07
 # migrated from: reviews/tasks/2026-11-05_app-structure_enforce-line-budget.md
 ---
 
@@ -79,6 +79,16 @@ Expected: the `find`/`wc` check lists only consciously-cleared exceptions (none 
 - depends_on extended with T-0039..T-0045 so sequencing is mechanical (the developer skips this task via the dependency rule until all seven archive); status back to `todo` — the missing-task-files blocker no longer exists.
 - tactics.dart sequencing precondition from the evidence refresh is satisfied (T-0037/T-0038 archived).
 - Goal, Requirements, Acceptance Criteria and How to Verify unchanged.
+
+### 2026-11-07 — reviewer closure per repo-owner instruction (task done, no code changes required)
+- Owner decision: the developer cannot execute this task (its own attempt-1 notes record that `flutter`/`dart` are unavailable in the developer environment), and the task requires no code change — only verification. The repo owner instructed the reviewer to verify the gates directly and close the task; this entry records that closure transparently as reviewer-performed.
+- All 16 `depends_on` tasks confirmed in `tasks/3-archived/` (T-0022..T-0030 splits, T-0039..T-0045 batch splits — the last four verified and archived by the reviewer in commits 3958200, 5ce9753, 0033f84, c552ad6).
+- Gate 1 (over-800 check, run on main `c552ad6`): `find lib -name "*.dart" ! -name "*.g.dart" -exec wc -l {} + | awk '$1>800 && $2!="total"'` → EMPTY. Zero files exceed 800 lines; no documented exceptions needed. Largest remaining file: `lib/l10n/app_localizations.dart` 788.
+- Gate 2 (README architecture table matches the tree): scripted check of every backtick-quoted `.dart` path (27 path tokens) and every `lib/**/` directory (15) in README.md → all exist in the tree; the `{club,squad,campus}_store.dart` brace-expansion trio confirmed present individually. All rows added by T-0039..T-0045 (tactics families barrel, pack effects barrel, packs store/price split, squad UI barrel, season AI models, season UI re-export, collection part files) verified in their per-task reviews.
+- Gate 3: `flutter analyze` (Flutter 3.47.9 stable / Dart 3.13.7, README pin) → No issues found.
+- Gate 4: `flutter test` → `+709: All tests passed!`, exit 0 (test count grew 673 → 709 through feature work archived during the campaign; zero test edits were ever accepted in the split tasks).
+- Known debt recorded (out of scope here, comment-only): the orphaned doc-comment fragments at `lib/features/collection/collection_store.dart` ~691-702 flagged in the T-0045 review log remain in the tree; the analyzer is unaffected. If the board wants it fixed, it needs a dedicated task file — the campaign board closes with this task.
+- Outcome: acceptance criteria all met with zero code changes — the convention held because every split task enforced the ≤800 line budget per file. Task closed and archived.
 
 ## Historical Links
 - Depends on: `2026-11-05_app-structure_split-match-engine`, `2026-11-05_app-structure_split-match-screen-report`, `2026-11-05_app-structure_split-pack-reveal-widgets`, `2026-11-05_app-structure_split-season-models`, `2026-11-05_app-structure_split-player-card`, `2026-11-05_app-structure_split-collection-results-catalog`, `2026-11-05_app-structure_split-live-match-views`, `2026-11-05_app-structure_split-pre-match-screen`, `2026-11-05_app-structure_split-commentary`
