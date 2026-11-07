@@ -96,6 +96,7 @@ class CardFacePainter extends CustomPainter {
   CardFacePainter({
     required this.rarity,
     required this.shine,
+    this.cardClass = CardClass.standard,
     this.glow = 0.0,
     this.glowColor,
   });
@@ -103,18 +104,32 @@ class CardFacePainter extends CustomPainter {
   final CardRarity rarity;
   final double? shine;
 
+  /// The presentation-level class axis (T-0049): premium paints the red
+  /// escalation above gold while the rarity stays legendary underneath.
+  final CardClass cardClass;
+
   /// 0..1 aura strength following the card silhouette.
   final double glow;
 
   /// Aura colour; the rarity accent when null.
   final Color? glowColor;
 
+  /// Effective palette: the red premium family overrides the legendary
+  /// gold for 90+ players (the class rides on top of the rarity).
+  List<Color> get _faceGradient =>
+      cardClass == CardClass.premium
+      ? cardClass.faceGradient
+      : rarity.faceGradient;
+
+  Color get _accent =>
+      cardClass == CardClass.premium ? cardClass.accent : rarity.accent;
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final rect = Offset.zero & size;
     final path = cardPath(size);
-    final g = rarity.faceGradient;
+    final g = _faceGradient;
     final hair = math.max(0.5, w * 0.006);
 
     // Aura: a soft halo hugging the silhouette (not a square box).
@@ -122,7 +137,7 @@ class CardFacePainter extends CustomPainter {
       canvas.drawPath(
         path,
         Paint()
-          ..color = (glowColor ?? rarity.accent).withValues(
+          ..color = (glowColor ?? _accent).withValues(
             alpha: (0.65 * glow).clamp(0.0, 1.0),
           )
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.10 * glow + 2),
@@ -420,23 +435,32 @@ class CardFacePainter extends CustomPainter {
   @override
   bool shouldRepaint(CardFacePainter old) =>
       old.rarity != rarity ||
+      old.cardClass != cardClass ||
       old.shine != shine ||
       old.glow != glow ||
       old.glowColor != glowColor;
 }
 
 class CardBackPainter extends CustomPainter {
-  CardBackPainter({required this.rarity});
+  CardBackPainter({required this.rarity, this.cardClass = CardClass.standard});
 
   final CardRarity rarity;
+
+  /// The presentation-level class axis (T-0049): premium paints the red
+  /// bezel/glow escalation above gold; the rarity stays legendary.
+  final CardClass cardClass;
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final rect = Offset.zero & size;
     final path = cardPath(size);
-    final g = rarity.faceGradient;
-    final accent = rarity.accent;
+    final g = cardClass == CardClass.premium
+        ? cardClass.faceGradient
+        : rarity.faceGradient;
+    final accent = cardClass == CardClass.premium
+        ? cardClass.accent
+        : rarity.accent;
     final hair = math.max(0.5, w * 0.006);
 
     // Bezel in the rarity's metal.
@@ -520,7 +544,8 @@ class CardBackPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CardBackPainter old) => old.rarity != rarity;
+  bool shouldRepaint(CardBackPainter old) =>
+      old.rarity != rarity || old.cardClass != cardClass;
 }
 
 /// Compact card for the pitch and bench: rating, position, surname, an

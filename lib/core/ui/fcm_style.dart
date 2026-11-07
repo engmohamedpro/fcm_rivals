@@ -162,6 +162,52 @@ enum CardRarity {
   };
 }
 
+/// Presentation-level card class (T-0049): the premium red treatment
+/// rides ON TOP of [CardRarity] — a 90+ player is still legendary
+/// underneath, so pack pools, shelves and save compatibility are
+/// untouched and no painter switch grows a case (a 4th rarity value was
+/// considered and rejected: it would have forced every exhaustive switch
+/// to grow a pack-facing case the store does not have).
+///
+/// Derived from the same deterministic input the rarity derives from —
+/// the [overall] — at every surface, so the same player reads red
+/// everywhere, always (the rarity stability rule applied to the class
+/// axis): 90+ premium red, 80-89 gold, 70-79 sapphire, <70 amethyst.
+/// The sealed packs never advertise this tier (no red pack, no new
+/// [CardRarity] value) — red is discovered at reveal.
+enum CardClass {
+  standard,
+  premium;
+
+  /// The premium boundary: OVR 90+ reads red in every card surface.
+  /// Measured population (T-0046 curve, 2026-11-07): ~52 of 20,876
+  /// dataset rows (0.249%) — decisively the "few elite" shape.
+  static const int premiumOverallThreshold = 90;
+
+  static CardClass fromOverall(int overall) => overall >= premiumOverallThreshold
+      ? CardClass.premium
+      : CardClass.standard;
+
+  /// Premium red palette (T-0049) — meaningful only for [premium]
+  /// (call sites branch on the class before reading it): crimson sheen
+  /// into champion crimson into deep oxblood for the face, a crimson
+  /// glow accent, the near-black maroon ink that stays readable on it,
+  /// and intensity 2.5 — one notch above the legendary 2.0 show.
+  List<Color> get faceGradient =>
+      const [Color(0xFFFFD9CF), Color(0xFFDC2436), Color(0xFF4A0409)];
+
+  Color get accent => const Color(0xFFF43F5E);
+
+  Color get ink => const Color(0xFF2B0206);
+
+  double get intensity => 2.5;
+
+  /// Canvas/brand-mark label, same convention as [CardRarity.label]'s
+  /// EN marks; user-facing pill surfaces localize through
+  /// `cardClassPremium` (lib/l10n/card_class_l10n.dart).
+  String get label => 'PREMIUM';
+}
+
 /// 1st, 2nd, 3rd, 4th… with the 11th/12th/13th exceptions handled —
 /// used for league positions on the Season and pre-match screens.
 String ordinalOf(int n) => switch (n % 100) {

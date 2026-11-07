@@ -2,8 +2,8 @@
 id: T-0049
 title: Red premium card tier for players rated 90 and over
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0047]
 created: 2026-11-07
 completed:
@@ -52,5 +52,13 @@ Expected: analyzer clean; new premium tests green; full suite green; the dataset
 Pure presentation over an existing determinstic key. Risks: a missed surface still showing gold (mitigated by the consistency test enumerating the surfaces), and AR localization of the new label. Painter switches stay exhaustive — the class rides on top of `CardRarity`, so no switch grows a case.
 
 ## Developer Notes
+- **Design decision (as the task recommended):** a presentation-level `CardClass { standard, premium }` in `fcm_style.dart`, computed `overall >= premiumOverallThreshold (90)` — the same deterministic input `CardRarity.fromOverall` reads, at the same call sites. A 4th `CardRarity` value was rejected per the task's analysis: no pack-facing switch grows a case, and the painters' rarity motif/star switches stay untouched (premium rides the legendary sunburst and its 5 stars).
+- **Red identity:** the premium palette lives on `CardClass` — face gradient crimson sheen `0xFFFFD9CF` → champion crimson `0xFFDC2436` → deep oxblood `0xFF4A0409`, crimson accent `0xFFF43F5E` (glow/rays/pills), near-black maroon ink `0xFF2B0206`, intensity 2.5 (one notch above the legendary 2.0 show). Both painters take `cardClass` (default `standard`) and branch the palette inline — no switch grew a case; `shouldRepaint` covers the new axis.
+- **Surfaces (requirement 3, all rendering 90+ red):** pack reveal (front via `FcmPlayerCard`'s internal derivation + pre-flip back via the new `FcmPlayerCardBack.cardClass`), pack contents rows + the localized rarity-tag pill, collection player detail sheet + pill, pre-match opponent key men, squad pitch mini cards (bench, XI, drag feedback) and the collection reveal — `FcmMiniCard` and `FcmPlayerCard` derive the class internally from the same `overall` their callers used for the rarity, so those call sites needed zero churn. `pack_catalog` shelf counts stay rarity-keyed BY DESIGN: premium players are inside the legendary pool, so the shelf math is untouched.
+- **PREMIUM label:** the canvas/front label prints `PREMIUM` where `LEGENDARY` did — EN brand mark by the existing rarity-label convention (`RARE/EPIC/LEGENDARY` are EN on canvas too). The user-facing pill surfaces localize through the new ARB key `cardClassPremium` ('PREMIUM' / AR 'نخبة') via `lib/l10n/card_class_l10n.dart` — RTL-safe (no positional interpolation).
+- **Measured dataset population (requirement 4):** **31 of 20,876 rows (0.148%)** reach OVR 90+ — the task's ≈52/0.249% estimate came from the noise-free curve boundary; the live seeded dataset (quality/style noise as shipped) lands at 31, inside the required [0.001, 0.005] share window and above the ≥ 20 floor. The test prints and asserts the window, so small dataset updates stay covered.
+- **Files changed:** `lib/core/ui/fcm_style.dart` (`CardClass` + palette); `lib/core/ui/player_card_painters.dart` (both painters); `lib/core/ui/player_card.dart` (`FcmPlayerCard` derivation, `FcmPlayerCardBack.cardClass`); `lib/core/ui/mini_card.dart`; `lib/features/packs/pack_opening_screen_reveal.dart`; `lib/features/packs/pack_contents_screen.dart` (class + localized tag); `lib/features/collection/player_detail_sheet.dart` (localized pill); `lib/l10n/app_en.arb` + `app_ar.arb` (+`cardClassPremium`); `lib/l10n/card_class_l10n.dart` (new); `test/core/ui/card_class_test.dart` (new, 9 tests).
+- **How I tested it:** `flutter analyze` → No issues found. Full `flutter test` → **767 passed / 0 failed, ALL GREEN** (targeted core/ui + packs + collection + domain: 141/141). Locked by test: the exact 90/89 boundary; `CardRarity.values.length == 3` with 80-89 still gold (the "no 4th value" invariant); the red palette distinct from every jewel accent; surface consistency by pumping the real widgets and asserting the painter's class axis (FcmMiniCard 92→premium / 89→standard, FcmPlayerCard 90→premium / 80→standard, back 95→premium); the dataset window; and the packs provably unchanged — `PackTier.values.length == 3` plus the three accent colour constants and star counts asserted at their exact shipped values.
+- **Concerns / assumptions:** (1) The measured 90+ population is 31, not the task's ≈52 estimate — the task's own window absorbs it; recorded so the reviewer does not read it as a regression. (2) The card-canvas labels stay EN (existing convention); the localized surface is the pill tag in pack contents and the detail sheet. (3) No reveal/opening animation change for red — T-0050 owns the third animation; today the reveal shows the red treatment through the existing legendary choreography.
 
 ## Review Log

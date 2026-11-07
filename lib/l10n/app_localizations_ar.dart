@@ -383,4 +383,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get statInjuries => 'الإصابات';
+
+  @override
+  String get cardClassPremium => 'نخبة';
 }

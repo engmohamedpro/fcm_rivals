@@ -165,5 +165,6 @@
   "injuryCommentaryMuscle": "{player} pulls up with a muscle injury — his day is done.",
   "injuryCommentarySerious": "{player} suffers a serious injury. That doesn't look good.",
   "injuryCommentaryPlaysShort": " They have no replacement and play a man short.",
-  "statInjuries": "Injuries"
+  "statInjuries": "Injuries",
+  "cardClassPremium": "PREMIUM"
 }

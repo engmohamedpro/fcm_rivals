@@ -118,5 +118,6 @@
   "injuryCommentaryMuscle": "{player} يتوقف بإصابة عضلية — وداعًا يومه اليوم.",
   "injuryCommentarySerious": "{player} يتعرض لإصابة خطيرة. الوضع لا يبدو جيدًا.",
   "injuryCommentaryPlaysShort": " لا يوجد بديل عنه وسيكمل الفريق ناقصًا.",
-  "statInjuries": "الإصابات"
+  "statInjuries": "الإصابات",
+  "cardClassPremium": "نخبة"
 }

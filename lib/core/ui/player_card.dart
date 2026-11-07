@@ -105,8 +105,16 @@ class FcmPlayerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = width;
     final h = width / kPlayerCardAspect;
-    final ink = rarity.ink;
-    final light = rarity.faceGradient.first;
+    // The premium class derives from the same deterministic overall the
+    // rarity call sites use (T-0049): 90+ reads red in every surface.
+    final cardClass = CardClass.fromOverall(
+      overall ?? player.baseStats.overall,
+    );
+    final premium = cardClass == CardClass.premium;
+    final ink = premium ? cardClass.ink : rarity.ink;
+    final light = premium
+        ? cardClass.faceGradient.first
+        : rarity.faceGradient.first;
     final p = statProgress.clamp(0.0, 1.0).toDouble();
     final ovr = ((overall ?? player.baseStats.overall) * p).round();
     final shownStats = stats ?? statsFor(player);
@@ -131,7 +139,8 @@ class FcmPlayerCard extends StatelessWidget {
         const Shadow(color: Colors.black, blurRadius: 6),
         if (letters != null)
           Shadow(
-            color: rarity.accent.withValues(alpha: 0.9),
+            color: (premium ? cardClass.accent : rarity.accent)
+                .withValues(alpha: 0.9),
             blurRadius: w * 0.05,
           ),
       ],
@@ -179,6 +188,7 @@ class FcmPlayerCard extends StatelessWidget {
               child: CustomPaint(
                 painter: CardFacePainter(
                   rarity: rarity,
+                  cardClass: cardClass,
                   shine: shine,
                   glow: glow,
                 ),
@@ -262,7 +272,7 @@ class FcmPlayerCard extends StatelessWidget {
               right: w * 0.10,
               top: h * 0.085,
               child: Text(
-                rarity.label,
+                premium ? cardClass.label : rarity.label,
                 maxLines: 1,
                 softWrap: false,
                 style: TextStyle(
@@ -392,9 +402,18 @@ class FcmPlayerCard extends StatelessWidget {
 /// The card back shown before the flip: carbon-black face, the rarity's
 /// metal bezel and frames, the brand wordmark and the rarity stars.
 class FcmPlayerCardBack extends StatelessWidget {
-  const FcmPlayerCardBack({super.key, required this.rarity, this.width = 260});
+  const FcmPlayerCardBack({
+    super.key,
+    required this.rarity,
+    this.cardClass = CardClass.standard,
+    this.width = 260,
+  });
 
   final CardRarity rarity;
+
+  /// The premium class axis (T-0049): the pre-flip back paints the red
+  /// bezel for 90+ players.
+  final CardClass cardClass;
   final double width;
 
   @override
@@ -407,7 +426,9 @@ class FcmPlayerCardBack extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Positioned.fill(
-            child: CustomPaint(painter: CardBackPainter(rarity: rarity)),
+            child: CustomPaint(
+              painter: CardBackPainter(rarity: rarity, cardClass: cardClass),
+            ),
           ),
           Image.asset(
             kFcmWordmarkAsset,

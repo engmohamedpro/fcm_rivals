@@ -56,7 +56,11 @@ class FcmMiniCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final h = width / kPlayerCardAspect;
-    final ink = rarity.ink;
+    // The premium class derives from the same deterministic overall the
+    // caller used for the rarity (T-0049): 90+ reads red in every surface.
+    final cardClass = CardClass.fromOverall(overall);
+    final premium = cardClass == CardClass.premium;
+    final ink = premium ? cardClass.ink : rarity.ink;
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
       child: SizedBox(
@@ -74,6 +78,7 @@ class FcmMiniCard extends StatelessWidget {
                     child: CustomPaint(
                       painter: CardFacePainter(
                         rarity: rarity,
+                        cardClass: cardClass,
                         shine: null,
                         glow: ghost ? 0.0 : 0.8,
                         glowColor: warn ? FcmColors.danger : null,

@@ -224,7 +224,11 @@ extension _PackRevealViews on _PackOpeningScreenState {
           alignment: Alignment.center,
           transform: rot,
           child: showBack
-              ? FcmPlayerCardBack(rarity: rarity, width: cardWidth)
+              ? FcmPlayerCardBack(
+                  rarity: rarity,
+                  cardClass: CardClass.fromOverall(_player.baseStats.overall),
+                  width: cardWidth,
+                )
               : FcmPlayerCard(
                   player: _player,
                   rarity: rarity,

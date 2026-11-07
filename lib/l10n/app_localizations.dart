@@ -781,6 +781,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Injuries'**
   String get statInjuries;
+
+  /// No description provided for @cardClassPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'PREMIUM'**
+  String get cardClassPremium;
 }
 
 class _AppLocalizationsDelegate

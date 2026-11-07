@@ -17,6 +17,8 @@ import '../../core/ui/country_flag.dart' show flagEmojiFor;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart' show FcmMiniCard;
+import '../../l10n/card_class_l10n.dart';
+import '../../l10n/l10n_context.dart';
 import 'pack_engine.dart' show PackCategory, PackTier, PackTierColor;
 
 /// The contents list of one store pack.
@@ -153,11 +155,17 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
       itemBuilder: (context, i) {
         final p = players[i];
         final rarity = CardRarity.fromOverall(p.baseStats.overall);
+        final cardClass = CardClass.fromOverall(p.baseStats.overall);
         return FcmEntrance(
           index: math.min(i, 12),
           dx: 0,
           dy: 12,
-          child: _PlayerRow(player: p, rarity: rarity, tierColor: tierColor),
+          child: _PlayerRow(
+            player: p,
+            rarity: rarity,
+            cardClass: cardClass,
+            tierColor: tierColor,
+          ),
         );
       },
     );
@@ -299,11 +307,16 @@ class _PlayerRow extends StatelessWidget {
   const _PlayerRow({
     required this.player,
     required this.rarity,
+    required this.cardClass,
     required this.tierColor,
   });
 
   final BasePlayer player;
   final CardRarity rarity;
+
+  /// The premium class axis (T-0049): a 90+ row shows the localized
+  /// red-tier label in the rarity tag.
+  final CardClass cardClass;
   final Color tierColor;
 
   @override
@@ -356,8 +369,15 @@ class _PlayerRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // Rarity tag: the rarity language shared with the store.
-            FcmPill(rarity.label, color: tierColor, filled: false),
+            // Rarity tag: the rarity language shared with the store —
+            // a 90+ premium shows the localized red-tier label instead.
+            FcmPill(
+              l10nOf(context).cardClassLabel(cardClass, rarity),
+              color: cardClass == CardClass.premium
+                  ? cardClass.accent
+                  : tierColor,
+              filled: false,
+            ),
           ],
         ),
       ),

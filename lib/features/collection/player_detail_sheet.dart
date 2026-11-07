@@ -14,6 +14,8 @@ import '../../core/ui/country_flag.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
+import '../../l10n/card_class_l10n.dart';
+import '../../l10n/l10n_context.dart';
 import '../squad/squad_engine.dart';
 
 /// Card rarity for an owned player (same rule as the pack reveal).
@@ -200,7 +202,17 @@ class _PlayerDetailSheet extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
-                    FcmPill(rarity.label, color: rarity.accent, filled: false),
+                    FcmPill(
+                      l10nOf(context).cardClassLabel(
+                        CardClass.fromOverall(card.overall),
+                        rarity,
+                      ),
+                      color: CardClass.fromOverall(card.overall) ==
+                              CardClass.premium
+                          ? CardClass.premium.accent
+                          : rarity.accent,
+                      filled: false,
+                    ),
                     if (card.upgradeLevel > 0)
                       FcmPill('LEVEL +${card.upgradeLevel}'),
                     if (copies >= 2)

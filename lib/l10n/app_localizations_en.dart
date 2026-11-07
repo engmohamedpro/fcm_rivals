@@ -383,4 +383,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statInjuries => 'Injuries';
+
+  @override
+  String get cardClassPremium => 'PREMIUM';
 }
