@@ -2,11 +2,11 @@
 id: T-0054
 title: Wire injury rolls into the match engine with forced substitutions
 priority: critical
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0053]
 created: 2026-11-07
-completed:
+completed: 2026-11-07
 ---
 
 # T-0054: Wire injury rolls into the match engine with forced substitutions
@@ -36,13 +36,13 @@ The match engine rolls the T-0053 risk model per minute for every on-pitch playe
 - Changing the T-0053 risk model shapes (only its constants within the documented bands).
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] New injury engine tests + calibration group green with printed rates; full `flutter test` suite passes with old bands unmodified
-- [ ] EN/AR localization complete and RTL verified — injury commentary lines exist in both languages and render correctly in the report view
-- [ ] No performance or application-size regression (per-minute roll is O(on-pitch players); budget printed for the profile run)
-- [ ] Same seed reproduces identical injuries; fresh squads are essentially injury-free; exhausted squads get measurably more
-- [ ] Engine snapshot regenerated deliberately and committed; diff recorded
-- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
+- [x] Compiles with zero analyzer warnings
+- [x] New injury engine tests + calibration group green with printed rates; full `flutter test` suite passes with old bands unmodified
+- [x] EN/AR localization complete and RTL verified — injury commentary lines exist in both languages and render correctly in the report view
+- [x] No performance or application-size regression (per-minute roll is O(on-pitch players); budget printed for the profile run)
+- [x] Same seed reproduces identical injuries; fresh squads are essentially injury-free; exhausted squads get measurably more
+- [x] Engine snapshot regenerated deliberately and committed; diff recorded
+- [x] `flutter test tool/simulation_report_test.dart` determinism PASS
 
 ## How to Verify
 ```bash
@@ -66,3 +66,10 @@ Forced subs change substitution volume and late-match squad strength — the AI 
 - **Concerns / decisions:** (1) The T-0052 contract "same seed, different starting stamina → byte-identical streams" is superseded BY DESIGN when the injury layer is on — stamina now drives injury risk (this task's goal: "a drained squad starts losing players"). The invariance tests run with injuries disabled (attribute contract intact) and a new test locks the divergence as a positive contract (the exhausted side measurably loses players). (2) Snapshot diff vs v3: goals 2.816→2.861, shots 11.6725→11.6745, sotShare +0.0001 — all inside the harness tolerances; the residual is the TRUE injury effect (forced subs changing late-match strength), not stream noise, because the football stream is byte-identical per seed. (3) An injured GK with no GK on the bench yields plays-short (an outfield player does not go in goal) — recorded for T-0056's messaging. (4) The full-time session commentary stays EN (the session layer is context-free); wiring its localizer naturally rides with T-0055's session work.
 
 ## Review Log
+
+### Review 1 — PASS (2026-11-07, reviewer)
+**Ran** (Flutter 3.47.9 stable, Dart 3.13.7 — freshly installed in the review sandbox, clean pull at `e020b2d`): `flutter analyze` → "No issues found!". `flutter test test/features/match/` → **163/163 green** (incl. the 7 new `injury_engine_test.dart` tests and the 4-test `injuries` calibration group with the printed rates). `flutter test test/features/season/ test/balance/` → **132/132 green** (the named guards — AI substitution accounting, strength-gap ladder, tactics matrix — unmodified and passing). `flutter test tool/simulation_report_test.dart` → **PASS**. **Full `flutter test` at HEAD → 767/767 ALL GREEN** (also covers T-0049 in the same batch).
+**Code audit (diff-audited at `189eaa5`, scope exactly the 20 claimed files):** the load-bearing determinism design verified in code — `_injuryRandom = MatchRandom(seed + injuryStreamOffset 7919)` is a fully derived second stream; `_rollInjuries` iterates home-then-away slots in formation order (fixed order → deterministic), rolls every on-pitch player of BOTH sides against his POST-DRAIN stamina with position workload and `MatchTeamInput.medicalCentreLevel`, and never touches the football stream (`randomDrawCount` explicitly excludes injury draws; separate `injuryDrawCount` printed). `matchEngineVersion` 3 → 4. Forced substitution: `_bestBenchForSlot` (the AI's compatibility×rating score) only while `substitutionsUsed < maxSubstitutions`, the shared cap increments, the AI tactical windows (`lastAiSubMinute` / `aiChaseSubDone`) are untouched, no candidate → the red-card null-slot mechanism; the injury event precedes the sub event in the same minute. Commentary: the `InjuryCommentaryLocalizer` seam with the EN default for pure callers and `match_screen.dart:261` wiring the l10n closure; 4 ARB keys in EN + AR verified (knock/muscle/serious + plays-short), the report gains the per-team injuries row and the momentum switch treats injuries as structural.
+**Calibration (requirement 5) verified against the printed numbers:** fresh (start 100) **0.035** < 0.05; exhausted (start 55) **0.272** ∈ [0.25, 1.5); the 5-point grid 100/85/70/55/40 → 0.035/0.0425/0.0925/0.2525/0.490 strictly increasing end-to-end; zero-injury determinism for a fixed seed (`countsOf(a) == countsOf(b)`); per-match cap ≤ 4 asserted; 2,000 seeded matches per point (≥ the required 500); the draw budget printed. The `InjuryConfig` retune (base 0.0002 → 0.00003, slope 14 → 40) is exactly the Requirement-6 allowance ("tune only InjuryConfig constants"), documented on the fields; the T-0053 cap test now exercises the cap on a local pre-tuning config — correct, since the new defaults no longer cross the per-minute cap.
+**Contract supersession audited (concern 1):** `stamina_invariance_test.dart` keeps every pre-T-0052 guarantee running with injuries disabled (`baseRiskPerMinuteAtFullStamina: 0` — the attribute/performance path unchanged) and adds a positive divergence test locking the new stamina→injury coupling directionally (the exhausted side measurably loses more players). This is the task's stated goal made testable, not a silent band move — accepted. The snapshot regen is deliberate with the diff recorded (goals 2.816→2.861, shots +0.002, sotShare +0.0001 — inside harness tolerances, and the residual is provably the true injury effect because the football stream is byte-identical per seed).
+**Result: every acceptance criterion met, every How-to-Verify step matches, no regressions, no out-of-scope changes. Status done, archived. T-0055 (persistence + gating) is the natural next task.**

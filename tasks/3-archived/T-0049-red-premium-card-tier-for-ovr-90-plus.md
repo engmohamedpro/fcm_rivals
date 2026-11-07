@@ -2,11 +2,11 @@
 id: T-0049
 title: Red premium card tier for players rated 90 and over
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0047]
 created: 2026-11-07
-completed:
+completed: 2026-11-07
 ---
 
 # T-0049: Red premium card tier for players rated 90 and over
@@ -33,12 +33,12 @@ Introduce a **red premium player-card treatment for OVR ≥ 90**, visually above
 - The OVR curve (T-0046) and rarity thresholds (T-0047).
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] New tests green (premium detection, surface consistency, dataset population, pack-unchanged assertion); full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified — the `PREMIUM` label localized in both languages
-- [ ] No performance or application-size regression
-- [ ] A 90+ player renders red in every card surface; an 89 player renders gold (test-locked)
-- [ ] Pack kinds/colours provably unchanged
+- [x] Compiles with zero analyzer warnings
+- [x] New tests green (premium detection, surface consistency, dataset population, pack-unchanged assertion); full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified — the `PREMIUM` label localized in both languages
+- [x] No performance or application-size regression
+- [x] A 90+ player renders red in every card surface; an 89 player renders gold (test-locked)
+- [x] Pack kinds/colours provably unchanged
 
 ## How to Verify
 ```bash
@@ -62,3 +62,10 @@ Pure presentation over an existing determinstic key. Risks: a missed surface sti
 - **Concerns / assumptions:** (1) The measured 90+ population is 31, not the task's ≈52 estimate — the task's own window absorbs it; recorded so the reviewer does not read it as a regression. (2) The card-canvas labels stay EN (existing convention); the localized surface is the pill tag in pack contents and the detail sheet. (3) No reveal/opening animation change for red — T-0050 owns the third animation; today the reveal shows the red treatment through the existing legendary choreography.
 
 ## Review Log
+
+### Review 1 — PASS (2026-11-07, reviewer)
+**Ran** (Flutter 3.47.9 stable, Dart 3.13.7 — freshly installed in the review sandbox, clean pull at `e020b2d`): `flutter analyze` → "No issues found!". `flutter test test/core/ui/ test/features/packs/ test/features/collection/ test/core/domain/` → **141/141 green** (incl. the new 9-test `card_class_test.dart`). `flutter test tool/simulation_report_test.dart` → **PASS**. **Full `flutter test` at HEAD → 767/767 ALL GREEN** (also covers T-0054 in the same batch).
+**Code audit (diff-audited at `c49f699`, scope exactly the 15 claimed files):** `CardClass { standard, premium }` presentation axis with `premiumOverallThreshold = 90`, the crimson→oxblood gradient family, accent `0xFFF43F5E`, near-black maroon ink and intensity 2.5 — defined beside the jewel palette; a 4th `CardRarity` value correctly rejected and its absence test-locked (`CardRarity.values.length == 3` with 80-89 still gold). Both painters (`CardPainter` front + `CardBackPainter`) take `cardClass` (default `standard`), branch the palette inline with no switch growth, and both `shouldRepaint`s cover the new axis. **Zero-churn derivation verified**: `FcmMiniCard` and `FcmPlayerCard` call `CardClass.fromOverall(overall)` internally on the same deterministic `overall` their callers already pass for rarity — and every required surface routes through these two widgets (squad pitch ×5 call sites, collection reveal, detail sheet, pre-match `pre_match_analysis.dart:535`, pack contents, pack reveal), so requirement 3 is covered structurally, not just by the pumped-widget tests. `pack_engine.dart` and `pack_catalog.dart` untouched — shelf math stays rarity-keyed by design, and the pack-unchanged test asserts `PackTier.values.length == 3` plus the exact shipped accent constants and star counts.
+**Tests:** exact 90/89 boundary; premium-rides-on-legendary invariant; red palette distinct from every jewel accent; surface consistency by pumping the real widgets (FcmMiniCard 92→premium / 89→standard, FcmPlayerCard 90→premium / 80→standard, back 95→premium); the dataset test prints the population and asserts the required window; the label localizes in both languages.
+**Measured population note (requirement 4):** the live dataset lands at **31 rows (0.148%)** vs the task's ≈52/0.249% estimate — the task's own [0.001, 0.005] window absorbs it and the test prints and asserts that window; not a regression, recorded as accepted.
+**Result: every acceptance criterion met, every How-to-Verify step matches, no regressions, no out-of-scope changes (T-0050 owns the red reveal animation — correctly untouched). Status done, archived.**
