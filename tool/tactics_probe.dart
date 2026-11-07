@@ -34,8 +34,11 @@ const _positions = [
   Position.st,
 ];
 
-int _valueForOverall(int overall) =>
-    (50_000_000 * math.pow(2, (overall - 84) / 4)).round();
+/// Inverts the T-0046 two-segment curve (standard slope below the €50M
+/// kink, 7.5/doubling above it).
+int _valueForOverall(int overall) => overall <= 84
+    ? (50_000_000 * math.pow(2, (overall - 84) / 4)).round()
+    : (50_000_000 * math.pow(2, (overall - 84) / 7.5)).round();
 
 List<MatchPlayer> _squad(int base, String prefix) {
   final gen = const BaseStatsGenerator();

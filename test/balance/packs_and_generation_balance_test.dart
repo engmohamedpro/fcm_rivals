@@ -70,17 +70,18 @@ void main() {
       expect(pool.map((p) => p.marketValueEur).reduce(math.max), 200_000_000);
     });
 
-    test('rating is monotonic in market value and clamps at [30, 94]', () {
+    test('rating is monotonic in market value and clamps at [30, 99]', () {
       var prev = -1;
       for (var v = 10_000; v <= 200_000_000; v += 1_000_000) {
         final r = generator.generate(Position.st, v).overall;
-        expect(r, inInclusiveRange(30, 94));
+        expect(r, inInclusiveRange(30, 99)); // T-0046 deliberate band change
         expect(r, greaterThanOrEqualTo(prev));
         prev = r;
       }
-      // Explicit anchors from the curve (84 + 4·log2(v/50M)).
+      // Explicit anchors: standard segment 84 + 4·log2(v/50M) up to the
+      // elite kink at the reference, then 7.5/doubling (T-0046).
       expect(generator.generate(Position.st, 50_000_000).overall, 84);
-      expect(generator.generate(Position.st, 200_000_000).overall, 92);
+      expect(generator.generate(Position.st, 200_000_000).overall, 99);
       expect(generator.generate(Position.st, 500_000).overall, 57);
       expect(generator.generate(Position.st, 0).overall, 30);
     });
@@ -126,7 +127,7 @@ void main() {
             expect(value, inInclusiveRange(1, 99));
           }
         }
-        expect(stats.overall, inInclusiveRange(30, 94));
+        expect(stats.overall, inInclusiveRange(30, 99)); // T-0046 ceiling
       }
     });
 

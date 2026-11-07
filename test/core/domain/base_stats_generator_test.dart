@@ -9,25 +9,29 @@ void main() {
   const gen = BaseStatsGenerator();
 
   group('BaseStatsGenerator', () {
-    test('rating follows the log curve and doubles add constant rating', () {
-      // 84 at reference (50M), 4 rating per doubling.
+    test('rating follows the two-segment log curve (T-0046)', () {
+      // Standard segment: 84 at reference (50M), 4 rating per doubling.
       expect(gen.baseRatingFor(50_000_000), 84);
-      expect(gen.baseRatingFor(100_000_000), 88);
-      expect(gen.baseRatingFor(200_000_000), 92);
       expect(gen.baseRatingFor(25_000_000), 80);
-      // Non-linearity: €1.25M to €200M is a 160x value span but only ~5.3
-      // doublings * 4 rating points apart.
+      // Elite segment (T-0046 deliberate band change): above the kink at
+      // the reference the slope is 7.5/doubling, reaching the 94-99 band.
+      expect(gen.baseRatingFor(100_000_000), 92); // 84 + 7.5
+      expect(gen.baseRatingFor(200_000_000), 99); // 84 + 7.5 * 2
+      // Non-linearity: €1.25M to €200M is a 160x value span but only ~8
+      // rating points per doubling, concentrated above the elite kink.
       final cheap = gen.baseRatingFor(1_250_000);
       final star = gen.baseRatingFor(200_000_000);
-      expect(star - cheap, lessThan(32));
-      expect(star - cheap, greaterThan(20)); // still meaningfully better
+      expect(star - cheap, lessThan(40));
+      expect(star - cheap, greaterThan(30)); // still meaningfully better
     });
 
     test('clamps to configured bounds', () {
       expect(gen.baseRatingFor(0), 30);
       // 10k: 84 - 4*log2(5000) ≈ 35
       expect(gen.baseRatingFor(10_000), 35);
-      expect(gen.baseRatingFor(500_000_000), 94); // above ceiling
+      // T-0046 deliberate band change: the ceiling is 99 now, and the
+      // elite slope clamps superstars exactly there.
+      expect(gen.baseRatingFor(500_000_000), 99); // above ceiling
     });
 
     test('monotonic in market value', () {
@@ -85,11 +89,13 @@ void main() {
       final lw = gen.generate(Position.lw, 100_000_000);
 
       // Striker: attack is his identity, defence clearly secondary.
-      expect(st.attack - st.defence, greaterThan(12));
+      // T-0046: at €100M (OVR 92) the primary attribute clamps at the 99
+      // ceiling, so the elite-tier split is clamp-compressed (99 vs 88).
+      expect(st.attack - st.defence, greaterThan(8));
       // Centre-back mirrors the striker.
-      expect(cb.defence - cb.attack, greaterThan(12));
+      expect(cb.defence - cb.attack, greaterThan(8));
       // Keeper: goalkeeping towers over everything else.
-      expect(gk.goalkeeping - gk.defence, greaterThan(12));
+      expect(gk.goalkeeping - gk.defence, greaterThan(8));
       expect(gk.attack, 0);
       // Anchor: defence-first with support ahead of attack.
       expect(cdm.defence - cdm.attack, greaterThan(10));
@@ -512,7 +518,7 @@ void main() {
                 expect(statValue, inInclusiveRange(1, 99));
               }
             }
-            expect(stats.overall, inInclusiveRange(30, 94));
+            expect(stats.overall, inInclusiveRange(30, 99)); // T-0046 ceiling
           }
         }
       }

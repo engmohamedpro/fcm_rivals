@@ -1,7 +1,13 @@
 /// FCM Rivals — Base Stats generation (GDD 4.5).
 ///
 /// Market Value is converted into ratings through a logarithmic curve, never a
-/// linear mapping. Position-specific weightings then distribute the rating
+/// linear mapping. Since the OVR retune (T-0046, 2026-11-07) the curve is
+/// TWO-SEGMENT: the shipped slope below the elite kink (anchored at the
+/// €50M reference, so the economy anchor and every value below it keep
+/// their exact old ratings) and a steeper elite slope above it, so the
+/// world's best players reach the 94-99 band (€150M ≥ 96, €200M ≈ 99)
+/// while the median and low bands stay exactly where they were.
+/// Position-specific weightings then distribute the rating
 /// across the four attributes so different positions produce different
 /// distributions, mirroring real football:
 ///  * ST — attack is his identity, support ordinary, defence the least.
@@ -36,10 +42,12 @@ import 'players.dart';
 class BaseStatsConfig {
   const BaseStatsConfig({
     this.minRating = 30,
-    this.maxRating = 94,
+    this.maxRating = 99,
     this.referenceValueEur = 50_000_000,
     this.valueAtReference = 84,
     this.ratingPerDoubling = 4,
+    this.eliteKinkValueEur = 50_000_000,
+    this.eliteRatingPerDoubling = 7.5,
     this.attributeSpread = 30,
     this.attributeAnchor = 0.25,
     this.qualityNoise = 2.0,
@@ -49,7 +57,8 @@ class BaseStatsConfig {
   /// Floor for the lowest-value professionals.
   final int minRating;
 
-  /// Ceiling for superstars (€200M translates just under this).
+  /// Ceiling for superstars (T-0046, 2026-11-07: the elite band reaches
+  /// 94-99 — €200M translates to ~99; no code may cap OVR below 99).
   final int maxRating;
 
   /// Stable reference point so economy shifts stay measurable (GDD 17.5).
@@ -58,8 +67,20 @@ class BaseStatsConfig {
   /// Rating assigned at the reference market value.
   final int valueAtReference;
 
-  /// Rating gained for each doubling of market value above/below reference.
+  /// Rating gained for each doubling of market value above/below reference
+  /// on the STANDARD segment (at or below [eliteKinkValueEur]).
   final double ratingPerDoubling;
+
+  /// Market value where the curve switches to the elite slope (T-0046).
+  /// Anchored AT the reference value: the two log segments join exactly
+  /// there, the €50M anchor stays exact, and every value below it keeps
+  /// the shipped curve untouched (median/p90/floor bands unmoved).
+  final int eliteKinkValueEur;
+
+  /// Rating gained for each doubling ABOVE [eliteKinkValueEur] (T-0046).
+  /// Shipped 7.5: €150M ≥ 96 and €200M ≈ 99 within the dataset band
+  /// contract (top-5 in 96-99, 80+ population 2.0-3.5%).
+  final double eliteRatingPerDoubling;
 
   /// How far an attribute may deviate from the overall rating because of
   /// its position weight: primary attributes land roughly
@@ -176,17 +197,38 @@ class BaseStatsGenerator {
 
   final BaseStatsConfig config;
 
-  /// Non-linear Market Value conversion (logarithmic scaling).
+  /// Non-linear Market Value conversion (logarithmic scaling, T-0046
+  /// two-segment form).
   ///
+  /// Standard segment (value ≤ [BaseStatsConfig.eliteKinkValueEur]):
   /// rating = valueAtReference + ratingPerDoubling * log2(value / reference)
-  /// clamped to [minRating, maxRating]. Doubling the value always adds the
-  /// same amount of rating; the curve flattens toward the top so a €200M
-  /// superstar is not ten times a €20M international.
+  ///
+  /// Elite segment (value above the kink), anchored at the kink so the
+  /// segments join exactly:
+  /// rating = kinkRating + eliteRatingPerDoubling * log2(value / kink)
+  ///
+  /// Clamped to [minRating, maxRating]. Doubling the value still adds a
+  /// constant amount per segment; the kink steepens the elite end so the
+  /// world's best reach the 94-99 band while the mid/low bands keep
+  /// their exact old positions.
   int baseRatingFor(int marketValueEur) {
     if (marketValueEur <= 0) return config.minRating;
-    final doublings = _log2(marketValueEur / config.referenceValueEur);
-    final rating =
-        config.valueAtReference + config.ratingPerDoubling * doublings;
+    final double rating;
+    if (marketValueEur <= config.eliteKinkValueEur) {
+      rating =
+          config.valueAtReference +
+          config.ratingPerDoubling *
+              _log2(marketValueEur / config.referenceValueEur);
+    } else {
+      final kinkRating =
+          config.valueAtReference +
+          config.ratingPerDoubling *
+              _log2(config.eliteKinkValueEur / config.referenceValueEur);
+      rating =
+          kinkRating +
+          config.eliteRatingPerDoubling *
+              _log2(marketValueEur / config.eliteKinkValueEur);
+    }
     final clamped = rating.clamp(config.minRating, config.maxRating);
     return clamped.round();
   }

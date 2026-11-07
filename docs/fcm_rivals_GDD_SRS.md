@@ -147,6 +147,13 @@ Market Value must not be converted directly into linear ratings.
 
 The generation formula should use logarithmic or similarly controlled scaling.
 
+Two-segment curve (T-0046, 2026-11-07): the standard segment
+(4 rating per doubling of market value) applies up to the elite kink at
+the €50M reference; above it an elite segment (7.5 rating per doubling)
+raises the world's best players into the 94-99 band (€150M ≥ 96,
+€200M ≈ 99) while the median and low bands keep their exact positions.
+The OVR ceiling is 99; nothing in the code may cap it below 99.
+
 Different positions must produce different attribute distributions.
 
 For example:

@@ -39,9 +39,18 @@ const _positions = [
 ];
 
 /// Value that generates a given target overall under the default curve.
+/// Inverts the T-0046 two-segment curve: the standard slope below the
+/// €50M elite kink, the 7.5/doubling elite slope above it. Harness
+/// alignment only — the ladder's bands and labels are untouched; without
+/// this the elite rungs would silently measure market-value gaps, not
+/// the OVR gaps their names claim.
 int _valueForOverall(int overall) {
-  // rating = 84 + 4·log2(v/50M)  →  v = 50M · 2^((overall-84)/4).
-  return (50_000_000 * math.pow(2, (overall - 84) / 4)).round();
+  if (overall <= 84) {
+    // Standard segment (at or below the kink): v = 50M · 2^((o-84)/4).
+    return (50_000_000 * math.pow(2, (overall - 84) / 4)).round();
+  }
+  // Elite segment: v = 50M · 2^((o-84)/7.5).
+  return (50_000_000 * math.pow(2, (overall - 84) / 7.5)).round();
 }
 
 List<MatchPlayer> _squad(int base, String prefix, int overall) {
