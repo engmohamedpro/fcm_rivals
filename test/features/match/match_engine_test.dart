@@ -223,16 +223,18 @@ void main() {
       expect(home.attack, greaterThan(away.attack));
     });
 
-    test('stamina loss reduces team totals (GDD 12.2 step 1)', () {
+    test('stamina does not change team totals (GDD 12.2, fatigue decoupled)', () {
       final engine = buildEngine(5);
       final start = engine.totalsOf(MatchSide.home);
       for (final p in engine.playersOf(MatchSide.home)) {
         p.stamina = 50;
       }
       final drained = engine.totalsOf(MatchSide.home);
-      expect(drained.attack, lessThan(start.attack));
-      expect(drained.support, lessThan(start.support));
-      expect(drained.defence, lessThan(start.defence));
+      // T-0052 owner decision 2026-11-07: attributes apply at full value
+      // whatever the stamina — drained totals are IDENTICAL, not lower.
+      expect(drained.attack, start.attack);
+      expect(drained.support, start.support);
+      expect(drained.defence, start.defence);
     });
   });
 

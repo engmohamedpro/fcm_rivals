@@ -104,7 +104,8 @@ class MatchPlayer {
   final Position position;
 
   /// Pre-upgrade effective attributes (upgrades already applied by the
-  /// caller); the engine scales them by stamina (GDD 12.2).
+  /// caller); the engine applies them at full value (GDD 12.2 — fatigue
+  /// decoupled: stamina never scales performance).
   final int attack;
   final int support;
   final int defence;
@@ -180,14 +181,37 @@ class MatchEngineConfig {
     this.chanceBase = 0.01,
     this.chanceScale = 0.37,
     this.chanceMax = 0.43,
-    this.chanceSigmoidMid = 4.0,
-    this.chanceSigmoidSteepness = 0.085,
+    // Fatigue-decoupling re-anchor (T-0052, 2026-11-07): attributes apply
+    // at FULL VALUE, so the attack-minus-defence edge entering this
+    // logistic is ~16% wider than the stamina-scaled edge the old curve
+    // was calibrated on (the removed per-player scaling compressed every
+    // edge by the ~0.84 match-average stamina factor). Mid and steepness
+    // are rescaled by that factor so the chance-response curve sees the
+    // same effective edges as before — no behaviour change at even
+    // strength, and the blowout/mismatch tails keep their calibrated
+    // shape with the coupling gone.
+    this.chanceSigmoidMid = 4.76,
+    this.chanceSigmoidSteepness = 0.0714,
     this.shotFromChance = 0.82,
     this.speculativeShotChance = 0.14,
     this.blockChance = 0.28,
-    this.onTargetBase = 0.17,
+    // Fatigue-decoupling re-anchor (T-0052, 2026-11-07): attributes now
+    // apply at FULL VALUE, so the shooter term in onTargetP sits at its
+    // full-value level — the old base was calibrated against the removed
+    // implicit stamina discount (avg shooter efficiency ≈ 0.85) and the
+    // decoupling lifted the SoT share ~+3 points and goals ~+0.23/match.
+    // 0.17 -> 0.14 restores the measured SoT/goals profile with the
+    // shooter differentiation (onTargetScale) untouched.
+    this.onTargetBase = 0.14,
     this.onTargetScale = 0.25,
-    this.goalBase = 0.20,
+    // Re-anchor twin of onTargetBase: with the shooter-vs-keeper edge at
+    // full value the xG/shot level sat ~+0.006 above the calibrated
+    // profile; 0.20 -> 0.19 re-centres it (differentiation via
+    // goalDiffScale untouched). Measured against both conversion floors
+    // and the xG/shot ceiling: 0.186 crossed the tier-70 conversion
+    // floor (0.1145 < 0.115) and 0.19 keeps it; the residual tier-79
+    // xG/shot overshoot is recorded in the T-0052 Developer Notes.
+    this.goalBase = 0.19,
     this.goalScale = 0.126,
     this.goalDiffScale = 0.22,
     this.foulOnTurnover = 0.50,

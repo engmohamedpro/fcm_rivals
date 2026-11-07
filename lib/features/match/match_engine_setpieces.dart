@@ -163,9 +163,13 @@ extension _MatchEngineAi on MatchEngine {
       }
     }
 
-    final shooterEff = shooter.attack * (shooter.stamina / 100);
+    // Attributes at FULL VALUE (fatigue decoupling, owner decision
+    // 2026-11-07): a tired shooter shoots and a tired keeper keeps
+    // exactly as well as fresh ones — stamina never scales performance
+    // (GDD 11.2/12.2).
+    final shooterEff = shooter.attack;
     final gk = def.onPitch.whereType<MatchPlayer>().firstOrNull;
-    final gkEff = (gk?.goalkeeping ?? 40) * ((gk?.stamina ?? 100) / 100);
+    final gkEff = gk?.goalkeeping ?? 40;
 
     // Shot accuracy (GDD 12.3 step 7).
     final qualityOnTargetBonus = switch (quality) {

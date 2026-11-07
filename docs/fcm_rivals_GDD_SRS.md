@@ -542,7 +542,7 @@ tactics from instructions grouped into three phases of play:
   | Instruction | Options | Anchor effects (harness-tuned) |
   |---|---|---|
   | Defensive line | Deep / Standard / High | Deep: own possession 0.92, defence 1.05 · High: own possession 1.04, defence 0.94 |
-  | Pressing | Low / Mid / High | Low: own possession 0.86, defence 1.02, stamina 0.88 · High: chances 1.16, defence 1.34, stamina 1.30 (§34 anchor) — the defence lift pays for the drain; the late-match bill arrives through the fatigue term |
+  | Pressing | Low / Mid / High | Low: own possession 0.86, defence 1.02, stamina 0.88 · High: chances 1.16, defence 1.34, stamina 1.30 (§34 anchor) — the defence lift pays for the drain; the late-match bill arrives through the press-bill trade-off (a time-escalating concession term, not player fatigue) |
   | Tackling | Clean / Balanced / Aggressive | Aggressive: defence 1.04, fouls ×1.30, yellows ×1.04 (composed with fouls ≈ +36%) · Clean: defence 0.98, fouls ×0.75, yellows ×0.70 |
   | Offside trap | Off / On | While on: conceded-chance quality ×0.94, beaten-trap events (6%) ×1.15 |
 
@@ -555,7 +555,9 @@ tactics from instructions grouped into three phases of play:
   bands: fouls/match at Balanced within ±10% of the engine baseline,
   Aggressive +25–35% fouls and +30–40% yellows, Clean lowers both;
   High-press stamina drain 1.25–1.35 with a visible late-match cost
-  (goals conceded after 75' ≥ 15% above baseline).
+  through the press bill (goals conceded after 75' ≥ 15% above
+  baseline — the cost is the tactics trade-off, never player
+  exhaustion; fatigue-decoupling decision 2026-11-07).
 - **Transitions** — counter-press, counter-attacking and rest defence
   (phase 3, shipped):
 
@@ -569,8 +571,10 @@ tactics from instructions grouped into three phases of play:
   stacking on consecutive recovered balls). The full gegenpress
   rebuild — Immediate Counter-Press + High Press + High Line +
   Aggressive rest defence — must land ≤ 58% win rate AND pay a real
-  bill: below-baseline stamina at 75' and ≥ +15% goals conceded after
-  75'. The park-the-bus counter (Fast Counter + Deep + Low press)
+  bill: below-baseline stamina at 75' (the drain) and ≥ +15% goals
+  conceded after 75' (the press bill — a time-escalating tactics
+  trade-off; stamina itself never lowers performance). The
+  park-the-bus counter (Fast Counter + Deep + Low press)
   holds a 30-42% possession share. With all three groups live, no
   configuration exceeds 58% vs default at even strength.
 
@@ -658,14 +662,20 @@ Every player has Stamina from 0% to 100%.
 
 ### 11.2 Effective Attributes
 
-All four primary attributes are proportionally affected by Stamina.
+Owner decision (2026-11-07): stamina NEVER scales attributes or match
+performance. All four primary attributes apply at full value whatever the
+player's stamina — a 70% starter performs exactly like a fresh one.
+
+Stamina stays the rotation currency and the substitute-management
+resource; its only gameplay effect is injury risk (the risk model and its
+specification land with the injury system tasks).
 
 Example:
 
 Base Attack = 90  
 Stamina = 80%
 
-Effective Attack = 72.
+Effective Attack = 90 (unchanged — fatigue does not touch attributes).
 
 ### 11.3 Stamina Consumption
 
@@ -739,7 +749,7 @@ It must not generate goals through a simple Attack-versus-Defence comparison or 
 
 For every starting player:
 
-Effective Attribute = Player Attribute × Stamina Percentage.
+Effective Attribute = Player Attribute (full value — no stamina term, see 11.2).
 
 Calculate team totals:
 
@@ -750,14 +760,13 @@ Calculate team totals:
 
 Apply modifiers in this order:
 
-1. Individual Stamina scaling.
-2. Mentality modifiers.
-3. Playing Style modifiers.
-4. Home Advantage.
+1. Mentality modifiers.
+2. Custom tactics modifiers.
+3. Live action modifiers.
+4. Pep talk modifiers.
+5. Home Advantage.
 
 Home Advantage provides a modest percentage boost.
-
-The final percentage must be established through simulation.
 
 ### 12.3 Event Pipeline
 
@@ -784,7 +793,8 @@ The simulation considers:
 - Formation.
 - Playing Style.
 - Mentality.
-- Stamina.
+- Stamina (drain, recovery and — with the injury tasks — injury risk
+  only; it never modifies attributes or performance, see 11.2).
 - Home Advantage.
 - Tactical changes.
 - Substitutions.
@@ -840,7 +850,7 @@ AI managers may adapt according to:
 - Time remaining.
 - Team performance.
 - Red cards.
-- Player fatigue.
+- Player stamina (substitution rotation only — never performance, see 11.2).
 - Lack of attacking opportunities.
 
 AI changes must have tactical reasons.

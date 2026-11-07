@@ -30,9 +30,9 @@ engines as pure Dart with no UI dependencies, atomic coin transactions.
 | Pack Engine | `lib/features/packs/` | three categories (global / nationality / position), one player per pack from value-weighted tier odds, dynamic pricing (GDD 5) |
 | Squad Engine | `lib/features/squad/` | 14 data-driven formations, compatibility matrix, position-sensitive ratings, Auto Pick (GDD 6/7) |
 | Upgrade Engine | `lib/features/upgrades/` | duplicate-merge progression, controlled attribute allocation (GDD 8) |
-| Match Engine | `lib/features/match/` | deterministic seeded event pipeline, team totals with stamina/mentality/style/home-advantage modifiers, live tactical commands, substitutions, red cards, AI adaptation (GDD 12/26) |
+| Match Engine | `lib/features/match/` | deterministic seeded event pipeline, team totals with mentality/tactics/live-action/pep-talk/home-advantage modifiers (stamina never scales performance — fatigue decoupled 2026-11-07), live tactical commands, substitutions, red cards, AI adaptation (GDD 12/26) |
 | Match Reporting | `lib/features/match/` | commentary, statistics and position-sensitive player ratings derived from the same event records (GDD 13/14) |
-| Stamina | `lib/features/match/` | dynamic workload-based consumption, post-match recovery, pep talk bonuses (GDD 11) |
+| Stamina | `lib/features/match/` | dynamic workload-based consumption, post-match recovery, pep talk bonuses; rotation/injury-risk currency only — never a performance modifier (GDD 11/12.2) |
 | Tactics | `lib/features/match/` | Custom Tactics split into module families — `tactic_modifiers.dart` (modifier math, compose rule, tuning seam), `in_possession_tactics.dart`, `out_of_possession_tactics.dart`, `transition_tactics.dart` (three instruction groups), `team_tactics.dart` (composition, DB codec, 7 mentalities, 5 live actions) — re-exported through the `tactics.dart` barrel, explicit percentage modifiers (GDD 10/16) |
 | Pep Talks | `lib/features/match/` | pre-match and half-time motivational choices with visible percentage modifiers applied through the engine command pipeline, post-match recovery choice (GDD 15) |
 | Rewarded Ads | `lib/features/ads/` | pure validation engine (completion, duplicate prevention, daily limits, replay window) + AdUsage ledger; ad-boosted +15% recovery and match replay (GDD 19, FR-040..FR-043) |

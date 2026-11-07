@@ -215,6 +215,46 @@ class ComposeRule {
   final double possessionStackDampBelow;
 }
 
+/// Late-game escalation knobs (GDD 12.4): the pure time-based shape that
+/// replaced the removed average-stamina fatigue term (fatigue-decoupling
+/// owner decision 2026-11-07 — stamina never feeds performance, so the
+/// "late game opens up" calibration band is held by this config, not by
+/// player exhaustion).
+class LateGameOpenConfig {
+  const LateGameOpenConfig({
+    this.openStartMinute = 60,
+    this.slope = 0.55,
+  });
+
+  /// First minute the escalation applies. The factor is the identity
+  /// before it.
+  final int openStartMinute;
+
+  /// Quadratic escalation strength: the factor reaches `1 + slope` at
+  /// full time and is clamped there — the documented maximum. Shipped
+  /// 0.55: the measured contribution of the removed stamina term at
+  /// full time (2.0 × (1 − avg/100) ≈ 0.52–0.54 with a balanced side
+  /// finishing near 73%).
+  final double slope;
+}
+
+/// Late-game chance-creation escalation on PURE TIME (GDD 12.4): identity
+/// before [LateGameOpenConfig.openStartMinute], strictly increasing after
+/// it, bounded at `1 + slope` at full time (clamped beyond). Pure and
+/// seed-independent — the `staminaDrainForMinute` pattern: a top-level
+/// function over (minute, full time, config) with the knobs in
+/// [TuningOverrides] so the balance sweep can move them.
+double lateGameOpenFactor(
+  int minute,
+  int fullTimeMinute,
+  LateGameOpenConfig config,
+) {
+  if (minute < config.openStartMinute) return 1.0;
+  final span = (fullTimeMinute - config.openStartMinute).clamp(1, 1000);
+  final t = ((minute - config.openStartMinute) / span).clamp(0.0, 1.0);
+  return (1.0 + config.slope * t * t).clamp(1.0, 1.0 + config.slope);
+}
+
 /// Tuning seam for the balance sweep (`tool/tactics_tuning_sweep.dart`,
 /// review Task 1). Production never touches it: [current] stays
 /// [none], so every `.tuned` lookup falls through to the instruction's
@@ -225,7 +265,18 @@ class TuningOverrides {
   const TuningOverrides._(
     this._instructions,
     this.compose, {
+    // pressBillSlope stays 4.2 (T-0052 measured sweep,
+    // `tool/fatigue_reanchor_probe.dart`): raising it (tested 6-12)
+    // taxes the composed bundle — attacking MENTALITIES pay the same
+    // bill as pressing instructions and the mentality ladder band
+    // breaks (ladder spread 0.073 > 0.05 at slope 10) — while the
+    // press-late-goals ratio still saturates below its band (0.87 at
+    // slope 12 vs >= 1.08): the untaxed press defence multiplier
+    // dominates the away edge inside the logistic. The slope cannot
+    // hold those bands; conflicts recorded in the task's Developer
+    // Notes for the owner.
     this.pressBillSlope = 4.2,
+    this.lateGameOpen = const LateGameOpenConfig(),
   });
 
   /// No overrides: shipped constants, the shipped compose rule and the
@@ -243,19 +294,22 @@ class TuningOverrides {
   /// The active compose rule; [ComposeRule.shipped] outside the sweep.
   final ComposeRule compose;
 
-  /// The engine's press-bill slope (match_engine.dart:876): how hard a
-  /// pressing side's stamina bill multiplies the late-match fatigue
-  /// term. Shipped 4.2 — anchor pass 2026-11-06 (task
-  /// `2026-11-06_tactics_phase3-anchor-pass-and-gates`): the decoupled
-  /// bill reads the composed bundle's excess; raising hpDefence to
-  /// 1.34 to close highPress/allAttack pushed the suite-pool
-  /// gegenpress late band to 106-112% (red) at slopes 2.8-3.8, so the
-  /// slope moved 2.0 -> 4.2 to pay for the defence lift. FROZEN here:
-  /// the review bans a third slope move, and the aligned-harness
-  /// re-check (suite pool) closed the late-goals band through
-  /// [ComposeRule.staminaStackDamp] 0.55 -> 0.60 (112% -> 122%) with
-  /// the slope untouched.
+  /// The engine's press-bill slope (match_engine_simulation.dart): how
+  /// hard a pressing side's stamina bill multiplies the late-game
+  /// escalation term. History: 2.0 -> 4.2 (anchor pass 2026-11-06, task
+  /// `2026-11-06_tactics_phase3-anchor-pass-and-gates` — the decoupled
+  /// bill reads the composed bundle's excess). T-0052 swept it 4.2-12
+  /// and kept 4.2: higher slopes tax attacking mentalities through the
+  /// composed bundle and break the mentality ladder, while the
+  /// press-late-goals ratio saturates below its band regardless — see
+  /// the T-0052 Developer Notes.
   final double pressBillSlope;
+
+  /// The engine's late-game escalation knobs (match_engine_simulation's
+  /// `_defensiveOpenness`): the pure-time shape holding the "late game
+  /// opens up" calibration band after the stamina term was removed
+  /// (T-0052). Shipped `const LateGameOpenConfig()`.
+  final LateGameOpenConfig lateGameOpen;
 
   /// The instruction's effective bundle: the sweep's override for it,
   /// or its shipped constant when no override is installed.
@@ -268,10 +322,12 @@ class TuningOverrides {
     Map<InstructionOption, TacticModifiers> instructions = const {},
     ComposeRule compose = ComposeRule.shipped,
     double pressBillSlope = 4.2,
+    LateGameOpenConfig lateGameOpen = const LateGameOpenConfig(),
   }) => TuningOverrides._(
     Map.of(instructions),
     compose,
     pressBillSlope: pressBillSlope,
+    lateGameOpen: lateGameOpen,
   );
 }
 

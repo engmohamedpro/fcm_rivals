@@ -192,7 +192,8 @@ class MatchSession {
   ///
   /// Campus training facilities (GDD 3.5) add their small permanent
   /// attribute fractions on top of every player's card values here —
-  /// the boost rides the same stamina scaling as the base attributes.
+  /// campus fractions simply add to the card values (fatigue decoupling,
+  /// owner decision 2026-11-07: attributes are never stamina-scaled).
   static Future<(MatchTeamInput, db.Club)> _userTeamInputs(
     CollectionStore store, {
     PreMatchTacticSelection? tactics,

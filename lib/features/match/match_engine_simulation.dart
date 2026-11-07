@@ -2,8 +2,8 @@ part of 'match_engine.dart';
 
 /// Simulation privates of [MatchEngine] (extracted, app-structure review
 /// task `2026-11-05_app-structure_split-match-engine`): segment-count
-/// draws, segment simulation, urgency and fatigue, turnovers, cards,
-/// corners, chance creation and the shot pipeline, through command
+/// draws, segment simulation, urgency and defensive openness, turnovers,
+/// cards, corners, chance creation and the shot pipeline, through command
 /// application. Pure relocation — bodies unchanged.
 extension _MatchEngineSim on MatchEngine {
   int _drawSegmentCount() {
@@ -142,7 +142,7 @@ extension _MatchEngineSim on MatchEngine {
                     edgeFactor *
                     att.tactics.modifiers.chance *
                     urgency *
-                    _defensiveFatigue(attackerSide, minute))
+                    _defensiveOpenness(attackerSide, minute))
             .clamp(0.05, config.chanceMax);
     if (!_random.chance(chanceP)) {
       // Retained possession: completed passes, maybe a cross or dribble.
@@ -205,34 +205,24 @@ extension _MatchEngineSim on MatchEngine {
     return 1.0;
   }
 
-  /// Tired defences concede more (GDD 12.4): a bounded fatigue term on
-  /// chance creation from the DEFENDING side's average on-pitch
-  /// stamina. The defensive effectiveness form
-  /// `0.92 + 0.08 × avgStamina/100` is what the defence is worth as it
-  /// tires; the quadratic time weight ramps the concession through the
-  /// second half — a fresh defence in the opening quarter concedes
-  /// ~+1%, a drained one (avg 74) in the final quarter ~+18% — which
-  /// is what moves real football's goal share into the last fifteen
-  /// minutes without inflating the total (a tired ATTACK tires just as
-  /// fast in its own minutes).
-  double _defensiveFatigue(MatchSide attackerSide, int minute) {
-    final def = _runtimeOf(
-      attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
-    );
-    var sum = 0.0;
-    var n = 0;
-    for (final p in def.onPitch) {
-      if (p == null) continue;
-      sum += p.stamina;
-      n++;
-    }
-    final avg = n > 0 ? sum / n : 100;
+  /// Late-game chance-creation escalation (GDD 12.4): a PURE TIME term —
+  /// the clock opens matches up, players do not (fatigue-decoupling owner
+  /// decision 2026-11-07: stamina never feeds performance, GDD 11.2/12.2;
+  /// a drained defence is exactly as good as a fresh one and both concede
+  /// on the same time curve). The quadratic weight through the second
+  /// half is what moves real football's goal share into the last fifteen
+  /// minutes without inflating the total — it is held by a knob
+  /// ([TuningOverrides.lateGameOpen]), not by player exhaustion. The
+  /// pressBill term is keyed to the COMPOSED style/mentality/action/
+  /// pep-talk stamina DRAIN, not to stamina LEVELS: high press pays a
+  /// late-match defensive bill — a tactics trade-off, not player fatigue.
+  double _defensiveOpenness(MatchSide attackerSide, int minute) {
     final t = minute / _fullTimeMinute;
     // Cold-start ramp over the opening quarter: teams feel their way
     // into a match before it opens up (real football's 1-15 minute
     // goal share is the LOWEST of the six buckets).
     final coldStart = minute < 15 ? 0.70 + 0.30 * (minute / 15) : 1.0;
-    // Phase-3 late-match bill, BASELINE-RELATIVE (fatigue-decoupling
+    // Phase-3 late-match press bill, BASELINE-RELATIVE (fatigue-decoupling
     // review, task `2026-11-06_match-engine_fatigue-decoupling`): the
     // bill is keyed to the COMPOSED stamina bundle's excess over the
     // identity baseline, not to the raw pressing instruction constant.
@@ -247,6 +237,9 @@ extension _MatchEngineSim on MatchEngine {
     // stack of stamina costs composes through `operator *` and pays
     // the bill on its composed excess — the drain side and the bill
     // side become independent knobs for the tuning sweep.
+    final def = _runtimeOf(
+      attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
+    );
     final styleDrain = def.tactics.modifiers.stamina *
         def.mentality.staminaMod *
         _activeActionModifiersOf(
@@ -257,7 +250,11 @@ extension _MatchEngineSim on MatchEngine {
         ? (styleDrain - 1.0) * TuningOverrides.current.pressBillSlope
         : 0.0;
     return coldStart *
-        (1 + 2.0 * (1 - avg / 100) * t * t) *
+        lateGameOpenFactor(
+          minute,
+          _fullTimeMinute,
+          TuningOverrides.current.lateGameOpen,
+        ) *
         (1 + pressBill * (t * t));
   }
 

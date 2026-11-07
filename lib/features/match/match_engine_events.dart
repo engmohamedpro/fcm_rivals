@@ -216,10 +216,15 @@ extension _MatchEngineEvents on MatchEngine {
         slotPosition,
       );
       if (compat <= 0.1) continue;
+      // Freshness tiebreaker for SUB MANAGEMENT only (AI substitution
+      // decisions stay stamina-driven; performance never does, see
+      // T-0052): a fully fresh sub scores 1.00, an empty tank 0.75 —
+      // linear in stamina (0.75 + a quarter of the stamina percent),
+      // written as one division by 400.
       final score =
           compat *
           (candidate.attack + candidate.support + candidate.defence) *
-          (0.75 + 0.25 * (candidate.stamina / 100));
+          (0.75 + candidate.stamina / 400);
       if (score > bestScore) {
         bestScore = score;
         best = candidate;

@@ -7,9 +7,10 @@ part of 'match_engine.dart';
 /// weights. Part of the engine library so the engine and its other
 /// part files can use the private runtime types.
 
-/// Effective team totals (GDD 12.2): stamina-scaled individual attributes
-/// aggregated with slot role weights, then modified by mentality, custom
-/// tactics and home advantage — in that exact order.
+/// Effective team totals (GDD 12.2): individual attributes at FULL VALUE
+/// (fatigue decoupling, owner decision 2026-11-07 — stamina never scales
+/// performance) aggregated with slot role weights, then modified by
+/// mentality, custom tactics, live actions, pep talk and home advantage.
 class TeamTotals {
   const TeamTotals({
     required this.attack,
@@ -149,8 +150,10 @@ class _TeamRuntime {
     stamina: 1,
   );
 
-  /// Team totals (GDD 12.2): 1. stamina scaling per player, 2. mentality,
-  /// 3. custom tactics, 4. home advantage — in this order.
+  /// Team totals (GDD 12.2): raw attributes per player (no stamina term —
+  /// a 40% starter performs exactly like a fresh one), then 1. mentality,
+  /// 2. custom tactics, 3. live actions, 4. pep talk, 5. home advantage —
+  /// in this order.
   TeamTotals computeTotals({
     required bool isHome,
     required double homeAdvantage,
@@ -170,17 +173,16 @@ class _TeamRuntime {
         player.position,
         slotPosition,
       );
-      final stamina = player.stamina / 100;
       final aw = _MatchEngineRole.attack[slotPosition]! * compat;
       final sw = _MatchEngineRole.support[slotPosition]! * compat;
       final dw = _MatchEngineRole.defence[slotPosition]! * compat;
-      attackSum += player.attack * stamina * aw;
+      attackSum += player.attack * aw;
       attackW += aw;
-      supportSum += player.support * stamina * sw;
+      supportSum += player.support * sw;
       supportW += sw;
-      defenceSum += player.defence * stamina * dw;
+      defenceSum += player.defence * dw;
       defenceW += dw;
-      if (slotPosition == Position.gk) gkEff = player.goalkeeping * stamina;
+      if (slotPosition == Position.gk) gkEff = player.goalkeeping.toDouble();
     }
     final attack =
         (attackW > 0 ? attackSum / attackW : 0) *

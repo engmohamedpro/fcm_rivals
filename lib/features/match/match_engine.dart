@@ -11,7 +11,9 @@
 /// per team at a 33-39% on-target share, 8-11 corners, 3.5-5.5 offsides,
 /// 3-4 yellows with rare reds, big chances converting near 30%, and a
 /// goal-timing curve that opens up late (19-25% of goals in the final
-/// fifteen minutes) through a bounded defensive-fatigue term. The
+/// fifteen minutes) through a bounded pure-time escalation term
+/// (`lateGameOpenFactor` — fatigue decoupling, owner decision
+/// 2026-11-07: stamina never affects performance, GDD 11.2/12.2). The
 /// strength response SATURATES: chance creation follows a logistic
 /// curve in attack-minus-defence (a 17-point class gap is a ~80%
 /// favourite, not a 9-1) and shot conversion moves only a few points
