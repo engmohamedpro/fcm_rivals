@@ -2,11 +2,11 @@
 id: T-0045
 title: Finish the CollectionStore facade split below the 800-line convention
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-06
-completed:
+completed: 2026-11-06
 ---
 
 # T-0045: Finish the CollectionStore facade split below the 800-line convention
@@ -29,12 +29,12 @@ Same pattern as T-0034: verbatim part-file extraction, no behaviour change, sche
 - Changing any threshold or band to make the check pass.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Tests added or updated; full `flutter test` suite passes with zero test edits
-- [ ] EN/AR localization complete and RTL verified where applicable
-- [ ] No performance or application-size regression
-- [ ] Facade `collection_store.dart` ≤800 lines; new part file ≤800 lines
-- [ ] `README.md` architecture table row for the collection stores updated for the new part file
+- [x] Compiles with zero analyzer warnings
+- [x] Tests added or updated; full `flutter test` suite passes with zero test edits
+- [x] EN/AR localization complete and RTL verified where applicable
+- [x] No performance or application-size regression
+- [x] Facade `collection_store.dart` ≤800 lines; new part file ≤800 lines
+- [x] `README.md` architecture table row for the collection stores updated for the new part file
 
 ## How to Verify
 ```bash
@@ -55,3 +55,14 @@ Expected: facade ≤800 lines; analyzer clean; collection/economy/database suite
 - **Concerns / assumptions:** (1) The family boundary 703-810 vs the task's ≈703-~815 estimate — verified against the actual file (blank 811, banner 812-814, delegations 816+); nothing between 811-815 moved. (2) The stale doc fragments above are pre-existing and left as-is. None blocking.
 
 ## Review Log
+
+### Review 2026-11-06, attempt 1: PASS
+- Independent verbatim-relocation check (multiset of all lines, original `37c7c59:lib/features/collection/collection_store.dart` (854 lines) vs. the HEAD facade (747) + `collection_store_match.dart` (121)): ONLY-IN-ORIGINAL IS EMPTY — every original line relocated verbatim, confirming the zero-renames claim. Only-in-new (14 lines) = the facade's `part 'collection_store_match.dart';` directive, the part-file header (`part of` + doc) and the `extension MatchResultOps on CollectionStore {` wrapper with its closing brace, plus blanks — exactly as declared. The family-boundary correction (703-810 vs the task's ~815 estimate: blank 811, banner 812-814, delegations 816+) is consistent with the multiset (nothing between 811-815 moved).
+- The flagged pre-existing defect is verified real and pre-existing: the scrambled orphaned doc fragments at facade ~691-702 (cut-off "Squad assignments" doc ending mid-sentence, the "Campus facilities" banner, the cut-off "Current facility levels" doc and the stray "not come on keep their stamina untouched." fragment) are present verbatim at base `37c7c59` (lines 695/701/702) — comment-only, left in place by the multiset-cancelling relocation. Leaving them for a dedicated cleanup task is the right call for a pure verbatim relocation; fixing foreign content silently would have broken the relocation guarantee this review relies on. **Recommendation recorded: planner should create a small comment-cleanup task for facade 691-702.**
+- Call-site check: `match_session.dart:438` and the ad tests call `applyMatchResult` through the facade import; the extension resolves via the shared part library with zero edits, as claimed.
+- Ran: `wc -l` → facade 747 / part file 121, both ≤800.
+- Ran: `flutter analyze` (Flutter 3.47.9 stable / Dart 3.13.7, README pin) → No issues found.
+- Ran: `flutter test test/features/collection/ test/features/economy/ test/core/database/` → `+39: All tests passed!`.
+- Ran: `flutter test` → `+709: All tests passed!`, exit 0 — identical count to the archived baseline; the T-0045 diff (`37c7c59..892e96d`) touches no `test/` or `tool/` file, so zero test edits confirmed.
+- Scope: only the two collection lib files + README + this task file changed. README Focused stores row now names all three `part` files.
+- Notes: no localization strings in the diff and the multiset proves no string literal changed, so the EN/AR criterion is met vacuously; with this task archived, the last covered file on the T-0021 line-budget gate is closed.
