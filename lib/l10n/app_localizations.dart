@@ -751,6 +751,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More players back means cover but fewer joining attacks.'**
   String get restDefenceHint;
+
+  /// No description provided for @injuryCommentaryKnock.
+  ///
+  /// In en, this message translates to:
+  /// **'{player} picks up a knock and can\'t continue.'**
+  String injuryCommentaryKnock(Object player);
+
+  /// No description provided for @injuryCommentaryMuscle.
+  ///
+  /// In en, this message translates to:
+  /// **'{player} pulls up with a muscle injury — his day is done.'**
+  String injuryCommentaryMuscle(Object player);
+
+  /// No description provided for @injuryCommentarySerious.
+  ///
+  /// In en, this message translates to:
+  /// **'{player} suffers a serious injury. That doesn\'t look good.'**
+  String injuryCommentarySerious(Object player);
+
+  /// No description provided for @injuryCommentaryPlaysShort.
+  ///
+  /// In en, this message translates to:
+  /// **' They have no replacement and play a man short.'**
+  String get injuryCommentaryPlaysShort;
+
+  /// No description provided for @statInjuries.
+  ///
+  /// In en, this message translates to:
+  /// **'Injuries'**
+  String get statInjuries;
 }
 
 class _AppLocalizationsDelegate

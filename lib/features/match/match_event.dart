@@ -7,6 +7,7 @@
 library;
 
 import '../../core/domain/players.dart';
+import 'injury.dart';
 import 'stamina.dart';
 import 'tactics.dart';
 
@@ -28,6 +29,7 @@ enum MatchEventType {
   shot,
   goal,
   card,
+  injury,
   substitution,
   tacticalChange,
   liveAction,
@@ -147,6 +149,7 @@ class MatchTeamInput {
     required List<MatchPlayer> starters,
     required this.bench,
     this.aiControlled = false,
+    this.medicalCentreLevel = 0,
   }) : assert(starters.length == 11, 'starting XI must have 11 players'),
        starters = List.of(starters);
 
@@ -164,6 +167,11 @@ class MatchTeamInput {
 
   /// Whether the engine's AI may adapt this team's tactics (GDD 12.6).
   final bool aiControlled;
+
+  /// This club's Medical Centre level 0..[InjuryConfig.maxMedicalCentreLevel]
+  /// (GDD 11.7): reduces every player's injury risk. Engine-level tests
+  /// stay at 0; the real level rides in via the session layer (T-0055).
+  final int medicalCentreLevel;
 }
 
 /// Tunable engine parameters — calibrated against real football
@@ -231,6 +239,7 @@ class MatchEngineConfig {
     this.aiMaxChanges = 2,
     this.liveActionDuration = 10,
     this.maxSubstitutions = 5,
+    this.injuryConfig = defaultInjuryConfig,
   });
 
   /// Home advantage percentage boost (GDD 12.2 step 4; final value to be
@@ -297,6 +306,13 @@ class MatchEngineConfig {
   final int aiMaxChanges;
   final int liveActionDuration;
   final int maxSubstitutions;
+
+  /// Injury risk model (GDD 11.7, T-0053/T-0054): per-minute rolls run
+  /// in [MatchEngine.advanceMinute] for every on-pitch player of both
+  /// sides. Constants are pre-balance placeholders (GDD rule 14); the
+  /// calibration gate is the `injuries` group in
+  /// test/features/match/engine_calibration_test.dart.
+  final InjuryConfig injuryConfig;
 }
 
 const MatchEngineConfig defaultMatchEngineConfig = MatchEngineConfig();

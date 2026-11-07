@@ -37,6 +37,7 @@ class TeamMatchStats {
   int offsides = 0;
   int fouls = 0;
   int foulsWon = 0;
+  int injuries = 0;
   int yellowCards = 0;
   int redCards = 0;
   int tackles = 0;
@@ -134,6 +135,7 @@ class TeamMatchStats {
       case MatchEventType.kickoff:
       case MatchEventType.halfTime:
       case MatchEventType.fullTime:
+      case MatchEventType.injury:
       case MatchEventType.offside:
       case MatchEventType.substitution:
       case MatchEventType.tacticalChange:
@@ -258,6 +260,8 @@ MatchStatsReport computeStats(
         } else {
           s.yellowCards++;
         }
+      case MatchEventType.injury:
+        s.injuries++;
       case MatchEventType.shot:
         s.shots++;
         s.xg += e.xg ?? 0;

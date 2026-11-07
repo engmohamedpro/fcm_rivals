@@ -10,6 +10,7 @@ import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
 import '../../l10n/l10n_context.dart';
+import '../../l10n/injury_l10n.dart';
 import '../../l10n/pep_talk_l10n.dart';
 import 'commentary_ticker.dart';
 import 'live_match_views.dart';
@@ -257,6 +258,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         homeTeamName: session.homeTeamName,
         awayTeamName: session.awayTeamName,
         keyEventsOnly: true,
+        injuryText: injuryCommentaryLocalizer(l10nOf(context)),
       );
       // One rebuild per minute: the ticker and the momentum bar swap
       // together.

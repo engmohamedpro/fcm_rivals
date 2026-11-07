@@ -49,9 +49,21 @@ void main() {
           (1 + config.fatigueRiskSlope * t35 * t35) /
           (1 + config.fatigueRiskSlope * t60 * t60);
       expect(at35 / at60, closeTo(expectedRatio, 1e-9));
-      // The spent central midfielder hits the documented per-minute cap:
+      // The per-minute cap is a real mechanism: with the pre-T-0054
+      // base risk (0.0002 — T-0054 tuned the DEFAULTS down for engine
+      // rates) the spent central midfielder crosses the documented cap:
       // 0.0002 × 15 × 1.18 = 0.00354 → clamped.
-      expect(chanceAt(0, position: Position.cm), config.maxRiskPerMinute);
+      final cappedConfig = const InjuryConfig(
+        baseRiskPerMinuteAtFullStamina: 0.0002,
+      );
+      expect(
+        injuryChanceForMinute(
+          config: cappedConfig,
+          stamina: 0,
+          position: Position.cm,
+        ),
+        cappedConfig.maxRiskPerMinute,
+      );
     });
 
     test('the Medical Centre strictly reduces risk at every level 0-5', () {

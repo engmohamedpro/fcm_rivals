@@ -42,6 +42,7 @@ import 'dart:math' as math;
 import '../../core/domain/players.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
+import 'injury.dart';
 import 'stamina.dart';
 import 'tactics.dart';
 import 'match_event.dart';
@@ -58,8 +59,21 @@ part 'match_engine_events.dart';
 /// Engine identity for deterministic replay records (GDD 12.5). Bumped
 /// 2 → 3 (T-0052 review 1): the fatigue decoupling changed engine
 /// behavior materially for the same seed — replays of pre-decoupling
-/// records must be labeled with the old version.
-const int matchEngineVersion = 3;
+/// records must be labeled with the old version. Bumped 3 → 4 (T-0054):
+/// injuries join the match — the same seed now also produces the same
+/// injuries, drawn from the derived injury stream (see
+/// [MatchEngine.injuryStreamOffset]) so the football stream itself stays
+/// byte-identical per seed.
+const int matchEngineVersion = 4;
+
+/// Derives the injury stream from the match seed (T-0054): every seeded
+/// engine gets a second [MatchRandom] at `seed + injuryStreamOffset` so
+/// the per-minute injury rolls never touch the football stream — every
+/// pre-injury calibrated distribution (the whole GDD §31 profile) holds
+/// BY CONSTRUCTION for the same seed, and injuries remain fully
+/// deterministic. The offset is a fixed part of the engine contract
+/// (replay records carry only the seed).
+const int injuryStreamOffset = 7919;
 
 /// The deterministic match simulator.
 class MatchEngine {
@@ -70,7 +84,8 @@ class MatchEngine {
     this.config = defaultMatchEngineConfig,
   }) : _home = _TeamRuntime.from(home),
        _away = _TeamRuntime.from(away),
-       _random = MatchRandom(seed) {
+       _random = MatchRandom(seed),
+       _injuryRandom = MatchRandom(seed + injuryStreamOffset) {
     // Stoppage deterministically drawn once at setup (GDD 12.5: one seed,
     // one stream — stoppage is part of that stream).
     _firstHalfStoppage = 1 + _random.nextInt(3);
@@ -81,6 +96,7 @@ class MatchEngine {
 
   final MatchEngineConfig config;
   final MatchRandom _random;
+  final MatchRandom _injuryRandom;
   final _TeamRuntime _home;
   final _TeamRuntime _away;
 
@@ -119,6 +135,15 @@ class MatchEngine {
 
   bool get isFinished => _finished;
   int get seed => _random.initialSeed;
+
+  /// Total football-stream PRNG draws consumed so far — the determinism
+  /// audit counter (GDD 12.5). Injuries draw from their own derived
+  /// stream ([injuryDrawCount]) and never touch this one.
+  int get randomDrawCount => _random.drawCount;
+
+  /// Injury-stream draws (T-0054): one roll per player-minute plus the
+  /// severity draws on a hit — O(on-pitch players) per minute.
+  int get injuryDrawCount => _injuryRandom.drawCount;
 
   /// Effective team totals for one side at this instant.
   TeamTotals totalsOf(MatchSide side) => _runtimeOf(side).computeTotals(
@@ -207,6 +232,12 @@ class MatchEngine {
     // Stamina drain for everyone on the pitch (GDD 11.3: bench doesn't
     // consume; GDD 11.4: dynamic workload).
     _drainStamina();
+
+    // Injuries (T-0054, GDD 11.7): every on-pitch player of BOTH sides
+    // rolls against his post-drain stamina — the gameplay bite of the
+    // fatigue decoupling made visible: a drained squad starts losing
+    // players.
+    produced.addAll(_rollInjuries(minute));
 
     // AI adaptation (GDD 12.6) — reasoning recorded as events.
     produced.addAll(_maybeAdaptAi(MatchSide.home, minute));

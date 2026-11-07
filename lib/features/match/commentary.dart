@@ -10,7 +10,16 @@
 /// consumer imports never churn.
 library;
 
+import 'injury.dart';
 import 'match_event.dart';
+
+/// Localizes the injury commentary family (T-0054): the only engine-chain
+/// strings that resolve through l10n. Pure callers omit it and get the
+/// English default; UI call sites pass a closure built from
+/// [AppLocalizations] so Arabic renders natively (see
+/// `lib/l10n/injury_l10n.dart`).
+typedef InjuryCommentaryLocalizer =
+    String Function(InjuryKind kind, String playerName, bool playsShort);
 
 /// Commentary line generated from one event (GDD 13.1): includes the
 /// contextual player names and event information.
@@ -33,6 +42,7 @@ enum CommentaryKind {
   redCard,
   yellowCard,
   save,
+  injury,
 
   /// The manager's board and shouts.
   substitution,
@@ -92,6 +102,7 @@ List<CommentaryLine> generateCommentary(
   required String homeTeamName,
   required String awayTeamName,
   bool keyEventsOnly = false,
+  InjuryCommentaryLocalizer? injuryText,
 }) {
   final lines = <CommentaryLine>[];
   String name(int? id) =>
@@ -304,6 +315,39 @@ List<CommentaryLine> generateCommentary(
                 : '${name(e.primaryPlayerId)} is booked.',
             importance: red ? 2 : 1,
             kind: red ? CommentaryKind.redCard : CommentaryKind.yellowCard,
+            side: e.side,
+          ),
+        );
+      case MatchEventType.injury:
+        final kindName = e.metadata['kind'] as String?;
+        final kind = InjuryKind.values.firstWhere(
+          (k) => k.name == kindName,
+          orElse: () => InjuryKind.knock,
+        );
+        final playsShort = e.metadata['playsShort'] == true;
+        final playerName = name(e.primaryPlayerId);
+        final base =
+            injuryText?.call(kind, playerName, playsShort) ??
+            (switch (kind) {
+              InjuryKind.knock =>
+                "$playerName picks up a knock and can't continue.",
+              InjuryKind.muscle =>
+                '$playerName pulls up with a muscle injury — his day is done.',
+              InjuryKind.serious =>
+                "$playerName suffers a serious injury. That doesn't look good.",
+            });
+        final text =
+            base +
+            (playsShort
+                ? ' They have no replacement and play a man short.'
+                : '');
+        lines.add(
+          CommentaryLine(
+            minute: e.minute,
+            second: e.second,
+            text: text,
+            importance: 2,
+            kind: CommentaryKind.injury,
             side: e.side,
           ),
         );

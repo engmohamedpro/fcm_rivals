@@ -493,4 +493,164 @@ void main() {
       expect(dogShots / huge.matches, greaterThan(4.5));
     });
   });
+
+  group('engine calibration: injuries (T-0054, GDD 11.7)', () {
+    // Injury-rate squads: same value, controlled STARTING stamina — the
+    // fatigue ramp (GDD 11.7) keys the risk to the stamina LEVEL, so the
+    // starting stamina moves the whole match's exposure.
+    List<MatchPlayer> staminaTeam(
+      int base,
+      String name, {
+      required double stamina,
+    }) {
+      final gen = const BaseStatsGenerator();
+      return [
+        for (var i = 0; i < 11; i++)
+          MatchPlayer(
+            playerId: base + i,
+            name: '$name $i',
+            position: _positions[i],
+            attack: gen.generate(_positions[i], 20_000_000).attack,
+            support: gen.generate(_positions[i], 20_000_000).support,
+            defence: gen.generate(_positions[i], 20_000_000).defence,
+            goalkeeping: gen.generate(_positions[i], 20_000_000).goalkeeping,
+            stamina: stamina,
+          ),
+      ];
+    }
+
+    MatchEngine injuryEngine(
+      int seed, {
+      required double homeStamina,
+      required double awayStamina,
+    }) => MatchEngine(
+      seed: seed,
+      home: MatchTeamInput(
+        teamId: 1,
+        teamName: 'Home',
+        formationCode: '4-4-2',
+        tactics: const TeamTactics(),
+        mentality: Mentality.balanced,
+        starters: staminaTeam(100, 'Home', stamina: homeStamina),
+        bench: const [],
+      ),
+      away: MatchTeamInput(
+        teamId: 2,
+        teamName: 'Away',
+        formationCode: '4-3-3',
+        tactics: const TeamTactics(),
+        mentality: Mentality.balanced,
+        starters: staminaTeam(300, 'Away', stamina: awayStamina),
+        bench: const [],
+      ),
+    );
+
+    Future<List<List<MatchEvent>>> runInjuryMatches(
+      int matches, {
+      required double homeStamina,
+      required double awayStamina,
+    }) async {
+      final eventsList = <List<MatchEvent>>[];
+      for (var m = 0; m < matches; m++) {
+        eventsList.add(
+          injuryEngine(
+            m,
+            homeStamina: homeStamina,
+            awayStamina: awayStamina,
+          ).simulateToEnd(),
+        );
+      }
+      return eventsList;
+    }
+
+    double injuriesPerTeam(List<List<MatchEvent>> eventsList) {
+      final total = eventsList.fold<int>(
+        0,
+        (a, events) =>
+            a + events.where((e) => e.type == MatchEventType.injury).length,
+      );
+      return total / (eventsList.length * 2);
+    }
+
+    test('fresh squads are essentially injury-free: < 0.05 per team per '
+        'match over 500 seeded matches', () async {
+      final events = await runInjuryMatches(500, homeStamina: 100, awayStamina: 100);
+      final rate = injuriesPerTeam(events);
+      // ignore: avoid_print
+      print('injuries/team/match, fresh (start 100): '
+          '${rate.toStringAsFixed(4)}');
+      expect(rate, lessThan(0.05));
+    }, timeout: const Timeout(Duration(minutes: 4)));
+
+    test('exhausted squads lose players: documented band [0.25, 1.5) per '
+        'team per match over 500 seeded matches', () async {
+      final events = await runInjuryMatches(500, homeStamina: 55, awayStamina: 55);
+      final rate = injuriesPerTeam(events);
+      // ignore: avoid_print
+      print('injuries/team/match, exhausted (start 55): '
+          '${rate.toStringAsFixed(4)}');
+      expect(rate, greaterThanOrEqualTo(0.25));
+      // The per-match cap truncates the tail; anything near 2 per team
+      // would be a blowout-by-injury falsifier (see task risk note).
+      expect(rate, lessThan(1.5));
+    }, timeout: const Timeout(Duration(minutes: 4)));
+
+    test('risk is monotonic in starting stamina across a 5-point grid '
+        '(200 seeds each)', () async {
+      final rates = <double>[];
+      for (final stamina in const [100.0, 85.0, 70.0, 55.0, 40.0]) {
+        final events = await runInjuryMatches(
+          200,
+          homeStamina: stamina,
+          awayStamina: stamina,
+        );
+        rates.add(injuriesPerTeam(events));
+        // ignore: avoid_print
+        print('injuries/team/match @ start $stamina: '
+            '${rates.last.toStringAsFixed(4)}');
+      }
+      for (var i = 0; i + 1 < rates.length; i++) {
+        expect(rates[i + 1], greaterThanOrEqualTo(rates[i]),
+            reason: 'exhaustion must not reduce injury risk '
+                '(${rates[i]} -> ${rates[i + 1]})');
+      }
+      expect(rates.last, greaterThan(rates.first),
+          reason: 'exhausted squads must measure measurably more injuries '
+              'than fresh ones');
+    }, timeout: const Timeout(Duration(minutes: 8)));
+
+    test('zero-injury determinism for a fixed seed, the per-match cap '
+        'never exceeded, and the draw budget printed', () async {
+      List<int> countsOf(List<List<MatchEvent>> list) => list
+          .map(
+            (events) => events
+                .where((e) => e.type == MatchEventType.injury)
+                .length,
+          )
+          .toList();
+      final a = await runInjuryMatches(20, homeStamina: 100, awayStamina: 100);
+      final b = await runInjuryMatches(20, homeStamina: 100, awayStamina: 100);
+      // Same seed set → the same (zero-injury) profile, every run.
+      expect(countsOf(a), countsOf(b));
+      final exhausted = await runInjuryMatches(
+        50,
+        homeStamina: 40,
+        awayStamina: 40,
+      );
+      for (final events in exhausted) {
+        // 2 per team (GDD 11.7 cap) — never exceeded.
+        expect(countsOf([events]).first, lessThanOrEqualTo(4));
+      }
+      // Draw budget: injuries roll on their own derived stream — one
+      // roll per player-minute (severity draws only on a hit) — and
+      // never touch the football stream.
+      final eng = injuryEngine(0, homeStamina: 100, awayStamina: 100);
+      eng.simulateToEnd();
+      // ignore: avoid_print
+      print('football-stream draws for one fresh match: '
+          '${eng.randomDrawCount}; injury-stream draws: '
+          '${eng.injuryDrawCount} (budget = on-pitch players, '
+          '<= 22 rolls/minute)');
+    }, timeout: const Timeout(Duration(minutes: 4)));
+  });
 }

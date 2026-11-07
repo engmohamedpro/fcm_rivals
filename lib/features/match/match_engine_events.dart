@@ -233,6 +233,94 @@ extension _MatchEngineEvents on MatchEngine {
     return best;
   }
 
+  // -------------------------------------------------------------------------
+  // Injuries (T-0054, GDD 11.7)
+  // -------------------------------------------------------------------------
+
+  /// Per-minute injury rolls for every on-pitch player of BOTH sides
+  /// (GDD 11.7). Fixed iteration order — home slots then away slots, in
+  /// formation order — keeps the derived injury stream deterministic:
+  /// the same seed always sustains the same injuries in the same
+  /// minute, while the football stream stays byte-identical per seed.
+  List<MatchEvent> _rollInjuries(int minute) {
+    final produced = <MatchEvent>[];
+    for (final side in MatchSide.values) {
+      produced.addAll(_rollTeamInjuries(side, minute));
+    }
+    return produced;
+  }
+
+  List<MatchEvent> _rollTeamInjuries(MatchSide side, int minute) {
+    final rt = _runtimeOf(side);
+    final produced = <MatchEvent>[];
+    final cap = config.injuryConfig.maxInjuriesPerTeamPerMatch;
+    for (var slot = 0; slot < rt.onPitch.length; slot++) {
+      if (rt.injuriesThisMatch >= cap) break;
+      final player = rt.onPitch[slot];
+      if (player == null) continue;
+      final chance = injuryChanceForMinute(
+        config: config.injuryConfig,
+        stamina: player.stamina,
+        position: player.position,
+        medicalCentreLevel: rt.medicalCentreLevel,
+      );
+      final injury = rollInjury(
+        config: config.injuryConfig,
+        chancePerMinute: chance,
+        draw: _injuryRandom.nextDouble,
+      );
+      if (injury == null) continue;
+      rt.injuriesThisMatch++;
+      // Forced replacement while the shared substitution cap allows:
+      // best-fit by the AI's compatibility×rating score. The swap is
+      // NOT a tactical choice — it leaves the AI's windows
+      // (lastAiSubMinute / aiChaseSubDone) untouched, but
+      // [substitutionsUsed] increments like any other sub. Without a
+      // candidate the team plays short, mirroring a red card.
+      final slotPosition = slot < rt.formation.slots.length
+          ? rt.formation.slots[slot].position
+          : player.position;
+      final incoming = rt.substitutionsUsed < config.maxSubstitutions
+          ? _bestBenchForSlot(rt, slotPosition)
+          : null;
+      produced.add(
+        _emit(
+          minute: minute,
+          type: MatchEventType.injury,
+          side: side,
+          primaryPlayerId: player.playerId,
+          metadata: {
+            'kind': injury.kind.name,
+            'matchesOut': injury.matchesOut,
+            'playsShort': incoming == null,
+          },
+        ),
+      );
+      if (incoming != null) {
+        rt.substitute(
+          player.playerId,
+          incoming.playerId,
+          config.maxSubstitutions,
+        );
+        produced.add(
+          _emit(
+            minute: minute,
+            type: MatchEventType.substitution,
+            side: side,
+            primaryPlayerId: player.playerId,
+            secondaryPlayerId: incoming.playerId,
+            metadata: {'reason': 'injury'},
+          ),
+        );
+      } else {
+        // Same empty-slot mechanism a red card uses (plays short).
+        rt.onPitch[slot] = null;
+        rt.offPitch.add(player);
+      }
+    }
+    return produced;
+  }
+
   /// Executes one AI swap and emits the corresponding event.
   MatchEvent? _applyAiSubstitution({
     required MatchSide side,

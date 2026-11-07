@@ -49,9 +49,9 @@ class PlayerInjury {
 /// every knob lives here, no magic numbers anywhere else.
 class InjuryConfig {
   const InjuryConfig({
-    this.baseRiskPerMinuteAtFullStamina = 0.0002,
+    this.baseRiskPerMinuteAtFullStamina = 0.00003,
     this.fatigueRiskThreshold = 70,
-    this.fatigueRiskSlope = 14,
+    this.fatigueRiskSlope = 40,
     this.maxRiskPerMinute = 0.0035,
     this.positionRiskMultiplier = defaultPositionRiskMultiplier,
     this.medicalRiskReductionPerLevel = 0.006,
@@ -67,8 +67,10 @@ class InjuryConfig {
        assert(seriousMaxExtra >= 1);
 
   /// Per-minute injury probability for a fully-fit player before any
-  /// other factor (~0.018 per full match) — the "≈ 0 at full stamina"
-  /// floor, not a hard zero: nobody is immune.
+  /// other factor (~0.0027 per full match) — the "≈ 0 at full stamina"
+  /// floor, not a hard zero: nobody is immune. Tuned by T-0054's engine
+  /// calibration so fresh squads land under 0.05 injuries/team/match
+  /// while exhausted squads clear 0.25.
   final double baseRiskPerMinuteAtFullStamina;
 
   /// Stamina at or above which the fatigue ramp does not engage: starters
@@ -80,7 +82,9 @@ class InjuryConfig {
   /// `risk = base × (1 + slope × t²)` with
   /// `t = (threshold − stamina) / threshold` clamped to [0, 1] — identity
   /// at the threshold, rising steeply toward the exhausted band.
-  /// Slope 14 → ~15× base at stamina 0 before the cap.
+  /// Slope 40 (T-0054 calibration) → ~41× base at stamina 0 before the
+  /// cap: the steep separation is what puts exhausted squads ~10× above
+  /// fresh ones while fresh squads stay essentially injury-free.
   final double fatigueRiskSlope;
 
   /// Hard per-minute ceiling for any player, documented bound — even a

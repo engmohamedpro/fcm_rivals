@@ -113,5 +113,10 @@
   "tacticsTransitionsTitle": "التحولات",
   "tacticsTransitionsSubtitle": "الضغط المرتد والهجمات المرتدة والدفاع الاحتياطي",
   "tacticsSectionDefault": "الإعداد الافتراضي",
-  "tacticsLabel": "الخطة"
+  "tacticsLabel": "الخطة",
+  "injuryCommentaryKnock": "{player} يتلقى ارتطامًا ولا يستطيع الاستكمال.",
+  "injuryCommentaryMuscle": "{player} يتوقف بإصابة عضلية — وداعًا يومه اليوم.",
+  "injuryCommentarySerious": "{player} يتعرض لإصابة خطيرة. الوضع لا يبدو جيدًا.",
+  "injuryCommentaryPlaysShort": " لا يوجد بديل عنه وسيكمل الفريق ناقصًا.",
+  "statInjuries": "الإصابات"
 }

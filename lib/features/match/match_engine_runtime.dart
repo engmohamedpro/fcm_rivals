@@ -114,6 +114,7 @@ class _TeamRuntime {
       tactics = input.tactics,
       mentality = input.mentality,
       aiControlled = input.aiControlled,
+      medicalCentreLevel = input.medicalCentreLevel,
       onPitch = [for (final p in input.starters) p.clone()],
       bench = [for (final p in input.bench) p.clone()],
       offPitch = [];
@@ -129,6 +130,13 @@ class _TeamRuntime {
   final List<MatchPlayer?> onPitch;
   final List<MatchPlayer> bench;
   final List<MatchPlayer> offPitch;
+
+  /// This club's Medical Centre level (GDD 11.7): reduces every
+  /// player's injury risk multiplicatively (T-0054).
+  final int medicalCentreLevel;
+
+  /// Injuries sustained this match (per-team cap guard, GDD 11.7).
+  int injuriesThisMatch = 0;
 
   int substitutionsUsed = 0;
   LiveMatchAction? activeAction;

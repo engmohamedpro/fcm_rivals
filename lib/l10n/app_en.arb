@@ -160,5 +160,10 @@
   "rdConservative": "Conservative · 4 back",
   "rdStandard": "Standard · 3 back",
   "rdAggressive": "Aggressive · 2 back",
-  "restDefenceHint": "More players back means cover but fewer joining attacks."
+  "restDefenceHint": "More players back means cover but fewer joining attacks.",
+  "injuryCommentaryKnock": "{player} picks up a knock and can't continue.",
+  "injuryCommentaryMuscle": "{player} pulls up with a muscle injury — his day is done.",
+  "injuryCommentarySerious": "{player} suffers a serious injury. That doesn't look good.",
+  "injuryCommentaryPlaysShort": " They have no replacement and play a man short.",
+  "statInjuries": "Injuries"
 }

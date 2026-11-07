@@ -361,4 +361,26 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get restDefenceHint =>
       'More players back means cover but fewer joining attacks.';
+
+  @override
+  String injuryCommentaryKnock(Object player) {
+    return '$player picks up a knock and can\'t continue.';
+  }
+
+  @override
+  String injuryCommentaryMuscle(Object player) {
+    return '$player pulls up with a muscle injury — his day is done.';
+  }
+
+  @override
+  String injuryCommentarySerious(Object player) {
+    return '$player suffers a serious injury. That doesn\'t look good.';
+  }
+
+  @override
+  String get injuryCommentaryPlaysShort =>
+      ' They have no replacement and play a man short.';
+
+  @override
+  String get statInjuries => 'Injuries';
 }

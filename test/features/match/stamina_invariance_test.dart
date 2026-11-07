@@ -13,14 +13,21 @@
 //      1 + slope at full time.
 //   3. Determinism — same seed, different starting stamina, AI
 //      substitutions disabled (empty bench): byte-identical event
-//      streams. Only stamina LEVELS differ, and nothing reads them on
-//      the performance path any more.
+//      streams WITH the injury layer disabled (T-0054: stamina levels
+//      now drive injury risk by design, so with injuries enabled the
+//      streams deliberately diverge — that divergence is the gameplay
+//      bite, locked as its own test below).
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/base_stats_generator.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
+import 'package:fcm_rivals/features/match/injury.dart';
 import 'package:fcm_rivals/features/match/match_engine.dart';
 import 'package:fcm_rivals/features/match/tactics.dart';
+
+/// The injury layer disabled: these guarantees pre-date T-0054 and test
+/// the attribute/performance path, which injuries must not influence.
+const _noInjuries = InjuryConfig(baseRiskPerMinuteAtFullStamina: 0);
 
 const _positions = [
   Position.gk,
@@ -57,8 +64,10 @@ MatchEngine _engine(
   int seed, {
   required double homeStamina,
   required double awayStamina,
+  InjuryConfig injuryConfig = _noInjuries,
 }) => MatchEngine(
   seed: seed,
+  config: MatchEngineConfig(injuryConfig: injuryConfig),
   home: MatchTeamInput(
     teamId: 1,
     teamName: 'Home',
@@ -187,7 +196,8 @@ void main() {
   });
 
   group('determinism under different starting stamina (T-0052)', () {
-    test('same seed, stamina 100 vs 40, empty bench: byte-identical streams', () {
+    test('same seed, stamina 100 vs 40, empty bench, injuries disabled: '
+        'byte-identical streams', () {
       final fresh = _engine(2026, homeStamina: 100, awayStamina: 100);
       final tired = _engine(2026, homeStamina: 40, awayStamina: 40);
       final a = fresh.simulateToEnd().map(_dump).toList();
@@ -196,6 +206,33 @@ void main() {
       expect(b, a, reason: 'event streams must be byte-identical');
       expect(fresh.state.scoreHome, tired.state.scoreHome);
       expect(fresh.state.scoreAway, tired.state.scoreAway);
+    });
+
+    test('with the injury layer enabled the streams deliberately diverge — '
+        'the exhausted side loses players (T-0054 gameplay bite)', () {
+      final fresh = _engine(
+        2026,
+        homeStamina: 100,
+        awayStamina: 100,
+        injuryConfig: defaultInjuryConfig,
+      );
+      final tired = _engine(
+        2026,
+        homeStamina: 40,
+        awayStamina: 40,
+        injuryConfig: defaultInjuryConfig,
+      );
+      final a = fresh.simulateToEnd().map(_dump).toList();
+      final b = tired.simulateToEnd().map(_dump).toList();
+      expect(a, isNot(b),
+          reason: 'the injury layer is stamina-driven by design — the same '
+              'seed must produce different (injury-bearing) streams');
+      // The exhausted side actually lost players to injury; the fresh
+      // side did not.
+      int injuriesOf(List<String> stream) => stream
+          .where((l) => l.contains('|MatchEventType.injury|'))
+          .length;
+      expect(injuriesOf(b), greaterThan(injuriesOf(a)));
     });
   });
 }
