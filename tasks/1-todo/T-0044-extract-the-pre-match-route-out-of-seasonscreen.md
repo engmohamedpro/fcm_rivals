@@ -2,8 +2,8 @@
 id: T-0044
 title: Extract the pre-match route out of season_screen.dart
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-06
 completed:
@@ -48,5 +48,10 @@ Expected: every listed file ≤800 lines; analyzer clean; season and pre-match s
 ---
 
 ## Developer Notes
+- **Summary of changes:** Extracted the pre-match route family — doc + `PreMatchRoute` + `PreMatchRouteState`, original lines 715-803 — verbatim into a new `pre_match_route.dart` (106 lines), and rewrote `season_screen.dart` (803 → 713 lines) to keep the screen shell and state. Relocation by a one-time line-slice script kept outside the repo with a multiset verifier proving every original code/doc line lands exactly once; the only new content is the route-file header and the screen's plumbing lines. **Zero code renames or edits.**
+- **Import plumbing decisions (flag for the reviewer):** (1) `season_screen.dart` **re-exports** `pre_match_route.dart` (no import — the screen body never references `PreMatchRoute` directly; it kicks off the matchday build-up through `AppRoutes.preMatch(...)`). The export is required because `lib/app/routes.dart` obtains `PreMatchRoute` via `import '../features/season/season_screen.dart' show PreMatchRoute;` — without the re-export the route table breaks; with it, zero consumer edits. This matches the T-0043 pattern and keeps the AppRoutes migration (explicitly out of scope here) free to move the route later. (2) The screen's now-orphaned imports were pruned: `../match/match_forecast.dart show PreMatchData` dropped entirely, and the `../match/pre_match_screen.dart` show clause narrowed to `PreMatchTacticSelection` (the screen still hands the selection back at kick-off); `PreMatchScreen` the widget now lives only in the route file. Both prunes verified by symbol grep over the remaining screen body.
+- **Files changed:** `lib/features/season/season_screen.dart` (now 713 lines, re-exports the route), `lib/features/season/pre_match_route.dart` (new, 106 lines), `README.md` (new "Season UI" architecture-table row naming both module files and the re-export — no season UI row existed before).
+- **How I tested it:** Baseline on the unmodified tree: `flutter analyze` No issues found + `flutter test test/features/season/ test/features/match/pre_match_screen_test.dart` → `+63: All tests passed!` exit 0. After the extraction: the `wc -l` gate lists 713/106, both ≤800; `flutter analyze` No issues found (import pruning exact — no unused, no missing); the same focused run → `+63: All tests passed!` exit 0 (identical count, zero test edits); full `flutter test` → `+709: All tests passed!` exit 0 (~5m25s) — identical test count to the baseline, zero test edits.
+- **Concerns / assumptions:** None beyond the two plumbing decisions above — both were forced by the zero-test-edit / zero-consumer-edit constraints and are documented. None blocking.
 
 ## Review Log
