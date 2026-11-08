@@ -3,6 +3,8 @@
 /// store, in EN (fallback) and AR (delegates scoped in).
 library;
 
+import 'dart:math' as math;
+
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart' show NativeDatabase;
 import 'package:flutter/material.dart';
@@ -48,6 +50,10 @@ void main() {
       managerName: 'Mohamed',
       crestIndex: 0,
     );
+    // A fresh club owns packs, not players (GDD 5.8): open the first
+    // starting pack to materialize one owned instance.
+    final packs = await store.getAvailablePacks();
+    await store.openPack(packId: packs.first.id, random: math.Random(5));
     final owned = await (db.select(
       db.ownedPlayers,
     )..where((o) => o.clubId.equals(clubId))).get();
@@ -101,16 +107,26 @@ void main() {
 
   testWidgets('the detail sheet states the availability with the badge '
       '(EN)', (tester) async {
-    final ownedId = await seedOwned(matchesOut: 3);
-    await pumpSheet(tester, await ownedCard(ownedId), trigger: 'open');
+    int ownedId = 0;
+    PlayerCard? card;
+    await tester.runAsync(() async {
+      ownedId = await seedOwned(matchesOut: 3);
+      card = await ownedCard(ownedId);
+    });
+    await pumpSheet(tester, card!, trigger: 'open');
 
     expect(find.byType(InjuryBadge), findsOneWidget);
     expect(find.text('Out for 3 matches'), findsOneWidget);
   });
 
   testWidgets('a fit player shows no availability line', (tester) async {
-    final ownedId = await seedOwned(matchesOut: 0);
-    await pumpSheet(tester, await ownedCard(ownedId), trigger: 'open');
+    int ownedId = 0;
+    PlayerCard? card;
+    await tester.runAsync(() async {
+      ownedId = await seedOwned(matchesOut: 0);
+      card = await ownedCard(ownedId);
+    });
+    await pumpSheet(tester, card!, trigger: 'open');
 
     expect(find.textContaining('Out for'), findsNothing);
     expect(find.byType(InjuryBadge), findsNothing);
@@ -118,10 +134,15 @@ void main() {
 
   testWidgets('the Arabic sheet renders the localized line (RTL)',
       (tester) async {
-    final ownedId = await seedOwned(matchesOut: 2);
+    int ownedId = 0;
+    PlayerCard? card;
+    await tester.runAsync(() async {
+      ownedId = await seedOwned(matchesOut: 2);
+      card = await ownedCard(ownedId);
+    });
     await pumpSheet(
       tester,
-      await ownedCard(ownedId),
+      card!,
       trigger: 'افتح',
       locale: const Locale('ar'),
     );
@@ -134,7 +155,9 @@ void main() {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
-    await seedOwned(matchesOut: 3);
+    await tester.runAsync(() async {
+      await seedOwned(matchesOut: 3);
+    });
     await tester.pumpWidget(
       ProviderScope(
         overrides: [collectionStoreProvider.overrideWith((ref) => store)],

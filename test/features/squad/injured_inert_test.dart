@@ -4,6 +4,8 @@
 /// backstop; these tests lock the UI layer over a real in-memory store.
 library;
 
+import 'dart:math' as math;
+
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart' show NativeDatabase;
 import 'package:flutter/material.dart';
@@ -47,6 +49,12 @@ void main() {
       managerName: 'Mohamed',
       crestIndex: 0,
     );
+    // A fresh club owns packs, not players (GDD 5.8): open three
+    // starting packs to materialize the owned instances below.
+    final packs = await store.getAvailablePacks();
+    for (var i = 0; i < 3; i++) {
+      await store.openPack(packId: packs[i].id, random: math.Random(5));
+    }
     final owned = await (db.select(
       db.ownedPlayers,
     )..where((o) => o.clubId.equals(clubId))).get();
@@ -101,7 +109,9 @@ void main() {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
-    await seedSquad(injuredMatchesOut: 3);
+    await tester.runAsync(() async {
+      await seedSquad(injuredMatchesOut: 3);
+    });
     await pumpSquad(tester);
 
     // The badge is on the pitch.
@@ -129,7 +139,9 @@ void main() {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
-    await seedSquad(injuredMatchesOut: 1);
+    await tester.runAsync(() async {
+      await seedSquad(injuredMatchesOut: 1);
+    });
     await pumpSquad(tester, locale: const Locale('ar'));
 
     expect(find.byType(InjuryBadge), findsWidgets);
@@ -141,7 +153,9 @@ void main() {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
-    await seedSquad(injuredMatchesOut: 0);
+    await tester.runAsync(() async {
+      await seedSquad(injuredMatchesOut: 0);
+    });
     await pumpSquad(tester);
 
     expect(find.byType(InjuryBadge), findsNothing);
