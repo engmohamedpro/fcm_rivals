@@ -389,4 +389,16 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get revealBannerPremium => 'سحب النخبة!';
+
+  @override
+  String get packRarityRare => 'نادر';
+
+  @override
+  String get packRarityEpic => 'ملحمي';
+
+  @override
+  String get packRarityLegendary => 'أسطوري';
+
+  @override
+  String get packRarityPremium => 'نخبة';
 }

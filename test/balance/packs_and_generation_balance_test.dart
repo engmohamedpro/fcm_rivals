@@ -8,7 +8,8 @@
 /// What this file locks down:
 ///  * base stats curve: monotonicity, position flavour, attribute spreads
 ///  * the market-value → rating ladder used everywhere (incl. AI squads)
-///  * pack odds: per-tier pull rates, odds display vs actual draw
+///  * pack odds: per-band rarity rates (two-stage engine, T-0059), odds
+///    display vs actual draw
 ///    frequencies (z-score calibration), value-weighted odds
 ///  * pack pricing: price == margin × expected contents EV, tier ladder
 ///  * duplicates: expected copy counts over a season of pulls
@@ -140,58 +141,80 @@ void main() {
     });
   });
 
-  group('pack pulls: tier rates & value-weighted odds (real dataset)', () {
+  group('pack pulls: rarity-band rates & value-weighted odds (real '
+      'dataset, T-0059 two-stage engine)', () {
     PackEngine engineFor(math.Random random) =>
         PackEngine(random: random, economy: economy);
 
-    (int, int, int) drawTierRates(PackTier tier, int n, int seed) {
+    List<int> drawBandCounts(PackTier tier, int n, int seed) {
       final engine = engineFor(math.Random(seed));
       final scope = PackScope(category: PackCategory.global, tier: tier);
-      var low = 0, mid = 0, high = 0;
+      final counts = [0, 0, 0, 0];
       for (var i = 0; i < n; i++) {
         final draws = engine.open(scope, drawPool);
         expect(draws, hasLength(1));
-        switch (draws[0].tier) {
-          case 0:
-            low++;
-          case 1:
-            mid++;
-          case 2:
-            high++;
-        }
+        counts[draws[0].tier]++;
       }
-      return (low, mid, high);
+      return counts;
     }
 
-    test('rare packs stay overwhelmingly low/mid tier', () {
+    test('rare packs roll 75/20/5/0 — the rare band dominates, premium '
+        'unreachable', () {
       const n = 20_000;
-      final (low, mid, high) = drawTierRates(PackTier.rare, n, 11);
-      // Weights [1.0, 0.12, 0.0] → ~89% low, ~11% mid, 0% high.
-      expect(low / n, inInclusiveRange(0.84, 0.94));
-      expect(mid / n, inInclusiveRange(0.06, 0.16));
-      expect(high, 0, reason: 'rare packs can never roll the high tier');
+      final counts = drawBandCounts(PackTier.rare, n, 11);
+      final s = counts.map((c) => c / n).toList();
+      // The owner's RARE table [75, 20, 5, 0] (T-0059), ±3pp Monte-Carlo.
+      expect(s[0], inInclusiveRange(0.72, 0.78));
+      expect(s[1], inInclusiveRange(0.17, 0.23));
+      expect(s[2], inInclusiveRange(0.02, 0.08));
+      expect(s[3], 0, reason: 'premium is exclusive to the legendary pack');
     });
 
-    test('epic packs mix mid with meaningful low and some high', () {
+    test('epic packs roll 40/50/10/0 — a real 10% gold-band stream', () {
       const n = 20_000;
-      final (low, mid, high) = drawTierRates(PackTier.epic, n, 12);
-      // Weights [0.35, 1.0, 0.18] → ~23% low, 65% mid, 12% high.
-      expect(mid / n, inInclusiveRange(0.60, 0.72));
-      expect(high / n, inInclusiveRange(0.08, 0.17));
-      expect(low / n, inInclusiveRange(0.18, 0.30));
+      final counts = drawBandCounts(PackTier.epic, n, 12);
+      final s = counts.map((c) => c / n).toList();
+      expect(s[0], inInclusiveRange(0.37, 0.43));
+      expect(s[1], inInclusiveRange(0.47, 0.53));
+      expect(s[2], inInclusiveRange(0.07, 0.13));
+      expect(s[3], 0);
     });
 
-    test('legendary packs guarantee the gold band (T-0047 owner rule)', () {
+    test('legendary packs roll 0/55/43/2 (T-0059 owner matrix — the '
+        'T-0047 gold guarantee is reversed; no bronze survives)', () {
       const n = 20_000;
-      final (low, mid, high) = drawTierRates(PackTier.legendary, n, 13);
-      // Weights [0.0, 0.0, 1.0] → the pack rolls the high band only,
-      // whose every member is 80+ by the derived OVR-80 floor.
-      expect(high / n, 1.0);
-      expect(mid, 0);
-      expect(low, 0);
+      final counts = drawBandCounts(PackTier.legendary, n, 13);
+      final s = counts.map((c) => c / n).toList();
+      // The owner's 2026-11-08 table: 55% EPIC / 43% LEGENDARY / 2%
+      // PREMIUM. The old rule ("100% gold") is superseded; what keeps
+      // holding is the floor: no sub-70 pull is structurally possible.
+      expect(s[0], 0);
+      expect(s[1], inInclusiveRange(0.52, 0.58));
+      expect(s[2], inInclusiveRange(0.40, 0.46));
+      expect(s[3], greaterThan(0.005));
+      expect(s[3], lessThan(0.05));
     });
 
-    test('displayed odds are statistically calibrated (oddsFor vs open)', () {
+    test('premium exclusivity holds on the subsample pool: zero 90+ '
+        'pulls over rare AND epic batches', () {
+      const n = 5_000;
+      for (final (tier, seed) in [
+        (PackTier.rare, 14),
+        (PackTier.epic, 15),
+      ]) {
+        final engine = engineFor(math.Random(seed));
+        final scope = PackScope(category: PackCategory.global, tier: tier);
+        var premium = 0;
+        for (var i = 0; i < n; i++) {
+          final d = engine.open(scope, drawPool).single;
+          if (d.player.baseStats.overall >= 90) premium++;
+        }
+        expect(premium, 0, reason: '${tier.name} table carries premium 0');
+      }
+    });
+
+    test('displayed odds are statistically calibrated (oddsFor vs open)',
+        () {
       // Distribution-level calibration: for every player whose displayed
       // probability is large enough to judge, the z-score of the observed
       // count must behave like a standard normal — mean 0, sd 1, no
@@ -266,31 +289,39 @@ void main() {
       final expensiveRate = _mean([
         for (final p in expensive) (counts[p.playerId] ?? 0),
       ]);
-      // Absolute bands (review 2026-11-04): the expensive decile lives
-      // in the high tier, which epic rolls ~12% of the time — elite
-      // pulls are now REACHABLE (the point of the fix). Within-tier
-      // value weighting (cheap drops more inside a tier) is locked by
-      // pack_engine_test; here we pin reachability of BOTH ends.
+      // Two-stage engine (T-0059): BOTH ends stay reachable — the
+      // expensive decile lives in the legendary band, which epic rolls
+      // 10%, and the cheap decile rides the 40% rare roll. Cross-band
+      // rate comparison is meaningless now (band sizes differ 40×); the
+      // within-band cheap-dominance (the exponent's point) is locked in
+      // two_stage_draw_test and pack_engine_test.
+      // ignore: avoid_print
+      print('T-0059 epic-pack decile rates: cheap $cheapRate, '
+          'expensive $expensiveRate');
       expect(cheapRate, greaterThan(0));
       expect(expensiveRate, greaterThan(0));
     });
 
-    test('elite pulls exist but are rare: P(≥ €50M) per epic pack ≤ 1%', () {
+    test('elite pulls follow the rarity partition: epic packs never '
+        'reach 90+, the 80+ band is ~10%', () {
       const n = 30_000;
       final engine = engineFor(math.Random(31));
       final scope = PackScope(
         category: PackCategory.global,
         tier: PackTier.epic,
       );
-      var elite = 0;
+      var goldBand = 0;
+      var premiumBand = 0;
       for (var i = 0; i < n; i++) {
-        final draws = engine.open(scope, drawPool);
-        if (draws[0].player.marketValueEur >= 50_000_000) elite++;
+        final ovr = engine.open(scope, drawPool).single.player.baseStats
+            .overall;
+        if (ovr >= 80) goldBand++;
+        if (ovr >= 90) premiumBand++;
       }
-      // Absolute bands (review 2026-11-04): epic's high-tier share is
-      // 0.118 with P(≥€50M | high) ≈ 0.156 → ≈ 1.8% — still rare, now
-      // real (the relative bands made it ~0).
-      expect(elite / n, lessThan(0.04));
+      // The old MV premise (P(≥ €50M) ≤ 1%) is superseded: epic's gold
+      // band IS the 10% legendary roll now, and premium stays exclusive.
+      expect(goldBand / n, inInclusiveRange(0.08, 0.12));
+      expect(premiumBand, 0);
     });
   });
 
@@ -467,10 +498,15 @@ void main() {
         counts[pid] = (counts[pid] ?? 0) + 1;
         totalEv += economy.economicValueOf(draws[0].player.marketValueEur);
       }
-      // On a ~1k-player pool, 200 pulls duplicate at a realistic rate
-      // (birthday paradox: ~8%): the merge system stays a trickle.
+      // On the subsample pool the two-stage engine concentrates pulls:
+      // the epic band shares 20% over ~100 players and the legendary
+      // band 5% over ~23, so the analytic multi-hit share over 200
+      // pulls (Σ Poisson P(count ≥ 2) over oddsFor probabilities,
+      // T-0059 diagnostic) is 17.2% — up from ~8% under the old flat
+      // MV-tier roll. The bound locks the new shape with Monte-Carlo
+      // headroom; T-0060's economy calibration owns whether this stays.
       final dupes = counts.values.where((c) => c > 1).length;
-      expect(dupes / n, lessThan(0.10));
+      expect(dupes / n, lessThan(0.25));
       final price = engine.packPriceFor(scope, pool);
       expect(totalEv / n, lessThan(price));
     });

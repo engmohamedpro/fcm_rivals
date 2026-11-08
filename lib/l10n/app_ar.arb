@@ -120,5 +120,9 @@
   "injuryCommentaryPlaysShort": " لا يوجد بديل عنه وسيكمل الفريق ناقصًا.",
   "statInjuries": "الإصابات",
   "cardClassPremium": "نخبة",
-  "revealBannerPremium": "سحب النخبة!"
+  "revealBannerPremium": "سحب النخبة!",
+  "packRarityRare": "نادر",
+  "packRarityEpic": "ملحمي",
+  "packRarityLegendary": "أسطوري",
+  "packRarityPremium": "نخبة"
 }

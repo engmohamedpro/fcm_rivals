@@ -1,11 +1,11 @@
-/// T-0047 regrade audit: gold from OVR 80, Legendary packs guarantee gold.
-///
-/// Locks the owner's regrade rule end to end on the real 20,876-player
-/// dataset: the population-level gold share stays in the real elite band
-/// ("few elite, large middle", GDD 4.5), every store shelf that carried a
-/// legendary pool before the regrade still carries one (pools only grow),
-/// and seeded openings prove a Legendary pack can never produce a
-/// non-gold card.
+/// T-0047 regrade audit, reworked by T-0059: the owner's 2026-11-08
+/// decision REVERSED the "Legendary pack guarantees gold" rule — the
+/// pack now rolls the configured matrix 0/55/43/2 (55% EPIC / 43%
+/// LEGENDARY / 2% PREMIUM). What still holds from T-0047 and is kept:
+/// the population-level gold share stays in the real elite band, every
+/// store shelf that carried a legendary pool before the regrade still
+/// carries one, and NO sub-70 (bronze) pull is structurally possible
+/// from a Legendary pack. Premium (90+) is exclusive to Legendary packs.
 library;
 
 import 'dart:io' as io;
@@ -18,6 +18,7 @@ import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/features/collection/pack_catalog.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
+import 'package:fcm_rivals/features/packs/pack_rarity.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 
 const _datasetPath = 'assets/data/players_v1.json';
@@ -98,39 +99,58 @@ void main() {
               'legendary pool before the regrade');
     });
 
-    test('seeded pack audit: Legendary packs are 100% gold, shares '
+    test('seeded pack audit: Legendary packs roll the owner matrix '
+        '0/55/43/2 — no bronze, 45% gold band, premium exclusive; shares '
         'printed for the report', () {
       const n = 2000;
       final gold = <PackTier, int>{};
-      var legendarySub80 = 0;
+      final premium = <PackTier, int>{};
+      var legendarySub70 = 0;
+      final legendaryShares = [0, 0, 0, 0];
       for (final tier in PackTier.values) {
         final engine = PackEngine(random: math.Random(4700 + tier.index));
         final scope = PackScope(category: PackCategory.global, tier: tier);
         var tierGold = 0;
         for (var i = 0; i < n; i++) {
           final draw = engine.open(scope, pool).single;
-          final isGold =
-              CardRarity.fromOverall(draw.player.baseStats.overall) ==
-                  CardRarity.legendary;
-          if (isGold) tierGold++;
-          if (tier == PackTier.legendary &&
-              draw.player.baseStats.overall < 80) {
-            legendarySub80++;
+          final overall = draw.player.baseStats.overall;
+          final band = PackRarity.fromOverall(overall);
+          if (tier == PackTier.legendary) legendaryShares[draw.tier]++;
+          if (band == PackRarity.legendary || band == PackRarity.premium) {
+            tierGold++;
+          }
+          if (tier == PackTier.legendary && overall < 70) legendarySub70++;
+          if (band == PackRarity.premium) {
+            premium[tier] = (premium[tier] ?? 0) + 1;
           }
         }
         gold[tier] = tierGold;
         // ignore: avoid_print
-        print('${tier.label}: gold share '
+        print('${tier.label}: gold-band share '
             '${(tierGold / n * 100).toStringAsFixed(2)}% '
-            'over $n seeded openings');
+            '(OVR 80+ incl. premium), premium-band pulls '
+            '${premium[tier] ?? 0} over $n seeded openings');
       }
-      // THE owner rule: a Legendary pack can only ever produce gold.
-      expect(legendarySub80, 0);
-      expect(gold[PackTier.legendary], n);
-      // The other tiers keep their shape: Rare structurally cannot roll
-      // the gold band, Epic carries a meaningful but minority share.
-      expect(gold[PackTier.rare]! / n, lessThan(0.05));
-      expect(gold[PackTier.epic]! / n, inInclusiveRange(0.05, 0.20));
+      // THE owner matrix (2026-11-08): legendary pack 0/55/43/2 within
+      // ±3 percentage points — the T-0047 gold guarantee is superseded.
+      final s = legendaryShares.map((c) => c / n).toList();
+      expect(s[0], 0, reason: 'no rare-band (sub-70) roll exists');
+      expect(s[1], inInclusiveRange(0.52, 0.58), reason: '55% EPIC');
+      expect(s[2], inInclusiveRange(0.40, 0.46), reason: '43% LEGENDARY');
+      expect(s[3], greaterThan(0.005), reason: '2% PREMIUM, live stream');
+      expect(s[3], lessThan(0.05));
+      // What survived the reversal: a Legendary pack STILL cannot make a
+      // bronze card — its floor is now the epic band.
+      expect(legendarySub70, 0);
+      // Premium exclusivity: only the legendary pack's 2% roll reaches
+      // the 90+ band; rare and epic packs never do.
+      expect(premium[PackTier.legendary] ?? 0, greaterThan(0));
+      expect(premium[PackTier.rare] ?? 0, 0);
+      expect(premium[PackTier.epic] ?? 0, 0);
+      // The other tiers keep their shape under the new tables:
+      // Rare's gold band is only the 5% legendary roll; Epic's is 10%.
+      expect(gold[PackTier.rare]! / n, inInclusiveRange(0.02, 0.08));
+      expect(gold[PackTier.epic]! / n, inInclusiveRange(0.07, 0.13));
     });
   });
 }

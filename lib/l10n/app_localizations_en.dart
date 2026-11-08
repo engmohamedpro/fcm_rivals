@@ -389,4 +389,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get revealBannerPremium => 'PREMIUM PULL!';
+
+  @override
+  String get packRarityRare => 'Rare';
+
+  @override
+  String get packRarityEpic => 'Epic';
+
+  @override
+  String get packRarityLegendary => 'Legendary';
+
+  @override
+  String get packRarityPremium => 'Premium';
 }

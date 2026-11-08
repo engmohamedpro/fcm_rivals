@@ -8,12 +8,15 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../core/database/app_database.dart' show Pack;
+import '../../core/ui/fcm_style.dart' show FcmColors;
 import '../../core/ui/fcm_widgets.dart';
+import '../../l10n/l10n_context.dart';
 import '../../features/collection/collection_store.dart'
     show StorePackOffer;
 import 'pack_engine.dart' show PackTier, PackTierColor;
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_price_widgets.dart';
+import 'pack_rarity.dart';
 
 /// Scope key shared by owned packs and store offers, e.g.
 /// 'global:bronze' or 'position:ST:gold' — the join between inventory
@@ -307,8 +310,62 @@ class _StorePackCell extends StatelessWidget {
               ),
             ),
           ),
+          // The four-band odds sheet (T-0059): the tier's rarity table
+          // (PackOddsConfig) as one chip per band — each label+percent is
+          // a single atomic Text, no sentence interpolation, so RTL
+          // reorders the chips freely and localized labels render in
+          // both directions. Zero-weight bands (premium outside the
+          // Legendary pack) render nothing, so the strip shows exactly
+          // what the pack can roll.
+          SizedBox(
+            height: 16,
+            child: Center(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 2,
+                alignment: WrapAlignment.center,
+                children: [
+                  for (final (rarity, weight) in _bandChips(offer.tier))
+                    Text(
+                      '${_rarityLabel(context, rarity)} '
+                      '${(weight * 100).round()}%',
+                      style: const TextStyle(
+                        color: FcmColors.textDim,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+
+  /// The tier's four-band rarity table ([PackOddsConfig]) reduced to the
+  /// chips the strip renders, in [PackRarity] order, zero-weight bands
+  /// dropped.
+  static List<(PackRarity, double)> _bandChips(PackTier tier) {
+    final odds = defaultPackOddsConfig.oddsFor(tier);
+    return [
+      for (final (rarity, weight) in [
+        (PackRarity.rare, odds.rare),
+        (PackRarity.epic, odds.epic),
+        (PackRarity.legendary, odds.legendary),
+        (PackRarity.premium, odds.premium),
+      ])
+        if (weight > 0) (rarity, weight),
+    ];
+  }
+
+  static String _rarityLabel(BuildContext context, PackRarity rarity) =>
+      switch (rarity) {
+        PackRarity.rare => l10nOf(context).packRarityRare,
+        PackRarity.epic => l10nOf(context).packRarityEpic,
+        PackRarity.legendary => l10nOf(context).packRarityLegendary,
+        PackRarity.premium => l10nOf(context).packRarityPremium,
+      };
 }

@@ -793,6 +793,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'PREMIUM PULL!'**
   String get revealBannerPremium;
+
+  /// No description provided for @packRarityRare.
+  ///
+  /// In en, this message translates to:
+  /// **'Rare'**
+  String get packRarityRare;
+
+  /// No description provided for @packRarityEpic.
+  ///
+  /// In en, this message translates to:
+  /// **'Epic'**
+  String get packRarityEpic;
+
+  /// No description provided for @packRarityLegendary.
+  ///
+  /// In en, this message translates to:
+  /// **'Legendary'**
+  String get packRarityLegendary;
+
+  /// No description provided for @packRarityPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium'**
+  String get packRarityPremium;
 }
 
 class _AppLocalizationsDelegate

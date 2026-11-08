@@ -25,6 +25,7 @@ import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart'
     show PackCategory, PackTier;
 import 'package:fcm_rivals/features/packs/packs_screen.dart';
+import 'package:fcm_rivals/l10n/app_localizations.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +81,59 @@ void main() {
     await seedStore(tester);
     await pumpScreen(tester);
   }
+
+  testWidgets('the odds sheet renders the four-band rarity table on every '
+      'store cell (T-0059, EN fallback)', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await bootScreen(tester);
+
+    // The chips are one atomic Text per band — label + percent, no
+    // sentence interpolation — so RTL can reorder them freely. Every
+    // position shelves all three tiers (the T-0047 regrade made the 80+
+    // pools grow), so each shipped table shows up on its tier's cells:
+    // rare cells carry Rare 75% / Epic 20% / Legendary 5% with NO
+    // premium chip; legendary cells carry the reversed matrix incl.
+    // Premium 2%.
+    expect(find.text('Rare 75%'), findsWidgets);
+    expect(find.text('Epic 20%'), findsWidgets);
+    expect(find.text('Legendary 5%'), findsWidgets);
+    expect(find.text('Rare 40%'), findsWidgets);
+    expect(find.text('Legendary 43%'), findsWidgets);
+    expect(find.text('Premium 2%'), findsWidgets);
+    expect(find.text('Premium 0%'), findsNothing,
+        reason: 'zero-weight bands render nothing — the strip shows '
+            'exactly what the pack can roll');
+  });
+
+  testWidgets('the odds sheet localizes in Arabic (RTL-safe chips)', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(2400, 3600);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await seedStore(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [collectionStoreProvider.overrideWith((ref) => store)],
+        child: MaterialApp(
+          locale: const Locale('ar'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: PacksScreen()),
+        ),
+      ),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('نادر 75%'), findsWidgets);
+    expect(find.text('أسطوري 43%'), findsWidgets);
+    expect(find.text('نخبة 2%'), findsWidgets);
+  });
 
   testWidgets('sectioned store: shared scope titles, tier cells per '
       'section, owned packs stack under their tier', (

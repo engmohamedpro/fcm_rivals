@@ -29,8 +29,11 @@ class PackOpenResult {
   /// Drawn players (one per pack).
   final List<BasePlayer> players;
 
-  /// Market Value tier each player was drawn from (0 low, 1 mid, 2 high),
-  /// index-aligned with [players]. Drives reveal effects (GDD 5.6).
+  /// The ROLLED rarity band each player was drawn under, as the
+  /// [PackRarity] index (0 rare < 70, 1 epic 70-79, 2 legendary 80-89,
+  /// 3 premium 90+), index-aligned with [players]. Drives reveal effects
+  /// (GDD 5.6). T-0059: the old low/mid/high Market-Value tier indices
+  /// are gone — the two-stage engine rolls rarity, not MV bands.
   final List<int> tiers;
 
   /// Owned-player row ids of the drawn players, index-aligned with

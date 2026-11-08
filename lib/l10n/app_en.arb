@@ -167,5 +167,9 @@
   "injuryCommentaryPlaysShort": " They have no replacement and play a man short.",
   "statInjuries": "Injuries",
   "cardClassPremium": "PREMIUM",
-  "revealBannerPremium": "PREMIUM PULL!"
+  "revealBannerPremium": "PREMIUM PULL!",
+  "packRarityRare": "Rare",
+  "packRarityEpic": "Epic",
+  "packRarityLegendary": "Legendary",
+  "packRarityPremium": "Premium"
 }
