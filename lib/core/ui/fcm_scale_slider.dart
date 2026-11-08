@@ -77,6 +77,21 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
 
   late int _value = widget.value;
 
+  /// The ambient text direction, resolved once per dependency change —
+  /// every horizontal position and the gesture mapping mirror in RTL
+  /// (T-0061): the minimum end sits at the RIGHT, like Flutter's own
+  /// `Slider`, so the Arabic mentality slider reads and slides the way
+  /// the platform teaches.
+  TextDirection _direction = TextDirection.ltr;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _direction = Directionality.of(context);
+  }
+
+  bool get _isRtl => _direction == TextDirection.rtl;
+
   @override
   void didUpdateWidget(FcmScaleSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -92,7 +107,11 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
   /// callback with [_value].
   void _updateFromDx(double dx, double width, {required bool commit}) {
     final span = width - _thumbRadius * 2;
-    final v = (((dx - _thumbRadius) / span) * 100).round().clamp(0, 100);
+    // RTL mirrors the gesture axis: x measured from the RIGHT edge, so
+    // dragging towards the left INCREASES the value.
+    final effective = _isRtl ? width - dx : dx;
+    final v =
+        (((effective - _thumbRadius) / span) * 100).round().clamp(0, 100);
     if (v == _value) {
       if (commit) widget.onChangeEnd?.call(v);
       return;
@@ -107,7 +126,9 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
   double _pillWidth(String label) {
     final painter = TextPainter(
       text: TextSpan(text: label, style: _pillTextStyle),
-      textDirection: TextDirection.ltr,
+      // Measure with the ambient direction so Arabic pill text lays
+      // out correctly (T-0061 requirement 3).
+      textDirection: _direction,
     )..layout();
     final w = painter.size.width + 16;
     painter.dispose();
@@ -125,12 +146,24 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           final f = _value / 100;
+          // LTR geometry, computed once; the RTL positions below mirror
+          // it around the track's centre (T-0061): min at the right,
+          // fill growing right-to-left, pill clamped the same way.
           final thumbX = _thumbRadius + f * (w - _thumbRadius * 2);
+          final rtlThumbX = w - thumbX;
+          final markerLeft =
+              (_isRtl ? rtlThumbX : thumbX) - _thumbRadius;
+          final fillLeft = _isRtl ? rtlThumbX : 0.0;
+          final fillWidth =
+              _isRtl ? w - rtlThumbX : thumbX.toDouble();
 
           // The pill rides above the marker, clamped inside the track so
           // long names never spill off the slider's ends.
           final pillW = _pillWidth(label);
-          final pillCenter = thumbX.clamp(pillW / 2, w - pillW / 2).toDouble();
+          final pillCenterAnchor = _isRtl ? rtlThumbX : thumbX;
+          final pillCenter = pillCenterAnchor
+              .clamp(pillW / 2, w - pillW / 2)
+              .toDouble();
 
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -198,18 +231,26 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
                           ),
                         ),
                       ),
-                      // Filled track up to the marker.
+                      // Filled track up to the marker — from the min
+                      // end (left in LTR, RIGHT in RTL) to the marker.
                       Positioned(
-                        left: 0,
-                        width: thumbX,
+                        left: fillLeft,
+                        width: fillWidth,
                         top: (_bandHeight - _trackHeight) / 2,
                         height: _trackHeight,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              colors: [FcmColors.goldSoft, FcmColors.gold],
+                            gradient: LinearGradient(
+                              begin: _isRtl
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              end: _isRtl
+                                  ? Alignment.centerLeft
+                                  : Alignment.centerRight,
+                              colors: const [
+                                FcmColors.goldSoft,
+                                FcmColors.gold,
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(
                               _trackHeight / 2,
@@ -232,7 +273,7 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
                       ),
                       // The marker.
                       Positioned(
-                        left: thumbX - _thumbRadius,
+                        left: markerLeft,
                         top: (_bandHeight - _thumbRadius * 2) / 2,
                         width: _thumbRadius * 2,
                         height: _thumbRadius * 2,
