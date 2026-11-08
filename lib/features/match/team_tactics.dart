@@ -193,20 +193,37 @@ enum Mentality {
   }
 }
 
+/// Converts a 0–100 scale position to the step of an ordered enum
+/// (T-0063): `round(value * (n - 1) / 100)` — Dart's `.round()` rounds
+/// half away from zero, never truncates — with the input clamped to
+/// 0–100 so an out-of-range position can never index past the last
+/// value. Any ordered instruction axis (the nine GDD 10.2 axes, the
+/// mentality) maps through here; categorical choices
+/// (`FinalThirdApproach`) and bools (the offside trap) are NOT scales
+/// and must not be forced through it.
+T enumFromScale<T extends Enum>(List<T> values, int value) {
+  final steps = values.length - 1;
+  final i = (value.clamp(0, 100) * steps / 100).round();
+  return values[i];
+}
+
+/// An ordered enum value's canonical 0–100 scale position (T-0063):
+/// `round(index * 100 / (n - 1))` — where the slider's marker rests
+/// when a saved value is restored. The inverse of [enumFromScale].
+int enumToScale<T extends Enum>(List<T> values, T value) =>
+    (value.index * 100 / (values.length - 1)).round();
+
 /// The mentality as a 0–100 scale (GDD 10.3): 0 is Very Defensive, 100
 /// Very Attacking and 50 — dead centre — Balanced. The seven mentalities
 /// are the scale's named steps, so a slid position maps to the step it
 /// lands in.
-Mentality mentalityFromScale(int value) {
-  final steps = Mentality.values.length - 1;
-  final i = (value.clamp(0, 100) * steps / 100).round();
-  return Mentality.values[i];
-}
+Mentality mentalityFromScale(int value) =>
+    enumFromScale(Mentality.values, value);
 
 /// A mentality's canonical scale position: 0, 17, 33, 50, 67, 83, 100 —
 /// where the slider's marker rests when a saved mentality is restored.
 int mentalityToScale(Mentality mentality) =>
-    (mentality.index * 100 / (Mentality.values.length - 1)).round();
+    enumToScale(Mentality.values, mentality);
 
 /// Live Match Actions (GDD 16): temporary in-match boosts with explicit
 /// percentage modifiers. One active per team at a time; a new action
