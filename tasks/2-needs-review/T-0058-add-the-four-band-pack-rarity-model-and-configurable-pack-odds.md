@@ -2,8 +2,8 @@
 id: T-0058
 title: Add the four-band pack rarity model and configurable pack odds
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-08
 completed:
@@ -58,10 +58,10 @@ Expected: analyzer clean; the partition test prints the four pool sizes and pass
 
 ## Developer Notes
 
-- **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+- **Summary of changes:** New pure-Dart module `lib/features/packs/pack_rarity.dart` (the `injury.dart` pattern — no Flutter imports, no RNG): `PackRarity` enum with `fromOverall` partitioning on the configurable 70/80/90 cuts; `PackOddsConfig` holding every knob (band cuts, the owner's per-tier rarity matrix as named-record tables, `marketValueExponent` 1.5, nullable `pityGuaranteedRarityPulls` placeholder documented as unused); `weightFor` implementing `(poolMinMv / mv)^exponent` with the documented clamps. Doc comments carry the owner rule (rarity from OVR, auto-derived) and the measured MV boundaries (€4.42M / €25M / €87.06M) as documentation only — no logic hardcodes them. No engine behavior change, no new `PackTier`, no `CardRarity` change (Req 6).
+- **Files changed:** `lib/features/packs/pack_rarity.dart` (new, ~190 lines); `test/features/packs/pack_rarity_test.dart` (new, 12 tests).
+- **How I tested it:** `flutter analyze` — No issues found. `flutter test test/features/packs/pack_rarity_test.dart` — 12/12. Dataset partition through the REAL import pipeline (`PlayerDatabase.importDatasetFromJson` → `BaseStatsGenerator` seeded per player id, the same `baseStats.overall` packs see), printed and band-locked: **rare 18,292 (87.62%) | epic 2,074 (9.93%) | legendary 479 (2.29%) | premium 31 (0.148%) | gold 510** — premium 31 reproduces T-0049's measure, gold 510 inside T-0047's [460, 520], epic/rare within ±5% of the curve-based 2,088/18,295, and the four pools sum to 20,876 (partition, no overlap). Boundaries 69/70/79/80/89/90 exact; premium threshold bound to `CardClass.premiumOverallThreshold` and legendary to `PackEngine.legendaryOverall` by test; every table sums to 1 ±1e-9 with weights in [0,1] (`validate()` throws in release too — the const constructor can only assert constant expressions, so table sanity lives in `validate()` and is test-locked); premium weight 0 for rare/epic packs; pity placeholder null-locked; `weightFor` guards proven finite/NaN-free on degenerate inputs. Full `flutter test` — **796 passed** (14 more than T-0055's 784).
+- **Concerns / assumptions:** (1) The How-to-Verify grep on `pack_engine.dart` hits ONE pre-existing literal — `tierBoundaries = const [0.15, 0.55]` (line 212) — the shipped MV-tier boundary constant from the economy work, not a rarity-odds literal; the rarity matrix lives only in `PackOddsConfig`. T-0059's draw rewiring should fold that constant into the config class when it touches the stage split. (2) Record field access in `const` initializers is not a constant expression in this Dart version, so the constructor asserts only band ordering; `validate()` (which throws `ArgumentError`) is the table guard in both debug and release — tests lock it. (3) The `pityGuaranteedRarityPulls` field is deliberately inert; T-0059/T-0060 own its semantics — wiring anything before the economy calibration would be GDD rule 14 violation.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
