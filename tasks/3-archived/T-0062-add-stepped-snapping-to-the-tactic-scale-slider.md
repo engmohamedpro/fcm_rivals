@@ -2,11 +2,11 @@
 id: T-0062
 title: Add stepped snapping to the tactic scale slider
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0061]
 created: 2026-11-08
-completed:
+completed: 2026-11-08
 ---
 
 # T-0062: Add stepped snapping to the tactic scale slider
@@ -34,10 +34,10 @@ completed:
 - New l10n keys.
 
 ## Acceptance Criteria
-- [ ] Free mode (`steps: null`) behaves exactly as today — existing tests untouched and green.
-- [ ] Stepped mode commits only snapped positions and settles the marker on release in both text directions (new tests).
-- [ ] The mentality row commits the same enum as before for release positions 0, 50, 100 and the off-step releases 58 (→ Balanced) and 59 (→ Positive).
-- [ ] `flutter analyze` reports zero warnings; `flutter test` full suite green.
+- [x] Free mode (`steps: null`) behaves exactly as today — existing tests untouched and green.
+- [x] Stepped mode commits only snapped positions and settles the marker on release in both text directions (new tests).
+- [x] The mentality row commits the same enum as before for release positions 0, 50, 100 and the off-step releases 58 (→ Balanced) and 59 (→ Positive).
+- [x] `flutter analyze` reports zero warnings; `flutter test` full suite green.
 
 ## How to Verify
 ```bash
@@ -57,3 +57,14 @@ Expected: analyze clean, full suite green; manually the marker settles on the se
 - **Concerns / assumptions:** (1) Bug found and fixed during verification, worth recording: the first implementation fired `onChangeEnd` only from the drag-update path, so a stepped drag whose last update lands on the SAME step as the previous one never committed (tests caught it — release 40→50 returned −1); `onHorizontalDragEnd` now always fires the commit in stepped mode before settling. (2) The boundary test computes the gesture x from the scale position using the thumb inset (`dx = thumbRadius + v/100 × span`) — that mirrors the engine's own mapping; a naive width-fraction drag would land 2-3 units off and flip the 24/25 boundary. (3) No l10n keys added, no `Mentality` change, no persistence change (Out of Scope respected). (4) The settle animation is 150 ms as specified; interrupting it mid-flight by a new drag is covered by design (the drag-start stops the controller) though not separately test-locked — the settle-onto-step and free-mode tests pin the observable endpoints.
 
 ## Review Log
+
+### Review 2026-11-08, attempt 1: PASS
+- Environment: Flutter 3.47.9 stable / Dart 3.13.7 (the workspace SDK), 2-core container, main @ `b3d70f2`.
+- Code review of the diff (`32fb2ad..b3d70f2`): `_snapToStep` is exactly the `mentalityFromScale` math (`round(raw.clamp(0,100) * (steps-1) / 100)` → index → `round(index * 100 / (steps-1))`, Dart `.round()` half away from zero); the marker follows the finger (`_display` rides the raw position) while both callbacks only ever report snapped positions; release fires `onChangeEnd` from `onHorizontalDragEnd`/`onTapUp` and settles via the 150 ms easeOut controller that a new drag start stops mid-flight; step ticks render at every step position mirrored through the T-0061 `_xFor` seam (the free mode keeps its lone centre tick); `didUpdateWidget` snaps incoming external values so the marker can never park off-step. The free path is behaviourally identical to the pre-T-0062 code — the clamp/round order swap is equivalent for every input and the `_display` additions change no reported value; "byte-identical" in Developer Notes slightly overstates it, behaviour-identical is the accurate claim.
+- The drag-end commit fix (Developer Notes concern 1) verified in code: stepped `onHorizontalDragEnd` always fires `onChangeEnd(_value)` even when the last update landed on the same step — the same-step-release bug is gone.
+- Ran `flutter analyze` → `No issues found!` (zero warnings).
+- Ran `flutter test test/core/ui/ test/features/squad/squad_view_test.dart test/features/match/tactics_scale_test.dart --concurrency=1` → **50/50 passed**: the 5 T-0061 RTL/LTR slider tests untouched and green; the 7 new T-0062 tests green (40 → 50, 95 → 100, near-min → 0; the boundary releases 24 → 0 / 25 → 50 / 75 → 100 with the thumb-inset gesture math; onChanged only ever reports step positions across a full-axis sweep; the pill names the snapped step; the marker settles exactly on the step; RTL drag-left still increases to the max step; free mode still commits raw positions); the squad-view mentality row 7/7 untouched; the enum-scale boundaries 6/6.
+- Full `flutter test --concurrency=1` gate → **862/862 passed**.
+- AC 3 verification note (recorded honestly): the 58/59 off-step releases are locked by composition, not by one end-to-end row test — the slider's snap formula is literally the same index math as `mentalityFromScale`, `tactics_scale_test.dart` locks 58 → Balanced / 59 → Positive and the canonical positions, and the row maps the committed scale through the unchanged `mentalityFromScale`. Every link is test-locked; a dedicated 7-step boundary release test would be reasonable hardening when T-0064 applies the slider to the nine axes. Not a blocker.
+- `flutter run` manual check not possible in this headless container; the settle animation is covered by the pumpAndSettle-based tests instead (the marker-rests-on-step test pins the post-settle geometry to ±3 px).
+- Acceptance criteria, one by one: free mode (`steps: null`) behaves exactly as today — existing tests untouched and green ✔; stepped mode commits only snapped positions and settles the marker on release in both text directions (new tests) ✔; the mentality row commits the same enum as before for 0/50/100 and the off-step 58/59 releases (by composition as above; the row suite green untouched) ✔; analyzer zero warnings and the full suite green ✔.
