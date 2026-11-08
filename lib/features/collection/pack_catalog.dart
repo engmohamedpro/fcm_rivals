@@ -9,7 +9,7 @@ library;
 import 'dart:math' as math;
 
 import '../../core/domain/players.dart';
-import '../../core/ui/fcm_style.dart' show CardRarity;
+import '../../core/ui/card_rarity.dart';
 import '../economy/economy_engine.dart';
 import '../packs/pack_engine.dart';
 import '../player_database/player_database.dart';

@@ -234,48 +234,87 @@ Players obtained from packs are permanently owned by the user until:
 ### 5.2 Pack Categories
 
 - Global Pack.
-- League Pack.
 - Nationality Pack.
-- Club Pack.
 - Position Pack.
 
-### 5.3 Pack Contents
+League and Club packs are gone: the player core data no longer carries club or league affiliation.
 
-Each pack contains exactly one player.
+### 5.3 Pack Tiers & Rarity Bands
 
-The player's Market Value tier is rolled per pack (equal chance by default):
+Each pack contains exactly one player, drawn through the two-stage system below.
 
-- Low Market Value tier.
-- Medium Market Value tier.
-- High Market Value tier.
+The store sells three pack tiers — **Rare, Epic, Legendary** — named after the card rarity they bias toward. A pack's tier selects one row of the odds matrix (5.4) and re-prices the pack automatically (5.5); it never changes what a rarity means.
 
-The exact tier boundaries and probabilities remain configurable.
+Rarity is derived from the player's OVR, never stored, in four bands:
 
-### 5.4 Pack Probability
+| Band | OVR | Card identity |
+| --- | --- | --- |
+| RARE | < 70 | amethyst |
+| EPIC | 70–79 | sapphire |
+| LEGENDARY | 80–89 | gold |
+| PREMIUM | 90+ | crimson red (CardClass premium, T-0049) |
 
-Higher Market Value players must have lower probabilities.
+PREMIUM is a probability partition only — not a fifth card colour. The 90+ player is still LEGENDARY underneath and renders with the shipped crimson premium treatment; red is discovered at reveal, never advertised on a sealed pack. The PREMIUM band is bound by test to `CardClass.premiumOverallThreshold` so the band and the red card can never drift apart.
 
-Probability calculations must consider:
+Measured on the shipped dataset (20,876 rows, T-0046 curve): RARE 18,292 (87.6%) / EPIC 2,074 (9.9%) / LEGENDARY 479 (2.29%) / PREMIUM 31 (0.148%).
 
-- Eligible player pool.
-- Player Market Value.
-- Pack category.
-- Tier boundaries.
-- Configurable probability coefficients.
+### 5.4 Pack Probability — the two-stage draw
 
-The system must avoid making high-value players impossible to obtain.
+The owner's exact sequence (owner spec 2026-11-08, T-0059):
 
-Display the applicable odds to users.
+1. Take the pack's eligible pool (scope filter: Global / Nationality / Position).
+2. Partition the pool into the four OVR rarity bands.
+3. Look up the pack tier's row in the odds matrix.
+4. **Stage 1 — roll the rarity band** from that row.
+5. **Stage 2 — pick the player** inside the rolled band, weighted by `(poolMinMv / mv)^exponent` where `poolMinMv` is the band's cheapest market value and the exponent is the owner's 1.5.
+6. Empty bands fall back to the nearest non-empty band and book the draw under the rolled band's share — every roll stays answerable, no pool mixing.
+7. A rolled band whose weight sum degenerates falls back to uniform — no NaN rolls.
+8. The draw reports the ROLLED band's index — the odds display, the EV and the reveal all agree.
 
-### 5.5 Pack Pricing
+The odds matrix (per-tier probability of each rarity band, order RARE/EPIC/LEGENDARY/PREMIUM):
 
-Pack prices are calculated dynamically from the economic value of eligible players.
+| Pack tier | Rare | Epic | Legendary | Premium |
+| --- | --- | --- | --- | --- |
+| Rare pack | 75% | 20% | 5% | 0% |
+| Epic pack | 40% | 50% | 10% | 0% |
+| Legendary pack | 0% | 55% | 43% | 2% |
 
-Pack pricing must be controlled by the Economy Engine.
+**Premium is exclusive to Legendary packs** — the Rare and Epic rows carry 0% and a test locks the exclusivity. The published 2% is the reachability contract: 1-in-50 legendary packs; the chance of at least one premium within 50 legendary packs is 63.6%, within 100 is 86.7%.
+
+Higher-value players inside a band genuinely weigh less (cheap players likelier, stars reachable but rare) — the weighting's diversity is part of the contract:
+
+- RARE pool at exponent 1.5: effective pool size (N_eff) **3,673** of 18,292, cheapest-decile share **71.5%** (uniform would be ~10%). At exponent 1.0: 8,613 / 48.5%. At exponent 2.0: 1,430 / 87.1%.
+- EPIC N_eff 1,721 (decile 20.1%), LEGENDARY N_eff 436 (15.9%), PREMIUM N_eff 29 (17.8%) — the upper bands stay healthy at 1.5.
+- **Diversity floor (T-0060 calibration contract): RARE N_eff ≥ 1,000 AND cheapest-decile share ≤ 75%.** The shipped exponent 1.5 clears both — a future exponent bump cannot silently collapse selection diversity without breaking a test.
+
+Every applicable odds number is displayable to the user (the store's per-tier odds sheet; FR-011).
+
+### 5.5 Pack Pricing — EV × margin, floored to thousands
+
+Pack prices derive automatically from the two-stage expected contents:
+
+```
+price = floor_to_thousands(EV × margin)
+margin = 1.25 (Rare/Epic) · 1.40 (Legendary — the elite premium, rebalance Ch.8)
+```
+
+EV is the rarity-table-weighted average of each band's odds-weighted expected economic value (`economicValueOf`, the sqrt curve clamped [5, 600k] coins). A table retune re-prices the whole shelf automatically — there is no pricing code to forget.
+
+Measured on the shipped dataset (probe, 100,000 packs, seed 2026, exponent 1.5):
+
+| Pack tier | EV (coins) | Price | Par matches | Reward MV avg |
+| --- | --- | --- | --- | --- |
+| Rare | 4,241 | **5,000** | 2.7 | €3.1M |
+| Epic | 8,361 | **10,000** | 5.4 | €6.7M |
+| Legendary | 17,209 | **24,000** | 12.9 | €19.9M |
+
+Par team income ≈ 1,858 coins/match (the shipped reward model's long-run average) → the affordability ladder 2.7 / 5.4 / 12.9 matches per pack. The previous single-stage ladder was ~2.2 / 7.8 / 19.4 — the new one is deliberately flatter (legendary relatively cheaper): the owner's direction toward the red chase. Premium contributes **5.1%** of the legendary pack's EV (band: 1–8%) and lands at **2.009%** per legendary pack (published 2%).
+
+**Calibration contract (T-0060, band-locked by `test/balance/pack_probability_calibration_test.dart`):** EV ladder strictly increasing rare < epic < legendary; global price bands ±25% around 5k/10k/24k; premium EV share 1–8%; premium reachability 1.5–2.5% per legendary pack; affordability rare ≤ 4 / epic 4–8 / legendary 10–16 par matches; the diversity floor above. A retune must move these numbers consciously — never silently.
 
 ### 5.6 Opening Experience
 
-Pack opening should provide a cinematic experience:
+Pack opening provides a cinematic experience:
 
 1. Nationality flag.
 2. Player name.
@@ -283,29 +322,35 @@ Pack opening should provide a cinematic experience:
 4. Player card.
 5. Reveal animation.
 
-Higher-value players should receive more exciting reveal effects.
+Higher-value players receive more exciting reveal effects (the escalation ladder is T-0051's calibration).
 
 ### 5.7 Pack Results
 
 After opening a pack, the user can:
 
 - Keep the player.
-- Sell the player.
+- Sell the player (60% of economic value).
 - Merge duplicate players through the upgrade system.
 
 ### 5.8 Starting Free Packs
 
 The user starts with:
 
-Three free packs for each of the 12 supported positions.
-
-Total: **36 starting packs**.
+Two free packs for every position the chosen formation asks for — one wave to fill the XI, one for the bench (a 4-3-3 grants 22 packs; a 3-5-2 grants 6 CB/CM-heavy packs — the inventory mirrors the formation's shape).
 
 The user may open these packs at any time.
 
 The required squad must be completed before the first match.
 
----
+### 5.9 Transparency Probe (audit tool)
+
+`tool/pack_probability_probe.dart` is the standing audit tool (T-0060): seeded and deterministic, it opens N packs per tier over the real dataset and reports rarity distribution vs the configured tables with binomial 3σ bounds, top-20 per-player selection shares vs theory, reward MV stats, premium frequency, EV in coins, and the N_eff / cheapest-decile diversity metrics. Run it with:
+
+```
+dart run tool/pack_probability_probe.dart --packs 100000 --seed 2026
+```
+
+The probe and the calibration tests are the contract's enforcement pair — the tests lock the bands in CI, the probe explains any movement with measured numbers.
 
 ## 6. Squad Management
 

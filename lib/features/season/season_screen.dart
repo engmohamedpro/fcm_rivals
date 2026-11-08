@@ -8,7 +8,7 @@ import '../../app/routes.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../match/tactics.dart' show MatchPepTalk;
-import '../match/pre_match_screen.dart' show PreMatchTacticSelection;
+import '../match/pre_match_tactics_selection.dart';
 import 'season_engine.dart' show StandingEntry;
 import 'season_store.dart';
 

@@ -2,9 +2,17 @@
 ///
 /// Global base player data (immutable facts from the imported dataset) is kept
 /// strictly separate from user-owned player instances (GDD 4.7 / SRS 25.1).
+/// Pure Dart: no Flutter imports — the domain models run under plain
+/// `dart run` (headless batch sims, the T-0060 probability probe).
 library;
 
-import 'package:flutter/foundation.dart';
+/// Local stand-in for Flutter's `@immutable` (analyzer-only annotation):
+/// `@ImmutableMarker()` — const, zero runtime effect, keeps this file
+/// pure Dart so it runs under plain `dart run`.
+class ImmutableMarker {
+  final List<String> fields;
+  const ImmutableMarker([this.fields = const <String>[]]);
+}
 
 /// The 12 supported field positions (GDD 4.3).
 enum Position {
@@ -40,7 +48,7 @@ enum PlayerAttribute { attack, support, defence, goalkeeping }
 /// Base stats derived from Market Value and Position via the non-linear
 /// generation curve (GDD 4.5). Regenerated only when Market Value or Position
 /// changes on a dataset update (GDD 4.6).
-@immutable
+@ImmutableMarker()
 class BaseStats {
   const BaseStats({
     required this.overall,
@@ -93,7 +101,7 @@ class BaseStats {
 /// may change between dataset versions without changing identity.
 /// The core data is deliberately minimal — name, nationality, position
 /// and market value — no club, age or league affiliation.
-@immutable
+@ImmutableMarker()
 class BasePlayer {
   const BasePlayer({
     required this.playerId,
@@ -144,7 +152,7 @@ class BasePlayer {
 
 /// A user-owned copy of a [BasePlayer] (SRS 25.1).
 /// Upgrades live here and must never leak into the global record (GDD 8.3).
-@immutable
+@ImmutableMarker()
 class OwnedPlayer {
   const OwnedPlayer({
     required this.ownedId,

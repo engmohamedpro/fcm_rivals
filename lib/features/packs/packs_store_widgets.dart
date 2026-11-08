@@ -13,10 +13,11 @@ import '../../core/ui/fcm_widgets.dart';
 import '../../l10n/l10n_context.dart';
 import '../../features/collection/collection_store.dart'
     show StorePackOffer;
-import 'pack_engine.dart' show PackTier, PackTierColor;
+import 'pack_engine.dart' show PackTier;
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_price_widgets.dart';
 import 'pack_rarity.dart';
+import 'pack_tier_colors.dart';
 
 /// Scope key shared by owned packs and store offers, e.g.
 /// 'global:bronze' or 'position:ST:gold' — the join between inventory

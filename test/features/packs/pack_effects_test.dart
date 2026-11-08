@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/features/packs/pack_effects.dart';
-import 'package:fcm_rivals/features/packs/pack_engine.dart'
-    show PackTierColor, PackTier;
+import 'package:fcm_rivals/features/packs/pack_engine.dart' show PackTier;
+import 'package:fcm_rivals/features/packs/pack_tier_colors.dart';
 
 void main() {
   testWidgets('foil pack stamps the decoded transparent logo on the band', (

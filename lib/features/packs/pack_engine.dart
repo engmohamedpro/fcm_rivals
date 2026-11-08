@@ -9,12 +9,13 @@
 /// legendary 80-89, premium 90+. Premium is exclusive to Legendary packs
 /// (the rare and epic tables carry 0.0). Scopes filter the eligible pool:
 /// Global, Nationality and Position packs. Prices re-derive automatically
-/// from the two-stage EV — no pricing code of its own.
+/// from the two-stage EV — no pricing code of its own. Pure Dart (no
+/// Flutter imports): the tier presentation colours live in
+/// `pack_tier_colors.dart` so the engine runs under plain `dart run`
+/// (the T-0060 probability probe).
 library;
 
 import 'dart:math' as math;
-
-import 'package:flutter/material.dart' show Color;
 
 import '../../core/domain/players.dart';
 import '../economy/economy_engine.dart';
@@ -52,27 +53,6 @@ enum PackTier {
     'epic' || 'silver' => PackTier.epic,
     'legendary' || 'gold' => PackTier.legendary,
     _ => PackTier.rare, // 'rare', legacy 'bronze', anything else
-  };
-}
-
-/// Pack-rarity accent colours — the same jewel palette as the player-card
-/// rarities ([CardRarity.accent]): rare → royal amethyst, epic → royal
-/// sapphire, legendary → radiant champion gold. Cells, badges and foils
-/// draw from these so a pack's rarity reads at a glance and matches the
-/// cards it draws.
-extension PackTierColor on PackTier {
-  Color get accent => switch (this) {
-    PackTier.rare => const Color(0xFF8B5CF6),
-    PackTier.epic => const Color(0xFF3B82F6),
-    PackTier.legendary => const Color(0xFFF7C948),
-  };
-
-  /// Rarity stars stamped on the foil: rare 3, epic 4, legendary 5 —
-  /// the shelf and the reveal agree on the count.
-  int get stars => switch (this) {
-    PackTier.rare => 3,
-    PackTier.epic => 4,
-    PackTier.legendary => 5,
   };
 }
 

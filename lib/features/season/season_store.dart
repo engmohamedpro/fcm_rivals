@@ -20,7 +20,7 @@ import '../collection/collection_store.dart';
 import '../match/match_engine.dart';
 import '../match/match_forecast.dart';
 import '../match/match_session.dart';
-import '../match/pre_match_screen.dart' show PreMatchTacticSelection;
+import '../match/pre_match_tactics_selection.dart';
 import '../match/stamina.dart' show StaminaConfig, recoverStamina;
 import '../match/tactics.dart'
     show Mentality, MatchPepTalk, tacticsFromDbPayload;

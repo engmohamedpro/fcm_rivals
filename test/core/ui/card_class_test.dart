@@ -14,6 +14,7 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
+import 'package:fcm_rivals/features/packs/pack_tier_colors.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/l10n/app_localizations_ar.dart';
 import 'package:fcm_rivals/l10n/app_localizations_en.dart';

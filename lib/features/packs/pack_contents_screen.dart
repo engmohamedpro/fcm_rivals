@@ -19,7 +19,8 @@ import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart' show FcmMiniCard;
 import '../../l10n/card_class_l10n.dart';
 import '../../l10n/l10n_context.dart';
-import 'pack_engine.dart' show PackCategory, PackTier, PackTierColor;
+import 'pack_engine.dart' show PackCategory, PackTier;
+import 'pack_tier_colors.dart';
 
 /// The contents list of one store pack.
 class PackContentsScreen extends StatefulWidget {

@@ -16,7 +16,7 @@ import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
-import 'pre_match_screen.dart' show PreMatchTacticSelection;
+import 'pre_match_tactics_selection.dart';
 import 'stamina.dart';
 import 'tactics.dart';
 

@@ -11,8 +11,8 @@ import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../features/collection/collection_store.dart'
     show CollectionStore, PackOpenResult, StorePackOffer;
-import '../../features/packs/pack_engine.dart'
-    show PackCategory, PackTier, PackTierColor;
+import '../../features/packs/pack_engine.dart' show PackCategory, PackTier;
+import 'pack_tier_colors.dart';
 import 'pack_opening_screen.dart';
 import 'packs_store_widgets.dart';
 

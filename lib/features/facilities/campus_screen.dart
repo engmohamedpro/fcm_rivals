@@ -18,6 +18,7 @@ import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../facilities/facilities.dart';
+import '../facilities/facility_icons.dart';
 
 class CampusScreen extends ConsumerStatefulWidget {
   const CampusScreen({super.key});

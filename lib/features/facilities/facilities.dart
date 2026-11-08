@@ -23,14 +23,13 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
-
-/// Everything the campus can build (GDD 3.5).
+/// Everything the campus can build (GDD 3.5). Pure Dart: the
+/// presentation icons live in `facility_icons.dart` so the economy
+/// chain runs under plain `dart run` (T-0060 soak/probe).
 enum Facility {
   attack(
     'Attack Academy',
     'attack academy',
-    Icons.sports_soccer_rounded,
     FacilityEffect.attribute(
       attribute: FacilityAttribute.attack,
       perLevelPercent: 0.9,
@@ -39,7 +38,6 @@ enum Facility {
   support(
     'Playmaker Hub',
     'playmaker hub',
-    Icons.hub_rounded,
     FacilityEffect.attribute(
       attribute: FacilityAttribute.support,
       perLevelPercent: 0.9,
@@ -48,7 +46,6 @@ enum Facility {
   defence(
     'Defence Forge',
     'defence forge',
-    Icons.shield_rounded,
     FacilityEffect.attribute(
       attribute: FacilityAttribute.defence,
       perLevelPercent: 0.9,
@@ -57,7 +54,6 @@ enum Facility {
   goalkeeping(
     'Keeper School',
     'keeper school',
-    Icons.sports_handball_rounded,
     FacilityEffect.attribute(
       attribute: FacilityAttribute.goalkeeping,
       perLevelPercent: 1.1,
@@ -66,25 +62,21 @@ enum Facility {
   recovery(
     'Recovery Centre',
     'recovery centre',
-    Icons.spa_rounded,
     FacilityEffect.recovery(2.5),
   ),
   medical(
     'Medical Centre',
     'medical centre',
-    Icons.medical_services_rounded,
     FacilityEffect.medical(0.6),
   );
 
-  const Facility(this.title, this.subtitle, this.icon, this.effect);
+  const Facility(this.title, this.subtitle, this.effect);
 
   /// Display name.
   final String title;
 
   /// Short descriptor used in ledger detail lines.
   final String subtitle;
-
-  final IconData icon;
 
   /// What one more level buys.
   final FacilityEffect effect;

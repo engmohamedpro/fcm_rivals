@@ -37,7 +37,6 @@ class EconomyConfig {
     // premium. 1.40x lands it at ~4.7 matches — still the best deal per
     // pull, but no longer a dominant strategy.
     this.legendaryPackMarginMultiplier = 1.40,
-    this.packOddsSmoothing = 0.55,
     this.baseMatchReward = 1_500,
     this.matchRewardPerGoal = 250,
     // Performance-driven income spread (review
@@ -84,10 +83,6 @@ class EconomyConfig {
   /// Ch.8). Rare and Epic pay [packMarginMultiplier]; Legendary pays this
   /// higher margin so elite power scales in price faster than in odds.
   final double legendaryPackMarginMultiplier;
-
-  /// Odds smoothing exponent: 0 = uniform within a tier, higher = steeper
-  /// value penalty. Used by the Pack Engine's draw weighting.
-  final double packOddsSmoothing;
 
   /// Match rewards (GDD 17.6).
   final int baseMatchReward;

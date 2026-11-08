@@ -6,6 +6,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'card_rarity.dart';
+export 'card_rarity.dart';
 
 /// Brand palette.
 class FcmColors {
@@ -89,77 +91,6 @@ class FcmColors {
   /// index (older save, future palette change) can never crash the UI.
   static Color crestColor(int index) =>
       crestPalette[index.clamp(0, crestPalette.length - 1)];
-}
-
-/// Card rarity. Derived from a player's rating so the same player looks the
-/// same in the pack reveal, the collection and the squad: rare, epic and
-/// legendary — one rarity language shared with the store's pack tiers,
-/// each carrying the gem accent of its pack. Higher rarity gets bigger
-/// reveal effects (GDD 5.6).
-enum CardRarity {
-  rare,
-  epic,
-  legendary;
-
-  /// Rating thresholds: 80+ legendary (the owner's 2026-11-07 regrade,
-  /// T-0047 — every player rated 80+ shows the golden legendary colour in
-  /// every surface), 70+ epic, otherwise rare.
-  static CardRarity fromOverall(int overall) {
-    if (overall >= 80) return CardRarity.legendary;
-    if (overall >= 70) return CardRarity.epic;
-    return CardRarity.rare;
-  }
-
-  String get label => switch (this) {
-    CardRarity.rare => 'RARE',
-    CardRarity.epic => 'EPIC',
-    CardRarity.legendary => 'LEGENDARY',
-  };
-
-  /// Main accent colour (glow, rays, particles): a jewel ladder — royal
-  /// amethyst, royal sapphire, radiant champion gold. Saturated enough
-  /// to read at a glance on the charcoal night, three clearly distinct
-  /// hues, and legendary still crowns the brand's own gold.
-  Color get accent => switch (this) {
-    CardRarity.rare => const Color(0xFF8B5CF6),
-    CardRarity.epic => const Color(0xFF3B82F6),
-    CardRarity.legendary => const Color(0xFFF7C948),
-  };
-
-  /// Card face gradient, top-left → bottom-right: each gem cast as a
-  /// metal — light jewel sheen into the royal tone into its deep shade.
-  List<Color> get faceGradient => switch (this) {
-    CardRarity.rare => const [
-      Color(0xFFCDB8FA),
-      Color(0xFF8B5CF6),
-      Color(0xFF36206B),
-    ],
-    CardRarity.epic => const [
-      Color(0xFFBFD6FD),
-      Color(0xFF3B82F6),
-      Color(0xFF14315E),
-    ],
-    CardRarity.legendary => const [
-      Color(0xFFFFF3C4),
-      Color(0xFFE9B93F),
-      Color(0xFF7A4E00),
-    ],
-  };
-
-  /// Text colour that stays readable on [faceGradient].
-  Color get ink => switch (this) {
-    CardRarity.legendary => const Color(0xFF2B1B00),
-    CardRarity.epic => const Color(0xFF0D1B36),
-    CardRarity.rare => const Color(0xFF1F0F45),
-  };
-
-  /// 1.0 for rare, up to 2.0 for legendary — scales particles, ray length
-  /// and glow so the better the pull, the bigger the show.
-  double get intensity => switch (this) {
-    CardRarity.rare => 1.0,
-    CardRarity.epic => 1.5,
-    CardRarity.legendary => 2.0,
-  };
 }
 
 /// Presentation-level card class (T-0049): the premium red treatment
@@ -427,4 +358,53 @@ ThemeData buildFcmTheme() {
       ),
     ),
   );
+}
+
+/// Presentation accents for [CardRarity] — kept beside the other style
+/// constants because they need Flutter's [Color].
+extension CardRarityAccent on CardRarity {
+  /// Main accent colour (glow, rays, particles): a jewel ladder — royal
+  /// amethyst, royal sapphire, radiant champion gold. Saturated enough
+  /// to read at a glance on the charcoal night, three clearly distinct
+  /// hues, and legendary still crowns the brand's own gold.
+  Color get accent => switch (this) {
+    CardRarity.rare => const Color(0xFF8B5CF6),
+    CardRarity.epic => const Color(0xFF3B82F6),
+    CardRarity.legendary => const Color(0xFFF7C948),
+  };
+
+  /// Card face gradient, top-left → bottom-right: each gem cast as a
+  /// metal — light jewel sheen into the royal tone into its deep shade.
+  List<Color> get faceGradient => switch (this) {
+    CardRarity.rare => const [
+      Color(0xFFCDB8FA),
+      Color(0xFF8B5CF6),
+      Color(0xFF36206B),
+    ],
+    CardRarity.epic => const [
+      Color(0xFFBFD6FD),
+      Color(0xFF3B82F6),
+      Color(0xFF14315E),
+    ],
+    CardRarity.legendary => const [
+      Color(0xFFFFF3C4),
+      Color(0xFFE9B93F),
+      Color(0xFF7A4E00),
+    ],
+  };
+
+  /// Text colour that stays readable on [faceGradient].
+  Color get ink => switch (this) {
+    CardRarity.legendary => const Color(0xFF2B1B00),
+    CardRarity.epic => const Color(0xFF0D1B36),
+    CardRarity.rare => const Color(0xFF1F0F45),
+  };
+
+  /// 1.0 for rare, up to 2.0 for legendary — scales particles, ray length
+  /// and glow so the better the pull, the bigger the show.
+  double get intensity => switch (this) {
+    CardRarity.rare => 1.0,
+    CardRarity.epic => 1.5,
+    CardRarity.legendary => 2.0,
+  };
 }

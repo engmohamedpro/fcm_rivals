@@ -3,19 +3,26 @@
 /// Owns the global player registry: importing datasets, validating required
 /// fields, applying update rules (regenerating Base Stats only when Market
 /// Value or Position changed) and detecting removed players so the caller can
-/// compensate owners with the normal selling formula.
+/// compensate owners with the normal selling formula. Pure Dart: no Flutter
+/// imports — the registry runs under plain `dart run` (the T-0060 probe).
 library;
 
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-
 import '../../core/domain/base_stats_generator.dart';
 import '../../core/domain/players.dart';
 
+/// Local stand-in for Flutter's `@immutable` (analyzer-only annotation):
+/// `@ImmutableMarker()` — const, zero runtime effect, keeps this file
+/// pure Dart so it runs under plain `dart run`.
+class ImmutableMarker {
+  final List<String> fields;
+  const ImmutableMarker([this.fields = const <String>[]]);
+}
+
 /// Raw player row as found in the importable dataset:
 /// [playerId, name, position, nationality, marketValueEur].
-@immutable
+@ImmutableMarker()
 class PlayerDatasetRow {
   const PlayerDatasetRow({
     required this.playerId,

@@ -33,6 +33,8 @@ import '../../core/ui/fcm_widgets.dart';
 import 'match_forecast.dart';
 import 'pre_match_analysis.dart';
 import 'pre_match_phases.dart';
+import 'pre_match_tactics_selection.dart';
+export 'pre_match_tactics_selection.dart' show PreMatchTacticSelection;
 import 'tactics.dart';
 
 /// Full-screen matchday build-up: analysis → tactics → pep talk → kick-off.
@@ -71,21 +73,6 @@ class PreMatchScreen extends StatefulWidget {
 
   @override
   State<PreMatchScreen> createState() => _PreMatchScreenState();
-}
-
-/// The tactic choices made in the pre-match tactics phase (GDD 10.4):
-/// MATCH-ONLY overrides — the session is built from them, and the club's
-/// saved default setup stays exactly as it was.
-class PreMatchTacticSelection {
-  const PreMatchTacticSelection({
-    required this.formationCode,
-    required this.tactics,
-    required this.mentality,
-  });
-
-  final String formationCode;
-  final TeamTactics tactics;
-  final Mentality mentality;
 }
 
 class _PreMatchScreenState extends State<PreMatchScreen> {

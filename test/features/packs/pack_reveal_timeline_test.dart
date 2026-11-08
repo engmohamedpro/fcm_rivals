@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
+import 'package:fcm_rivals/features/packs/pack_tier_colors.dart';
 import 'package:fcm_rivals/features/packs/pack_reveal_timeline.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/l10n/app_localizations_ar.dart';
