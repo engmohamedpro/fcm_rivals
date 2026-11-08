@@ -2,8 +2,8 @@
 id: T-0063
 title: Add generic enum-scale helpers for ordered tactics instructions
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-08
 completed:
@@ -49,5 +49,10 @@ Expected: analyze clean; the match feature suite including the new `tactics_scal
 ---
 
 ## Developer Notes
+
+- **Summary of changes:** the generic ordered-enum scale pair lives next to the mentality mapping in `team_tactics.dart`: `T enumFromScale<T extends Enum>(List<T> values, int value)` — `round(value.clamp(0, 100) * (n-1) / 100)`, Dart `.round()` (half away from zero), never truncation — and `int enumToScale<T extends Enum>(List<T> values, T value)` — `round(index * 100 / (n-1))`. `mentalityFromScale` / `mentalityToScale` now delegate to them (one code path, behaviour identical — the squad view mentality tests pass untouched). Nothing else changed: no UI, no new steps, no engine/balance edits; `FinalThirdApproach` and the offside trap stay categorical by design.
+- **Files changed:** lib/features/match/team_tactics.dart, test/features/match/tactics_scale_test.dart (new).
+- **How I tested it:** `flutter analyze` — No issues found. New `test/features/match/tactics_scale_test.dart` — **6/6 passed**: (1) every value of all ten axes (the nine GDD 10.2 axes + mentality) round-trips exactly; (2) every default maps to scale 50 (the slider's centre tick); (3) out-of-range scales (−5, 105) clamp to first/last on every axis; (4) 3-step boundaries: 25 → middle, 75 → last, plus the mirrored 24 → first / 26 → middle; (5) 7-step mentality boundaries: 58 → Balanced, 59 → Positive, canonical positions 0/17/33/50/67/83/100 spot-checked at 0/50/100; (6) the polarity table: scale 100 equals the aggressive/riskier step on all nine axes (longBall, fast, wide, high, high, aggressive, immediate, fast, aggressive) and the aggressive end maps back to 100 — a future enum reorder flips a slider only by failing CI first. `flutter test test/features/match/ test/features/squad/squad_view_test.dart --concurrency=1` — **187/187 passed** (existing mentality widget tests green, untouched).
+- **Concerns / assumptions:** none — pure model-layer addition; the helpers are the exact math the task specified, and the boundary numbers were verified against Dart rounding semantics in the test comments (round(0.5)=1, round(3.48)=3, round(3.54)=4).
 
 ## Review Log
