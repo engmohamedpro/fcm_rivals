@@ -2,8 +2,8 @@
 id: T-0061
 title: Mirror the tactic scale slider in RTL locales
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-08
 completed:
@@ -52,5 +52,10 @@ Expected: analyze clean; the new `fcm_scale_slider_test.dart` (RTL cases), the r
 ---
 
 ## Developer Notes
+
+- **Summary of changes:** `FcmScaleSlider` now mirrors under an ambient RTL direction, matching Flutter's own `Slider` convention. The direction resolves once per `didChangeDependencies` (`Directionality.of`) and drives: (1) the thumb position (`markerLeft` = mirrored x − radius), (2) the filled track (RTL: `left = rtlThumbX`, `width = w − rtlThumbX`, gradient flipped so the fill reads gold-soft→gold from the RIGHT), (3) the pill clamp anchor (mirrored thumb x, same clamp bounds), (4) the gesture mapping (`_updateFromDx` mirrors dx as `width − dx` in RTL, so the minimum sits at the RIGHT, dragging left increases the value, tap-to-set lands mirrored), (5) the pill `TextPainter` measures with the ambient direction so Arabic pill text lays out correctly. The centre tick needs no change (it sits at w/2 either way); the min/max caption `Row` flips child order under RTL automatically — verified by the pill-clamp test pumping Arabic captions, no forced textDirection needed.
+- **Files changed:** lib/core/ui/fcm_scale_slider.dart, test/core/ui/fcm_scale_slider_test.dart (new).
+- **How I tested it:** `flutter analyze` — No issues found. New `test/core/ui/fcm_scale_slider_test.dart` — **5/5 passed**: RTL value 0 → thumb anchored at the RIGHT end; RTL centre drag LEFT raises the value (and drag RIGHT lowers it); RTL tap near the right edge sets a low value (< 20); the pill with a long Arabic label stays clamped inside the slider bounds and rides above the track; LTR baseline value 0 → thumb at the LEFT end (the untouched pre-T-0061 behaviour). `flutter test test/core/ui/ test/features/squad/squad_view_test.dart --concurrency=1` — **37/37 passed**, the squad view mentality-slider suite untouched and green (LTR behaviour identical).
+- **Concerns / assumptions:** (1) The thumb is located in tests as the rightmost/leftmost ≤22px decorated container inside the slider — stable against the pill (22px tall band but wide) and captions; if the marker styling ever changes size the finder tolerance (6px) absorbs small drift. (2) No styling/colour changed anywhere (Out of Scope) — only geometry mirroring and direction-aware measuring. (3) Snapping (T-0062) and the nine instruction axes (T-0064) are untouched; this task leaves the component reusable exactly as the T-0061→T-0062 dependency chain expects.
 
 ## Review Log
