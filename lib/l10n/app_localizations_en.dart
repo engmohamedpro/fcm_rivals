@@ -386,4 +386,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cardClassPremium => 'PREMIUM';
+
+  @override
+  String get revealBannerPremium => 'PREMIUM PULL!';
 }

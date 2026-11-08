@@ -95,6 +95,10 @@ extension _PackRevealViews on _PackOpeningScreenState {
   Widget _buildCaption(double t) {
     // 'A LEGEND IS COMING…' while the silhouette rises and the first
     // clues land; 'WHO IS IT?' while the stats count and the name waits.
+    // The second line's END tracks the ACTIVE timeline's name reveal —
+    // the premium reveal (T-0050) starts its name earlier in the master
+    // fraction than the golden one, so the caption must hand over to it.
+    final activeNameStart = _tl.nameIn.begin;
     final a =
         Interval(0.21, 0.25).transform(t) *
         (1 - Interval(0.56, 0.60).transform(t));
@@ -102,8 +106,8 @@ extension _PackRevealViews on _PackOpeningScreenState {
         Interval(0.76, 0.80).transform(t) *
         (1 -
             Interval(
-              kLegendaryNameStart - 0.015,
-              kLegendaryNameStart + 0.01,
+              activeNameStart - 0.015,
+              activeNameStart + 0.01,
             ).transform(t));
     Widget line(String text, double opacity) => Opacity(
       opacity: opacity.clamp(0.0, 1.0),

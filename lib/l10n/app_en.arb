@@ -166,5 +166,6 @@
   "injuryCommentarySerious": "{player} suffers a serious injury. That doesn't look good.",
   "injuryCommentaryPlaysShort": " They have no replacement and play a man short.",
   "statInjuries": "Injuries",
-  "cardClassPremium": "PREMIUM"
+  "cardClassPremium": "PREMIUM",
+  "revealBannerPremium": "PREMIUM PULL!"
 }

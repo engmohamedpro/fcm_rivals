@@ -44,6 +44,7 @@ import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
 import '../economy/economy_engine.dart';
+import '../../l10n/l10n_context.dart';
 import 'pack_effects.dart';
 import 'pack_opening_widgets.dart';
 import 'pack_reveal_timeline.dart';
@@ -159,9 +160,26 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   BasePlayer get _player => widget.players[_index];
 
-  /// The timeline the current player runs on: legendary pulls get the
-  /// long, dramatic one.
-  RevealTimeline get _tl => _rarity == CardRarity.legendary ? RevealTimeline.legendaryTimeline : RevealTimeline.normalTimeline;
+  /// The presentation-level class axis (T-0049): a 90+ pull is premium.
+  CardClass get _cardClass =>
+      CardClass.fromOverall(_player.baseStats.overall);
+
+  bool get _isPremium => _cardClass == CardClass.premium;
+
+  /// The reveal-show intensity (T-0050): premium escalates one notch
+  /// above the legendary 2.0 through the same mechanisms.
+  double get _intensity =>
+      _isPremium ? kPremiumRevealIntensity : _rarity.intensity;
+
+  /// The effective accent: the premium red for 90+ pulls, the rarity's
+  /// jewel otherwise — one colour source for charge, rays and sparks.
+  Color get _accent => _isPremium ? _cardClass.accent : _rarity.accent;
+
+  /// The timeline the current player runs on: premium (90+) gets the red
+  /// escalation, legendary (80-89) the golden one, rare/epic the
+  /// ordinary one.
+  RevealTimeline get _tl =>
+      RevealTimeline.revealTimelineFor(_rarity, _cardClass);
 
   /// SELL exists only when the caller wired the sale and this draw has an
   /// owned id — preview draws (key men) have nothing to sell.
@@ -243,8 +261,11 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   void _makeSparks() {
     final r = math.Random(_player.playerId * 31 + _index);
-    _sparks = List.generate((60 * _rarity.intensity).round(), (_) => Spark(r));
-    _finaleSparks = List.generate(90, (_) => Spark(r));
+    _sparks = List.generate((60 * _intensity).round(), (_) => Spark(r));
+    // The premium wave re-fires the finale set a second time — a bounded
+    // richer burst (worst case 156 + 120 = 276 particles, printed by the
+    // timeline test).
+    _finaleSparks = List.generate(_isPremium ? 120 : 90, (_) => Spark(r));
   }
 
   @override
@@ -307,6 +328,8 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   Widget _buildStage(BuildContext context, CardRarity rarity) {
     final tl = _tl;
     final legend = tl.isLegend;
+    final premium = _isPremium;
+    final accent = _accent;
     final t = _seq.value;
     final size = MediaQuery.sizeOf(context);
     final isFirst = _index == 0;
@@ -319,6 +342,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     // Finale progress (legendary only): 0 until the name has landed, 1
     // once the sequence ends.
     final fin = legend ? tl.finale!.transform(t) : 0.0;
+    // The premium escalation beat (T-0050): the SECOND, harder wave
+    // right after the first one — same sparks, same rings, replayed.
+    final fin2 = premium ? tl.finale2!.transform(t) : 0.0;
 
     // Flash: ramps up to the burst, then fades.
     double flash = 0;
@@ -337,19 +363,25 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
           : (1 - (fin - 0.12) / 0.4).clamp(0.0, 1.0);
       flash = math.max(flash, 0.85 * pop);
     }
+    if (premium && fin2 > 0) {
+      // The second wave pops harder than the first.
+      final pop2 = fin2 < 0.10 ? fin2 / 0.10 : (1 - (fin2 - 0.10) / 0.3).clamp(0.0, 1.0);
+      flash = math.max(flash, 0.95 * pop2);
+    }
 
     var raysStrength =
-        tl.raysIn.transform(t) * (0.55 + 0.25 * rarity.intensity);
+        tl.raysIn.transform(t) * (0.55 + 0.25 * _intensity);
     if (legend) {
       // Light leaks around the pack while it charges, and the rays flare
-      // again for the finale.
-      raysStrength = math.max(raysStrength, 0.35 * charge) + 0.35 * fin;
+      // again for the finale — twice on the premium reveal.
+      raysStrength =
+          math.max(raysStrength, 0.35 * charge) + 0.35 * fin + 0.40 * fin2;
     }
     // The charge glow starts from the pack's own tier metal and moves
     // toward the drawn card's rarity colour as the pack heats up.
     final glowTint = Color.lerp(
       widget.packTint ?? FcmColors.goldSoft,
-      rarity.accent,
+      accent,
       math.min(1.0, charge * 1.2),
     )!;
 
@@ -396,7 +428,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
               colors: [
                 Color.lerp(
                   FcmColors.surface,
-                  rarity.accent,
+                  accent,
                   0.30 * (isFirst ? charge : 1.0),
                 )!,
                 FcmColors.night,
@@ -409,7 +441,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             rotation: _spin.value,
             color: glowTint,
             strength: raysStrength.clamp(0.0, 1.0),
-            rays: legend ? 22 : 14,
+            rays: premium ? 26 : (legend ? 22 : 14),
           ),
         ),
 
@@ -434,11 +466,12 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         // Sealed pack.
         if (showPack) Center(child: _buildPack(t, charge, glowTint, size, tl)),
 
-        // Shock rings: the burst's pressure wave, and again at the finale.
+        // Shock rings: the burst's pressure wave, and again at the finale
+        // — twice on the premium reveal (the second wave hits harder).
         if (legend)
           IgnorePointer(
             child: CustomPaint(
-              painter: ShockwavePainter(progress: shock, color: rarity.accent),
+              painter: ShockwavePainter(progress: shock, color: accent),
             ),
           ),
         if (legend)
@@ -446,8 +479,18 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             child: CustomPaint(
               painter: ShockwavePainter(
                 progress: fin,
-                color: rarity.accent,
-                rings: 4,
+                color: accent,
+                rings: premium ? 5 : 4,
+              ),
+            ),
+          ),
+        if (premium && fin2 > 0)
+          IgnorePointer(
+            child: CustomPaint(
+              painter: ShockwavePainter(
+                progress: fin2,
+                color: accent,
+                rings: 3,
               ),
             ),
           ),
@@ -458,7 +501,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             painter: ParticleBurstPainter(
               progress: (isFirst || legend) ? burst : 0,
               sparks: _sparks,
-              color: rarity.accent,
+              color: accent,
             ),
           ),
         ),
@@ -468,7 +511,17 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
               painter: ParticleBurstPainter(
                 progress: fin,
                 sparks: _finaleSparks,
-                color: rarity.accent,
+                color: accent,
+              ),
+            ),
+          ),
+        if (premium && fin2 > 0)
+          IgnorePointer(
+            child: CustomPaint(
+              painter: ParticleBurstPainter(
+                progress: fin2,
+                sparks: _finaleSparks,
+                color: accent,
               ),
             ),
           ),
@@ -504,7 +557,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                   gradient: RadialGradient(
                     colors: [
                       Colors.white.withValues(alpha: 0.6 * edge),
-                      rarity.accent.withValues(alpha: 0.28 * edge),
+                      accent.withValues(alpha: 0.28 * edge),
                       Colors.transparent,
                     ],
                   ),
@@ -538,17 +591,19 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                     (0.8 + 0.2 * bannerT) *
                     (legend ? 1.0 + 0.04 * pulse(_idle.value, cycles: 2) : 1.0),
                 child: Text(
-                  rarity == CardRarity.legendary
+                  premium
+                      ? l10nOf(context).revealBannerPremium
+                      : rarity == CardRarity.legendary
                       ? 'LEGENDARY PULL!'
                       : 'EPIC PULL!',
                   style: TextStyle(
-                    color: rarity.accent,
+                    color: accent,
                     fontSize: legend ? 26 : 22,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 4,
                     shadows: [
                       Shadow(
-                        color: rarity.accent.withValues(alpha: 0.9),
+                        color: accent.withValues(alpha: 0.9),
                         blurRadius: legend ? 30 : 22,
                       ),
                     ],
@@ -564,7 +619,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             child: ColoredBox(
               color: Color.lerp(
                 FcmColors.goldSoft,
-                rarity.accent,
+                accent,
                 0.25,
               )!.withValues(alpha: flash),
             ),

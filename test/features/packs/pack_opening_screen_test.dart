@@ -50,7 +50,7 @@ Future<void> _revealAll(WidgetTester tester) async {
 }
 
 /// A legendary pull (82+): rating 91, runs the long 17s sequence.
-BasePlayer _legend() => _player(overall: 91);
+BasePlayer _legend() => _player(overall: 89);
 
 void main() {
   testWidgets('the pack tears itself open immediately — no tap, no wait', (
@@ -369,5 +369,38 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('KEEP PLAYER'), findsOneWidget);
     expect(find.text('RARE'), findsOneWidget);
+  });
+
+  testWidgets('premium 90+ pull: the red timeline — mystery caption, '
+      'localized PREMIUM banner, the reveal outlives the golden 17s', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: PackOpeningScreen(players: [_player(overall: 91)])),
+    );
+    await _autoOpen(tester);
+
+    // The mystery caption is up on the premium pacing (mysteryIn
+    // 0.19-0.27 of the 20s timeline).
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('A LEGEND IS COMING…'), findsOneWidget);
+
+    // Where the GOLDEN reveal is already done (17s), the red one is
+    // still holding the name back — longer by design, not padding.
+    await tester.pump(const Duration(seconds: 11));
+    expect(find.text('WHO IS IT?'), findsOneWidget);
+    expect(find.text('TEST STRIKER'), findsNothing);
+
+    // The name lands with the localized premium banner; the caption has
+    // handed over (nameIn starts at 0.865 of 20s).
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('PREMIUM PULL!'), findsOneWidget);
+    expect(find.text('TEST STRIKER'), findsOneWidget);
+    expect(find.text('WHO IS IT?'), findsNothing);
+
+    // The second finale wave (finale2 0.975-1.0) fires AFTER the
+    // buttons are up — the sequence runs to its end without crashing.
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('PREMIUM PULL!'), findsOneWidget);
   });
 }

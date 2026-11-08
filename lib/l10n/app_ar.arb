@@ -119,5 +119,6 @@
   "injuryCommentarySerious": "{player} يتعرض لإصابة خطيرة. الوضع لا يبدو جيدًا.",
   "injuryCommentaryPlaysShort": " لا يوجد بديل عنه وسيكمل الفريق ناقصًا.",
   "statInjuries": "الإصابات",
-  "cardClassPremium": "نخبة"
+  "cardClassPremium": "نخبة",
+  "revealBannerPremium": "سحب النخبة!"
 }
