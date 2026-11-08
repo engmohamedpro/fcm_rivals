@@ -2,11 +2,11 @@
 id: T-0059
 title: Draw packs through the two-stage rarity engine with market-value weighting
 priority: critical
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0058]
 created: 2026-11-08
-completed:
+completed: 2026-11-08
 ---
 
 # T-0059: Draw packs through the two-stage rarity engine with market-value weighting
@@ -39,14 +39,14 @@ Replace `PackEngine`'s MV-band tier roll with the owner's exact two-stage algori
 - DB schema or store-behavior changes.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] New two-stage tests green (reproducibility, distribution locks, exclusivity, boundaries, all requirement-6 edge cases); full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified — any new odds-sheet label exists in both ARB files and renders correctly
-- [ ] No performance or application-size regression (the per-(pool, scope) cache is retained; a 10,000-open soak stays fast and bounded)
-- [ ] Same seed reproduces the same draw sequence (test-locked); premium appears ONLY from legendary packs (test-locked over ≥ 2,000 opens each)
-- [ ] Legendary pack distribution 55/43/2 and the other tables' distributions band-locked by test
-- [ ] Prices re-derive automatically with no pricing-code change (global bands documented in the test)
-- [ ] `flutter test tool/simulation_report_test.dart` determinism PASS
+- [x] Compiles with zero analyzer warnings
+- [x] New two-stage tests green (reproducibility, distribution locks, exclusivity, boundaries, all requirement-6 edge cases); full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified — any new odds-sheet label exists in both ARB files and renders correctly
+- [x] No performance or application-size regression (the per-(pool, scope) cache is retained; a 10,000-open soak stays fast and bounded)
+- [x] Same seed reproduces the same draw sequence (test-locked); premium appears ONLY from legendary packs (test-locked over ≥ 2,000 opens each)
+- [x] Legendary pack distribution 55/43/2 and the other tables' distributions band-locked by test
+- [x] Prices re-derive automatically with no pricing-code change (global bands documented in the test)
+- [x] `flutter test tool/simulation_report_test.dart` determinism PASS
 
 ## How to Verify
 ```bash
@@ -72,3 +72,12 @@ Expected: analyzer clean; packs/collection/ui/domain suites green including the 
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-08, attempt 1: PASS
+- Environment: Flutter 3.47.9 stable / Dart 3.13.7 (the README pin), fresh clone of main @ `5613b71`, 2-core container.
+- Ran `flutter analyze` → `No issues found!` (zero warnings).
+- Ran every How to Verify command as per-directory suites (full command list below) — **830 tests, 0 failures**: `test/features/packs/` (+90), `test/core/ui/` + `test/core/domain/` (+69), `test/features/collection/` (+28, see environment note), `test/balance/` + `test/core/database/` + `test/features/economy/` + `test/features/ads/` (+122), `test/features/facilities/` + `test/features/ui/` + `test/features/upgrades/` + `test/widget_test.dart` (+32), `test/features/match/` (+174), `test/features/season/` (+59), `test/features/simulation/` + `test/features/player_database/` (+33), `test/features/squad/` (+222, see environment note), `tool/simulation_report_test.dart` (+1, determinism PASS).
+- Environment note (NOT a T-0059 defect, 7 tests not run here): `injury_surfaces_test.dart` and `injured_inert_test.dart` hang at file-load inside this constrained sandbox — the test isolate never starts; killing the run yields `Bad state: Cannot close sink while adding stream` from flutter_tools' test platform. Independence evidence: (1) both files were added by T-0056, whose commits postdate this task's submission and which is already blocked in `1-todo` with verification pending; (2) the hang happens at load, before any test body executes; (3) neither file imports any of this task's four changed lib files; (4) each file also hangs when run essentially alone, while all 830 other tests — including every widget test that loads the full dataset (e.g. `packs_screen_test.dart`) — pass. Proposed new task: investigate T-0056's dataset-seeding widget tests under constrained CI (rootBundle `loadString` + 20,876-row drift import inside the widget-test zone).
+- Acceptance criteria, one by one: analyzer clean ✔; `two_stage_draw_test.dart` green — seed reproducibility (plus a different-seeds-must-differ guard), 2,000-open per-table locks ±3pp with shares printed, premium exclusivity over ≥ 2,000 rare AND epic opens, 70/80/90 band-boundary integrity over the same batches, and every requirement-6 edge case (one-player band with no RNG consumed, identical MVs uniform, 10× spread star-reachable, mv ≤ 0 row at the floor weight, RM-style empty-band fallback booked under the rolled share, 10,000-open soak cycling 40 scopes through the 32-entry cache cap, `oddsFor` sum-1 with correct within-band ordering, EV price ladder) ✔; reworked `legendary_regrade_audit_test` (owner matrix + exclusivity + population/shelf assertions kept), `pack_tier_bands_test` (real-dataset bands, 20,000-open per-tier rates, price ladder) and `packs_and_generation_balance_test` all green ✔; EN `Rare/Epic/Legendary/Premium` + AR `نادر/ملحمي/أسطوري/نخبة` in both ARB files with generated localizations, odds-sheet widget tests green in EN and Arabic locale, chips atomic (no sentence interpolation → RTL-safe by construction) ✔; cache retained and exercised by the soak ✔; same-seed and premium-exclusivity locks as above ✔; legendary 0/55/43/2 and other tables band-locked in three independent suites ✔; prices re-derive with no pricing-code change — `packPriceFor` body unchanged except the margin lookup now reads `scope.rollTier(this)`, ladder locked 5k/10k/24k ±25% ✔; determinism PASS ✔; `CardRarity.values.length == 3` and the T-0049 pack-unchanged test ran UNMODIFIED in the core suite ✔.
+- Placement deviation (intent met): requirement 7 names `packs_screen_test.dart` as the price-anchor location; the ladder lock lives in `pack_tier_bands_test.dart` over the real dataset instead, and `packs_screen_test` asserts prices dynamically (nothing to re-anchor). Same for the odds sheet: it renders from `packs_store_widgets.dart`, the packs screen's grid cells — widget-locked through `PacksScreen` in both languages. Developer Notes disclosed both.
+- Scope: the diff (15 files) touches only the packs feature, its tests, the l10n files and a doc comment in `collection_results.dart`. No DB schema, store-behavior, reveal-animation, rarity-color, OVR-curve or economy-calibration changes. Working tree clean before and after the run.
