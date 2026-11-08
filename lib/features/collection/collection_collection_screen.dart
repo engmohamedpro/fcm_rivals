@@ -5,6 +5,7 @@ import '../../app/providers.dart';
 import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../../core/ui/injury_badge.dart';
 import '../../core/ui/player_card.dart' show kPlayerCardAspect;
 import '../../features/ads/ad_engine.dart' show AdEngine, AdRewardKind;
 import '../../features/economy/economy_engine.dart';
@@ -471,6 +472,17 @@ class _GridCard extends StatelessWidget {
                   right: -4,
                   bottom: 22,
                   child: FcmPill('XI', color: FcmColors.success),
+                ),
+              // Injured (T-0056): the shared badge over the card's top
+              // corner — red cross + matches-out count, direction-safe.
+              if (card.injuryMatchesRemaining > 0)
+                PositionedDirectional(
+                  top: 4,
+                  start: 4,
+                  child: InjuryBadge(
+                    matchesOut: card.injuryMatchesRemaining,
+                    size: 16,
+                  ),
                 ),
             ],
           );

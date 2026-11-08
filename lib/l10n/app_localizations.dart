@@ -817,6 +817,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Premium'**
   String get packRarityPremium;
+
+  /// No description provided for @injuryBadgeSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Injured, out for {n} matches'**
+  String injuryBadgeSemantics(int n);
+
+  /// No description provided for @injuryOutForMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Out for {n} matches'**
+  String injuryOutForMatches(int n);
+
+  /// No description provided for @injuryChipOut.
+  ///
+  /// In en, this message translates to:
+  /// **'OUT {n}'**
+  String injuryChipOut(int n);
+
+  /// No description provided for @prematchMedicalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical room'**
+  String get prematchMedicalTitle;
+
+  /// No description provided for @injuryStaminaRiskHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Low fitness raises injury risk.'**
+  String get injuryStaminaRiskHint;
+
+  /// No description provided for @injuryKindKnock.
+  ///
+  /// In en, this message translates to:
+  /// **'Knock'**
+  String get injuryKindKnock;
+
+  /// No description provided for @injuryKindMuscle.
+  ///
+  /// In en, this message translates to:
+  /// **'Muscle injury'**
+  String get injuryKindMuscle;
+
+  /// No description provided for @injuryKindSerious.
+  ///
+  /// In en, this message translates to:
+  /// **'Serious injury'**
+  String get injuryKindSerious;
+
+  /// No description provided for @reportInjuries.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} player(s) injured'**
+  String reportInjuries(int n);
 }
 
 class _AppLocalizationsDelegate

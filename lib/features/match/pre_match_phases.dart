@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n_context.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../squad/formations.dart';
@@ -79,6 +80,19 @@ class TacticsPhase extends StatelessWidget {
                   color: FcmColors.textDim,
                   fontSize: 12,
                   height: 1.4,
+                ),
+              ),
+              // T-0052 decoupling restated for the player (T-0056):
+              // fitness no longer weakens play — it signals injury risk.
+              const SizedBox(height: 4),
+              Text(
+                l10nOf(context).injuryStaminaRiskHint,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: FcmColors.danger,
+                  fontSize: 12,
+                  height: 1.4,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],

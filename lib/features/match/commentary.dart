@@ -341,6 +341,7 @@ List<CommentaryLine> generateCommentary(
             (playsShort
                 ? ' They have no replacement and play a man short.'
                 : '');
+        final matchesOut = e.metadata['matchesOut'];
         lines.add(
           CommentaryLine(
             minute: e.minute,
@@ -349,6 +350,10 @@ List<CommentaryLine> generateCommentary(
             importance: 2,
             kind: CommentaryKind.injury,
             side: e.side,
+            // T-0056: the live banner renders the matches-out chip from
+            // this payload — the ticker ignores it (it prints detail
+            // only for goal score lines).
+            detail: matchesOut == null ? null : '$matchesOut',
           ),
         );
       case MatchEventType.substitution:

@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../../core/domain/players.dart';
 import '../../core/ui/country_flag.dart';
 import '../../core/ui/fcm_style.dart';
+import '../../core/ui/injury_badge.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
 import '../../l10n/card_class_l10n.dart';
@@ -175,6 +176,33 @@ class _PlayerDetailSheet extends StatelessWidget {
               child: ownedCardView(card, width: cardWidth, glow: 0.8),
             ),
           ),
+          // Availability (T-0056): an injured player states it plainly,
+          // in the caller's language, right under the card.
+          if (card.injuryMatchesRemaining > 0) ...[
+            const SizedBox(height: 10),
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InjuryBadge(
+                    matchesOut: card.injuryMatchesRemaining,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10nOf(
+                      context,
+                    ).injuryOutForMatches(card.injuryMatchesRemaining),
+                    style: const TextStyle(
+                      color: FcmColors.danger,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           FcmEntrance(
             index: 1,

@@ -14,5 +14,6 @@
 /// (`commentary_ticker.dart`) — one moment at a time, lower-third style.
 library;
 
+export 'injury_live_banner.dart';
 export 'match_header.dart';
 export 'touchline_pep_talk.dart';

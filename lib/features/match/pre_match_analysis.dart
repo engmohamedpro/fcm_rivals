@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../../core/ui/injury_badge.dart';
+import '../../l10n/l10n_context.dart';
 import '../../core/ui/player_card.dart';
 import 'match_forecast.dart';
 
@@ -41,7 +43,94 @@ class AnalysisPhase extends StatelessWidget {
         FcmEntrance(index: 2, child: _StrengthCard(forecast: f)),
         const SizedBox(height: 12),
         FcmEntrance(index: 3, child: _TopPlayersCard(data: data)),
+        // The medical room (T-0056): who is out and for how long, before
+        // the user commits a lineup. Hidden entirely when everyone fits —
+        // no empty section.
+        if (data.userSquad.values.any((c) => c.injuryMatchesRemaining > 0))
+          ...[
+            const SizedBox(height: 12),
+            FcmEntrance(index: 4, child: _MedicalRoomCard(data: data)),
+          ],
       ],
+    );
+  }
+}
+
+/// The pre-match availability section (T-0056): every injured player of
+/// the user's squad with his badge and matches-out count, EN and AR.
+class _MedicalRoomCard extends StatelessWidget {
+  const _MedicalRoomCard({required this.data});
+
+  final PreMatchData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final injured =
+        data.userSquad.values
+            .where((c) => c.injuryMatchesRemaining > 0)
+            .toList()
+          ..sort((a, b) => a.injuryMatchesRemaining.compareTo(
+            b.injuryMatchesRemaining,
+          ));
+    return FcmPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.medical_services_outlined,
+                size: 16,
+                color: FcmColors.danger,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                l10nOf(context).prematchMedicalTitle,
+                style: const TextStyle(
+                  color: FcmColors.danger,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final c in injured)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  InjuryBadge(
+                    matchesOut: c.injuryMatchesRemaining,
+                    size: 15,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      c.base.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    l10nOf(
+                      context,
+                    ).injuryOutForMatches(c.injuryMatchesRemaining),
+                    style: const TextStyle(
+                      color: FcmColors.textDim,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -124,5 +124,18 @@
   "packRarityRare": "نادر",
   "packRarityEpic": "ملحمي",
   "packRarityLegendary": "أسطوري",
-  "packRarityPremium": "نخبة"
+  "packRarityPremium": "نخبة",
+  "injuryBadgeSemantics": "مصاب، خارج {n} مباراة",
+  "@injuryBadgeSemantics": {"placeholders": {"n": {"type": "int"}}},
+  "injuryOutForMatches": "خارج {n} مباراة",
+  "@injuryOutForMatches": {"placeholders": {"n": {"type": "int"}}},
+  "injuryChipOut": "خارج {n}",
+  "@injuryChipOut": {"placeholders": {"n": {"type": "int"}}},
+  "prematchMedicalTitle": "الغرفة الطبية",
+  "injuryStaminaRiskHint": "اللياقة المنخفضة تزيد خطر الإصابة.",
+  "injuryKindKnock": "ارتطام",
+  "injuryKindMuscle": "إصابة عضلية",
+  "injuryKindSerious": "إصابة خطيرة",
+  "reportInjuries": "{n} لاعب مصاب",
+  "@reportInjuries": {"placeholders": {"n": {"type": "int"}}}
 }

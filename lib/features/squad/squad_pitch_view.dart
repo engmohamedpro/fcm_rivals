@@ -117,13 +117,42 @@ class SquadPitch extends StatelessWidget {
                         width: box.width,
                         // A held player can be dropped on any slot: onto a
                         // player (swap) or onto an empty slot (move).
-                        child: SquadDropZone(
-                          target: card == null
-                              ? SquadDropTarget.xiSlot(slot)
-                              : SquadDropTarget.player(card),
-                          child: card == null
-                              ? _EmptySlot(position: fs.position, width: cardW)
-                              : SquadDraggable(
+                        child: card == null
+                            ? SquadDropZone(
+                                target: SquadDropTarget.xiSlot(slot),
+                                child: _EmptySlot(
+                                  position: fs.position,
+                                  width: cardW,
+                                ),
+                              )
+                            : card.injuryMatchesRemaining > 0
+                            ? // Injured (T-0056): visually marked and fully
+                              // inert — no pickup, no drop target, no swap.
+                              // The store refuses any squad save
+                              // referencing him (T-0055 backstop), so the
+                              // frozen slot is the honest rendering until
+                              // he recovers. Detail tap still works.
+                              FcmPressable(
+                                onTap: onPlayerTap == null
+                                    ? null
+                                    : () => onPlayerTap!(card),
+                                child: FcmMiniCard(
+                                  overall: card.overall,
+                                  position: card.position.code,
+                                  name: card.base.name.split(' ').last,
+                                  rarity: rarityOf(card),
+                                  width: cardW,
+                                  warn: fs.position != card.position,
+                                  stamina: showStamina
+                                      ? card.staminaPercent
+                                      : null,
+                                  stats: showStats ? statsOf(card) : null,
+                                  injuryMatchesOut: card.injuryMatchesRemaining,
+                                ),
+                              )
+                            : SquadDropZone(
+                                target: SquadDropTarget.player(card),
+                                child: SquadDraggable(
                                   card: card,
                                   feedbackSize: Size(
                                     slotW,
@@ -145,10 +174,12 @@ class SquadPitch extends StatelessWidget {
                                           ? card.staminaPercent
                                           : null,
                                       stats: showStats ? statsOf(card) : null,
+                                      injuryMatchesOut:
+                                          card.injuryMatchesRemaining,
                                     ),
                                   ),
                                 ),
-                        ),
+                              ),
                       );
                     }(),
                 ],
@@ -226,33 +257,53 @@ class SquadCardRow extends StatelessWidget {
                   );
           }
           final c = cards[i];
+          final injured = c.injuryMatchesRemaining > 0;
           return FcmEntrance(
             index: i,
             dx: 20,
             dy: 0,
-            child: SquadDropZone(
-              target: SquadDropTarget.player(c),
-              child: SquadDraggable(
-                card: c,
-                feedbackSize: Size(
-                  cardWidth + 12,
-                  cardWidth / kPlayerCardAspect + 20,
-                ),
-                feedback: _dragFeedback(c, cardWidth),
-                child: FcmPressable(
-                  onTap: onPlayerTap == null ? null : () => onPlayerTap!(c),
-                  child: FcmMiniCard(
-                    overall: c.overall,
-                    position: c.position.code,
-                    name: c.base.name.split(' ').last,
-                    rarity: rarityOf(c),
-                    width: cardWidth,
-                    stamina: showStamina ? c.staminaPercent : null,
-                    stats: showStats ? statsOf(c) : null,
+            child: injured
+                ? // Injured (T-0056): marked and inert in the strips too —
+                  // no pickup, no drop target.
+                  FcmPressable(
+                    onTap: onPlayerTap == null ? null : () => onPlayerTap!(c),
+                    child: FcmMiniCard(
+                      overall: c.overall,
+                      position: c.position.code,
+                      name: c.base.name.split(' ').last,
+                      rarity: rarityOf(c),
+                      width: cardWidth,
+                      stamina: showStamina ? c.staminaPercent : null,
+                      stats: showStats ? statsOf(c) : null,
+                      injuryMatchesOut: c.injuryMatchesRemaining,
+                    ),
+                  )
+                : SquadDropZone(
+                    target: SquadDropTarget.player(c),
+                    child: SquadDraggable(
+                      card: c,
+                      feedbackSize: Size(
+                        cardWidth + 12,
+                        cardWidth / kPlayerCardAspect + 20,
+                      ),
+                      feedback: _dragFeedback(c, cardWidth),
+                      child: FcmPressable(
+                        onTap: onPlayerTap == null
+                            ? null
+                            : () => onPlayerTap!(c),
+                        child: FcmMiniCard(
+                          overall: c.overall,
+                          position: c.position.code,
+                          name: c.base.name.split(' ').last,
+                          rarity: rarityOf(c),
+                          width: cardWidth,
+                          stamina: showStamina ? c.staminaPercent : null,
+                          stats: showStats ? statsOf(c) : null,
+                          injuryMatchesOut: c.injuryMatchesRemaining,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
           );
         },
       ),

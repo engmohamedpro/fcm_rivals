@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import 'fcm_style.dart';
 import 'fcm_widgets.dart' show ratingColor, staminaColor;
+import 'injury_badge.dart';
 import 'player_card_painters.dart';
 
 /// Compact card for the pitch and bench: rating, position, surname, an
@@ -28,6 +29,7 @@ class FcmMiniCard extends StatelessWidget {
     this.stamina,
     this.stats,
     this.ghost = false,
+    this.injuryMatchesOut,
   });
 
   final int overall;
@@ -52,6 +54,10 @@ class FcmMiniCard extends StatelessWidget {
   /// and bench read as a grid of same-shaped cards where the unassigned
   /// ones are simply see-through.
   final bool ghost;
+
+  /// Matches the player still misses (T-0056); null or ≤ 0 hides the
+  /// injury badge.
+  final int? injuryMatchesOut;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +95,20 @@ class FcmMiniCard extends StatelessWidget {
                   if (warn)
                     Positioned.fill(
                       child: CustomPaint(painter: _WarnPainter()),
+                    ),
+                  // The injury badge rides the shield's corner (T-0056):
+                  // red cross + matches-out count, pinned over the face
+                  // so it reads on every rarity ink.
+                  if (!ghost &&
+                      injuryMatchesOut != null &&
+                      injuryMatchesOut! > 0)
+                    PositionedDirectional(
+                      top: 2,
+                      start: 2,
+                      child: InjuryBadge(
+                        matchesOut: injuryMatchesOut!,
+                        size: math.max(10, width * 0.18),
+                      ),
                     ),
                   // The ghost draws no overall and no position — the card
                   // keeps the text slots' footprint but stays wordless.

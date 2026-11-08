@@ -171,5 +171,18 @@
   "packRarityRare": "Rare",
   "packRarityEpic": "Epic",
   "packRarityLegendary": "Legendary",
-  "packRarityPremium": "Premium"
+  "packRarityPremium": "Premium",
+  "injuryBadgeSemantics": "Injured, out for {n} matches",
+  "@injuryBadgeSemantics": {"placeholders": {"n": {"type": "int"}}},
+  "injuryOutForMatches": "Out for {n} matches",
+  "@injuryOutForMatches": {"placeholders": {"n": {"type": "int"}}},
+  "injuryChipOut": "OUT {n}",
+  "@injuryChipOut": {"placeholders": {"n": {"type": "int"}}},
+  "prematchMedicalTitle": "Medical room",
+  "injuryStaminaRiskHint": "Low fitness raises injury risk.",
+  "injuryKindKnock": "Knock",
+  "injuryKindMuscle": "Muscle injury",
+  "injuryKindSerious": "Serious injury",
+  "reportInjuries": "{n} player(s) injured",
+  "@reportInjuries": {"placeholders": {"n": {"type": "int"}}}
 }

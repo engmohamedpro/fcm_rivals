@@ -258,6 +258,32 @@ class _MatchReportViewState extends State<MatchReportView> {
                         ],
                       ),
                       const SizedBox(height: 8),
+                      // The injuries row (T-0056): who got hurt in numbers.
+                      if (report.commentary.any((l) => l.kind == CommentaryKind.injury))
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.medical_services_outlined,
+                              size: 14,
+                              color: FcmColors.danger,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              l10nOf(context).reportInjuries(
+                      report.commentary
+                          .where((l) => l.kind == CommentaryKind.injury)
+                          .length,
+                    ),
+                              style: const TextStyle(
+                                color: FcmColors.danger,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: 8),
                       // The recovery decision made on the full-time
                       // touchline card, restated as a status line.
                       if (widget.adBoostedRecovery)

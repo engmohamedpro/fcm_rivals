@@ -401,4 +401,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get packRarityPremium => 'Premium';
+
+  @override
+  String injuryBadgeSemantics(int n) {
+    return 'Injured, out for $n matches';
+  }
+
+  @override
+  String injuryOutForMatches(int n) {
+    return 'Out for $n matches';
+  }
+
+  @override
+  String injuryChipOut(int n) {
+    return 'OUT $n';
+  }
+
+  @override
+  String get prematchMedicalTitle => 'Medical room';
+
+  @override
+  String get injuryStaminaRiskHint => 'Low fitness raises injury risk.';
+
+  @override
+  String get injuryKindKnock => 'Knock';
+
+  @override
+  String get injuryKindMuscle => 'Muscle injury';
+
+  @override
+  String get injuryKindSerious => 'Serious injury';
+
+  @override
+  String reportInjuries(int n) {
+    return '$n player(s) injured';
+  }
 }

@@ -697,15 +697,21 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                           14,
                                           14,
                                         ),
-                                        child: CommentaryTicker(
-                                          line: _latest!,
-                                          homeColor: userIsHome
-                                              ? userColor
-                                              : opponentMomentumColor,
-                                          awayColor: userIsHome
-                                              ? opponentMomentumColor
-                                              : userColor,
-                                        ),
+                                        child: _latest!.kind ==
+                                              CommentaryKind.injury
+                                            ? // T-0056: the injury moment
+                                              // takes the lower third with
+                                              // its own red banner.
+                                              InjuryLiveBanner(line: _latest!)
+                                            : CommentaryTicker(
+                                                line: _latest!,
+                                                homeColor: userIsHome
+                                                    ? userColor
+                                                    : opponentMomentumColor,
+                                                awayColor: userIsHome
+                                                    ? opponentMomentumColor
+                                                    : userColor,
+                                              ),
                                       ),
                                     ],
                                   ),
