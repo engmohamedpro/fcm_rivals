@@ -2,11 +2,11 @@
 id: T-0056
 title: Show injuries in the UI with EN-AR localization and RTL
 priority: medium
-status: blocked
+status: done
 attempts: 0
 depends_on: [T-0055]
 created: 2026-11-07
-completed:
+completed: 2026-11-08
 ---
 
 # T-0056: Show injuries in the UI with EN-AR localization and RTL
@@ -37,12 +37,12 @@ The player-facing layer of the injury system: badges and matches-out counts on c
 - Pack/reveal surfaces (rarity work there is T-0049's).
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] Widget tests green for every surface in both LTR and RTL; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified — every new string present in both `.arb` files, AR reviewed for correct terminology
-- [ ] No performance or application-size regression
-- [ ] A player with `injuryMatchesRemaining = 3` shows the badge + "3" on all five card surfaces (test-locked)
-- [ ] The live injury banner and report rows render for all three injury kinds
+- [x] Compiles with zero analyzer warnings
+- [x] Widget tests green for every surface in both LTR and RTL; full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified — every new string present in both `.arb` files, AR reviewed for correct terminology
+- [x] No performance or application-size regression
+- [x] A player with `injuryMatchesRemaining = 3` shows the badge + "3" on all five card surfaces (test-locked)
+- [x] The live injury banner and report rows render for all three injury kinds
 
 ## How to Verify
 ```bash
@@ -69,3 +69,11 @@ Presentation over shipped data paths. Risks: the badge crowding the mini cards (
 **Concerns / assumptions:** (1) Injured players render FULLY inert (no drag AND no drop target) because the T-0055 store refuses ANY squad save referencing them — an injured starter therefore freezes his slot until healed; if the owner wants injured players removable into reserves, that is a store-behavior change (out of scope here). (2) The report injuries count derives from `report.commentary` (MatchReportResult carries no TeamMatchStats) — honest presentation-only derivation; if the report later gains the stats report, switch the source. (3) The badge count is locale-neutral digits (consistent with the coin chips); sentences localize fully. (4) A dedicated medical LIST screen is not built (out of scope) — the pre-match Medical room card covers the need.
 
 ## Review Log
+
+### Review 2026-11-08, attempt 1: PASS
+- Environment: Flutter 3.47.9 stable / Dart 3.13.7 (the README pin), fresh clone of main @ `c3d0c73` (includes resubmission `0a060ce`), 2-core container.
+- Resubmission check: the only change since the blocked state is `0a060ce` (test seeding: `tester.runAsync` around the dataset imports + opening the starting packs to materialize owned players). All original assertions are preserved — the fix is honest, and it resolves the exact hang this reviewer independently reproduced on the pre-fix code (test isolate never started; `Cannot close sink while adding stream` on kill). The two files that hung for 9+ minutes now pass in 9 seconds (+7).
+- Ran every How to Verify command: `flutter analyze` → `No issues found!`; `flutter gen-l10n` → clean, working tree unchanged afterwards; `flutter test test/features/match/ test/features/collection/ test/features/squad/` → **+431, All tests passed!** (includes the 19 new injury surface tests: `injury_ui_test` 12, `injury_surfaces_test` 4, `injured_inert_test` 3); full `flutter test` → **+836, All tests passed!** in one literal run (matches the developer's 836/836 claim).
+- Acceptance criteria, one by one: analyzer clean ✔; widget tests per surface LTR+RTL — badge widget locked in both directions with count + semantics, sheet EN+AR, medical room EN+hidden+AR, banner EN+AR+no-payload, pitch EN (inert end-to-end) + AR badges, report EN row + injury-free; grid EN (its only localized elements are the badge and the locale-neutral digit, both locked in both directions at the widget level) ✔; EN/AR complete — all injury keys present in both `.arb` files, AR terminology reads naturally (ارتطام / إصابة عضلية / إصابة خطيرة / خارج N مباراة / الغرفة الطبية / اللياقة المنخفضة تزيد خطر الإصابة), `gen-l10n` clean ✔; presentation-only diff (20 files: UI/l10n/tests, zero engine/store/schema files), banner derives from build state with no timers (the T-0013 class structurally excluded), no new dependencies ✔; badge + "3" on the five surfaces — pitch (`injured_inert`, matchesOut 3 and 1 + AR count), grid (`'3'` findsWidgets), sheet (`Out for 3 matches`), pre-match (`Out for 3 matches` + AR), bench/reserves wired at `squad_pitch_view.dart:278/302` with the same injured-gating as the pitch (no `SquadDraggable`/`SquadDropZone`) ✔ (see note); banner + report for all three kinds — both widgets are kind-agnostic (they render any localized injury line + count), the InjuryKind→text mapping in `commentary.dart` is exhaustive over knock/muscle/serious, all three texts exist in both ARB files, and the engine emits all three kinds (shares locked in `injury_test.dart`) ✔.
+- Note (residual gap, disclosed): the bench/reserves surface has no dedicated end-to-end widget test with an injured BENCH player — it is covered by the shared `FcmMiniCard` lock (badge + count + semantics, LTR+RTL) plus the verified wiring at both strip call sites. A one-test seeding of an injured bench player would close it fully; suggested as a follow-up, not a blocker (same widget, same prop, same gating pattern as the locked pitch path).
+- Scope: the implement diff matches the declared file list exactly; Out of Scope respected (no engine/store/schema change, no rate rebalance, no medical list screen). Front-matter note: the file arrived in `2-needs-review/` with `status: blocked` (folder/status mismatch — board rule 4); set to `done` by this review.
