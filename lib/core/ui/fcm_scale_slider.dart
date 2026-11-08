@@ -22,6 +22,13 @@ import 'fcm_style.dart';
 /// [onChanged] streams every intermediate position (the pill follows the
 /// drag live), [onChangeEnd] commits the gesture's final value — persist
 /// there, once per drag, not on every tick.
+///
+/// Stepped mode (T-0062, [steps]): for N named steps the marker follows
+/// the finger while dragging but both callbacks only ever report snapped
+/// step positions (`round(raw * (steps-1) / 100)` — the
+/// `mentalityFromScale` math, half away from zero), and on release the
+/// marker settles (~150 ms, interruptible by a new drag) onto the step.
+/// `steps: null` keeps the free continuous mode byte-identical.
 class FcmScaleSlider extends StatefulWidget {
   const FcmScaleSlider({
     super.key,
@@ -32,10 +39,15 @@ class FcmScaleSlider extends StatefulWidget {
     this.minLabel,
     this.maxLabel,
     this.semanticsLabel = 'Scale',
-  });
+    this.steps,
+  }) : assert(steps == null || steps >= 2, 'a scale needs >= 2 steps');
 
   /// Current position, 0–100; the centre (50) is the default.
   final int value;
+
+  /// Named-step count for stepped mode (3 → 0/50/100, 7 → the mentality
+  /// positions); null keeps the free continuous mode.
+  final int? steps;
 
   /// Continuous updates while the marker slides (tap-to-set included).
   final ValueChanged<int> onChanged;
@@ -61,11 +73,17 @@ class FcmScaleSlider extends StatefulWidget {
   State<FcmScaleSlider> createState() => _FcmScaleSliderState();
 }
 
-class _FcmScaleSliderState extends State<FcmScaleSlider> {
+class _FcmScaleSliderState extends State<FcmScaleSlider>
+    with SingleTickerProviderStateMixin {
   static const double _thumbRadius = 10;
   static const double _trackHeight = 8;
   static const double _pillBandHeight = 22;
   static const double _bandHeight = 24;
+
+  /// How long the marker takes to settle onto the snapped step after a
+  /// release (T-0062) — short enough to feel crisp, long enough to read
+  /// as a settle.
+  static const Duration _settleDuration = Duration(milliseconds: 150);
 
   static const TextStyle _pillTextStyle = TextStyle(
     color: FcmColors.ink,
@@ -75,7 +93,42 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
     height: 1.1,
   );
 
-  late int _value = widget.value;
+  /// The last REPORTED position — snapped in stepped mode, raw in free
+  /// mode. What [widget.onChanged]/[widget.onChangeEnd] speak.
+  late int _value = widget.steps == null
+      ? widget.value
+      : _snapToStep(widget.value);
+
+  /// The marker's geometric position (0–100, fractional): follows the
+  /// finger while dragging, rides the settle animation on release, and
+  /// rests on the (snapped) value otherwise.
+  late double _display = _value.toDouble();
+
+  /// Drives the post-release settle; a new drag stops it mid-flight
+  /// (interruptible by design).
+  late final AnimationController _settle = AnimationController(
+    vsync: this,
+    duration: _settleDuration,
+  );
+  double _settleFrom = 0;
+  double _settleTo = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _settle.addListener(() {
+      final eased = Curves.easeOut.transform(_settle.value);
+      setState(() {
+        _display = _settleFrom + (_settleTo - _settleFrom) * eased;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _settle.dispose();
+    super.dispose();
+  }
 
   /// The ambient text direction, resolved once per dependency change —
   /// every horizontal position and the gesture mapping mirror in RTL
@@ -96,29 +149,85 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
   void didUpdateWidget(FcmScaleSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Follow the owner's position unless it is just echoing our own
-    // drag back at us.
+    // drag back at us. Stepped mode snaps incoming values so an
+    // off-step external value can never park the marker between steps.
     if (widget.value != oldWidget.value && widget.value != _value) {
-      _value = widget.value;
+      _value = widget.steps == null
+          ? widget.value
+          : _snapToStep(widget.value);
+      _display = _value.toDouble();
     }
+  }
+
+  /// The snapped step position for a raw 0–100 position in stepped
+  /// mode — the exact `mentalityFromScale` math (Dart `.round()`, half
+  /// away from zero, never truncation): 3 steps → 0/50/100, 7 steps →
+  /// 0/17/33/50/67/83/100.
+  int _snapToStep(int raw) {
+    final steps = widget.steps!;
+    final index = (raw.clamp(0, 100) * (steps - 1) / 100).round();
+    return (index * 100 / (steps - 1)).round();
+  }
+
+  /// Animates the marker onto [target] after a release; a new drag
+  /// start stops the controller mid-flight and takes over [_display].
+  void _settleOnto(double target) {
+    if (widget.steps == null) return;
+    _settleFrom = _display;
+    _settleTo = target;
+    if (_settleFrom == _settleTo) return;
+    _settle.forward(from: 0);
   }
 
   /// Maps a touch x to the 0–100 position and reports it. [commit] marks
   /// the gesture's end (tap release) — a drag commits via its own end
-  /// callback with [_value].
-  void _updateFromDx(double dx, double width, {required bool commit}) {
+  /// callback with [_value]. [jumpToRaw] lets taps settle from the
+  /// marker's current spot instead of flashing at the raw tap position.
+  void _updateFromDx(
+    double dx,
+    double width, {
+    required bool commit,
+    bool jumpToRaw = true,
+  }) {
     final span = width - _thumbRadius * 2;
     // RTL mirrors the gesture axis: x measured from the RIGHT edge, so
     // dragging towards the left INCREASES the value.
     final effective = _isRtl ? width - dx : dx;
-    final v =
-        (((effective - _thumbRadius) / span) * 100).round().clamp(0, 100);
-    if (v == _value) {
+    final raw = (((effective - _thumbRadius) / span) * 100)
+        .clamp(0.0, 100.0);
+
+    // Free continuous mode — today's behaviour, byte-identical.
+    if (widget.steps == null) {
+      final v = raw.round();
+      if (v == _value) {
+        if (commit) widget.onChangeEnd?.call(v);
+        return;
+      }
+      setState(() {
+        _value = v;
+        _display = v.toDouble();
+      });
+      widget.onChanged(v);
       if (commit) widget.onChangeEnd?.call(v);
       return;
     }
-    setState(() => _value = v);
-    widget.onChanged(v);
-    if (commit) widget.onChangeEnd?.call(v);
+
+    // Stepped mode: the marker follows the finger (raw) but the value
+    // — and both callbacks — only ever land on step positions.
+    final v = _snapToStep(raw.round());
+    final valueChanged = v != _value;
+    final displayChanged = jumpToRaw && _display != raw;
+    if (valueChanged || displayChanged) {
+      setState(() {
+        if (valueChanged) _value = v;
+        if (jumpToRaw) _display = raw;
+      });
+      if (valueChanged) widget.onChanged(v);
+    }
+    if (commit) {
+      widget.onChangeEnd?.call(v);
+      _settleOnto(v.toDouble());
+    }
   }
 
   /// Width of the label pill (text + padding), for clamping it inside
@@ -135,6 +244,22 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
     return w;
   }
 
+  /// The track x for a 0–1 fraction, mirroring in RTL (T-0061 seam):
+  /// the fraction's LTR x, flipped around the centre when the ambient
+  /// direction is RTL.
+  double _xFor(double fraction, double width) {
+    final ltr = _thumbRadius + fraction * (width - _thumbRadius * 2);
+    return _isRtl ? width - ltr : ltr;
+  }
+
+  /// The snapped step positions of stepped mode, 0–100 — with 3 steps
+  /// [0, 50, 100], with 7 the mentality positions [0, 17, 33, 50, 67,
+  /// 83, 100] (`round(index * 100 / (steps-1))`).
+  List<int> get _stepPositions => [
+    for (var i = 0; i < widget.steps!; i++)
+      (i * 100 / (widget.steps! - 1)).round(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final label = widget.valueLabel(_value);
@@ -145,7 +270,10 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final w = constraints.maxWidth;
-          final f = _value / 100;
+          // The marker's live position — the finger's raw position while
+          // dragging, the settle animation in flight, the snapped value
+          // at rest (stepped mode); the raw value at rest (free mode).
+          final f = _display / 100;
           // LTR geometry, computed once; the RTL positions below mirror
           // it around the track's centre (T-0061): min at the right,
           // fill growing right-to-left, pill clamped the same way.
@@ -201,16 +329,35 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
                 ),
               ),
               const SizedBox(height: 4),
-              // The track band: gesture surface, track, centre tick, thumb.
+              // The track band: gesture surface, track, ticks, thumb.
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapUp: (d) =>
                     _updateFromDx(d.localPosition.dx, w, commit: true),
-                onHorizontalDragStart: (d) =>
-                    _updateFromDx(d.localPosition.dx, w, commit: false),
+                onHorizontalDragStart: (d) {
+                  // A new drag interrupts any settle mid-flight — the
+                  // finger takes the marker over from wherever it is.
+                  _settle.stop();
+                  _updateFromDx(
+                    d.localPosition.dx,
+                    w,
+                    commit: false,
+                    jumpToRaw: false,
+                  );
+                },
                 onHorizontalDragUpdate: (d) =>
                     _updateFromDx(d.localPosition.dx, w, commit: false),
-                onHorizontalDragEnd: (_) => widget.onChangeEnd?.call(_value),
+                onHorizontalDragEnd: (_) {
+                  if (widget.steps == null) {
+                    // Free mode: today's commit, no animation.
+                    widget.onChangeEnd?.call(_value);
+                    return;
+                  }
+                  // Stepped mode: commit the snapped step, then settle
+                  // the marker onto it.
+                  widget.onChangeEnd?.call(_value);
+                  _settleOnto(_value.toDouble());
+                },
                 child: SizedBox(
                   height: _bandHeight,
                   child: Stack(
@@ -258,19 +405,39 @@ class _FcmScaleSliderState extends State<FcmScaleSlider> {
                           ),
                         ),
                       ),
-                      // Centre tick: the scale's default mark.
-                      Positioned(
-                        left: w / 2 - 1,
-                        width: 2,
-                        top: (_bandHeight - 12) / 2,
-                        height: 12,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.38),
-                            borderRadius: BorderRadius.circular(1),
+                      // Step ticks: one small mark at every named step
+                      // position (stepped mode) — 3 steps → 0/50/100,
+                      // 7 → the mentality positions. The centre (50) is
+                      // always among them, replacing the free mode's
+                      // lone centre tick.
+                      if (widget.steps != null) ...[
+                        for (final s in _stepPositions)
+                          Positioned(
+                            left: _xFor(s / 100, w) - 1,
+                            width: 2,
+                            top: (_bandHeight - 12) / 2,
+                            height: 12,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.38),
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                            ),
+                          ),
+                      ] else
+                        // Centre tick: the free scale's default mark.
+                        Positioned(
+                          left: w / 2 - 1,
+                          width: 2,
+                          top: (_bandHeight - 12) / 2,
+                          height: 12,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.38),
+                              borderRadius: BorderRadius.circular(1),
+                            ),
                           ),
                         ),
-                      ),
                       // The marker.
                       Positioned(
                         left: markerLeft,

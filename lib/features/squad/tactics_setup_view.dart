@@ -444,6 +444,13 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
                   children: [
                     FcmScaleSlider(
                       value: _mentalityScale,
+                      // Stepped mode (T-0062): the seven mentalities are
+                      // the scale's named steps — the marker follows the
+                      // finger but only ever commits/rests on a step,
+                      // and the reported scale is always a step
+                      // position, so mentalityFromScale(scale) maps
+                      // exactly as before.
+                      steps: Mentality.values.length,
                       valueLabel: (v) => mentalityFromScale(v).displayName,
                       minLabel: Mentality.veryDefensive.displayName,
                       maxLabel: Mentality.veryAttacking.displayName,
