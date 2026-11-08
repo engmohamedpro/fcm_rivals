@@ -46,8 +46,8 @@ void main() {
           reason: 'the premium reveal runs the whole golden stagecraft');
     });
 
-    test('the premium duration sits in the 18-22s band; the other two '
-        'timelines are unchanged from the T-0049 state', () {
+    test('the premium duration sits in the 18-22s band; ordinary stays '
+        '8s and golden is the T-0051 tightened 13s', () {
       final ms = RevealTimeline.premiumTimeline.duration.inMilliseconds;
       // ignore: avoid_print
       print('T-0050 premium reveal duration: ${ms / 1000}s');
@@ -59,13 +59,106 @@ void main() {
       );
       expect(
         RevealTimeline.legendaryTimeline.duration,
-        const Duration(milliseconds: 17000),
+        const Duration(milliseconds: 13000),
       );
       // The intensity ladder extends to ≈2.6 (~30% above 2.0).
       // ignore: avoid_print
       print('T-0050 premium reveal intensity: $kPremiumRevealIntensity');
       expect(kPremiumRevealIntensity, greaterThan(2.0));
       expect(kPremiumRevealIntensity, lessThanOrEqualTo(2.6));
+    });
+  });
+
+  group('escalation ladder (T-0051)', () {
+    test('the three openings climb strictly on every axis, no tier more '
+        'than ~1.8× the previous one in duration', () {
+      final ordinary = RevealTimeline.normalTimeline;
+      final golden = RevealTimeline.legendaryTimeline;
+      final red = RevealTimeline.premiumTimeline;
+
+      final ordMs = ordinary.duration.inMilliseconds;
+      final goldMs = golden.duration.inMilliseconds;
+      final redMs = red.duration.inMilliseconds;
+      // ignore: avoid_print
+      print('T-0051 escalation ladder: '
+          'ordinary ${ordMs / 1000}s ×1.0 → '
+          'golden ${goldMs / 1000}s ×2.0 (sparks 60–90) → '
+          'red ${redMs / 1000}s ×2.6 (sparks 156, double finale)');
+
+      // Duration bands (acceptance criteria) and the perceptibility rule:
+      // each step at most ~1.8× the previous — length alone keeps
+      // signalling rarity without two tiers blurring together.
+      expect(ordMs, lessThanOrEqualTo(8000),
+          reason: 'the common case must stay snappy');
+      expect(goldMs, inInclusiveRange(12000, 14000),
+          reason: 'the tightened golden tier — never shorter than 12s');
+      expect(redMs, inInclusiveRange(18000, 22000));
+      expect(goldMs / ordMs, lessThanOrEqualTo(1.8));
+      expect(redMs / goldMs, lessThanOrEqualTo(1.8));
+
+      // Intensity: strictly increasing, red bounded at 3.0.
+      final intensities = [
+        CardRarity.rare.intensity,
+        CardRarity.epic.intensity,
+        CardRarity.legendary.intensity,
+        kPremiumRevealIntensity,
+      ];
+      expect(intensities.last, lessThanOrEqualTo(3.0));
+      for (var i = 1; i < intensities.length; i++) {
+        expect(intensities[i], greaterThan(intensities[i - 1]));
+      }
+
+      // Spark budget (60 × intensity) strictly increasing and bounded.
+      final sparks = intensities.map((x) => (60 * x).round()).toList();
+      for (var i = 1; i < sparks.length; i++) {
+        expect(sparks[i], greaterThan(sparks[i - 1]));
+      }
+      expect(sparks.last, lessThanOrEqualTo(300));
+
+      // Stagecraft density: haptic marks strictly increasing — the
+      // golden 16-mark pattern and the red 18-mark pattern both keep
+      // every beat (nothing deleted in the tightening).
+      final marks = [ordinary, golden, red]
+          .map((t) => t.heavy.length + t.medium.length + t.tick.length)
+          .toList();
+      expect(marks[0], 6);
+      expect(marks[1], 16);
+      expect(marks[2], 18);
+      expect(marks[1], greaterThan(marks[0]));
+      expect(marks[2], greaterThan(marks[1]));
+
+      // Distinct stagecraft beats: the golden extras (mystery, finale,
+      // banner) and the red's second finale wave.
+      final beats = [ordinary, golden, red].map((t) {
+        var n = 9; // charge, flash, burst, rays, walkout, flip, shine,
+        // stats, name.
+        if (t.mysteryIn != null) n++;
+        if (t.finale != null) n++;
+        if (t.bannerIn != null) n++;
+        if (t.finale2 != null) n++;
+        return n;
+      }).toList();
+      expect(beats, [9, 12, 13]);
+      expect(beats[1], greaterThan(beats[0]));
+      expect(beats[2], greaterThan(beats[1]));
+    });
+
+    test('epic rides the top of its band inside the shared ordinary '
+        'timeline (T-0051 audit)', () {
+      // The audit verdict: epic differs from rare ONLY through the
+      // intensity-driven mechanisms (90 vs 60 main sparks, hotter glow
+      // and rays keyed on the rarity accent) — the beat structure is
+      // shared by design, and 1.5 is already the top of epic's band, so
+      // the audit requires no change: the escalation reads through
+      // light density, and a new timeline or higher value is out of
+      // scope.
+      expect(CardRarity.epic.intensity, 1.5);
+      expect(CardRarity.epic.intensity, greaterThan(CardRarity.rare.intensity));
+      expect(
+        CardRarity.epic.intensity,
+        lessThan(CardRarity.legendary.intensity),
+        reason: 'epic stays below the golden tier it does not own',
+      );
     });
   });
 

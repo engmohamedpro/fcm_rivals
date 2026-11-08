@@ -2,8 +2,8 @@
 id: T-0051
 title: Rebalance the reveal escalation ladder - ordinary, golden, red
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0050]
 created: 2026-11-07
 completed:
@@ -52,5 +52,29 @@ Expected: analyzer clean; pack suites green; determinism PASS; the tests print t
 Pacing changes touch the timeline spec the existing golden tests lock — their timing assertions may need updating in step with the matrix (deliberate, named edits, as in T-0046). The red timeline's band may shift ±2s if the tightened golden tier compresses the perceived gap; keep the red band from T-0050 unless Developer Notes justify otherwise.
 
 ## Developer Notes
+
+**Summary** — The reveal escalation ladder is rebalanced: the golden timeline tightened 17s → **13s** (one production constant, `kLegendaryRevealDuration`), every golden beat kept at unchanged fractions — mystery, finale, banner, the 16-mark haptic pattern, the full walkout — so the pacing tightened and nothing was deleted; the red timeline owns the long-form slot unchallenged. Ordinary stays 8s (the common case stays snappy); the red band stays T-0050's 20s.
+
+**Escalation matrix (before → after)** — the printed ladder:
+`ordinary 8.0s ×1.0 (sparks 60–90) → golden 13.0s ×2.0 (sparks 120) → red 20.0s ×2.6 (sparks 156, double finale)`
+
+| Axis | ordinary (rare/epic) | golden (legendary 80-89) | red (premium 90+) |
+|---|---|---|---|
+| Duration | 8s → **8s** (unchanged) | 17s → **13s** | 20s → **20s** (unchanged) |
+| Ratio to previous tier | — | 2.13× → **1.63×** ✓ ≤1.8 | 1.18× → **1.54×** ✓ ≤1.8 |
+| Intensity | 1.0 (epic 1.5) → unchanged | 2.0 → unchanged | 2.6 → unchanged (≤3.0 ✓) |
+| Main sparks (60 × intensity) | 60 / 90 | 120 → unchanged | 156 → unchanged |
+| Haptic marks (heavy+medium+tick) | 6 → unchanged | 16 → unchanged | 18 → unchanged |
+| Distinct stagecraft beats | 9 → unchanged | 12 → unchanged | 13 → unchanged |
+
+Every axis strictly increasing; every duration step inside the ~1.8× perceptibility rule; test-locked in the new `escalation ladder (T-0051)` group.
+
+**Epic audit verdict (Req 3)** — epic shares the ordinary timeline with only the intensity mechanisms separating it from rare (90 vs 60 main sparks, hotter glow/rays keyed on the rarity accent at `pack_opening_screen.dart:342,:352`) — that separation is real in motion (light density, not beat structure) and 1.5 is already the TOP of epic's band, so no change: raising further is out of scope and a new timeline is forbidden. Locked by test (epic > rare, epic < legendary).
+
+**Files changed** — `lib/features/packs/pack_reveal_timeline.dart` (kLegendaryRevealDuration 17000→13000 + doc); `test/features/packs/pack_reveal_timeline_test.dart` (golden duration lock updated; new escalation-ladder group: bands, ratios, intensity/spark/beat monotonicity, epic audit); `test/features/packs/pack_opening_screen_test.dart` (named timing edits: the >2× assertion became >1× (1.625× is the new shape), and every golden pump re-derived at the SAME timeline fraction: 6100/4300/1500/1600/3700/1550ms — the walkout, flip-spoiler, name-redaction, banner and done assertions all hold their original semantics); `test/features/packs/packs_screen_test.dart` (comment).
+
+**How tested it** — `flutter analyze`: No issues found. `flutter test test/features/packs/`: **71 passed** including the ladder prints and both re-derived golden widget walks. `flutter test`: **798 passed** (2 more than T-0058's 796). `flutter test tool/simulation_report_test.dart`: PASS — determinism holds (timelines are pure constants; no RNG touched).
+
+**Concerns** — (1) The golden 13s master shortens every golden absolute cue (name lands at 11.6s instead of 15.1s) — the fraction-level pacing is untouched, but the human eye test in review should confirm the golden reveal doesn't feel RUSHED (its mystery→finale span compressed from 16.1s to 12.3s of wall time). If it does, 14s is the in-band fallback (ratio 1.75, still ≤1.8). (2) The red-vs-golden gap widened 1.18× → 1.54× — deliberate (length regains its signalling role); if the red now feels like a different LEAGUE of reveal rather than a notch above golden, that is the intended T-0051 shape and T-0050's band stays as shipped.
 
 ## Review Log

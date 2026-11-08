@@ -11,9 +11,11 @@ import '../../core/ui/fcm_style.dart';
 
 const Duration kStandardRevealDuration = Duration(milliseconds: 8000);
 
-/// Length of the legendary reveal timeline — more than twice the
-/// standard one.
-const Duration kLegendaryRevealDuration = Duration(milliseconds: 17000);
+/// Length of the legendary reveal timeline — T-0051 rebalance: 1.625× the
+/// ordinary 8s (inside the ≤1.8× escalation rule), every golden beat kept
+/// (mystery, finale, banner, the 16-mark haptic pattern) at a tighter
+/// pace, so the red timeline owns the long-form slot unchallenged.
+const Duration kLegendaryRevealDuration = Duration(milliseconds: 13000);
 
 /// Length of the premium reveal timeline (T-0050): inside the owner's
 /// 18-22s band — longer than the golden 17s, but the escalation comes

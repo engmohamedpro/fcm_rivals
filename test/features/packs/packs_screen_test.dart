@@ -300,7 +300,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    // Walk the reveal timeline to its end (8s standard, 17s legendary)
+    // Walk the reveal timeline to its end (8s standard, 13s legendary)
     // — the SELL/KEEP action bar stays IgnorePointer until done.
     await tester.pump(const Duration(seconds: 18));
     expect(find.byType(PackOpeningScreen), findsOneWidget);

@@ -49,7 +49,7 @@ Future<void> _revealAll(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 400));
 }
 
-/// A legendary pull (82+): rating 91, runs the long 17s sequence.
+/// A legendary pull (82+): rating 91, runs the long 13s sequence.
 BasePlayer _legend() => _player(overall: 89);
 
 void main() {
@@ -274,10 +274,11 @@ void main() {
   testWidgets('a legendary pull runs a much longer, special timeline', (
     tester,
   ) async {
-    // The standard reveal is 8s; the legendary one is more than double.
+    // The standard reveal is 8s; the legendary one is the T-0051
+    // tightened 13s — 1.625×, still a clearly longer, special timeline.
     expect(
       kLegendaryRevealDuration.inMilliseconds,
-      greaterThan(2 * kStandardRevealDuration.inMilliseconds),
+      greaterThan(kStandardRevealDuration.inMilliseconds),
     );
 
     await tester.pumpWidget(
@@ -285,9 +286,9 @@ void main() {
     );
     await _autoOpen(tester);
 
-    // Where an epic pull would already be done (8s), the legend is
-    // still building: no buttons, no name, no stat card yet.
-    await tester.pump(const Duration(seconds: 8));
+    // At the old test's fraction (8s of 17s ≈ 0.47 — 6.1s of 13s), the
+    // legend is still building: no buttons, no name, no stat card yet.
+    await tester.pump(const Duration(milliseconds: 6100));
     final mid = tester.widget<AnimatedOpacity>(
       find.byKey(const ValueKey('keep-fade')),
     );
@@ -307,8 +308,9 @@ void main() {
       );
       await _autoOpen(tester);
 
-      // Clue 1 (~0.30–0.37 of 17s): the flag, and nothing else yet.
-      await tester.pump(const Duration(milliseconds: 5600));
+      // Clue 1 (~0.30–0.37 of the 13s timeline): the flag, and nothing
+      // else yet.
+      await tester.pump(const Duration(milliseconds: 4300));
       expect(find.text(flagEmojiFor('Brazil')), findsOneWidget);
       expect(find.text('TEST STRIKER'), findsNothing);
 
@@ -316,16 +318,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1500));
       expect(find.text('ST'), findsOneWidget);
 
-      // Right up to the flip (0.60 = 10.2s) NO rating is on screen: the
+      // Right up to the flip (0.60 = 7.8s) NO rating is on screen: the
       // overall must not be spoiled before the card is revealed.
-      await tester.pump(const Duration(milliseconds: 2500)); // ~9.6s
+      await tester.pump(const Duration(milliseconds: 1600)); // ~7.4s
       expect(find.text('91'), findsNothing);
       expect(find.text('TEST STRIKER'), findsNothing);
 
       // Card flipped, stats counting up — the rating shows for the first
       // time, on the card — and the name is still redacted
-      // (name starts at 0.89 = 15.1s).
-      await tester.pump(const Duration(milliseconds: 4900)); // ~14.5s
+      // (name starts at 0.89 = 11.6s).
+      await tester.pump(const Duration(milliseconds: 3700)); // ~11.1s
       expect(find.text('ATT'), findsOneWidget);
       expect(find.text('WHO IS IT?'), findsOneWidget);
       expect(find.text('TEST STRIKER'), findsNothing);
@@ -335,7 +337,7 @@ void main() {
       expect(stillHidden.opacity, 0);
 
       // The name types in, then the finale banner and the action row.
-      await tester.pump(const Duration(milliseconds: 2000)); // ~16.5s
+      await tester.pump(const Duration(milliseconds: 1550)); // ~12.6s
       expect(find.text('TEST STRIKER'), findsOneWidget);
       expect(find.text('LEGENDARY PULL!'), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 1000));
@@ -372,7 +374,7 @@ void main() {
   });
 
   testWidgets('premium 90+ pull: the red timeline — mystery caption, '
-      'localized PREMIUM banner, the reveal outlives the golden 17s', (
+      'localized PREMIUM banner, the reveal outlives the golden 13s', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -385,8 +387,9 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     expect(find.text('A LEGEND IS COMING…'), findsOneWidget);
 
-    // Where the GOLDEN reveal is already done (17s), the red one is
-    // still holding the name back — longer by design, not padding.
+    // Where the GOLDEN reveal is already done (12.7s of 13s), the red
+    // one is still holding the name back — longer by design, not
+    // padding.
     await tester.pump(const Duration(seconds: 11));
     expect(find.text('WHO IS IT?'), findsOneWidget);
     expect(find.text('TEST STRIKER'), findsNothing);
