@@ -2,11 +2,11 @@
 id: T-0060
 title: Calibrate the pack economy and add the probability transparency probe
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0059]
 created: 2026-11-08
-completed:
+completed: 2026-11-08
 ---
 
 # T-0060: Calibrate the pack economy and add the probability transparency probe
@@ -35,14 +35,14 @@ Prove with measured numbers that the new two-stage odds are economically sound �
 - The reveal animations (T-0050/T-0051) and store UI.
 
 ## Acceptance Criteria
-- [ ] Compiles with zero analyzer warnings
-- [ ] The probe runs deterministically and its report prints every required metric (rarity deltas within 3σ, per-player shares, MV stats, premium frequency, EV, N_eff)
-- [ ] Calibration group green with all bands printed and locked; full `flutter test` suite passes
-- [ ] EN/AR localization complete and RTL verified where applicable (probe output is a dev tool — English-only acceptable; no user-facing strings expected)
-- [ ] No performance or application-size regression (the probe is a tool, not shipped code)
-- [ ] EV ladder, price bands, premium EV share, reachability and diversity floors all band-locked by test
-- [ ] EconomySimulator multi-season suites green unmodified (or the shift recorded with numbers)
-- [ ] GDD §5 documents the shipped system with the measured numbers
+- [x] Compiles with zero analyzer warnings
+- [x] The probe runs deterministically and its report prints every required metric (rarity deltas within 3σ, per-player shares, MV stats, premium frequency, EV, N_eff)
+- [x] Calibration group green with all bands printed and locked; full `flutter test` suite passes
+- [x] EN/AR localization complete and RTL verified where applicable (probe output is a dev tool — English-only acceptable; no user-facing strings expected)
+- [x] No performance or application-size regression (the probe is a tool, not shipped code)
+- [x] EV ladder, price bands, premium EV share, reachability and diversity floors all band-locked by test
+- [x] EconomySimulator multi-season suites green unmodified (or the shift recorded with numbers)
+- [x] GDD §5 documents the shipped system with the measured numbers
 
 ## How to Verify
 ```bash
@@ -65,3 +65,17 @@ Expected: analyzer clean; the probe report matches the calibration bands (rarity
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-08, attempt 1: PASS
+- Environment: Flutter 3.47.9 stable / Dart 3.13.7 (fresh SDK install at tag 3.47.9), 2-core container, main @ `6bb7e05`.
+- Ran `flutter analyze` → `No issues found!` (zero warnings).
+- Ran `dart run tool/pack_probability_probe.dart --packs 100000 --seed 2026` → deterministic, every required metric printed: all tier × band rarity rows within 3σ (e.g. LEGENDARY: epic 55.15% vs 55.00%, dev 0.146pp ≤ 0.472pp; legendary 42.84% vs 43.00%; premium 2.01% vs 2.00%); top-20 per-player shares vs `oddsFor` theory; reward MV (rare avg €3.11M / legendary avg €19.86M, max €200M); premium 2.009% per legendary pack with 5.1% EV share; EV monte-carlo 17,184 vs analytic 17,209; prices 5,000 / 10,000 / 24,000; affordability 2.7 / 5.4 / 12.9 par matches; per-band N_eff + cheapest-decile (rare 3,673 / 71.5%, epic 1,721 / 20.1%, legendary 436 / 15.9%, premium 29 / 17.8%).
+- Exponent decision re-measured (`--exponent 1.0` / default 1.5 / `--exponent 2.0`): rare N_eff / decile = 8,613 / 48.5% · 3,673 / 71.5% · 1,430 / 87.1% — 1.5 ships, the correct call (2.0 breaks the ≤ 75% decile floor), matching the Developer Notes numbers.
+- Ran `dart run tool/pack_economy_soak.dart --seasons 5` → **SOAK PASS**: coins 15,250 → 43,250 never negative, ledger reconciled every season, 5 promotions, 135W-33D-22L, avg net −1,350 coins/season, best XI 76 → 78.
+- Ran the calibration group inside `flutter test test/balance/ test/features/season/ ... --concurrency=1` (**362/362**): the 8 `pack probability` tests band-lock exactly the specified contract — EV ladder strictly increasing; price bands ±25% (3,750–6,250 / 7,500–12,500 / 18,000–30,000); premium EV share 1–8%; reachability 1.5–2.5% over 20k opens; affordability rare ≤ 4 / epic 4–8 / legendary 10–16; RARE floor N_eff ≥ 1,000 AND decile ≤ 75%; epic/legendary/premium metrics printed. EconomySimulator season suites green UNMODIFIED.
+- GDD §5 verified: 5.4 documents the 8 owner steps, the odds matrix, premium exclusivity and the diversity floor with the measured numbers; 5.5 the pricing model with the measured EV table (4,241 / 8,361 / 17,209) and the calibration contract; 5.9 the probe as the audit tool.
+- `packOddsSmoothing` disposition verified: grep over lib/ test/ tool/ returns zero hits — removed with no consumers left.
+- Scope note (accepted with justification): the 19-file purity split goes beyond the task's "measurement only" letter, but the required `dart run` probe command is impossible while the economy closure imports Flutter — the splits are verbatim moves (spot-checked `CardRarity` out of `fcm_style.dart`: the enum and its getters moved unchanged) and the full-suite pass is the behaviour evidence. Recorded so the archive reflects it.
+- The N_eff discrepancy disclosed in Developer Notes (task context quoted 1,288; the shipped 18,292-row band measures 3,673) is the analysis-pool snapshot vs the shipped band; the floor clears either way and the test locks the shipped-band measurement. Honest, accepted.
+- Full `flutter test --concurrency=1` gate → **855/855 passed**.
+- Acceptance criteria, one by one: analyzer clean ✔; probe deterministic with every required metric ✔; calibration group green with all bands printed/locked and the full suite green ✔; EN/AR + RTL — no new user-facing strings (the probe is a dev tool, English-only as allowed) ✔; no size/perf regression — probe/soak live in tool/, not shipped code; the lib splits move code without behaviour ✔; EV ladder, price bands, premium share, reachability and diversity floors band-locked ✔; EconomySimulator suites green unmodified ✔; GDD §5 documents the shipped system with the measured numbers ✔.

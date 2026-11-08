@@ -2,11 +2,11 @@
 id: T-0063
 title: Add generic enum-scale helpers for ordered tactics instructions
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-08
-completed:
+completed: 2026-11-08
 ---
 
 # T-0063: Add generic enum-scale helpers for ordered tactics instructions
@@ -33,10 +33,10 @@ One tested pair of generic helpers converts any ordered instruction enum to and 
 - `FinalThirdApproach` and the offside trap.
 
 ## Acceptance Criteria
-- [ ] The generic helpers exist with the exact math above; the mentality mapping is unchanged (existing mentality tests green, untouched).
-- [ ] Round-trip tests cover all nine ordered enums and prove every default maps to 50.
-- [ ] The boundary cases (3 steps: 25 → middle, 75 → last; 7 steps: 58 → Balanced, 59 → Positive) and the nine-axis polarity table are locked by tests.
-- [ ] `flutter analyze` reports zero warnings; `flutter test test/features/match/` green.
+- [x] The generic helpers exist with the exact math above; the mentality mapping is unchanged (existing mentality tests green, untouched).
+- [x] Round-trip tests cover all nine ordered enums and prove every default maps to 50.
+- [x] The boundary cases (3 steps: 25 → middle, 75 → last; 7 steps: 58 → Balanced, 59 → Positive) and the nine-axis polarity table are locked by tests.
+- [x] `flutter analyze` reports zero warnings; `flutter test test/features/match/` green.
 
 ## How to Verify
 ```bash
@@ -56,3 +56,10 @@ Expected: analyze clean; the match feature suite including the new `tactics_scal
 - **Concerns / assumptions:** none — pure model-layer addition; the helpers are the exact math the task specified, and the boundary numbers were verified against Dart rounding semantics in the test comments (round(0.5)=1, round(3.48)=3, round(3.54)=4).
 
 ## Review Log
+
+### Review 2026-11-08, attempt 1: PASS
+- Environment: Flutter 3.47.9 stable / Dart 3.13.7 (fresh SDK install at tag 3.47.9), 2-core container, main @ `6bb7e05`.
+- Code review of `lib/features/match/team_tactics.dart` (diff `79645bf..6bb7e05`): `enumFromScale` is `(value.clamp(0, 100) * steps / 100).round()` and `enumToScale` is `(index * 100 / steps).round()` — the exact Dart `.round()` (half away from zero) math of the original mentality pair, which now delegate to them: one code path, behaviour identical by construction. `FinalThirdApproach` and the offside trap untouched — Out of Scope respected.
+- Ran `flutter analyze` → `No issues found!` (zero warnings).
+- Ran the verify commands inside `flutter test test/core/ui/ test/features/match/ test/features/squad/squad_view_test.dart test/balance/ test/features/season/ --concurrency=1` → **362/362 passed**, including the 6 new `tactics_scale_test.dart` tests: round-trips for every value of all ten axes; every default at scale 50; clamps (−5, 105); 3-step boundaries 25 → middle / 75 → last plus the mirrored 24/26; 7-step 58 → Balanced / 59 → Positive with the canonical 0/50/100 positions; the nine-axis polarity table (scale 100 = the aggressive end — longBall, fast, wide, high, high, aggressive, immediate, fast, aggressive — and the aggressive end maps back to 100; mentality 100 = veryAttacking). Then the full `flutter test --concurrency=1` gate → **855/855 passed**.
+- Acceptance criteria, one by one: helpers with the exact math and the mentality mapping unchanged (squad-view mentality tests green, untouched) ✔; round-trips over all nine ordered enums with defaults at 50 ✔; the boundary cases and the polarity table locked by tests ✔; analyzer zero warnings and `test/features/match/` green ✔.

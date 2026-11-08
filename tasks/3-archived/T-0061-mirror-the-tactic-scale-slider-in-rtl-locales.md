@@ -2,11 +2,11 @@
 id: T-0061
 title: Mirror the tactic scale slider in RTL locales
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-08
-completed:
+completed: 2026-11-08
 ---
 
 # T-0061: Mirror the tactic scale slider in RTL locales
@@ -34,11 +34,11 @@ completed:
 - Any change to track, tick, thumb or pill styling and colors.
 
 ## Acceptance Criteria
-- [ ] Under LTR the widget renders and commits exactly as before — `test/features/squad/squad_view_test.dart` passes untouched.
-- [ ] In RTL the minimum end is on the right and dragging left increases the value (new test proves it).
-- [ ] The floating pill clamps inside the track and measures Arabic text RTL (new test).
-- [ ] `flutter analyze` reports zero warnings.
-- [ ] New RTL widget tests exist and pass.
+- [x] Under LTR the widget renders and commits exactly as before — `test/features/squad/squad_view_test.dart` passes untouched.
+- [x] In RTL the minimum end is on the right and dragging left increases the value (new test proves it).
+- [x] The floating pill clamps inside the track and measures Arabic text RTL (new test).
+- [x] `flutter analyze` reports zero warnings.
+- [x] New RTL widget tests exist and pass.
 
 ## How to Verify
 ```bash
@@ -59,3 +59,10 @@ Expected: analyze clean; the new `fcm_scale_slider_test.dart` (RTL cases), the r
 - **Concerns / assumptions:** (1) The thumb is located in tests as the rightmost/leftmost ≤22px decorated container inside the slider — stable against the pill (22px tall band but wide) and captions; if the marker styling ever changes size the finder tolerance (6px) absorbs small drift. (2) No styling/colour changed anywhere (Out of Scope) — only geometry mirroring and direction-aware measuring. (3) Snapping (T-0062) and the nine instruction axes (T-0064) are untouched; this task leaves the component reusable exactly as the T-0061→T-0062 dependency chain expects.
 
 ## Review Log
+
+### Review 2026-11-08, attempt 1: PASS
+- Environment: Flutter 3.47.9 stable / Dart 3.13.7 (fresh SDK install at tag 3.47.9), 2-core container, main @ `6bb7e05`.
+- Code review of `lib/core/ui/fcm_scale_slider.dart` (diff `79645bf..6bb7e05`): the direction seam resolves once in `didChangeDependencies`; RTL mirrors the thumb (`markerLeft`), the fill (`fillLeft`/`fillWidth` running from the right) with the gradient flipped, the pill clamp anchor, and the gesture axis (`width - dx`) — minimum at the RIGHT, drag-left increases, tap lands mirrored. The pill `TextPainter` measures with the ambient direction. The centre tick correctly needs no mirroring (w/2 either way); the caption `Row` flips under RTL automatically, so requirement 4's "force `textDirection` only if necessary" resolved to: not necessary. No styling/colour change — Out of Scope respected.
+- Ran `flutter analyze` → `No issues found!` (zero warnings).
+- Ran `flutter test test/core/ui/ test/features/match/ test/features/squad/squad_view_test.dart test/balance/ test/features/season/ --concurrency=1` → **362/362 passed**, including the 5 new slider tests: RTL value 0 → thumb at the right end, fill from the right; centre drag left raises / right lowers; tap near the right edge lands < 20; long Arabic pill clamped inside the track; LTR baseline value 0 → thumb at the left. Then the full `flutter test --concurrency=1` gate → **855/855 passed**.
+- Acceptance criteria, one by one: LTR behaviour identical — the squad-view mentality suite untouched and green ✔; RTL minimum on the right and drag-left increases (new test) ✔; the pill clamps and measures Arabic RTL (new test) ✔; analyzer zero warnings ✔; new RTL widget tests exist and pass ✔.
