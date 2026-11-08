@@ -66,6 +66,15 @@ class SquadStore {
       if (!byOwned.containsKey(id)) {
         throw CollectionException('Owned player $id not found');
       }
+      // Injured players are unselectable (T-0055, GDD 11.7) — the store
+      // is the backstop behind the UI: a save referencing an injured
+      // player is refused.
+      if ((byOwned[id]!.injuryMatchesRemaining ?? 0) > 0) {
+        throw CollectionException(
+          'Injured player $id cannot be selected '
+          '(${byOwned[id]!.injuryMatchesRemaining} matches remaining)',
+        );
+      }
     }
     // one player per slot and one slot per player
     if (assignments.values.toSet().length != assignments.length) {
@@ -197,6 +206,8 @@ class SquadStore {
         upgradedDefence: owned.upgradedDefence,
         upgradedGoalkeeping: owned.upgradedGoalkeeping,
         staminaPercent: owned.staminaPercent,
+        injuryMatchesRemaining: owned.injuryMatchesRemaining ?? 0,
+        injuryKind: owned.injuryKind,
       );
     }).get();
     return {for (final c in rows) c.ownedId: c};

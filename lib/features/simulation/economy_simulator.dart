@@ -46,6 +46,7 @@ class SeasonEconomyReport {
     required this.merges,
     required this.collectionSize,
     required this.bestSquadOverall,
+    required this.injuriesSustained,
   });
 
   final int seasonIndex;
@@ -69,6 +70,10 @@ class SeasonEconomyReport {
 
   /// Best achievable XI overall (auto-picked) at season end.
   final int bestSquadOverall;
+
+  /// Injuries the USER club sustained this season (T-0055, GDD 11.7) —
+  /// the end-to-end rate the season calibration band locks.
+  final int injuriesSustained;
 
   /// Net coin change this season (earned - spent).
   int get netCoins => coinsEarned - coinsSpent;
@@ -199,6 +204,7 @@ class EconomySimulator {
         final earnedBefore = await _sumLedger(db, positive: true);
         final spentBefore = await _sumLedger(db, positive: false);
         var mergesThisSeason = 0;
+        var injuriesThisSeason = 0;
 
         // Bootstrap: the 12 free starting packs (cheapest four positions)
         // cannot field a full XI, so the simulated manager signs players
@@ -221,6 +227,15 @@ class EconomySimulator {
           if (next == null) break;
           final session = await seasonStore.startNextFixture(collection);
           session.simulateToEnd();
+          // Injuries the user club sustained in this fixture (T-0055):
+          // the event's primaryPlayerId IS the owned id on the user side.
+          injuriesThisSeason += session.engine.events
+              .where(
+                (e) =>
+                    e.type == MatchEventType.injury &&
+                    e.side == session.userSide,
+              )
+              .length;
 
           final userHome = session.userSide == MatchSide.home;
           final userGoals = userHome
@@ -301,6 +316,7 @@ class EconomySimulator {
             merges: mergesThisSeason,
             collectionSize: (await collection.getCollection()).length,
             bestSquadOverall: bestOverall,
+            injuriesSustained: injuriesThisSeason,
           ),
         );
         // Coins balance check at the end of each season.

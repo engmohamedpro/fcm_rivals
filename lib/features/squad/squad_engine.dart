@@ -23,6 +23,8 @@ class PlayerCard {
     this.upgradedDefence = 0,
     this.upgradedGoalkeeping = 0,
     this.staminaPercent = 100,
+    this.injuryMatchesRemaining = 0,
+    this.injuryKind,
   });
 
   final int ownedId;
@@ -35,6 +37,16 @@ class PlayerCard {
   final int upgradedGoalkeeping;
 
   final int staminaPercent;
+
+  /// Matches the player still misses (T-0055, GDD 11.7): 0 = available.
+  /// Selection refuses him on every path while this is above zero.
+  final int injuryMatchesRemaining;
+
+  /// Severity kind name of the active injury (knock/muscle/serious);
+  /// null when fit.
+  final String? injuryKind;
+
+  bool get isInjured => injuryMatchesRemaining > 0;
 
   Position get position => base.position;
 
@@ -288,8 +300,16 @@ class SquadEngine {
   /// later slots unassigned.
   Map<int, int> autoPick(List<PlayerCard> players, Formation formation) {
     final assignment = <int, int>{};
-    final available = {for (final p in players) p.ownedId};
-    final byId = {for (final p in players) p.ownedId: p};
+    // Injured players are unselectable on every path (T-0055, GDD 11.7):
+    // the pick pool simply excludes them — a gutted club picks fewer.
+    final available = {
+      for (final p in players)
+        if (!p.isInjured) p.ownedId,
+    };
+    final byId = {
+      for (final p in players)
+        if (!p.isInjured) p.ownedId: p,
+    };
 
     // Pass 1 — natural positions only: the best player of the slot's own
     // position takes the slot.

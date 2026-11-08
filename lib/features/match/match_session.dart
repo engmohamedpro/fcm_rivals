@@ -11,6 +11,7 @@ import '../../core/database/app_database.dart' as db;
 import '../collection/collection_store.dart';
 import '../economy/economy_engine.dart';
 import '../../core/domain/players.dart';
+import '../facilities/facilities.dart' show Facility;
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import 'match_engine.dart';
@@ -204,6 +205,9 @@ class MatchSession {
     }
     final campus = await store.getCampus();
     final fractions = campus.attributeFractions;
+    // The Medical Centre's risk reduction reaches the engine through the
+    // team input (T-0055, GDD 3.5/11.7).
+    final medicalCentreLevel = campus.levelOf(Facility.medical);
     final formationCode = tactics?.formationCode ?? club.formationCode;
     final teamTactics = tactics?.tactics ?? tacticsFromDbPayload(club.tactics);
     final mentality =
@@ -233,6 +237,62 @@ class MatchSession {
         'A full starting XI is required to play a match',
       );
     }
+    // Save-compat guard (T-0055): an injury sustained mid-season must
+    // never brick an existing saved setup. Injured BENCH entries simply
+    // sit out (the bench plays short). Each injured STARTER is replaced
+    // by the best available candidate — squad members not on the pitch
+    // (a bench promotion) plus any unassigned owned players — reading
+    // compatibility × position rating like Auto Pick; the XI is what
+    // must be legal.
+    final injuredBenchIds = {
+      for (final e in assignment.entries)
+        if (e.key >= Formation.startingXiSize && e.value.isInjured)
+          e.value.ownedId,
+    };
+    if (injuredBenchIds.isNotEmpty) {
+      assignment.removeWhere((slot, p) => injuredBenchIds.contains(p.ownedId));
+    }
+    final injuredStarters = [
+      for (final e in assignment.entries)
+        if (e.key < Formation.startingXiSize && e.value.isInjured) e.key,
+    ];
+    if (injuredStarters.isNotEmpty) {
+      final collection = await store.getCollection();
+      final onPitch = {
+        for (final e in assignment.entries)
+          if (e.key < Formation.startingXiSize && !e.value.isInjured)
+            e.value.ownedId,
+      };
+      final pool = [
+        // Squad members sitting out this match (bench + reserves).
+        for (final e in assignment.entries)
+          if (e.key >= Formation.startingXiSize &&
+              !e.value.isInjured &&
+              !onPitch.contains(e.value.ownedId))
+            e.value,
+        // Unassigned owned players.
+        for (final c in collection)
+          if (!assignment.values.any((p) => p.ownedId == c.ownedId) &&
+              (c.injuryMatchesRemaining == 0))
+            c,
+      ];
+      for (final slot in injuredStarters) {
+        final replacement = _bestForSlot(pool, formation, slot, onPitch);
+        assignment[slot] = replacement;
+        // He vacates his old bench/reserve slot: one squad slot per
+        // player, the bench plays short.
+        final oldEntries = assignment.entries
+            .where(
+              (e) =>
+                  e.value.ownedId == replacement.ownedId && e.key != slot,
+            )
+            .toList();
+        for (final e in oldEntries) {
+          assignment.remove(e.key);
+        }
+        onPitch.add(replacement.ownedId);
+      }
+    }
     final starters = <MatchPlayer>[
       for (var slot = 0; slot < Formation.startingXiSize; slot++)
         _toMatchPlayer(assignment[slot]!, fractions),
@@ -254,6 +314,7 @@ class MatchSession {
         mentality: mentality,
         starters: starters,
         bench: bench,
+        medicalCentreLevel: medicalCentreLevel,
       ),
       club,
     );
@@ -282,6 +343,40 @@ class MatchSession {
             .round(),
     stamina: card.staminaPercent.toDouble(),
   );
+
+  /// The next best available player for [slotIndex] when a saved squad
+  /// references an injured one (T-0055 save-compat guard): best
+  /// compatibility × position rating from the replacement pool — the
+  /// same reading Auto Pick uses. With no compatible body left the best
+  /// remaining player plays out of position; only an empty pool throws.
+  static PlayerCard _bestForSlot(
+    List<PlayerCard> pool,
+    Formation formation,
+    int slotIndex,
+    Set<int> onPitch,
+  ) {
+    final slotPosition = formation.slots[slotIndex].position;
+    final engine = const SquadEngine();
+    PlayerCard? best;
+    var bestScore = -1.0;
+    for (final card in pool) {
+      if (onPitch.contains(card.ownedId)) continue;
+      final score =
+          engine.compatibilityOf(card.position, slotPosition) *
+          card.positionRating();
+      if (score > bestScore) {
+        bestScore = score;
+        best = card;
+      }
+    }
+    if (best == null) {
+      throw const CollectionException(
+        'No available player to replace an injured starter',
+      );
+    }
+    pool.remove(best);
+    return best;
+  }
 
   /// Deterministic synthetic opponent (no persistent AI clubs yet — those
   /// arrive with the division iteration; friendly opponents are generated
@@ -436,6 +531,19 @@ class MatchSession {
         userGoals * economy.config.matchRewardPerGoal;
     if (userGoals > opponentGoals) reward = (reward * 1.5).round();
 
+    // The match's rolled injuries ride the same atomic commit (T-0055):
+    // the event's primaryPlayerId IS the user player's ownedId — the
+    // session builds the user's MatchPlayers from owned ids.
+    final injuries = [
+      for (final e in engine.events)
+        if (e.type == MatchEventType.injury && e.side == userSide)
+          (
+            ownedId: e.primaryPlayerId!,
+            kind: e.metadata['kind'] as String,
+            matchesOut: e.metadata['matchesOut'] as int,
+          ),
+    ];
+
     await _store.applyMatchResult(
       clubId: club.id,
       rewardCoins: reward,
@@ -447,6 +555,7 @@ class MatchSession {
             minutesPlayed: p.minutesPlayed,
           ),
       ],
+      injuries: injuries,
       pepTalk: pepTalk,
       restDays: restDays,
       adBoostedRecovery: adBoostedRecovery,

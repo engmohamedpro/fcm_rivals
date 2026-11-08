@@ -405,6 +405,8 @@ class CollectionStore {
         upgradedDefence: owned.upgradedDefence,
         upgradedGoalkeeping: owned.upgradedGoalkeeping,
         staminaPercent: owned.staminaPercent,
+        injuryMatchesRemaining: owned.injuryMatchesRemaining ?? 0,
+        injuryKind: owned.injuryKind,
       );
     }).get();
     rows.sort((a, b) => b.overall.compareTo(a.overall));

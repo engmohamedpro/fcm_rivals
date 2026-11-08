@@ -145,6 +145,11 @@ class MatchEngine {
   /// severity draws on a hit — O(on-pitch players) per minute.
   int get injuryDrawCount => _injuryRandom.drawCount;
 
+  /// The team's Medical Centre level as wired into this match (T-0055)
+  /// — the store-level test asserts the campus wiring through it.
+  int medicalCentreLevelOf(MatchSide side) =>
+      _runtimeOf(side).medicalCentreLevel;
+
   /// Effective team totals for one side at this instant.
   TeamTotals totalsOf(MatchSide side) => _runtimeOf(side).computeTotals(
     isHome: side == MatchSide.home,

@@ -53,14 +53,15 @@ String renderSeasonDetail(EconomySimReport sim) {
   final buffer = StringBuffer('''
 ### Per-season detail — ${sim.label}
 
-| Season | Division | Position | Outcome | Earned | Spent | End balance | Packs opened | Merges | Collection | Best XI |
-|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| Season | Division | Position | Outcome | Earned | Spent | End balance | Packs opened | Merges | Collection | Best XI | Injuries |
+|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 ''');
   for (final s in sim.seasons) {
     buffer.writeln(
       '| ${s.seasonIndex + 1} | ${s.division} | ${s.finalPosition} | '
       '${s.outcome} | ${s.coinsEarned} | ${s.coinsSpent} | ${s.coinsEnd} | '
-      '${s.packOpenings} | ${s.merges} | ${s.collectionSize} | ${s.bestSquadOverall} |',
+      '${s.packOpenings} | ${s.merges} | ${s.collectionSize} | '
+      '${s.bestSquadOverall} | ${s.injuriesSustained} |',
     );
   }
   return buffer.toString();

@@ -61,12 +61,18 @@ extension SeasonFixturePlayOps on SeasonStore {
       awayGoals: state.scoreAway,
       seed: session.engine.seed,
     );
-    // The AI opponent's squad also tires and recovers (GDD 11 symmetry).
+    // The AI opponent's squad also tires and recovers (GDD 11 symmetry);
+    // its rolled injuries persist through the same pipeline (T-0055).
     final aiSide = fixture.isHome ? MatchSide.away : MatchSide.home;
     await _persistAiStamina(
       aiClubId: fixture.opponentClubId,
       players: session.engine.playersOf(aiSide),
       restDays: 3,
+    );
+    await _persistAiInjuries(
+      aiClubId: fixture.opponentClubId,
+      players: session.engine.playersOf(aiSide),
+      injuries: session.engine.events,
     );
     // The rest of the round's AI fixtures resolve now (GDD 9.2 lockstep):
     // standings and AI stamina stay in step with the user's progress.
@@ -276,7 +282,8 @@ extension SeasonFixturePlayOps on SeasonStore {
       awayGoals: match.state.scoreAway,
       seed: match.seed,
     );
-    // Both AI squads tire and recover symmetrically (GDD 11).
+    // Both AI squads tire and recover symmetrically (GDD 11); their
+    // rolled injuries persist through the same pipeline (T-0055).
     await _persistAiStamina(
       aiClubId: f.homeClubId,
       players: match.playersOf(MatchSide.home),
@@ -286,6 +293,16 @@ extension SeasonFixturePlayOps on SeasonStore {
       aiClubId: f.awayClubId,
       players: match.playersOf(MatchSide.away),
       restDays: 3,
+    );
+    await _persistAiInjuries(
+      aiClubId: f.homeClubId,
+      players: match.playersOf(MatchSide.home),
+      injuries: match.events,
+    );
+    await _persistAiInjuries(
+      aiClubId: f.awayClubId,
+      players: match.playersOf(MatchSide.away),
+      injuries: match.events,
     );
   }
 

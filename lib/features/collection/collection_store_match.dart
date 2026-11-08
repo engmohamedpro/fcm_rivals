@@ -14,6 +14,7 @@ extension MatchResultOps on CollectionStore {
     required int clubId,
     required int rewardCoins,
     required List<({int ownedId, double stamina, int minutesPlayed})> players,
+    List<({int ownedId, String kind, int matchesOut})> injuries = const [],
     PepTalk? pepTalk,
     int restDays = 3,
     bool adBoostedRecovery = false,
@@ -42,6 +43,25 @@ extension MatchResultOps on CollectionStore {
       }
     }
     await db.transaction(() async {
+      // Recovery decrement (T-0055, GDD 11.7): every committed fixture
+      // counts the club's injuries down by exactly one match, floor 0,
+      // clearing the kind at 0. Runs BEFORE the new injuries land, so a
+      // player hurt in THIS match keeps his full matches-out.
+      await db.customUpdate(
+        'UPDATE owned_players SET injury_matches_remaining = '
+        'injury_matches_remaining - 1 WHERE club_id = ? AND '
+        'injury_matches_remaining > 0',
+        variables: [Variable.withInt(clubId)],
+        updates: {db.ownedPlayers},
+        updateKind: UpdateKind.update,
+      );
+      await db.customUpdate(
+        'UPDATE owned_players SET injury_kind = NULL WHERE club_id = ? '
+        'AND injury_matches_remaining <= 0',
+        variables: [Variable.withInt(clubId)],
+        updates: {db.ownedPlayers},
+        updateKind: UpdateKind.update,
+      );
       for (final p in players) {
         final row = await (db.select(
           db.ownedPlayers,
@@ -114,6 +134,26 @@ extension MatchResultOps on CollectionStore {
           detail:
               'Match reward for ${players.length} squad players'
               '${reward != rewardCoins ? ' (ad daily multiplier)' : ''}',
+        );
+      }
+      // Rolled injuries ride the same atomic transaction (T-0055): kind
+      // + matches-out land with the stamina writes. The re-injury guard
+      // is belt-and-braces — an injured player was never fielded
+      // (selection gating), so the row is always fit here.
+      for (final injury in injuries) {
+        final row =
+            await (db.select(
+              db.ownedPlayers,
+            )..where((o) => o.id.equals(injury.ownedId))).getSingleOrNull();
+        if (row == null) continue;
+        if ((row.injuryMatchesRemaining ?? 0) > 0) continue;
+        await (db.update(
+          db.ownedPlayers,
+        )..where((o) => o.id.equals(injury.ownedId))).write(
+          OwnedPlayersCompanion(
+            injuryMatchesRemaining: Value(injury.matchesOut),
+            injuryKind: Value(injury.kind),
+          ),
         );
       }
     });

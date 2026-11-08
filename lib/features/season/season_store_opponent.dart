@@ -25,8 +25,26 @@ extension SeasonOpponentOps on SeasonStore {
     if (rows.isEmpty) {
       throw const SeasonException('AI club has no squad');
     }
+    // Injured AI players sit out (T-0055, GDD 11.7): the available pool
+    // excludes them. A gutted club backfills from the injured rows
+    // (fewest matches out first) to stay at the formation's minimum —
+    // it never fields fewer than a legal XI.
+    var available = rows
+        .where((r) => (r.injuryMatchesRemaining ?? 0) <= 0)
+        .toList();
+    if (available.length < Formation.startingXiSize) {
+      final missing = Formation.startingXiSize - available.length;
+      final sidelined = [...rows]
+        ..removeWhere(available.contains)
+        ..sort(
+          (a, b) => (a.injuryMatchesRemaining ?? 0).compareTo(
+            b.injuryMatchesRemaining ?? 0,
+          ),
+        );
+      available = [...available, ...sidelined.take(missing)];
+    }
     final squad = [
-      for (final r in rows)
+      for (final r in available)
         AiSquadPlayer(
           realPlayerId: r.realPlayerId,
           name: r.playerName,
@@ -44,7 +62,7 @@ extension SeasonOpponentOps on SeasonStore {
       starters: [
         for (final p in lineup.starters)
           MatchPlayer(
-            playerId: -10_000 - _rowIdOf(rows, p),
+            playerId: -10_000 - _rowIdOf(available, p),
             name: p.name,
             position: p.position,
             attack: p.attack,
@@ -57,7 +75,7 @@ extension SeasonOpponentOps on SeasonStore {
       bench: [
         for (final p in lineup.bench)
           MatchPlayer(
-            playerId: -10_000 - _rowIdOf(rows, p),
+            playerId: -10_000 - _rowIdOf(available, p),
             name: p.name,
             position: p.position,
             attack: p.attack,
@@ -102,6 +120,25 @@ extension SeasonOpponentOps on SeasonStore {
     final rows = await (db.select(
       db.aiPlayers,
     )..where((a) => a.clubId.equals(aiClubId))).get();
+    // Recovery decrement (T-0055, GDD 11.7): every committed fixture
+    // counts the AI club's injuries down by exactly one match, floor 0.
+    // Runs BEFORE any new injury write so a player hurt in THIS match
+    // keeps his full matches-out.
+    await db.customUpdate(
+      'UPDATE ai_players SET injury_matches_remaining = '
+      'injury_matches_remaining - 1 WHERE club_id = ? AND '
+      'injury_matches_remaining > 0',
+      variables: [Variable.withInt(aiClubId)],
+      updates: {db.aiPlayers},
+      updateKind: UpdateKind.update,
+    );
+    await db.customUpdate(
+      'UPDATE ai_players SET injury_kind = NULL WHERE club_id = ? AND '
+      'injury_matches_remaining <= 0',
+      variables: [Variable.withInt(aiClubId)],
+      updates: {db.aiPlayers},
+      updateKind: UpdateKind.update,
+    );
     for (final row in rows) {
       final match = byEngineId[-10_000 - row.id];
       final currentStamina = match?.stamina ?? row.staminaPercent.toDouble();
@@ -115,6 +152,36 @@ extension SeasonOpponentOps on SeasonStore {
       await (db.update(db.aiPlayers)..where((a) => a.id.equals(row.id))).write(
         AiPlayersCompanion(
           staminaPercent: Value(recovered.round().clamp(0, 100)),
+        ),
+      );
+    }
+  }
+
+  /// Persists an AI club's rolled injuries from a finished match
+  /// (T-0055): the engine's negative ids map back to aiPlayers rows
+  /// (−10000 − row id). Call AFTER [_persistAiStamina] so a fresh injury
+  /// keeps its full matches-out. The re-injury guard mirrors the user
+  /// store — an injured player was never fielded.
+  Future<void> _persistAiInjuries({
+    required int aiClubId,
+    required Iterable<MatchPlayer> players,
+    required Iterable<MatchEvent> injuries,
+  }) async {
+    final ids = {for (final p in players) p.playerId};
+    for (final e in injuries) {
+      if (e.type != MatchEventType.injury) continue;
+      final engineId = e.primaryPlayerId;
+      if (engineId == null || !ids.contains(engineId)) continue;
+      final rowId = -10_000 - engineId;
+      final row = await (db.select(
+        db.aiPlayers,
+      )..where((a) => a.id.equals(rowId))).getSingleOrNull();
+      if (row == null) continue;
+      if ((row.injuryMatchesRemaining ?? 0) > 0) continue;
+      await (db.update(db.aiPlayers)..where((a) => a.id.equals(rowId))).write(
+        AiPlayersCompanion(
+          injuryMatchesRemaining: Value(e.metadata['matchesOut'] as int),
+          injuryKind: Value(e.metadata['kind'] as String),
         ),
       );
     }
