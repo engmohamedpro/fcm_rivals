@@ -878,6 +878,12 @@ abstract class AppLocalizations {
   /// **'Mentality'**
   String get tacticsMentality;
 
+  /// No description provided for @teamChemistry.
+  ///
+  /// In en, this message translates to:
+  /// **'Chemistry'**
+  String get teamChemistry;
+
   /// No description provided for @mentalityVeryDefensive.
   ///
   /// In en, this message translates to:

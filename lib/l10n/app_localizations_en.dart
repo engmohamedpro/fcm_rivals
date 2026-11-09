@@ -441,6 +441,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tacticsMentality => 'Mentality';
 
   @override
+  String get teamChemistry => 'Chemistry';
+
+  @override
   String get mentalityVeryDefensive => 'Very Defensive';
 
   @override

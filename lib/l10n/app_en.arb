@@ -186,6 +186,7 @@
   "reportInjuries": "{n} player(s) injured",
   "@reportInjuries": {"placeholders": {"n": {"type": "int"}}},
   "tacticsMentality": "Mentality",
+  "teamChemistry": "Chemistry",
   "mentalityVeryDefensive": "Very Defensive",
   "mentalityDefensive": "Defensive",
   "mentalityCautious": "Cautious",

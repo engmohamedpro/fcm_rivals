@@ -13,6 +13,8 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:fcm_rivals/l10n/app_localizations.dart';
+import 'package:fcm_rivals/features/match/pre_match_analysis.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart'
     show FcmPlayerCard, FcmMiniCard;
@@ -37,6 +39,8 @@ MatchForecast get _forecast => MatchForecast(
     defence: 61,
     goalkeeping: 58,
   ),
+  userChemistry: 4,
+  opponentChemistry: 2,
 );
 
 PreMatchData get _data => PreMatchData(
@@ -290,5 +294,54 @@ void main() {
     expect(find.text('ATT'), findsNothing);
     expect(find.text('SUP'), findsNothing);
     expect(find.text('DEF'), findsNothing);
+  });
+
+  testWidgets('T-0069: the analysis shows both teams chemistry lines', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: AnalysisPhase(data: _data),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('CHEMISTRY'), findsOneWidget);
+    expect(find.text('+4%'), findsOneWidget);
+    expect(find.text('+2%'), findsOneWidget);
+  });
+
+  testWidgets('T-0069: Arabic analysis shows الكيمياء with the percents', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('ar'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: AnalysisPhase(data: _data),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('الكيمياء'), findsOneWidget);
+    expect(find.text('+4%'), findsOneWidget);
+    expect(find.text('+2%'), findsOneWidget);
   });
 }

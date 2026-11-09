@@ -12,6 +12,7 @@
 /// the module stays unit-testable (GDD development rule 4).
 library;
 
+import 'chemistry.dart';
 import 'dart:math' as math;
 
 import '../squad/squad_engine.dart';
@@ -30,6 +31,8 @@ class MatchForecast {
     required this.cleanSheetPercent,
     required this.userTotals,
     required this.opponentTotals,
+    this.userChemistry = 0,
+    this.opponentChemistry = 0,
   });
 
   final int samples;
@@ -49,6 +52,12 @@ class MatchForecast {
   /// Neutral squad-quality totals (every player, no tactics or condition).
   final TeamTotals userTotals;
   final TeamTotals opponentTotals;
+
+  /// Nationality chemistry percent of each side's STARTING XI (T-0067
+  /// formula; T-0069 display) — what the engine multiplies onto the four
+  /// totals during the match.
+  final int userChemistry;
+  final int opponentChemistry;
 
   /// Overall strength 0..100 for bar comparisons.
   int strength(TeamTotals t) =>
@@ -158,6 +167,17 @@ MatchForecast forecastMatch({
   final userTotals = squadQualityTotals(input.userSquad);
   final opponentTotals = squadQualityTotals(input.opponentSquad);
 
+  // Starting-XI chemistry (T-0069): the first 11 of each squad list are
+  // the starters (slot order — same convention as the totals wiring).
+  List<MatchPlayer> startersOf(List<MatchPlayer> squad) =>
+      squad.take(11).toList();
+  final userChemistry = chemistryPercentOf([
+    for (final p in startersOf(input.userSquad)) p.nationality,
+  ]);
+  final opponentChemistry = chemistryPercentOf([
+    for (final p in startersOf(input.opponentSquad)) p.nationality,
+  ]);
+
   var wins = 0, draws = 0, losses = 0;
   var userGoals = 0, opponentGoals = 0, cleanSheets = 0;
 
@@ -205,6 +225,8 @@ MatchForecast forecastMatch({
     cleanSheetPercent: (100 * cleanSheets / samples).round(),
     userTotals: userTotals,
     opponentTotals: opponentTotals,
+    userChemistry: userChemistry,
+    opponentChemistry: opponentChemistry,
   );
 }
 

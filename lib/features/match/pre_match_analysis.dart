@@ -413,7 +413,12 @@ class _StrengthCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final f = forecast;
-    Widget row(String label, double user, double opponent) {
+    Widget row(
+      String label,
+      double user,
+      double opponent, {
+      String Function(double v)? format,
+    }) {
       final uMax = user >= opponent;
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
@@ -423,7 +428,7 @@ class _StrengthCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 FitText(
-                  '${user.round()}',
+                  format != null ? format(user) : '${user.round()}',
                   style: TextStyle(
                     color: uMax ? FcmColors.gold : Colors.white70,
                     fontWeight: FontWeight.w900,
@@ -440,7 +445,7 @@ class _StrengthCard extends StatelessWidget {
                   ),
                 ),
                 FitText(
-                  '${opponent.round()}',
+                  format != null ? format(opponent) : '${opponent.round()}',
                   style: TextStyle(
                     color: !uMax ? FcmColors.gold : Colors.white70,
                     fontWeight: FontWeight.w900,
@@ -530,6 +535,15 @@ class _StrengthCard extends StatelessWidget {
             'GOALKEEPING',
             f.userTotals.goalkeeping,
             f.opponentTotals.goalkeeping,
+          ),
+          // Chemistry comparison (T-0069): the engine applies +N% to
+          // both sides' totals, so the pre-match sheet shows it beside
+          // them — '+N%' per side, same row shape.
+          row(
+            l10nOf(context).teamChemistry.toUpperCase(),
+            f.userChemistry.toDouble(),
+            f.opponentChemistry.toDouble(),
+            format: (v) => '+${v.round()}%',
           ),
         ],
       ),

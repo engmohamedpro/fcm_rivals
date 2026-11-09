@@ -23,6 +23,31 @@ import 'package:fcm_rivals/features/match/tactics_sections.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
 import 'package:fcm_rivals/features/squad/squad_view.dart';
 
+PlayerCard _natCard(
+  int id,
+  Position position,
+  String nationality, {
+  int stamina = 100,
+}) => PlayerCard(
+  ownedId: id,
+  upgradeLevel: 0,
+  staminaPercent: stamina,
+  base: BasePlayer(
+    playerId: 1000 + id,
+    name: 'Player $id',
+    position: position,
+    nationality: nationality,
+    marketValueEur: 5_000_000,
+    baseStats: const BaseStats(
+      overall: 80,
+      attack: 82,
+      support: 75,
+      defence: 40,
+      goalkeeping: 0,
+    ),
+  ),
+);
+
 PlayerCard _card(int id, Position position, {int stamina = 100}) => PlayerCard(
   ownedId: id,
   upgradeLevel: 0,
@@ -47,7 +72,14 @@ Widget _host({
   bool showStamina = true,
   bool showStats = true,
   List<PlayerCard>? bench,
+  Map<int, PlayerCard> xi = const {},
+  Locale? locale,
 }) => MaterialApp(
+  locale: locale,
+  localizationsDelegates: locale == null
+      ? null
+      : AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
   home: Scaffold(
     backgroundColor: Colors.black,
     body: SingleChildScrollView(
@@ -55,7 +87,7 @@ Widget _host({
         formationCode: '4-3-3',
         tactics: const TeamTactics(),
         mentality: Mentality.balanced,
-        xi: const {},
+        xi: xi,
         bench: bench ?? const [],
         reserves: const [],
         onFormation: (_) {},
@@ -763,5 +795,75 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('DONE'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('T-0069: control card shows the XI chemistry (+4% example)',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(340, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // 2 Egypt + 4 Brazil + 5 distinct = 1% + 3% = +4% (owner example).
+    final nations = [
+      'Egypt', 'Egypt', 'Brazil', 'Brazil', 'Brazil', 'Brazil',
+      'France', 'Germany', 'Spain', 'Italy', 'England',
+    ];
+    final xi = <int, PlayerCard>{
+      for (var slot = 0; slot < nations.length; slot++)
+        slot: _natCard(slot + 1, Position.values[slot % 12], nations[slot]),
+    };
+    await tester.pumpWidget(_host(xi: xi));
+    await tester.pumpAndSettle();
+
+    expect(find.text('CHEMISTRY'), findsOneWidget);
+    expect(find.text('+4%'), findsOneWidget);
+  });
+
+  testWidgets('T-0069: an all-distinct XI reads +0%', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(340, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final xi = <int, PlayerCard>{
+      for (var slot = 0; slot < 11; slot++)
+        slot: _natCard(
+          slot + 1,
+          Position.values[slot % 12],
+          'N$slot',
+        ),
+    };
+    await tester.pumpWidget(_host(xi: xi));
+    await tester.pumpAndSettle();
+
+    expect(find.text('CHEMISTRY'), findsOneWidget);
+    expect(find.text('+0%'), findsOneWidget);
+  });
+
+  testWidgets('T-0069: Arabic RTL shows الكيمياء with the same percent', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(340, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final nations = [
+      'Egypt', 'Egypt', 'Brazil', 'Brazil', 'Brazil', 'Brazil',
+      'France', 'Germany', 'Spain', 'Italy', 'England',
+    ];
+    final xi = <int, PlayerCard>{
+      for (var slot = 0; slot < nations.length; slot++)
+        slot: _natCard(slot + 1, Position.values[slot % 12], nations[slot]),
+    };
+    await tester.pumpWidget(
+      _host(xi: xi, locale: const Locale('ar')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('الكيمياء'), findsOneWidget);
+    expect(find.text('+4%'), findsOneWidget);
+    expect(find.text('CHEMISTRY'), findsNothing);
   });
 }

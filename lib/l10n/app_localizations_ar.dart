@@ -441,6 +441,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tacticsMentality => 'العقلية';
 
   @override
+  String get teamChemistry => 'الكيمياء';
+
+  @override
   String get mentalityVeryDefensive => 'دفاعي للغاية';
 
   @override

@@ -139,6 +139,7 @@
   "reportInjuries": "{n} لاعب مصاب",
   "@reportInjuries": {"placeholders": {"n": {"type": "int"}}},
   "tacticsMentality": "العقلية",
+  "teamChemistry": "الكيمياء",
   "mentalityVeryDefensive": "دفاعي للغاية",
   "mentalityDefensive": "دفاعي",
   "mentalityCautious": "حذر",
