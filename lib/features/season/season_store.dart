@@ -389,6 +389,7 @@ class SeasonStore {
     support: card.attribute(PlayerAttribute.support),
     defence: card.attribute(PlayerAttribute.defence),
     goalkeeping: card.attribute(PlayerAttribute.goalkeeping),
+    nationality: card.base.nationality,
     stamina: card.staminaPercent.toDouble(),
   );
 

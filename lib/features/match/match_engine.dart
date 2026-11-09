@@ -42,6 +42,7 @@ import 'dart:math' as math;
 import '../../core/domain/players.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
+import 'chemistry.dart';
 import 'injury.dart';
 import 'stamina.dart';
 import 'tactics.dart';

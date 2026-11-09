@@ -160,8 +160,8 @@ class _TeamRuntime {
 
   /// Team totals (GDD 12.2): raw attributes per player (no stamina term —
   /// a 40% starter performs exactly like a fresh one), then 1. mentality,
-  /// 2. custom tactics, 3. live actions, 4. pep talk, 5. home advantage —
-  /// in this order.
+  /// 2. custom tactics, 3. live actions, 4. pep talk, 5. home advantage,
+  /// 6. nationality chemistry — in this order.
   TeamTotals computeTotals({
     required bool isHome,
     required double homeAdvantage,
@@ -207,12 +207,21 @@ class _TeamRuntime {
         pepTalkModifiers.defence;
     final goalkeeping =
         gkEff * mentality.defenceMod * tactics.modifiers.defence;
+    // Nationality chemistry (owner spec 2026-11-09): every shared
+    // nationality group of n ≥ 2 on-pitch players adds (n − 1) points,
+    // and the sum multiplies all four totals. Computed from the live
+    // onPitch list each turn, so substitutions and red cards re-evaluate
+    // it automatically; nationality-less fixtures stay at exactly 1.0.
+    final chemistryPercent = chemistryPercentOf([
+      for (final player in onPitch) player?.nationality,
+    ]);
+    final chemistryFactor = 1 + chemistryPercent / 100;
     final homeFactor = isHome ? homeAdvantage : 1.0;
     return TeamTotals(
-      attack: attack * homeFactor,
-      support: support * homeFactor,
-      defence: defence * homeFactor,
-      goalkeeping: goalkeeping * homeFactor,
+      attack: attack * homeFactor * chemistryFactor,
+      support: support * homeFactor * chemistryFactor,
+      defence: defence * homeFactor * chemistryFactor,
+      goalkeeping: goalkeeping * homeFactor * chemistryFactor,
     );
   }
 

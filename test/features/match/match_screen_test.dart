@@ -66,7 +66,11 @@ final _rows = <List<dynamic>>[
         p * 10 + i + 1,
         'Player ${p * 10 + i + 1}',
         _positions[p],
-        'Egypt',
+        // Distinct per player: the UI fixtures stay chemistry-neutral
+        // (0%), so engineered results (e.g. the defeat that shows the
+        // ad-boosted recovery row) keep their meaning now that the
+        // engine applies nationality chemistry (T-0067).
+        'Country ${p * 10 + i + 1}',
         500_000 + (i * 3_000_000) + p * 100_000,
       ],
 ];

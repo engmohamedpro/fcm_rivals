@@ -22,6 +22,13 @@ extension SeasonOpponentOps on SeasonStore {
     final rows = await (db.select(
       db.aiPlayers,
     )..where((p) => p.clubId.equals(clubId))).get();
+    // Nationality for chemistry (owner spec 2026-11-09): looked up from
+    // the dataset's Players table by realPlayerId; synthetic fallback
+    // rows (null realPlayerId) stay '' — they never form a group.
+    final nationalities = <int, String>{
+      for (final p in await db.select(db.players).get())
+        if (p.nationality.isNotEmpty) p.playerId: p.nationality,
+    };
     if (rows.isEmpty) {
       throw const SeasonException('AI club has no squad');
     }
@@ -53,6 +60,9 @@ extension SeasonOpponentOps on SeasonStore {
           support: r.support,
           defence: r.defence,
           goalkeeping: r.goalkeeping,
+          nationality: r.realPlayerId == null
+              ? ''
+              : (nationalities[r.realPlayerId!] ?? ''),
           stamina: r.staminaPercent.toDouble(),
         ),
     ];
@@ -69,6 +79,7 @@ extension SeasonOpponentOps on SeasonStore {
             support: p.support,
             defence: p.defence,
             goalkeeping: p.goalkeeping,
+            nationality: p.nationality,
             stamina: p.stamina,
           ),
       ],
@@ -82,6 +93,7 @@ extension SeasonOpponentOps on SeasonStore {
             support: p.support,
             defence: p.defence,
             goalkeeping: p.goalkeeping,
+            nationality: p.nationality,
             stamina: p.stamina,
           ),
       ],

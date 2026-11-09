@@ -96,6 +96,7 @@ class MatchPlayer {
     required this.support,
     required this.defence,
     required this.goalkeeping,
+    this.nationality = '',
     this.stamina = 100,
   });
 
@@ -112,6 +113,11 @@ class MatchPlayer {
   final int support;
   final int defence;
   final int goalkeeping;
+
+  /// Nationality as imported from the dataset ('' for engine-level
+  /// fixtures and synthetic squads). Players sharing a nationality on
+  /// the pitch earn a chemistry bonus — see `chemistry.dart`.
+  final String nationality;
 
   /// Current stamina 0..100 (GDD 11.1). Mutated by the engine.
   double stamina;
@@ -131,6 +137,7 @@ class MatchPlayer {
           support: support,
           defence: defence,
           goalkeeping: goalkeeping,
+          nationality: nationality,
           stamina: stamina,
         )
         ..minutesPlayed = minutesPlayed

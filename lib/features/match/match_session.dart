@@ -341,6 +341,7 @@ class MatchSession {
         (card.attribute(PlayerAttribute.goalkeeping) *
                 (1 + fractions.goalkeeping))
             .round(),
+    nationality: card.base.nationality,
     stamina: card.staminaPercent.toDouble(),
   );
 

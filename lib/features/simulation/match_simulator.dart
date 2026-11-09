@@ -159,6 +159,9 @@ class MatchSimulator {
             support: gen.support,
             defence: gen.defence,
             goalkeeping: gen.goalkeeping,
+            // Synthetic squads carry no nationality: zero chemistry, so
+            // balance baselines are unaffected (owner spec 2026-11-09).
+            nationality: '',
           );
         }(),
     ];
