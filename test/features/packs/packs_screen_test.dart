@@ -771,6 +771,27 @@ void main() {
   }
 
   testWidgets(
+    'T-0083: no swipe-to-refresh on the store — the grid still renders',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // Pull-down can never invalidate the pack/offer providers
+      // mid-browse anymore: the gesture's wrapper is gone from the
+      // tree entirely.
+      expect(find.byType(RefreshIndicator), findsNothing);
+
+      // The store itself renders exactly as before: the free stack
+      // badges of the 22 starter packs and the section icon buttons.
+      expect(find.text('FREE ×2'), findsNWidgets(7));
+      expect(find.text('FREE ×4'), findsNWidgets(2));
+      expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(12));
+    },
+  );
+
+  testWidgets(
     'T-0084: with 2 owned packs, the reveal chain capsule counts the '
     'survivor as FREE ×1 — not the stale FREE ×2',
     (WidgetTester tester) async {

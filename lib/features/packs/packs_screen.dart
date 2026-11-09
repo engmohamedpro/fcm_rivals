@@ -45,14 +45,34 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     final offers = ref.watch(storeOffersProvider);
     final coins = ref.watch(clubProvider).valueOrNull?.coins;
 
-    return RefreshIndicator(
-      color: FcmColors.gold,
-      backgroundColor: FcmColors.surface,
-      onRefresh: () async {
-        ref.invalidate(availablePacksProvider);
-        ref.invalidate(storeOffersProvider);
-      },
-      child: offers.when(
+    // No pull-to-refresh (owner decision 2026-11-09): a swipe could
+    // invalidate the pack/offer providers mid-browse. Refresh stays
+    // reachable through the error panel's tap-to-retry and the
+    // providers' natural refresh on screen re-entry.
+    return offers.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: FcmPanel(
+              accent: FcmColors.danger,
+              onTap: () => ref.invalidate(storeOffersProvider),
+              child: Column(
+                children: [
+                  Text('$e', textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap to retry',
+                    style: TextStyle(color: FcmColors.gold),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      data: (offers) => packs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ListView(
           children: [
@@ -60,46 +80,22 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
               padding: const EdgeInsets.all(14),
               child: FcmPanel(
                 accent: FcmColors.danger,
-                onTap: () => ref.invalidate(storeOffersProvider),
-                child: Column(
-                  children: [
-                    Text('$e', textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Tap to retry',
-                      style: TextStyle(color: FcmColors.gold),
-                    ),
-                  ],
-                ),
+                onTap: () => ref.invalidate(availablePacksProvider),
+                child: Text('$e', textAlign: TextAlign.center),
               ),
             ),
           ],
         ),
-        data: (offers) => packs.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ListView(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: FcmPanel(
-                  accent: FcmColors.danger,
-                  onTap: () => ref.invalidate(availablePacksProvider),
-                  child: Text('$e', textAlign: TextAlign.center),
-                ),
-              ),
-            ],
-          ),
-          data: (packs) => StoreGrid(
-            packs: packs,
-            offers: offers,
-            coins: coins,
-            opening: _opening,
-            onOpen: (packId, tier) => _open(context, packId, tier),
-            onBuy: (offer) => _buy(context, offer),
-            // Opens the scope's contents list — same entry as the cells'
-            // players icon buttons.
-            onInfo: (offer) => _showContents(context, offer),
-          ),
+        data: (packs) => StoreGrid(
+          packs: packs,
+          offers: offers,
+          coins: coins,
+          opening: _opening,
+          onOpen: (packId, tier) => _open(context, packId, tier),
+          onBuy: (offer) => _buy(context, offer),
+          // Opens the scope's contents list — same entry as the cells'
+          // players icon buttons.
+          onInfo: (offer) => _showContents(context, offer),
         ),
       ),
     );

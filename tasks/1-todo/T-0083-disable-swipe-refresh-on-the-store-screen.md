@@ -2,8 +2,8 @@
 id: T-0083
 title: Disable swipe-to-refresh on the store screen
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -56,6 +56,22 @@ flutter test
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** the `RefreshIndicator` wrapper is gone from the store screen's build — the `offers.when(...)` tree is now the direct body, with a comment recording the owner decision and the two remaining refresh paths (the error panel's tap-to-retry and the providers' natural refresh on screen re-entry). No other behavior changed: grid, sections, odds sheet, CLAIM/BUY flows and the error/loading states are untouched.
+
+1. `lib/features/packs/packs_screen.dart` — removed the wrapper (color/backgroundColor/onRefresh invalidate block); re-indented the child tree and removed the wrapper's now-extra closing paren; `dart format` clean.
+2. `test/features/packs/packs_screen_test.dart` — one new test: pumps the store on the real-DB harness, asserts `find.byType(RefreshIndicator)` findsNothing, and re-asserts the store renders as before (the 22 starter-pack stack badges — `FREE ×2` ×7, `FREE ×4` ×2 — and the 12 section icon buttons), matching the file's existing assertion pattern.
+
+**Files changed:** `lib/features/packs/packs_screen.dart`, `test/features/packs/packs_screen_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/packs/packs_screen_test.dart` → all green including the new T-0083 test ✓. `flutter test test/features/packs/` → **102/102 green** ✓. Full `flutter test --concurrency=1` → green, no REGEN_SNAPSHOT ✓ (result recorded in the submit commit).
+
+**Concerns / assumptions:**
+- Refresh remains reachable exactly as the task documents: the error panel's tap still invalidates `storeOffersProvider`/`availablePacksProvider`, and providers re-compute on screen re-entry — so no replacement mechanism was added (out of scope respected).
+- `grep RefreshIndicator lib/features/packs/packs_screen.dart` → no matches after the change; no other screen was touched.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
