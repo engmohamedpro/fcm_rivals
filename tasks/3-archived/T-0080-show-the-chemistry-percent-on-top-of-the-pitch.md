@@ -2,11 +2,11 @@
 id: T-0080
 title: Show the chemistry percent on top of the pitch
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0079]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0080: Show the chemistry percent on top of the pitch
@@ -33,11 +33,11 @@ The XI's chemistry percent reads as a compact badge ON the football pitch itself
 - Redesigning the control card beyond removing the row (T-0079 already owns the sheet text changes).
 
 ## Acceptance Criteria
-- [ ] The chemistry percent badge renders on top of the pitch artwork at its top end, in the Team tab and the pre-match phase, EN and AR.
-- [ ] The control card no longer shows a CHEMISTRY row; no duplicate display anywhere.
-- [ ] No overlap with player chips; tapping players on the top line still opens the card reveal; RTL renders correctly.
-- [ ] Empty squad hides the badge (test preserved); updated tests pass in both text directions.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
+- [x] The chemistry percent badge renders on top of the pitch artwork at its top end, in the Team tab and the pre-match phase, EN and AR.
+- [x] The control card no longer shows a CHEMISTRY row; no duplicate display anywhere.
+- [x] No overlap with player chips; tapping players on the top line still opens the card reveal; RTL renders correctly.
+- [x] Empty squad hides the badge (test preserved); updated tests pass in both text directions.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -71,3 +71,14 @@ flutter test
 - The label compaction is glyph-count based (first 5 + …). For a future locale whose `teamChemistry` is shorter than 6 glyphs the label renders whole (no compaction) — that is the intended graceful path, not a bug.
 - The badge sits in the painted margin strip; on very short screens the 1.8% top offset keeps it above the top-line cards, but if a future formation places a slot at the extreme top (y ≈ 100), the layout solver's `kPitchMargin` headroom (8px + stagger reserve) is the guaranteed clearance — measured layouts keep the first row below the badge strip in the 340×900 test surface.
 - Tap/drag on the top line is inert-passthrough by `IgnorePointer`; the drag source lives on the player chips themselves, so swap interactions are untouched (covered by the existing drag tests in the suite, all green).
+
+## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran on Flutter 3.47.9 / Dart 3.13.7 at HEAD 2d00a63: `flutter analyze` → No issues found; `flutter test test/features/squad/` → 234/234 green; full `flutter test` → 938/938 green with `REGEN_SNAPSHOT` unset. The counts reconcile exactly (previous review's 937 + the new empty-XI absence test).
+- Diff audit (2cf2293): exactly the four declared files — `squad_pitch_view.dart` (badge), `tactics_setup_view.dart` (row + plumbing removal), `squad_view_test.dart`, task file. No engine/formula/chemistry change, no out-of-scope edits.
+- AC-1 verified: EN test asserts `CHEMI…` + `+4%` with the label a DESCENDANT of `SquadPitch`; the AR RTL test asserts `الكيم…` (first five glyphs of `الكيمياء`) + `+4%` and that no full label exists. The pre-match phase renders the badge by construction — `pre_match_phases.dart` uses the same `TacticsSetupView`/`SquadPitch` tree (code-verified; the widget tests pump the Team-tab host).
+- AC-2 verified: `find.text('CHEMISTRY')` `findsNothing` asserted in both the EN and AR tests; the `_chemistry` row, its `_ControlCard` field and the call-site plumbing are all deleted.
+- AC-3 verified with arithmetic, not just the dev's word: across all 15 shipped formations the topmost slot is `_stY = 84` (`formations.dart:67`), so the solver places the striker row at `8 + 0.16 × spanY` — at least ~44px down even on a 300px pitch — while the badge's bottom edge sits at ~`ph × 0.018 + 14px` ≈ 20px: no spatial overlap for ANY shipped formation. The badge is wrapped in `IgnorePointer`, and pitch-chip tap/drag behavior is covered by `squad_drag_test.dart` ("a quick tap still works", drops, swaps) — all green. RTL correctness is the measured badge-inside-pitch-rect assertion in the AR test.
+- AC-4 verified: a NEW test covers the empty-XI case (`CHEMI…` and `+0%` find nothing, pitch still renders); the null-hides plumbing is `chemistryPercent: xi.isEmpty ? null : chemistry` at the call site.
+- One forward-looking note, no criterion impact: the Developer Notes call the `kPitchMargin` headroom "the guaranteed clearance" for a hypothetical future formation at y ≈ 100 — that phrasing is optimistic: at y = 100 the solver clamps the chip to y = 8, which WOULD visually overlap the badge strip (16–29px). Taps would still pass through (`IgnorePointer`), so it is cosmetic only, and no shipped formation is affected. If a formation with a slot above y ≈ 90 is ever added, revisit the badge's top offset.
