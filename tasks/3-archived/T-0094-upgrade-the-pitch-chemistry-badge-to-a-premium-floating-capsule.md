@@ -2,11 +2,11 @@
 id: T-0094
 title: Upgrade the pitch chemistry badge to a premium floating capsule
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0094: Upgrade the pitch chemistry badge to a premium floating capsule
@@ -38,11 +38,11 @@ The XI chemistry reading above the pitch becomes a premium floating capsule: a p
 - The tactics summary row (T-0092) or the options sheet height (T-0095).
 
 ## Acceptance Criteria
-- [ ] The chemistry reading renders as a dark translucent capsule with gold border, icon, full untruncated localized label and the '+N%' value — above the pitch as today, on the Team tab, pre-match and live surfaces alike.
-- [ ] The value counts up to its final number on squad changes and settles on the exact reading; idle state is static (no looping animation).
-- [ ] Colour semantics unchanged: 0 reads dim, n ≥ 1 reads through the rating ramp; contrast stays legible on the grass (capsule background, not bare text).
-- [ ] Renders correctly in EN and AR under RTL (mirrored capsule, Arabic label, no overflow at the 5-char-equivalent label lengths).
-- [ ] Existing badge tests still pass; the new change-settle and AR-RTL tests green; `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
+- [x] The chemistry reading renders as a dark translucent capsule with gold border, icon, full untruncated localized label and the '+N%' value — above the pitch as today, on the Team tab, pre-match and live surfaces alike.
+- [x] The value counts up to its final number on squad changes and settles on the exact reading; idle state is static (no looping animation).
+- [x] Colour semantics unchanged: 0 reads dim, n ≥ 1 reads through the rating ramp; contrast stays legible on the grass (capsule background, not bare text).
+- [x] Renders correctly in EN and AR under RTL (mirrored capsule, Arabic label, no overflow at the 5-char-equivalent label lengths).
+- [x] Existing badge tests still pass; the new change-settle and AR-RTL tests green; `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -82,3 +82,22 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — PASS (2026-11-09)
+
+Ran every How to Verify command, all green — including the full suite the developer flagged as not run (their time budget):
+- `flutter analyze` → No issues found.
+- `flutter test test/features/squad/squad_view_test.dart` → 18/18.
+- `flutter test test/features/squad/` → 238/238.
+- Full `flutter test` → **954/954** (+2 = the two new T-0094 tests), no REGEN_SNAPSHOT.
+
+Checked each acceptance criterion against real code and behavior:
+- Capsule: 28px dark glass pill (surface 0.85, radius 15, gold border 0.35, 13px gold link icon), full untruncated `teamChemistry` label, `FcmCountUp` value; same `IgnorePointer` top strip and same widget on all three surfaces (no flag — Team/pre-match/live share `SquadPitch`). Pinned by the glass-pill shape test reading the real `BoxDecoration` and the ≤30 height constraint.
+- Count-up + settle + idle static: `didUpdateWidget` fires one 240ms scale/fade pulse on percent change only; controller disposed; the change-settle test drives a real chemistry change (+1% → 2 Egypt + 2 Brazil → +2%), asserts the old text gone mid-count, settles on the exact new reading and stays static on a plain frame.
+- Colour semantics: identical `ratingColor(70 + percent*3)` / dim-at-0 logic as before; legibility now on the capsule background rather than bare text over grass.
+- EN/AR RTL: full 'الكيمياء' label, icon mirrored to the start (right) edge — asserted with measured positions, capsule inside pitch bounds.
+- Removed test lines were only the old 'CHEMI…'/'الكيم…' truncation assertions — replaced by stronger full-label + icon + bounds checks; no assertion weakened.
+
+Scope check: `squad_pitch_view.dart` + `squad_view_test.dart` + this task file only — exactly the task's files. Formula, position and pitch artwork untouched. No regressions.
+
+All criteria met — PASS.
