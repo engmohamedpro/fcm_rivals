@@ -83,7 +83,14 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 2400));
     await tester.tapAt(const Offset(400, 800));
-    await tester.pump(const Duration(milliseconds: 400));
+    // The tap pops the route: the 180ms reverse animation runs and the
+    // overlay entry comes down on a following frame, so a single timed
+    // pump is not enough — settle the teardown out instead.
+    await tester.pumpAndSettle(
+      const Duration(milliseconds: 100),
+      EnginePhase.sendSemanticsUpdate,
+      const Duration(seconds: 2),
+    );
     expect(find.byType(CardMergeAnimation), findsNothing);
   });
 }
