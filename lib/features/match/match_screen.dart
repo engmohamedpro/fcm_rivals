@@ -620,12 +620,11 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               onSetSpeed: _setSpeed,
                               onTactics: () => _openLiveTactics(context),
                             ),
-                            // Momentum bar where the old live stats
-                            // strip sat: per-minute spikes — the home
-                            // side's pressure rises ABOVE the baseline,
-                            // the away side's hangs BELOW it — so who
-                            // is on top reads at a glance. The user's
-                            // crest colour tints their side's spikes.
+                            // Momentum meter: who is on top RIGHT NOW,
+                            // said in words (status pill), as a tug-of-
+                            // war bar whose knob slides every minute
+                            // and as a trend wave of the match so far.
+                            // The user's crest colour tints their side.
                             Padding(
                               padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
                               child: FcmPanel(

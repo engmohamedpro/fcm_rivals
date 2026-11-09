@@ -5,8 +5,10 @@
 /// when a family moves again (task
 /// `2026-11-05_app-structure_split-live-match-views`):
 ///
-/// - `match_header.dart` — the compact scoreboard header, its
-///   play/pause + speed + tactics controls and the momentum bar;
+/// - `match_header.dart` — the compact scoreboard header and its
+///   play/pause + speed + tactics controls;
+/// - `momentum_bar.dart` — the live momentum meter (tug-of-war bar,
+///   plain-words status and trend wave);
 /// - `touchline_pep_talk.dart` — the half-time touchline talk card,
 ///   its chooser sheet and the shared `SheetOption` row.
 ///
@@ -16,4 +18,5 @@ library;
 
 export 'injury_live_banner.dart';
 export 'match_header.dart';
+export 'momentum_bar.dart';
 export 'touchline_pep_talk.dart';

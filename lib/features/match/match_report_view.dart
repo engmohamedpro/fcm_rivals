@@ -387,6 +387,10 @@ class _MatchReportViewState extends State<MatchReportView> {
                       awayTeamName: widget.awayTeamName,
                       homeColor: homeColor,
                       awayColor: awayColor,
+                      // Full time: the whole-match trend only — "who is on
+                      // top right now" means nothing after the whistle.
+                      live: false,
+                      graphHeight: 56,
                     ),
                   ),
                 ),

@@ -1,12 +1,13 @@
 /// FCM Rivals — live match header family (GDD 13): the compact
-/// scoreboard header, its controls and the momentum bar.
+/// scoreboard header and its controls.
 ///
 /// Split out of `live_match_views.dart` (task
 /// `2026-11-05_app-structure_split-live-match-views`), which re-exports
 /// this library so consumer imports never churn. Kept separate from
 /// [MatchScreen]'s flow logic: the screen rebuilds once per match minute
 /// and none of these own per-minute animation controllers beyond the
-/// self-repainting [_LiveDot].
+/// self-repainting [_LiveDot]. The momentum meter lives in
+/// `momentum_bar.dart`.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,9 +22,10 @@ import '../../core/ui/fcm_widgets.dart';
 /// vertical space of the old stack (scoreboard panel, then a separate
 /// controls row), which is vertical budget the commentary feed now owns.
 ///
-/// Momentum lives in its own bar between this header and the feed —
-/// [MomentumBar] — not inside the header: the up/down spike reading
-/// needs more height than a compact scoreboard can spare.
+/// Momentum lives in its own meter between this header and the feed —
+/// `MomentumBar` in `momentum_bar.dart` — not inside the header: the
+/// tug-of-war bar and trend wave need more height than a compact
+/// scoreboard can spare.
 class MatchHeader extends StatelessWidget {
   const MatchHeader({
     super.key,
@@ -239,163 +241,6 @@ class _TeamChip extends StatelessWidget {
       ],
     );
   }
-}
-
-/// The spike colour of the side the user does NOT manage: dimmed white,
-/// so the user's crest colour always owns the reading at first glance.
-const Color opponentMomentumColor = Color(0xD9FFFFFF);
-
-/// The live momentum bar (GDD 13.2 live feel): a horizontal baseline
-/// with one vertical line per minute played — home pressure rises ABOVE
-/// the line, away pressure hangs BELOW it, and the taller side is the
-/// team on top. Each minute's reading is the same trailing-window share
-/// [computeMomentumSeries] gives, so the bar can never contradict the
-/// events (GDD 13.1). Dead level at kick-off: no spikes, just the line.
-///
-/// The team names sit at the two ends of the label row so the sides are
-/// unmistakable, painted as ONE CustomPainter — the match screen
-/// rebuilds once per minute and the whole history repaints in a single
-/// pass, no per-minute widgets and no animation controllers (the
-/// repaint-per-minute philosophy that keeps the live screen jank-free).
-class MomentumBar extends StatelessWidget {
-  const MomentumBar({
-    super.key,
-    required this.series,
-    required this.homeTeamName,
-    required this.awayTeamName,
-    this.homeColor = FcmColors.gold,
-    this.awayColor = opponentMomentumColor,
-    this.graphHeight = 56,
-  });
-
-  /// Per-minute HOME momentum share (0..1, 0.5 = dead level), index 0 =
-  /// minute 1 — [computeMomentumSeries] output. Empty before kick-off.
-  final List<double> series;
-
-  final String homeTeamName;
-  final String awayTeamName;
-
-  /// Spike colour of the home side above the baseline (the user's crest
-  /// colour when they manage it).
-  final Color homeColor;
-
-  /// Spike colour of the away side below the baseline.
-  final Color awayColor;
-
-  /// Height of the spike area itself (the label row adds ~16dp).
-  final double graphHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: FitText(
-                homeTeamName,
-                align: Alignment.centerLeft,
-                style: TextStyle(
-                  color: homeColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-            const Text(
-              'MOMENTUM',
-              style: TextStyle(
-                color: FcmColors.textDim,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-              ),
-            ),
-            Expanded(
-              child: FitText(
-                awayTeamName,
-                align: Alignment.centerRight,
-                style: TextStyle(
-                  color: awayColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          width: double.infinity,
-          height: graphHeight,
-          child: CustomPaint(
-            painter: _MomentumPainter(
-              series: series,
-              homeColor: homeColor,
-              awayColor: awayColor,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Paints the baseline plus one vertical line per played minute: up
-/// (home colour) when the home share is past dead level, down (away
-/// colour) when under it, the length proportional to the pressure.
-class _MomentumPainter extends CustomPainter {
-  const _MomentumPainter({
-    required this.series,
-    required this.homeColor,
-    required this.awayColor,
-  });
-
-  final List<double> series;
-  final Color homeColor;
-  final Color awayColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final mid = size.height / 2;
-    canvas.drawLine(
-      Offset(0, mid),
-      Offset(size.width, mid),
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.16)
-        ..strokeWidth = 1,
-    );
-
-    final n = series.length;
-    if (n == 0) return;
-    final step = size.width / n;
-    final line = Paint()
-      ..strokeWidth = (step * 0.55).clamp(1.2, 3.0).toDouble()
-      ..strokeCap = StrokeCap.round;
-    // A little breathing room either side of the baseline.
-    final half = mid - 3;
-    for (var i = 0; i < n; i++) {
-      final d = (series[i].clamp(0.0, 1.0) - 0.5) * 2; // -1..1, + = home
-      if (d.abs() < 0.04) continue; // dead-level minute: no spike
-      final x = step * (i + 0.5);
-      final len = d.abs() * half;
-      line.color = d > 0 ? homeColor : awayColor;
-      canvas.drawLine(
-        Offset(x, mid),
-        Offset(x, d > 0 ? mid - len : mid + len),
-        line,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MomentumPainter old) =>
-      old.series != series ||
-      old.homeColor != homeColor ||
-      old.awayColor != awayColor;
 }
 
 /// Pulsing red "live" indicator — the one animated widget in the
