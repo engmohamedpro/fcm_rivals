@@ -2,11 +2,11 @@
 id: T-0077
 title: Hide the app bar on the Team tab only
 priority: high
-status: needs-review
+status: done
 attempts: 2
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0077: Hide the app bar on the Team tab only
@@ -34,9 +34,9 @@ The game shell's AppBar is hidden while the Team tab is active and shown on ever
 - Hiding the app bar on any other tab, or making the hide permanent.
 
 ## Acceptance Criteria
-- [ ] Team tab (index 1) shows no AppBar; Season/Collection/Campus/Store show it exactly as today.
+- [x] Team tab (index 1) shows no AppBar; Season/Collection/Campus/Store show it exactly as today.
 - [x] The transition is animated — no hard layout jump when switching tabs.
-- [ ] No status-bar overlap or dead gap on the Team tab in LTR and RTL; `flutter analyze` zero warnings.
+- [x] No status-bar overlap or dead gap on the Team tab in LTR and RTL; `flutter analyze` zero warnings.
 - [x] New widget tests cover hidden (Team), shown (default), restored (switch back), in both text directions, with no overflow errors.
 - [x] Full `flutter test` green; no performance regression in tab switching (the only-selected-tab-is-built behavior from ff05b44 is preserved).
 
@@ -74,6 +74,13 @@ flutter test
 2. Raise the `OverflowBox` maxHeight to the inset-aware expanded height so the real AppBar is never clamped below its natural height. Whether the residual inset-high slot paints a slim chrome strip or is clipped empty on Team is an implementation choice — both satisfy the criterion.
 3. Extend `game_shell_appbar_test.dart`: inject a nonzero top `FakeViewPadding` (e.g. 40px) and ASSERT the settled body top — Team == 40, Season == 40 + 57 — in both text directions. That is the invariant the current second test claims in its name but never checks.
 4. Re-verify: `flutter analyze`; `flutter test test/core/ui/`; full `flutter test`; and run the committed probe — its PROBE verdict line must print "content starts below the inset (OK)".
+
+### Review 2026-11-09, attempt 2: PASS (resubmission — every attempt-1 failure independently verified fixed)
+- Ran on Flutter 3.47.9 / Dart 3.13.7 at this HEAD: the attempt-1 probe `test/core/ui/review_t0077_statusbar_probe_test.dart` UNMODIFIED → `PROBE season: bodyTop=97.0 slotHeight=97.0`, `PROBE team: bodyTop=40.0 slotHeight=40.0`, verdict "content starts below the inset (OK)"; `flutter test test/core/ui/game_shell_appbar_test.dart` → 4/4 green; `flutter test test/core/ui/` → 47/47 green; full `flutter test` → 931/931 green with `REGEN_SNAPSHOT` unset (one shared run covering all three tasks in review at this HEAD).
+- Attempt-1 failure 1 (expanded bar clamped to 57 under a real inset — regression on every tab): FIXED. The wrapper now budgets `inset + bar.preferredSize.height` (97 at a 40px inset, identical to the pre-change AppBar) and the OverflowBox maxHeight was raised to the inset-aware expanded height so the real AppBar is never clamped. Probe: Season body top back to 97 — exactly the pre-change device layout.
+- Attempt-1 failure 2 (Team content under the status bar): FIXED. The collapsed slot is the inset itself, so the Team body starts at exactly 40 under a 40px inset — no overlap, no dead gap; zero-padding tests still measure 0.
+- Attempt-1 failure 3 (the inset test that asserted only nav docking): FIXED. The reworked second test injects a real 40px `FakeViewPadding` and MEASURES the invariant in both text directions — Season body top == 40 + 57, Team == 40, restore == 97, plus slot-height checks. The test's name now matches its assertions.
+- The tween now animates in the height domain directly (collapsed ↔ expanded), so the transition stays animated exactly as in attempt 1 (AC-2 re-verified), and the bar subtree stays mounted through the cycle so the coin/language state survives. `preferredSize` reports the inset-free bar height for pre-layout consumers while the Scaffold consumes the laid-out inset-aware animated height — coherent with the 3.47.9 `_ScaffoldLayout` behavior documented in the attempt-1 log.
 
 ## Developer Notes
 

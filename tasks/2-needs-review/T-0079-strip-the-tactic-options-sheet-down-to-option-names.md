@@ -2,11 +2,11 @@
 id: T-0079
 title: Strip the tactic options sheet down to option names
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0079: Strip the tactic options sheet down to option names
@@ -43,11 +43,11 @@ The tactics surfaces show option NAMES only: every always-on explanation/effect 
 - Moving texts to a tooltip/info button — the owner wants them gone, not relocated.
 
 ## Acceptance Criteria
-- [ ] No always-on effect/subtitle/hint text renders in any of the three hosts; the offside-trap deep warning still appears only for deep line + trap on.
-- [ ] Option names, section titles, row labels, slider pills and end labels render in EN and AR exactly as before (RTL unaffected).
-- [ ] The five l10n keys are gone from both ARB files, generation is clean, and `test/core/ui/l10n_test.dart` passes.
-- [ ] GDD 10.3 documents the names-only decision (dated 2026-11-09).
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/squad/ test/core/ui/l10n_test.dart` green; full `flutter test` green.
+- [x] No always-on effect/subtitle/hint text renders in any of the three hosts; the offside-trap deep warning still appears only for deep line + trap on.
+- [x] Option names, section titles, row labels, slider pills and end labels render in EN and AR exactly as before (RTL unaffected).
+- [x] The five l10n keys are gone from both ARB files, generation is clean, and `test/core/ui/l10n_test.dart` passes.
+- [x] GDD 10.3 documents the names-only decision (dated 2026-11-09).
+- [x] `flutter analyze` zero warnings; `flutter test test/features/squad/ test/core/ui/l10n_test.dart` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -60,3 +60,17 @@ flutter test test/features/squad/squad_view_test.dart test/core/ui/l10n_test.dar
 flutter test
 # Expected: full suite green, no REGEN_SNAPSHOT
 ```
+
+---
+
+## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- File note: this task was authored without the Developer Notes / Review Log sections (older planning format); the developer's implementation summary lives in commit 2fcf8e0's message. The Review Log section is added by this review per the reviewer workflow.
+- Ran on Flutter 3.47.9 / Dart 3.13.7 at this HEAD: `flutter gen-l10n` → clean; `flutter analyze` → No issues found; `flutter test test/features/squad/ test/core/ui/l10n_test.dart` → 237/237 green; full `flutter test` → 931/931 green with `REGEN_SNAPSHOT` unset (one shared run covering all three tasks in review at this HEAD).
+- Diff audit (2fcf8e0, −209/+38): the shared `TacticsGroupScaffold` loses the section subtitles, the section effect summaries, all ten per-row `summary(...)` texts (the summary plumbing deleted from `_Section`/`_SegmentedRow`/`_SliderRow`, not just hidden), the estimated-possession readout and the rest-defence hint; the mentality effect-summary is gone from the sheet. All three hosts (Team tab sheet, pre-match tactics phase, live tactics screen) simplify through the one scaffold.
+- Keep-list verified: `trapDeepWarning` still renders conditionally (`tactics_sections.dart:476`, deep line + trap on only); section titles, row labels, option names, slider pills and end labels are untouched; the engine's `effectSummary`/`modifiers` in `tactics.dart` / `team_tactics.dart` have ZERO diff lines (verified with `git diff --stat` over those files).
+- The five l10n keys are gone from both ARBs (grep: 0 matches in `app_en.arb` and `app_ar.arb`), generation is clean, and the EN/AR parity test passes.
+- `squad_view_test.dart` gained real absence guards in BOTH locales — 'Est. possession' / 'الاستحواذ المتوقع' find nothing, and known summary percentages ('Defence +34%', 'Chances +16%', 'Stamina use +30%', 'Passing -9%', 'Stamina use +14%') find nothing — while the surviving names/titles/pills/FcmScaleSlider-count assertions are untouched.
+- GDD §10.3 records the dated owner decision verbatim (names only; effect percentages live in the engine; supersedes "effects must be visible" for these surfaces; the conditional trap warning stays).
+- No out-of-scope changes: the diff touches only the shared scaffold, the sheet view, the l10n files, the GDD, the task file and the test file.

@@ -2,11 +2,11 @@
 id: T-0075
 title: Graduate season coin rewards strictly by final position
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0074]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0075: Graduate season coin rewards strictly by final position
@@ -35,11 +35,11 @@ The season coin reward is strictly graduated by final table position: 1st pays t
 - The AI-side economy (AI clubs never earn coins; nothing to graduate).
 
 ## Acceptance Criteria
-- [ ] Strict graduation: a seeded test asserts `reward(p) > reward(p+1)` for every p in 1..19 at div 1 AND at div 9 — no flat step anywhere, 1st strictly the most, 20th strictly the least.
-- [ ] Anchors: div-1 pos 1 == 20_000; div-1 pos 20 in [4_500, 5_000]; `reward(div 4, p) > reward(div 1, p)` and `< 2 ×` for the sampled position; champion < 22_500.
-- [ ] `test/features/ads/ad_economy_test.dart` passes unchanged (the ×1.25 ad boost on the 20_000 champion still adds exactly 5_000).
-- [ ] GDD 18 documents the strict position graduation under the 2026-11-09 owner decision.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/season/ test/balance/economy_balance_test.dart test/features/ads/` green; full `flutter test` green.
+- [x] Strict graduation: a seeded test asserts `reward(p) > reward(p+1)` for every p in 1..19 at div 1 AND at div 9 — no flat step anywhere, 1st strictly the most, 20th strictly the least.
+- [x] Anchors: div-1 pos 1 == 20_000; div-1 pos 20 in [4_500, 5_000]; `reward(div 4, p) > reward(div 1, p)` and `< 2 ×` for the sampled position; champion < 22_500.
+- [x] `test/features/ads/ad_economy_test.dart` passes unchanged (the ×1.25 ad boost on the 20_000 champion still adds exactly 5_000).
+- [x] GDD 18 documents the strict position graduation under the 2026-11-09 owner decision.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/season/ test/balance/economy_balance_test.dart test/features/ads/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -74,3 +74,12 @@ flutter test
 **Concerns:**
 - Div-1 full season bank (the 70k–160k band) is unaffected: the graduation only redistributes ~±800 coins around the old curve per finishing position (2nd +1_000, 19th +200, 18th +500, 20th/1st/4th–17th unchanged) — the band test passed unchanged.
 - The multipliers are engine-private (not on SeasonConfig); if a future task wants difficulty presets to reshape the reward curve, these six consts are the single place to lift into the config — noted for that reviewer, not done now (out of scope).
+
+## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran on a fresh session of Flutter 3.47.9 / Dart 3.13.7 at this HEAD: `flutter analyze` → No issues found; `flutter test test/features/season/season_engine_test.dart test/balance/economy_balance_test.dart test/features/ads/ad_economy_test.dart` → 58/58 green; full `flutter test` → 931/931 green with `REGEN_SNAPSHOT` unset (one shared run covering all three tasks in review at this HEAD).
+- Diff audit (fa379f6): only the flat spots changed — promotion 2nd = 1.6 / 3rd = 1.5 (was a flat 1.5 pair), relegation 0.55 / 0.52 / 0.50 for 18th/19th/20th (was a flat 0.50 trio), derived from `config.clubsPerDivision` rather than hardcoded positions; champion 2.0, the stayed band (4–17) and the division scaling are byte-identical to before. Six named private consts sit next to the function, documented with the dated owner decision. Files touched are exactly the four requirements' targets + the task file.
+- Tests verified: strict monotonicity across all 20 positions at div 1 AND div 9, each step's reason string naming both values so a future flat step names its position; anchor equalities exactly as specified (champion == 20_000, last == 5_000 within [4_500, 5_000], d4 > d1 and < 2× at position 5, both previously-flat spots strictly ordered); the economy test's relegated sample moved 19 → 20 exactly as the task's note anticipated, with the champion and 0.25-ceiling assertions untouched; the ad test untouched and green (the ×1.25 boost on the 20_000 champion still adds exactly 5_000).
+- GDD §18 records the strict graduation under the dated owner decision.
+- One note, no criterion impact: Developer Notes claim the graduation "holds for any club count" — true up to `clubsPerDivision = 21`, but at 22+ the stayed band's clamp at 0.6 flattens consecutive positions before relegation. The game's value is 20 (`season_engine.dart:23`), the requirement is scoped to 20, and the monotonicity tests pass — just do not reuse the claim verbatim for a hypothetical larger league without re-checking the clamp.
