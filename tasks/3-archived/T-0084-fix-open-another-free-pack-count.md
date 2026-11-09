@@ -2,11 +2,11 @@
 id: T-0084
 title: Fix the OPEN ANOTHER free-pack count showing one extra
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0084: Fix the OPEN ANOTHER free-pack count showing one extra
@@ -35,11 +35,11 @@ The `FREE ×N` count on the reveal screen's OPEN ANOTHER capsule shows the real 
 - Any change to `availablePacksProvider`'s definition or caching strategy in `lib/app/providers.dart`.
 
 ## Acceptance Criteria
-- [ ] After opening a pack, the OPEN ANOTHER capsule's owned count equals the real number of owned packs of that slot (2 owned → open → `FREE ×1`; 1 owned → open → price path, not FREE).
-- [ ] Chained reveals (OPEN ANOTHER → next reveal) also show the correct post-open count, not a stale one.
-- [ ] With zero owned packs left, tapping OPEN ANOTHER never attempts to open a consumed pack id (no error SnackBar from a stale read; it buys or reports shortfall).
-- [ ] The two regression tests above exist and are green.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green.
+- [x] After opening a pack, the OPEN ANOTHER capsule's owned count equals the real number of owned packs of that slot (2 owned → open → `FREE ×1`; 1 owned → open → price path, not FREE).
+- [x] Chained reveals (OPEN ANOTHER → next reveal) also show the correct post-open count, not a stale one.
+- [x] With zero owned packs left, tapping OPEN ANOTHER never attempts to open a consumed pack id (no error SnackBar from a stale read; it buys or reports shortfall).
+- [x] The two regression tests above exist and are green.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -89,3 +89,11 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran every How to Verify command on HEAD 5deaa93: `flutter analyze` → No issues found; `flutter test test/features/packs/packs_screen_test.dart` → 15/15 green (13 prior + the two new T-0084 tests); `flutter test test/features/packs/` → 101/101 green; full `flutter test` → 942/942 green, `REGEN_SNAPSHOT` unset. All counts match the Developer Notes exactly.
+- Diff audit (717e0e9): three files only — `packs_screen.dart` (the fix), `packs_screen_test.dart` (the two regression tests + shared helper), this task file. No provider definition/caching change, no engine/price/schema change — Out of Scope respected.
+- AC-1 verified by test run: the FREE ×1 test seeds the starter's 2 GK rare packs, opens one, asserts `FREE ×1` present, `FREE ×2` absent (the stale read locked out) and the DB agreeing (1 survivor). The last-pack test doctors GK down to 1 owned pack pre-pump, opens it and asserts no `FREE` label anywhere plus the rare-GK offer price plate on the capsule.
+- AC-2 verified by code-path uniformity plus integration: `PackChainInfo` is constructed in exactly one place (`packs_screen.dart:313` inside `_chainInfoFor`) and `_chainInfoFor` is called from exactly one place (`_reveal`, line 171) — the first reveal and the chain recursion both flow through the same async fresh-read path, so no second code path can produce a stale count. The last-pack test then drives the full chained hop end to end (OPEN ANOTHER → buy → open → chained reveal on stage). Note: the chained reveal's own capsule label is not directly asserted — acceptable because the shared path is proven fresh by the first test; recorded here for the record, not as a failure.
+- AC-3 verified by test run: with zero owned left, tapping OPEN ANOTHER shows no SnackBar, spends exactly `offer.price` coins (asserted against `store.getClub()` before/after) and lands the chained reveal — the pre-fix code died here reopening the consumed row.
+- Code-structure checks on the async rework: `context.mounted` re-check after the `_chainInfoFor` await before the push; `ScaffoldMessenger`/`l10n` captured before the first await in `_openAnotherInChain` (the file's own `_reveal` pattern) — no use-build-context-synchronously gaps, analyze clean. The balance now read from `store.getClub()` (DB truth at push time, per Requirement 1) while the reveal's live refresh still flows through `queryBalance` — consistent with the capsule's push-time snapshot design.
