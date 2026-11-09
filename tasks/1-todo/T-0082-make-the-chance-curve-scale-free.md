@@ -2,8 +2,8 @@
 id: T-0082
 title: Make the chance-creation curve scale-free so big upgrade edges stop producing stomps
 priority: high
-status: todo
-attempts: 0
+status: blocked
+attempts: 1
 depends_on: [T-0073]
 created: 2026-11-09
 completed:
@@ -63,3 +63,27 @@ flutter test
 ## Developer Notes
 
 ## Review Log
+
+## Developer Notes
+
+### Attempt 1 — BLOCKED: the two-direction 0.88 spec is over-constrained against the existing ladder bands; what I measured and what is needed
+
+**Status: BLOCKED. No production code shipped — every experiment was reverted (`git checkout` on the five touched files; analyze 0, test/balance/ 95/95 green on the reverted tree). The T-0073 violation lock and all bands are untouched.**
+
+**What I implemented and measured (all reverted):** the full scale-free design from the Requirements — normalized chance edge (edge / average of the two totals), re-anchored sigmoid constants, knee-curve soft saturation, normalized goal-rate shooter-vs-keeper edge (engine + forecast mirror), normalized on-target edge, home-advantage de-compounding (goalkeeping factor removal, pocket-share squad-basing + flat home bonus), underdog chance floor. Measured with a 300-800 match probe harness per configuration (the real MatchEngine, seeded, mirroring both balance suites' generators), ~15 configurations in total.
+
+**Evidence table (best configurations, seeds deterministic, n=300, CI ±2.8%):**
+- Baseline (T-0073 lock): +50% away-lift 0.950 / home-lift 0.977.
+- Full normalization, sigmoid m=0.16 s=4.0 + goal/on-target normalized + gk home-factor removed + pocket de-compounded: **away-lift 0.877 (spec MET) / home-lift 0.953 (spec MISSED)**.
+- + underdog clamp floor 0.11 (replacing 0.05): away 0.887 / home 0.940.
+- + edge defactor (home advantage divided out of the edge): away 0.890 / home 0.940 — but gap-0 falls to 0.373 (band 0.42–0.52 broken).
+- Knee-curve (steep below 0.20 edge, gentle cruise above): away 0.910 / home 0.963 — top compression does not move win rates because the favourite's chanceP is already under the cap; the match is decided by the underdog's collapse, not the favourite's ceiling.
+
+**Why it is blocked (the exact over-constraint, measured from both sides):**
+1. TOP: the normalized axis puts +50% (0.46) only 0.18 above the gap-20 rung (0.28). One response curve must read ~0.5 at even strength (0.06), keep gap-20's win ≥ 0.72 AND cap +50% at 0.88 — the gap-20 band floor and the +50% ceiling demand a win rate that is nearly FLAT across 0.28→0.46 while STEEP across 0.06→0.28. A knee curve does exactly this and still lands home-lift at 0.94, because of (2).
+2. BOTTOM: the underdog at +50% reads an edge of −0.47 → chance factor 0.04–0.08 → chanceP pinned at the 0.05–0.11 clamp floor on ~30% of pockets. Its 0.33 goals/match cannot reach the ~0.8 needed for the favourite to lose 12% of matches without raising the floor so far that even-strength draw/goal bands break (measured: chanceBase 0.03 → away WORSE at 0.893 because the favourite gains the same floor; speculativeShotChance 0.45 → goal explosion 5.1 per side at +50%, 3.9 combined at even strength, band ceiling broken).
+3. DIRECTION: home advantage (1.07) compounds asymmetrically — the lifted HOME side reads edge 0.46 vs the lifted AWAY side's 0.33 (1.07 × 1.5 into the attack), plus 1.07 sits in the turnover supportRatio for the home side. Dividing it out of the edge fixes symmetry but removes even-strength home advantage from the chance layer → gap-0 0.373, band broken (measured twice, with different accompanying changes).
+
+**What is needed to unblock (a design decision, not a constant):** an underdog income layer DECOUPLED from the attack-minus-defence edge — e.g. edge-independent set-piece income (corners/penalties scale with territory, not strength) or a pocket-count floor for the defending side — plus a decision on where home advantage should live (pocket share vs totals vs a flat win-probability nudge). Any of these reshapes bands the task forbids me from editing, so the owner/planner must re-spec with new bands. The near-miss configuration (away 0.877/home 0.953) is fully documented above and reproducible for that re-spec: sigmoid m=0.16 s=4.0 over the normalized edge, goalDiffScale 0.20/normalized-unit, onTargetBase 0.326 + onTargetScale 0.18/normalized-edge, goalkeeping without homeFactor, pocket share from squad support × flat 1.07.
+
+**Files changed (final state): NONE in lib/ or test/ — all experiments reverted and verified (analyze 0, test/balance/ 95/95). Only this task file changed.**
