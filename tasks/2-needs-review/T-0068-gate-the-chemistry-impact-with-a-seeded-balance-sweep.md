@@ -2,8 +2,8 @@
 id: T-0068
 title: Gate the chemistry impact with a seeded balance sweep
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0067]
 created: 2026-11-09
 completed:
@@ -49,5 +49,19 @@ Expected: analyze clean; the new sweep prints the four levels' measured numbers 
 ---
 
 ## Developer Notes
+
+- **Summary of changes:** Measurement-only gate, zero production code touched. New `test/balance/chemistry_balance_test.dart`: two statistically identical even-strength XIs (same generator, same value → overall 70, same 4-4-2, default tactics, balanced mentality), home side's nationalities varied per level — 0% all-distinct, 3% one group of 4, 5% one group of 6, 10% all 11 equal; away side always all-distinct. Seeds 0..999 per level, the suite's batch pattern (ChemBatch measures both sides' wins/draws/goals/shots). Each level's profile printed at setup. Bands: (a) total goals per match in 1.4–5.2, (b) monotonic win-rate 0%<3%<5%<10%, (c) 10% win rate < 0.62, (d) 0% reproduces 0.42–0.52.
+- **Measured numbers (seeds 0..999):**
+  | level | win | draw | goals H/A | shots H/A |
+  |---|---|---|---|---|
+  | 0% | 0.451 | 0.260 | 1.50 / 1.15 | 13.3 / 9.7 |
+  | 3% | 0.506 | 0.240 | 1.63 / 1.08 | 14.1 / 9.1 |
+  | 5% | 0.543 | 0.240 | 1.75 / 1.01 | 14.7 / 8.8 |
+  | 10% | 0.616 | 0.227 | 1.90 / 0.85 | 16.0 / 7.8 |
+  Interpretation: chemistry is a real but contained edge — +10% chemistry moves home win rate +16.5 points over even strength, monotonic at every step, and lands at 0.616, just under the 0.62 ceiling that a 4-rating-point squad gap tops out at. No follow-up tuning task needed: band (c) holds.
+- **Deviation from the task text (documented for review):** Requirement 3(a) as written ("both sides' avg goals stay inside 1.4–5.2") cannot hold for ANY implementation: the engine band is per-MATCH total goals — `Batch.avgGoals` sums both sides — and the suite's own +20 gap rung measures the underdog at ~1.1 goals per side. A per-side reading would fail the existing ladder too. Implemented band (a) as total avg goals per match inside 1.4–5.2 (measured 2.65–2.75 at every level), matching the suite's semantics; the test comment explains this.
+- **Files changed:** `test/balance/chemistry_balance_test.dart` (new), `tasks/…T-0068….md` (this file).
+- **How I tested it:** `flutter analyze` → No issues found. `flutter test test/balance/chemistry_balance_test.dart` → 4/4 bands green with the printed profile above. `flutter test test/balance/` → **90/90** (86 existing + 4 new; no existing band edited). `flutter test test/features/match/engine_snapshot_test.dart` → 1/1, `REGEN_SNAPSHOT` unset. Full `flutter test` → **888/888 green**.
+- **Concerns / assumptions:** (1) The 10% level at 0.616 sits only 0.004 under the 0.62 ceiling — the margin is thin but the test uses fixed seeds, so it is deterministic and cannot flake. (2) Chemistry is one-directional in this gate (home boosted, away 0%) — in real play both sides can field chemistry, which nets out closer to even strength; the gate measures the worst-case single-sided edge, which is the right conservative reading. (3) Environment note: the sandbox was recycled since the last session, so the repo was re-cloned and the SDK re-provisioned at Flutter 3.47.9/Dart 3.13.7 (the 3.24.5 I first fetched predates the repo's `sdk: ^3.13.7` constraint).
 
 ## Review Log
