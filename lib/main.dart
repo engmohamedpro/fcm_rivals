@@ -130,9 +130,10 @@ class _EntryGateState extends ConsumerState<_EntryGate> {
 /// 13/16); the Team tab holds the squad, formation and tactical setup;
 /// the Campus tab is the club's facility upgrade project (GDD 3.5).
 ///
-/// Tabs are built lazily on first visit and then kept alive, so scroll
-/// positions and loaded data survive switching. The Store item carries a
-/// badge with the number of unopened packs.
+/// Only the selected tab is built; the others are disposed, so hidden
+/// screens hold no memory, timers or listeners. Scroll position is not kept
+/// across switches. The Store item carries a badge with the number of
+/// unopened packs.
 class GameShell extends ConsumerWidget {
   const GameShell({super.key});
 
@@ -184,7 +185,8 @@ class _LanguageToggle extends ConsumerWidget {
   }
 }
 
-/// Stateful body: owns the selected tab index and the lazily built pages.
+/// Stateful body: owns the selected tab index; only the selected page is
+/// built.
 class _GameShellBody extends StatefulWidget {
   const _GameShellBody({required this.items});
 
@@ -196,11 +198,10 @@ class _GameShellBody extends StatefulWidget {
 
 class _GameShellBodyState extends State<_GameShellBody> {
   int _index = 0;
-  final Set<int> _visited = {0};
 
-  // One primary scroll controller per tab: the tabs live side by side in a
-  // Stack, so they must not share the route's controller. Re-tapping the
-  // active nav item scrolls that tab back to the top.
+  // One primary scroll controller per tab, so the outgoing and incoming
+  // pages never share one while they cross-fade. Re-tapping the active nav
+  // item scrolls that tab back to the top.
   late final List<ScrollController> _scroll = List.generate(
     widget.items.length,
     (_) => ScrollController(),
@@ -265,30 +266,27 @@ class _GameShellBodyState extends State<_GameShellBody> {
         ],
       ),
       body: FcmBackdrop(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            for (var i = 0; i < widget.items.length; i++)
-              _visited.contains(i)
-                  ? _TabPage(
-                      active: i == _index,
-                      child: PrimaryScrollController(
-                        controller: _scroll[i],
-                        child: _page(i),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-          ],
+        // Only the selected tab exists: leaving a tab disposes it (and its
+        // timers, listeners and image memory); returning rebuilds it.
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.easeOut,
+          layoutBuilder: (current, previous) => Stack(
+            fit: StackFit.expand,
+            children: [...previous, ?current],
+          ),
+          child: PrimaryScrollController(
+            key: ValueKey(_index),
+            controller: _scroll[_index],
+            child: _page(_index),
+          ),
         ),
       ),
       bottomNavigationBar: FcmBottomNav(
         items: widget.items,
         index: _index,
         onReselected: _scrollToTop,
-        onChanged: (i) => setState(() {
-          _index = i;
-          _visited.add(i);
-        }),
+        onChanged: (i) => setState(() => _index = i),
       ),
     );
   }
@@ -322,30 +320,6 @@ class _AppBarChrome extends StatelessWidget {
           center: Alignment(-0.7, -1.2),
           radius: 1.4,
           colors: [Color(0x14D9B871), Colors.transparent],
-        ),
-      ),
-    );
-  }
-}
-
-/// One kept-alive tab: cross-fades and ignores touches while hidden.
-class _TabPage extends StatelessWidget {
-  const _TabPage({required this.active, required this.child});
-
-  final bool active;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      ignoring: !active,
-      child: TickerMode(
-        enabled: active,
-        child: AnimatedOpacity(
-          opacity: active ? 1 : 0,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-          child: Offstage(offstage: !active, child: child),
         ),
       ),
     );
