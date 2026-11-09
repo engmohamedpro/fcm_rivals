@@ -96,6 +96,16 @@ class BaseStats {
       'BaseStats(OVR $overall, ATT $attack, SUP $support, DEF $defence, GK $goalkeeping)';
 }
 
+/// Effective value of [baseValue] at upgrade level [upgradeLevel]
+/// (owner decision 2026-11-09): each level adds +1% of the BASE value —
+/// linear, not compounding — with no 99 cap (the game is infinite).
+/// Examples: 90 at +1 → 91, at +2 → 92, at +11 → 100, at +20 → 108;
+/// 60 at +3 → 62. Negative levels clamp to 0 (the base itself).
+int upgradedValue(int baseValue, int upgradeLevel) {
+  final level = upgradeLevel < 0 ? 0 : upgradeLevel;
+  return baseValue + (baseValue * level / 100).round();
+}
+
 /// A global player record from the imported database (GDD 4.2).
 /// Identity is the permanent [playerId]; mutable facts (value, position)
 /// may change between dataset versions without changing identity.

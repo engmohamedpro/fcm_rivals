@@ -469,12 +469,16 @@ Players are upgraded through merging duplicate copies.
 
 ### 8.2 Upgrade Benefits
 
-Every upgrade level provides:
+Every upgrade level provides (owner decision 2026-11-09, replacing the
+former "+1 Overall + 1 random attribute"):
 
-- +1 Overall.
-- +1 to one randomly selected individual attribute.
+- +1% of the player's BASE overall and each of the four base attributes
+  (linear, not compounding: a +3 card shows 103% of his base stats).
+- Unlimited levels: values may exceed 99 — the game is infinite, and a
+  percentage can grow forever where integer points cannot.
 
-The random attribute selection must follow controlled rules.
+Effective value = base + round(base × level / 100), shared by the card,
+the detail sheet and the AI division ladder.
 
 ### 8.3 Upgrade Scope
 

@@ -151,10 +151,7 @@ void main() {
         );
 
         // No boost: full price.
-        final full = await collection.buyUpgrade(
-          ownedId: card.ownedId,
-          random: math.Random(1),
-        );
+        final full = await collection.buyUpgrade(ownedId: card.ownedId);
         expect(full.discountApplied, isFalse);
         expect(full.coins, fullCost);
         expect(full.upgradeLevel, 1);
@@ -168,7 +165,6 @@ void main() {
         expect(await ads.upgradeDiscountActive(clubId), isTrue);
         final discounted = await collection.buyUpgrade(
           ownedId: card.ownedId,
-          random: math.Random(2),
         );
         expect(discounted.discountApplied, isTrue);
         expect(discounted.coins, lessThan(discounted.fullCost));

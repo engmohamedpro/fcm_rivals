@@ -431,17 +431,11 @@ class EconomySimulator {
       final duplicate = copies
           .skip(1)
           .firstWhere((c) => c.ownedId != target.ownedId);
-      // Capped pairs stay unmerged — a maxed copy is kept, not consumed.
-      if (!upgrades.canMerge(
-        targetLevel: target.upgradeLevel,
-        duplicateLevel: duplicate.upgradeLevel,
-      )) {
-        continue;
-      }
+      // Levels are unlimited (owner decision 2026-11-09): every duplicate
+      // pair is mergeable.
       await collection.mergeDuplicates(
         targetOwnedId: target.ownedId,
         duplicateOwnedId: duplicate.ownedId,
-        random: math.Random(_random.nextInt(1 << 31)),
       );
       return 1;
     }

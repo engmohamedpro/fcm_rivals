@@ -6,7 +6,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/database/app_database.dart';
-import 'package:fcm_rivals/core/domain/players.dart' show Position;
+import 'package:fcm_rivals/core/domain/players.dart'
+    show PlayerAttribute, Position;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
@@ -491,16 +492,22 @@ void main() {
       final result = await store.mergeDuplicates(
         targetOwnedId: target,
         duplicateOwnedId: duplicate,
-        random: math.Random(1),
       );
       expect(result.newUpgradeLevel, 1);
-      // Two attribute points per level (display honesty, review
-      // 2026-11-04_economy_pack-tier-bands-and-elite-ceiling).
-      expect(result.attributeGain.values.fold(0, (a, b) => a + b), 2);
 
       final after = await store.getCollection();
       final mergedCard = after.firstWhere((c) => c.ownedId == target);
       expect(mergedCard.upgradeLevel, 1);
+      // +1% of every base stat (owner decision 2026-11-09).
+      expect(
+        mergedCard.overall,
+        mergedCard.base.baseStats.overall +
+            (mergedCard.base.baseStats.overall * 1 / 100).round(),
+      );
+      for (final a in PlayerAttribute.values) {
+        final baseValue = mergedCard.base.baseStats.valueOf(a);
+        expect(mergedCard.attribute(a), baseValue + (baseValue / 100).round());
+      }
       expect(mergedCard.overall, greaterThan(0));
       // duplicate consumed
       expect(after.any((c) => c.ownedId == duplicate), isFalse);
@@ -535,10 +542,83 @@ void main() {
         () => store.mergeDuplicates(
           targetOwnedId: ids[0],
           duplicateOwnedId: ids[1],
-          random: math.Random(1),
         ),
         throwsA(isA<CollectionException>()),
       );
+    });
+
+    test('merging past the old level-5 cap works (owner 2026-11-09)', () async {
+      // A +5 target (past the old cap) merges with a base copy → +6,
+      // no 'Maximum upgrade level reached' error, duplicate consumed.
+      final club = await store.getClub();
+      final now = DateTime.now();
+      final ids = await Future.wait([
+        db
+            .into(db.ownedPlayers)
+            .insert(
+              OwnedPlayersCompanion.insert(
+                clubId: club!.id,
+                playerId: 41,
+                acquiredAt: now,
+                upgradeLevel: const Value(5),
+              ),
+            ),
+        db
+            .into(db.ownedPlayers)
+            .insert(
+              OwnedPlayersCompanion.insert(
+                clubId: club.id,
+                playerId: 41,
+                acquiredAt: now,
+              ),
+            ),
+      ]);
+      final result = await store.mergeDuplicates(
+        targetOwnedId: ids[0],
+        duplicateOwnedId: ids[1],
+      );
+      expect(result.newUpgradeLevel, 6);
+
+      final after = await store.getCollection();
+      final merged = after.firstWhere((c) => c.ownedId == ids[0]);
+      expect(merged.upgradeLevel, 6);
+      // Duplicate consumed.
+      expect(after.any((c) => c.ownedId == ids[1]), isFalse);
+      // The legacy point columns were zeroed by the merge.
+      final row = await (db.select(
+        db.ownedPlayers,
+      )..where((o) => o.id.equals(ids[0]))).getSingle();
+      expect(row.upgradedAttack, 0);
+      expect(row.upgradedGoalkeeping, 0);
+    });
+
+    test('rebalance: old-style random points are ignored for stats', () async {
+      // A pre-2026-11-09 save row: +3 level with randomly allocated
+      // points (e.g. 5 ATT / 0 SUP / 1 DEF / 0 GK). The card's stats
+      // must derive from the level alone — +1% per level of the base.
+      final club = await store.getClub();
+      final now = DateTime.now();
+      final ownedId = await db
+          .into(db.ownedPlayers)
+          .insert(
+            OwnedPlayersCompanion.insert(
+              clubId: club!.id,
+              playerId: 41,
+              acquiredAt: now,
+              upgradeLevel: const Value(3),
+              upgradedAttack: const Value(5),
+              upgradedDefence: const Value(1),
+            ),
+          );
+      final cards = await store.getCollection();
+      final card = cards.firstWhere((c) => c.ownedId == ownedId);
+      final base = card.base.baseStats;
+      expect(card.upgradeLevel, 3);
+      expect(card.overall, base.overall + (base.overall * 3 / 100).round());
+      for (final a in PlayerAttribute.values) {
+        final baseValue = base.valueOf(a);
+        expect(card.attribute(a), baseValue + (baseValue * 3 / 100).round());
+      }
     });
   });
 

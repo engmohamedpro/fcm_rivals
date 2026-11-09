@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
@@ -25,126 +23,63 @@ void main() {
       expect(engine.mergedLevel(2, 1), 4);
     });
 
-    test('canMerge respects the level cap', () {
-      expect(engine.canMerge(targetLevel: 0, duplicateLevel: 0), isTrue);
-      expect(
-        engine.canMerge(
-          targetLevel: UpgradeEngine.maxUpgradeLevel - 1,
-          duplicateLevel: 0,
-        ),
-        isTrue,
-      );
-      expect(
-        engine.canMerge(
-          targetLevel: UpgradeEngine.maxUpgradeLevel,
-          duplicateLevel: 0,
-        ),
-        isFalse,
-      );
+    test('merging past the old level-5 cap is legal (owner 2026-11-09)', () {
+      expect(engine.mergedLevel(5, 0), 6);
+      expect(engine.mergedLevel(11, 0), 12);
+      expect(engine.mergedLevel(20, 3), 24);
+      // Unlimited levels: every pair stays mergeable by level alone.
+      expect(engine.canMerge(targetLevel: 100, duplicateLevel: 50), isTrue);
+    });
+
+    test('merge returns only the new level — fully deterministic', () {
+      final outcome = engine.merge(targetLevel: 2, duplicateLevel: 3);
+      expect(outcome.newUpgradeLevel, 6);
     });
   });
 
-  group('UpgradeEngine attribute allocation (GDD 8.2)', () {
-    const engine = UpgradeEngine();
-
-    test('grants exactly two points per level gained', () {
-      // Two points per level (display honesty: +1 OVR per level must be
-      // ~+1 true position rating, review 2026-11-04 economy tier bands).
-      final gain = engine.allocateAttributeGain(
-        position: Position.st,
-        levelsGained: 3,
-        random: math.Random(7),
-      );
-      final total = gain.values.fold(0, (a, b) => a + b);
-      expect(total, 3 * UpgradeEngine.pointsPerLevel);
+  group('upgradedValue — the +N% formula (owner decision 2026-11-09)', () {
+    test('base ATT 90: +1 → 91, +2 → 92, +11 → 100, +20 → 108', () {
+      expect(upgradedValue(90, 1), 91);
+      expect(upgradedValue(90, 2), 92);
+      expect(upgradedValue(90, 11), 100);
+      expect(upgradedValue(90, 20), 108);
     });
 
-    test('goalkeepers never gain Attack or outfield attributes only', () {
-      for (var seed = 0; seed < 50; seed++) {
-        final gain = engine.allocateAttributeGain(
-          position: Position.gk,
-          levelsGained: 4,
-          random: math.Random(seed),
-        );
-        expect(
-          gain.containsKey(PlayerAttribute.attack),
-          isFalse,
-          reason: 'seed $seed',
-        );
-      }
+    test('base 60 at +3 → 62 (1.8 rounds to 2)', () {
+      expect(upgradedValue(60, 3), 62);
     });
 
-    test('strikers never gain Goalkeeping', () {
-      for (var seed = 0; seed < 50; seed++) {
-        final gain = engine.allocateAttributeGain(
-          position: Position.st,
-          levelsGained: 4,
-          random: math.Random(seed),
-        );
-        expect(
-          gain.containsKey(PlayerAttribute.goalkeeping),
-          isFalse,
-          reason: 'seed $seed',
-        );
-      }
+    test('level 0 is the base itself', () {
+      expect(upgradedValue(90, 0), 90);
+      expect(upgradedValue(0, 7), 0);
     });
 
-    test('deterministic with the same seed (development rule 7)', () {
-      final a = engine.allocateAttributeGain(
-        position: Position.cam,
-        levelsGained: 5,
-        random: math.Random(42),
-      );
-      final b = engine.allocateAttributeGain(
-        position: Position.cam,
-        levelsGained: 5,
-        random: math.Random(42),
-      );
-      expect(a, b);
+    test('negative levels clamp to 0 (defensive)', () {
+      expect(upgradedValue(90, -3), 90);
     });
 
-    test('allocation follows position weights statistically', () {
-      // CB: defence weight 0.68 dominates over support 0.22 / attack 0.10.
-      // With 2 points per level the per-sample 'contains defence' bar is
-      // 1-(1-0.68)^2 ≈ 0.90; the sample mean must sit in the no-overlap
-      // zone between the other attributes' reach and that ceiling.
-      var defencePicks = 0;
-      const samples = 2000;
-      for (var s = 0; s < samples; s++) {
-        final gain = engine.allocateAttributeGain(
-          position: Position.cb,
-          levelsGained: 1,
-          random: math.Random(s),
-        );
-        if (gain.containsKey(PlayerAttribute.defence)) defencePicks++;
-      }
-      expect(defencePicks / samples, greaterThan(0.80));
-      expect(defencePicks / samples, lessThan(0.95));
+    test('linear, not compounding (owner: +3 is ×1.03, not ×1.01³)', () {
+      expect(upgradedValue(90, 3), 93);
+      // A case where the two shapes round differently: 61 at +3 is
+      // 61 + 1.83 = 62.83 → 63 linear, 61 × 1.030301 = 62.85 → 63 —
+      // equal again, so use a base where they truly split: 40 at +3:
+      // linear 40 + 1.2 = 41.2 → 41; compounded 40 × 1.030301 = 41.21
+      // → 41. The shapes agree on integers at low levels by rounding —
+      // assert the exact arithmetic the task dictates instead.
+      expect(upgradedValue(40, 3), 41);
+      expect(upgradedValue(40, 3), 40 + (40 * 3 / 100).round());
     });
 
-    test('merge returns level plus consistent gain', () {
-      final outcome = engine.merge(
-        position: Position.cm,
-        targetLevel: 0,
-        duplicateLevel: 0,
-        random: math.Random(3),
-      );
-      expect(outcome.newUpgradeLevel, 1);
-      expect(
-        outcome.attributeGain.values.fold(0, (a, b) => a + b),
-        UpgradeEngine.pointsPerLevel,
-      );
+    test('no 99 cap: high bases grow past it cleanly', () {
+      expect(upgradedValue(99, 1), 100); // 99.99 → 100
+      expect(upgradedValue(99, 2), 101);
+      expect(upgradedValue(100, 10), 110);
     });
 
-    test('zero levels gained grants nothing', () {
-      expect(
-        engine.allocateAttributeGain(
-          position: Position.st,
-          levelsGained: 0,
-          random: math.Random(1),
-        ),
-        isEmpty,
-      );
+    test('rounding follows half-up on the base percentage', () {
+      // 49 × 5 / 100 = 2.45 → 2; 51 × 5 / 100 = 2.55 → 3.
+      expect(upgradedValue(49, 5), 51);
+      expect(upgradedValue(51, 5), 54);
     });
   });
 }

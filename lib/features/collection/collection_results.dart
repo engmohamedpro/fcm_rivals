@@ -79,19 +79,18 @@ class SaleResult {
   final int credit;
 }
 
-/// One merged duplicate outcome.
+/// One merged duplicate outcome. The +N% stat math derives from
+/// [newUpgradeLevel] alone (owner decision 2026-11-09) — no point gain.
 class MergeResult {
   const MergeResult({
     required this.targetOwnedId,
     required this.duplicateOwnedId,
     required this.newUpgradeLevel,
-    required this.attributeGain,
   });
 
   final int targetOwnedId;
   final int duplicateOwnedId;
   final int newUpgradeLevel;
-  final Map<PlayerAttribute, int> attributeGain;
 }
 
 /// Removed-player compensation entry (GDD 4.8 step 6: notify with name).

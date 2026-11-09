@@ -270,22 +270,28 @@ class _PlayerDetailSheet extends StatelessWidget {
                   FcmStatBar(
                     label: 'ATT',
                     value: card.attribute(PlayerAttribute.attack),
-                    bonus: card.upgradedAttack,
+                    bonus: card.attribute(PlayerAttribute.attack) -
+                        card.base.baseStats.valueOf(PlayerAttribute.attack),
                   ),
                   FcmStatBar(
                     label: 'SUP',
                     value: card.attribute(PlayerAttribute.support),
-                    bonus: card.upgradedSupport,
+                    bonus: card.attribute(PlayerAttribute.support) -
+                        card.base.baseStats.valueOf(PlayerAttribute.support),
                   ),
                   FcmStatBar(
                     label: 'DEF',
                     value: card.attribute(PlayerAttribute.defence),
-                    bonus: card.upgradedDefence,
+                    bonus: card.attribute(PlayerAttribute.defence) -
+                        card.base.baseStats.valueOf(PlayerAttribute.defence),
                   ),
                   FcmStatBar(
                     label: 'GK',
                     value: card.attribute(PlayerAttribute.goalkeeping),
-                    bonus: card.upgradedGoalkeeping,
+                    bonus: card.attribute(PlayerAttribute.goalkeeping) -
+                        card.base.baseStats.valueOf(
+                          PlayerAttribute.goalkeeping,
+                        ),
                   ),
                   const Divider(height: 22),
                   Row(

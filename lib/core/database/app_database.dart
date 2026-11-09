@@ -87,7 +87,11 @@ class OwnedPlayers extends Table {
   /// Duplicate-merge level (GDD 8.1).
   IntColumn get upgradeLevel => integer().withDefault(const Constant(0))();
 
-  /// Attribute points added by upgrades (GDD 8.2).
+  /// LEGACY pre-2026-11-09 columns: random upgrade attribute points from
+  /// the old "+1 OVR + random points" rule. Unused for gameplay since the
+  /// owner's +N% decision (stats derive from upgradeLevel via
+  /// `upgradedValue`); new merges write 0. Kept for save compatibility —
+  /// no migration drops them.
   IntColumn get upgradedAttack => integer().withDefault(const Constant(0))();
   IntColumn get upgradedSupport => integer().withDefault(const Constant(0))();
   IntColumn get upgradedDefence => integer().withDefault(const Constant(0))();

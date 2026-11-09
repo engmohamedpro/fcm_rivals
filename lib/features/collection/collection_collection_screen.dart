@@ -10,7 +10,6 @@ import '../../core/ui/player_card.dart' show kPlayerCardAspect;
 import '../../features/ads/ad_engine.dart' show AdEngine, AdRewardKind;
 import '../../features/economy/economy_engine.dart';
 import '../../features/squad/squad_engine.dart';
-import '../../features/upgrades/upgrade_engine.dart' show UpgradeEngine;
 import 'player_detail_sheet.dart';
 
 enum _Filter { all, gk, def, mid, att }
@@ -195,9 +194,8 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     bool inSquad,
   ) {
     final sellPrice = economy.sellPriceOfUpgraded(card.base, card.upgradeLevel);
-    final upgradeCost = card.upgradeLevel < UpgradeEngine.maxUpgradeLevel
-        ? economy.upgradeCostOf(card.base, card.upgradeLevel)
-        : null;
+    // Unlimited levels (owner decision 2026-11-09): always offer the next.
+    final upgradeCost = economy.upgradeCostOf(card.base, card.upgradeLevel);
     final other = dupes.where((d) => d.ownedId != card.ownedId);
     showPlayerDetail(
       context,
@@ -205,12 +203,8 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
       inSquad: inSquad,
       copies: dupes.length,
       actions: PlayerDetailActions(
-        upgradeLabel: upgradeCost == null
-            ? null
-            : 'Upgrade · ${formatCoins(upgradeCost)} coins',
-        onUpgrade: upgradeCost != null
-            ? () => _upgrade(context, ref, card)
-            : null,
+        upgradeLabel: 'Upgrade · ${formatCoins(upgradeCost)} coins',
+        onUpgrade: () => _upgrade(context, ref, card),
         onMerge: other.isNotEmpty
             ? () => _merge(context, ref, card, other.first)
             : null,
@@ -364,10 +358,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     );
     if (confirmed != true) return;
     try {
-      final result = await store.buyUpgrade(
-        ownedId: card.ownedId,
-        random: ref.read(randomProvider),
-      );
+      final result = await store.buyUpgrade(ownedId: card.ownedId);
       ref.invalidate(collectionProvider);
       ref.invalidate(squadProvider);
       if (context.mounted) {
@@ -395,24 +386,19 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     PlayerCard duplicate,
   ) async {
     final store = await ref.read(collectionStoreProvider.future);
-    final random = ref.read(randomProvider);
     try {
       final result = await store.mergeDuplicates(
         targetOwnedId: target.ownedId,
         duplicateOwnedId: duplicate.ownedId,
-        random: random,
       );
       ref.invalidate(collectionProvider);
       ref.invalidate(squadProvider);
       if (context.mounted) {
-        final gains = result.attributeGain.entries
-            .map((e) => '+${e.value} ${e.key.name}')
-            .join(', ');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${target.base.name} upgraded to +${result.newUpgradeLevel}'
-              '${gains.isEmpty ? '' : ' ($gains)'}',
+              '${target.base.name} upgraded to +${result.newUpgradeLevel} '
+              '(+${result.newUpgradeLevel}% stats)',
             ),
           ),
         );

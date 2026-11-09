@@ -400,10 +400,6 @@ class CollectionStore {
           ),
         ),
         upgradeLevel: owned.upgradeLevel,
-        upgradedAttack: owned.upgradedAttack,
-        upgradedSupport: owned.upgradedSupport,
-        upgradedDefence: owned.upgradedDefence,
-        upgradedGoalkeeping: owned.upgradedGoalkeeping,
         staminaPercent: owned.staminaPercent,
         injuryMatchesRemaining: owned.injuryMatchesRemaining ?? 0,
         injuryKind: owned.injuryKind,
@@ -488,13 +484,14 @@ class CollectionStore {
   }
 
   /// Merges two owned copies of the same player (FR-014, GDD 8.1): the
-  /// duplicate is consumed, the target gains the levels and attribute
-  /// points. Merging is free — the Economy Engine prices upgrades when they
-  /// are purchased with coins, not when merging owned duplicates.
+  /// duplicate is consumed and the target gains the levels — every level
+  /// is +1% of the base stats via `upgradedValue` (owner decision
+  /// 2026-11-09, unlimited). Merging is free — the Economy Engine prices
+  /// upgrades when they are purchased with coins, not when merging owned
+  /// duplicates.
   Future<MergeResult> mergeDuplicates({
     required int targetOwnedId,
     required int duplicateOwnedId,
-    required math.Random random,
   }) async {
     if (targetOwnedId == duplicateOwnedId) {
       throw const CollectionException('Cannot merge a player into itself');
@@ -520,21 +517,10 @@ class CollectionStore {
     if (target.playerId != duplicate.playerId) {
       throw const CollectionException('Merging requires the same player');
     }
-    if (!upgrades.canMerge(
-      targetLevel: target.upgradeLevel,
-      duplicateLevel: duplicate.upgradeLevel,
-    )) {
-      throw const CollectionException('Maximum upgrade level reached');
-    }
-
-    final base = await (db.select(
-      db.players,
-    )..where((p) => p.playerId.equals(target.playerId))).getSingle();
+    // Levels are unlimited (owner decision 2026-11-09): no cap check.
     final outcome = upgrades.merge(
-      position: Position.fromCode(base.position),
       targetLevel: target.upgradeLevel,
       duplicateLevel: duplicate.upgradeLevel,
-      random: random,
     );
 
     await db.transaction(() async {
@@ -543,22 +529,12 @@ class CollectionStore {
       )..where((o) => o.id.equals(targetOwnedId))).write(
         OwnedPlayersCompanion(
           upgradeLevel: Value(outcome.newUpgradeLevel),
-          upgradedAttack: Value(
-            target.upgradedAttack +
-                (outcome.attributeGain[PlayerAttribute.attack] ?? 0),
-          ),
-          upgradedSupport: Value(
-            target.upgradedSupport +
-                (outcome.attributeGain[PlayerAttribute.support] ?? 0),
-          ),
-          upgradedDefence: Value(
-            target.upgradedDefence +
-                (outcome.attributeGain[PlayerAttribute.defence] ?? 0),
-          ),
-          upgradedGoalkeeping: Value(
-            target.upgradedGoalkeeping +
-                (outcome.attributeGain[PlayerAttribute.goalkeeping] ?? 0),
-          ),
+          // Legacy pre-2026-11-09 columns: zeroed on every write; the
+          // gameplay math derives from upgradeLevel alone.
+          upgradedAttack: const Value(0),
+          upgradedSupport: const Value(0),
+          upgradedDefence: const Value(0),
+          upgradedGoalkeeping: const Value(0),
         ),
       );
       // Consume the duplicate; keep the row as history.
@@ -585,19 +561,16 @@ class CollectionStore {
       targetOwnedId: targetOwnedId,
       duplicateOwnedId: duplicateOwnedId,
       newUpgradeLevel: outcome.newUpgradeLevel,
-      attributeGain: outcome.attributeGain,
     );
   }
 
   /// Buys one upgrade level with Coins (GDD 8.4: cost = Economy Engine
   /// formula on Market Value and current Upgrade Level). When an ad
   /// discount is active (GDD 19.3 'Upgrade cost discount') the discounted
-  /// price is charged and the boost consumed. The attribute points land
-  /// through the same UpgradeEngine allocation as merges.
-  Future<UpgradePurchaseResult> buyUpgrade({
-    required int ownedId,
-    required math.Random random,
-  }) async {
+  /// price is charged and the boost consumed. The level's +1% stat math
+  /// derives from the new upgradeLevel alone (owner decision
+  /// 2026-11-09) — nothing is allocated at random.
+  Future<UpgradePurchaseResult> buyUpgrade({required int ownedId}) async {
     final club = await getClub();
     if (club == null) {
       throw const CollectionException('No club');
@@ -609,9 +582,7 @@ class CollectionStore {
     if (copy == null) {
       throw const CollectionException('Player not owned');
     }
-    if (copy.upgradeLevel >= UpgradeEngine.maxUpgradeLevel) {
-      throw const CollectionException('Maximum upgrade level reached');
-    }
+    // Levels are unlimited (owner decision 2026-11-09): no cap check.
     final base = await (db.select(
       db.players,
     )..where((p) => p.playerId.equals(copy.playerId))).getSingle();
@@ -632,10 +603,8 @@ class CollectionStore {
     }
 
     final outcome = upgrades.merge(
-      position: Position.fromCode(base.position),
       targetLevel: copy.upgradeLevel,
       duplicateLevel: 0,
-      random: random,
     );
 
     await db.transaction(() async {
@@ -658,22 +627,11 @@ class CollectionStore {
       )..where((o) => o.id.equals(ownedId))).write(
         OwnedPlayersCompanion(
           upgradeLevel: Value(outcome.newUpgradeLevel),
-          upgradedAttack: Value(
-            copy.upgradedAttack +
-                (outcome.attributeGain[PlayerAttribute.attack] ?? 0),
-          ),
-          upgradedSupport: Value(
-            copy.upgradedSupport +
-                (outcome.attributeGain[PlayerAttribute.support] ?? 0),
-          ),
-          upgradedDefence: Value(
-            copy.upgradedDefence +
-                (outcome.attributeGain[PlayerAttribute.defence] ?? 0),
-          ),
-          upgradedGoalkeeping: Value(
-            copy.upgradedGoalkeeping +
-                (outcome.attributeGain[PlayerAttribute.goalkeeping] ?? 0),
-          ),
+          // Legacy pre-2026-11-09 columns: zeroed on every write.
+          upgradedAttack: const Value(0),
+          upgradedSupport: const Value(0),
+          upgradedDefence: const Value(0),
+          upgradedGoalkeeping: const Value(0),
         ),
       );
       if (discounted) {

@@ -368,17 +368,14 @@ void main() {
           goalkeeping: 0,
         ),
       );
-      final upgraded = PlayerCard(
-        ownedId: 1,
-        base: base,
-        upgradeLevel: 3,
-        upgradedAttack: 2,
-        upgradedSupport: 1,
-      );
+      final upgraded = PlayerCard(ownedId: 1, base: base, upgradeLevel: 3);
+      // +3 = ×1.03 of every base stat (owner decision 2026-11-09):
+      // 84→87, 90→93 (92.7→93), 80→82, 70→72.
       expect(upgraded.overall, 87);
-      expect(upgraded.attribute(PlayerAttribute.attack), 92);
-      expect(upgraded.attribute(PlayerAttribute.support), 81);
-      expect(upgraded.attribute(PlayerAttribute.defence), 70);
+      expect(upgraded.attribute(PlayerAttribute.attack), 93);
+      expect(upgraded.attribute(PlayerAttribute.support), 82);
+      expect(upgraded.attribute(PlayerAttribute.defence), 72);
+      expect(upgraded.attribute(PlayerAttribute.goalkeeping), 0);
     });
 
     test('position rating reflects attribute weighting', () {

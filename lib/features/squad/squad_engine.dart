@@ -5,23 +5,20 @@
 /// slot ratings (GDD 7.2) and Auto Pick selection (GDD 6.3).
 library;
 
-import 'dart:math' as math;
-
 import '../../core/domain/base_stats_generator.dart' show positionWeights;
 import '../../core/domain/players.dart';
 import 'formations.dart';
 
 /// A user-owned player as seen by squad logic: base data plus upgrade state
-/// (SRS 25.1 separation — upgrades never touch the base record).
+/// (SRS 25.1 separation — upgrades never touch the base record). All
+/// upgraded numbers derive from [upgradeLevel] alone via [upgradedValue]
+/// (owner decision 2026-11-09): each level is +1% of the base stat, so
+/// saves never store accumulated points and any level is legal.
 class PlayerCard {
   const PlayerCard({
     required this.ownedId,
     required this.base,
     required this.upgradeLevel,
-    this.upgradedAttack = 0,
-    this.upgradedSupport = 0,
-    this.upgradedDefence = 0,
-    this.upgradedGoalkeeping = 0,
     this.staminaPercent = 100,
     this.injuryMatchesRemaining = 0,
     this.injuryKind,
@@ -30,11 +27,6 @@ class PlayerCard {
   final int ownedId;
   final BasePlayer base;
   final int upgradeLevel;
-
-  final int upgradedAttack;
-  final int upgradedSupport;
-  final int upgradedDefence;
-  final int upgradedGoalkeeping;
 
   final int staminaPercent;
 
@@ -50,25 +42,13 @@ class PlayerCard {
 
   Position get position => base.position;
 
-  /// Upgraded overall: base overall + 1 per upgrade level (GDD 8.2), capped.
-  int get overall => math.min(99, base.baseStats.overall + upgradeLevel);
+  /// Upgraded overall: base overall +1% per upgrade level (owner decision
+  /// 2026-11-09), uncapped — levels are unlimited.
+  int get overall => upgradedValue(base.baseStats.overall, upgradeLevel);
 
-  /// Upgraded attribute value, capped at 99.
+  /// Upgraded attribute value: base +1% per upgrade level, uncapped.
   int attribute(PlayerAttribute a) =>
-      math.min(99, base.baseStats.valueOf(a) + _upgradeValueOf(a));
-
-  int _upgradeValueOf(PlayerAttribute a) {
-    switch (a) {
-      case PlayerAttribute.attack:
-        return upgradedAttack;
-      case PlayerAttribute.support:
-        return upgradedSupport;
-      case PlayerAttribute.defence:
-        return upgradedDefence;
-      case PlayerAttribute.goalkeeping:
-        return upgradedGoalkeeping;
-    }
-  }
+      upgradedValue(base.baseStats.valueOf(a), upgradeLevel);
 
   /// Position rating: weighted attributes by the player's own position
   /// (GDD 7.2) — independent of the Match Engine.
