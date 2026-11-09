@@ -83,11 +83,16 @@ class FcmBottomNav extends StatelessWidget {
     required this.items,
     required this.index,
     required this.onChanged,
+    this.onReselected,
   });
 
   final List<FcmNavItem> items;
   final int index;
   final ValueChanged<int> onChanged;
+
+  /// Called instead of [onChanged] when the already-selected tab is tapped
+  /// again — the usual "scroll to top" gesture.
+  final ValueChanged<int>? onReselected;
 
   @override
   Widget build(BuildContext context) {
@@ -103,20 +108,20 @@ class FcmBottomNav extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 24,
-            offset: const Offset(0, -6),
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const FcmGoldSeam(bloomBelow: true),
+          const FcmGoldSeam(bloomBelow: true, bloomHeight: 2),
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: Row(
                 children: [
                   for (var i = 0; i < items.length; i++)
@@ -124,7 +129,9 @@ class FcmBottomNav extends StatelessWidget {
                       child: _NavButton(
                         item: items[i],
                         selected: i == index,
-                        onTap: () => onChanged(i),
+                        onTap: () => i == index
+                            ? onReselected?.call(i)
+                            : onChanged(i),
                       ),
                     ),
                 ],
@@ -150,98 +157,127 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FcmPressable(
-      onTap: onTap,
-      scale: 0.92,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          // Borderless: the selected tab is lit, not boxed — a soft gold
-          // wash falling from above plus a glow under it, no stroke that
-          // would read as a button outline.
-          gradient: selected
-              ? LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    FcmColors.gold.withValues(alpha: 0.16),
-                    FcmColors.gold.withValues(alpha: 0.04),
-                  ],
-                )
-              : null,
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: FcmColors.gold.withValues(alpha: 0.20),
-                    blurRadius: 14,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
+    final badge = item.badge ?? 0;
+    final inactive = Colors.white.withValues(alpha: 0.66);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: badge > 0 ? '${item.label}, $badge' : item.label,
+      excludeSemantics: true,
+      child: FcmPressable(
+        onTap: onTap,
+        scale: 0.92,
+        child: ConstrainedBox(
+          // Material's minimum touch target height.
+          constraints: const BoxConstraints(minHeight: 48),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.only(top: 7, bottom: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              // Borderless: the selected tab is lit, not boxed. The wash is
+              // stronger than before so the active tab reads at a glance,
+              // and a short gold bar on its top edge backs it up for users
+              // who cannot rely on the colour change alone.
+              gradient: selected
+                  ? LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        FcmColors.gold.withValues(alpha: 0.28),
+                        FcmColors.gold.withValues(alpha: 0.08),
+                      ],
+                    )
+                  : null,
+            ),
+            child: Stack(
               clipBehavior: Clip.none,
+              alignment: Alignment.topCenter,
               children: [
-                AnimatedScale(
-                  scale: selected ? 1.18 : 1.0,
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutBack,
-                  child: Icon(
-                    item.icon,
-                    size: 20,
-                    color: selected ? FcmColors.gold : Colors.white60,
+                Positioned(
+                  top: -7,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    width: selected ? 22 : 0,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: FcmColors.gold,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                if ((item.badge ?? 0) > 0)
-                  Positioned(
-                    top: -7,
-                    right: -13,
-                    child: Container(
-                      constraints: const BoxConstraints(minWidth: 17),
-                      height: 17,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        gradient: FcmColors.goldGradient,
-                        borderRadius: BorderRadius.circular(9),
-                        border: Border.all(color: FcmColors.ink, width: 1.5),
-                      ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        AnimatedScale(
+                          scale: selected ? 1.1 : 1.0,
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOutBack,
+                          child: Icon(
+                            item.icon,
+                            size: 24,
+                            color: selected ? FcmColors.gold : inactive,
+                          ),
+                        ),
+                        if (badge > 0)
+                          // Directional so the badge mirrors in RTL.
+                          PositionedDirectional(
+                            top: -7,
+                            end: -13,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 17),
+                              height: 17,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                gradient: FcmColors.goldGradient,
+                                borderRadius: BorderRadius.circular(9),
+                                border: Border.all(
+                                  color: FcmColors.ink,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: FitText(
+                                (badge > 99) ? '99+' : '$badge',
+                                align: Alignment.center,
+                                style: const TextStyle(
+                                  color: FcmColors.ink,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 1),
                       child: FitText(
-                        (item.badge! > 99) ? '99+' : '${item.badge}',
+                        item.label,
                         align: Alignment.center,
-                        style: const TextStyle(
-                          color: FcmColors.ink,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight:
+                              selected ? FontWeight.w800 : FontWeight.w600,
+                          letterSpacing: 0.1,
+                          color: selected ? FcmColors.gold : inactive,
                         ),
                       ),
                     ),
-                  ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 2),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: FitText(
-                item.label,
-                align: Alignment.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.4,
-                  color: selected ? FcmColors.gold : Colors.white60,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -143,8 +143,8 @@ class GameShell extends ConsumerWidget {
     final items = [
       FcmNavItem(l10n.navSeason, Icons.emoji_events_rounded),
       FcmNavItem(l10n.navTeam, Icons.shield_rounded),
-      FcmNavItem(l10n.navCollection, Icons.collections_bookmark),
-      FcmNavItem(l10n.navCampus, Icons.account_balance_rounded),
+      FcmNavItem(l10n.navCollection, Icons.collections_bookmark_rounded),
+      FcmNavItem(l10n.navCampus, Icons.apartment_rounded),
       FcmNavItem(l10n.navStore, Icons.storefront_rounded, badge: packs),
     ];
 
@@ -198,6 +198,36 @@ class _GameShellBodyState extends State<_GameShellBody> {
   int _index = 0;
   final Set<int> _visited = {0};
 
+  // One primary scroll controller per tab: the tabs live side by side in a
+  // Stack, so they must not share the route's controller. Re-tapping the
+  // active nav item scrolls that tab back to the top.
+  late final List<ScrollController> _scroll = List.generate(
+    widget.items.length,
+    (_) => ScrollController(),
+  );
+
+  @override
+  void dispose() {
+    for (final c in _scroll) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _scrollToTop(int i) {
+    for (final p in _scroll[i].positions) {
+      if (p.pixels > 0) {
+        unawaited(
+          p.animateTo(
+            0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _page(int i) => switch (i) {
     0 => const SeasonScreen(),
     1 => const SquadScreen(),
@@ -240,7 +270,13 @@ class _GameShellBodyState extends State<_GameShellBody> {
           children: [
             for (var i = 0; i < widget.items.length; i++)
               _visited.contains(i)
-                  ? _TabPage(active: i == _index, child: _page(i))
+                  ? _TabPage(
+                      active: i == _index,
+                      child: PrimaryScrollController(
+                        controller: _scroll[i],
+                        child: _page(i),
+                      ),
+                    )
                   : const SizedBox.shrink(),
           ],
         ),
@@ -248,6 +284,7 @@ class _GameShellBodyState extends State<_GameShellBody> {
       bottomNavigationBar: FcmBottomNav(
         items: widget.items,
         index: _index,
+        onReselected: _scrollToTop,
         onChanged: (i) => setState(() {
           _index = i;
           _visited.add(i);
