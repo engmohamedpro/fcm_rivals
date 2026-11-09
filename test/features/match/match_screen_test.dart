@@ -2,13 +2,13 @@
 //
 //  * the header fuses scoreboard, clock and controls into one panel —
 //    no separate controls block below it;
-//  * the MOMENTUM bar sits above the commentary — one vertical line
-//    per minute, home pressure above the baseline, away pressure below
-//    it (the broadcast stats rows are gone entirely);
-//  * the commentary is ONE moment at a time, lower-third style
-//    (Football Manager style): the newest line replaces the last over
-//    the open pitch — no scrolling history, no per-row entrance
-//    animation (the jank source at 4x speed).
+//  * the MOMENTUM meter sits above the commentary — pressure
+//    percentages, a plain-words status, a tug-of-war bar and a trend wave
+//    (the broadcast stats rows are gone entirely);
+//  * the commentary is a premium feed: the newest moment on a featured
+//    card with a short fading timeline under it — no scrolling surface;
+//  * the LIVE TACTICS panel under it queues mentality / live-order
+//    changes straight into the running match.
 //
 // The match drives itself on a real ticker, so frames are pumped in
 // bounded loops — the backdrop's 34s loop never settles.
@@ -24,11 +24,12 @@ import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
-import 'package:fcm_rivals/features/match/commentary_ticker.dart';
+import 'package:fcm_rivals/features/match/live_commentary_feed.dart';
 import 'package:fcm_rivals/features/match/live_match_views.dart';
 import 'package:fcm_rivals/features/match/match_screen.dart';
 import 'package:fcm_rivals/features/match/match_session.dart';
 import 'package:fcm_rivals/features/match/stamina.dart' show PepTalk;
+import 'package:fcm_rivals/features/match/team_tactics.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
 
@@ -132,8 +133,8 @@ void main() {
   setUp(installAudioplayersMocks);
   tearDown(clearAudioplayersMocks);
 
-  testWidgets('compact header, momentum bar and one-moment commentary '
-      'ticker with no scrolling history', (WidgetTester tester) async {
+  testWidgets('compact header, momentum meter, commentary feed and live '
+      'tactics panel with no scrolling surface', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -178,29 +179,80 @@ void main() {
     expect(find.text('Corners'), findsNothing);
     expect(find.text('Match stats'), findsNothing);
 
-    // Commentary is ONE moment at a time, lower-third style — the
-    // newest line replaces the last; there is no scrolling history.
-    expect(find.byType(CommentaryTicker), findsOneWidget);
+    // Commentary: ONE feed — the newest moment featured, the earlier
+    // ones on the timeline under it.
+    expect(find.byType(LiveCommentaryFeed), findsOneWidget);
+    expect(find.text('LIVE COMMENTARY'), findsOneWidget);
     final first = tester
-        .widget<CommentaryTicker>(find.byType(CommentaryTicker))
-        .line;
+        .widget<LiveCommentaryFeed>(find.byType(LiveCommentaryFeed))
+        .lines
+        .last;
 
-    // Play a few more minutes: the moment swaps, the bar repaints in
-    // place, and the ticker never multiplies.
+    // The tactics panel rides under the feed: mentality ladder and the
+    // five one-tap live orders.
+    expect(find.text('LIVE TACTICS'), findsOneWidget);
+    expect(find.text('TEAM MENTALITY'), findsOneWidget);
+    expect(find.text('LIVE ORDERS'), findsOneWidget);
+    for (final label in ['Push', 'Defend', 'Press', 'Calm', 'Direct']) {
+      expect(find.text(label), findsOneWidget);
+    }
+
+    // Play a few more minutes: the moment swaps, the meter repaints in
+    // place, and the feed never multiplies.
     await _play(tester, frames: 80);
-    expect(find.byType(CommentaryTicker), findsOneWidget);
+    expect(find.byType(LiveCommentaryFeed), findsOneWidget);
     final later = tester
-        .widget<CommentaryTicker>(find.byType(CommentaryTicker))
-        .line;
-    // The moment moved on: a later minute, a different line — but the
-    // bar never stacked a second ticker.
+        .widget<LiveCommentaryFeed>(find.byType(LiveCommentaryFeed))
+        .lines
+        .last;
     expect(later.minute, greaterThan(first.minute));
-    // No scrolling surface exists any more — the pitch owns the space.
+    // No scrolling surface exists — the feed sizes itself to the room.
     expect(
       find.byType(Scrollable),
       findsNothing,
-      reason: 'the ticker replaced the scrolling history feed',
+      reason: 'the feed shows what fits instead of scrolling',
     );
+  });
+
+  testWidgets('live tactics panel: a live order tapped mid-match is '
+      'queued and takes effect in the running game', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    final store = await seededSquadStore(db);
+    final session = await _session(store);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchScreen(session: session, title: 'League · Round 1'),
+      ),
+    );
+    await tester.pump();
+    await _play(tester, frames: 10);
+
+    final engine = session.engine;
+    final side = session.userSide;
+    expect(engine.activeActionOf(side), isNull);
+
+    // One tap on a live order: the panel answers instantly with the
+    // queued note, the clock never stops (pause icon still shown).
+    await tester.tap(find.text('Press'));
+    await tester.pump();
+    expect(find.textContaining('Queued'), findsOneWidget);
+    expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
+
+    // The next minute boundary applies it: the engine now runs the
+    // order, the queued note is gone and the header pill names it.
+    await _play(tester, frames: 20);
+    expect(engine.activeActionOf(side), LiveMatchAction.pressMore);
+    expect(find.textContaining('Queued'), findsNothing);
+    expect(find.textContaining('Press More'), findsWidgets);
   });
 
   testWidgets('full-time report: user team ratings tab opens first, '

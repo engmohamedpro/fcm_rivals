@@ -12,8 +12,9 @@
 /// - `touchline_pep_talk.dart` — the half-time touchline talk card,
 ///   its chooser sheet and the shared `SheetOption` row.
 ///
-/// The live commentary itself lives in [CommentaryTicker]
-/// (`commentary_ticker.dart`) — one moment at a time, lower-third style.
+/// The live commentary feed lives in `live_commentary_feed.dart` (the
+/// featured moment + fading timeline) and the in-match tactics panel in
+/// `live_tactics_panel.dart`; both are used directly by the match screen.
 library;
 
 export 'injury_live_banner.dart';

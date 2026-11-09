@@ -12,8 +12,9 @@ import '../../core/ui/match_backdrop.dart';
 import '../../l10n/l10n_context.dart';
 import '../../l10n/injury_l10n.dart';
 import '../../l10n/pep_talk_l10n.dart';
-import 'commentary_ticker.dart';
+import 'live_commentary_feed.dart';
 import 'live_match_views.dart';
+import 'live_tactics_panel.dart';
 import 'match_audio.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
@@ -649,11 +650,13 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               ),
                             ),
                           ],
-                          // Commentary ticker / report: ONE moment at a
-                          // time, lower-third style — the newest line
-                          // replaces the last over the open pitch, no
-                          // scrolling history (the full record stays in
-                          // the engine and the report).
+                          // Commentary feed / report. Under the momentum
+                          // meter: the newest moment on a premium card
+                          // with a short fading timeline beneath it (no
+                          // scrolling — the full record stays in the
+                          // engine and the report). Below it the live
+                          // tactics panel: read the match, react to it,
+                          // never leave it.
                           Expanded(
                             child: _finished && _report != null
                                 ? MatchReportView(
@@ -683,38 +686,40 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                       ),
                                     ),
                                   )
-                                : Column(
-                                    children: [
-                                      // The pitch breathes between the
-                                      // panels; the ticker sits low,
-                                      // broadcast lower-third style.
-                                      const Spacer(),
-                                      Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          14,
-                                          0,
-                                          14,
-                                          14,
-                                        ),
-                                        child: _latest!.kind ==
-                                              CommentaryKind.injury
-                                            ? // T-0056: the injury moment
-                                              // takes the lower third with
-                                              // its own red banner.
-                                              InjuryLiveBanner(line: _latest!)
-                                            : CommentaryTicker(
-                                                line: _latest!,
-                                                homeColor: userIsHome
-                                                    ? userColor
-                                                    : opponentMomentumColor,
-                                                awayColor: userIsHome
-                                                    ? opponentMomentumColor
-                                                    : userColor,
-                                              ),
-                                      ),
-                                    ],
+                                : Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      14,
+                                      0,
+                                      14,
+                                      0,
+                                    ),
+                                    child: LiveCommentaryFeed(
+                                      lines: _lines,
+                                      homeColor: userIsHome
+                                          ? userColor
+                                          : opponentMomentumColor,
+                                      awayColor: userIsHome
+                                          ? opponentMomentumColor
+                                          : userColor,
+                                    ),
                                   ),
                           ),
+                          // Live tactics: mentality + timed orders, queued
+                          // straight into the running match (hidden once
+                          // the whistle has gone).
+                          if (!_finished && !session.isFinished)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+                              child: LiveTacticsPanel(
+                                session: session,
+                                minute: state.minute,
+                                enabled:
+                                    !_halfTimeCardUp &&
+                                    !_recoveryPending &&
+                                    !_sheetOpen,
+                                onOpenEditor: () => _openLiveTactics(context),
+                              ),
+                            ),
                         ],
                       ),
                       // Half-time touchline card over the frozen match.

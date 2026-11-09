@@ -192,6 +192,23 @@ class MatchEngine {
   /// Current mentality of [side] (GDD 10.3).
   Mentality mentalityOf(MatchSide side) => _runtimeOf(side).mentality;
 
+  /// The live match action (GDD 16) still running for [side] over the
+  /// minutes to come, or null when none was ordered or its window has
+  /// run out. The live tactics panel marks the active order with it.
+  LiveMatchAction? activeActionOf(MatchSide side) {
+    final rt = _runtimeOf(side);
+    final action = rt.activeAction;
+    if (action == null || _minute >= rt.actionExpiresMinute) return null;
+    return action;
+  }
+
+  /// Minutes of [side]'s active live action still to be played (0 when
+  /// none is running).
+  int actionMinutesLeftOf(MatchSide side) {
+    if (activeActionOf(side) == null) return 0;
+    return _runtimeOf(side).actionExpiresMinute - _minute;
+  }
+
   /// Queues a command; it is applied at the next minute boundary with
   /// atMinute <= that minute (GDD 10.4: changes affect future events
   /// immediately, never past ones).
