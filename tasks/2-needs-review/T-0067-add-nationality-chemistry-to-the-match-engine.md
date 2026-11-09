@@ -2,8 +2,8 @@
 id: T-0067
 title: Add nationality chemistry to the match engine
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -59,5 +59,10 @@ Expected: analyze clean; chemistry unit tests match the spec examples exactly; s
 ---
 
 ## Developer Notes
+
+- **Summary of changes:** New pure-Dart `lib/features/match/chemistry.dart` — `chemistryPercentOf(Iterable<String?>)` skips null/empty, groups equal strings, adds `max(0, n−1)` per group of n≥2, clamps to 0..10; the owner's verbatim examples are the doc comments. `MatchPlayer` gains `final String nationality` (constructor default `''`, carried by `clone()`). `_TeamRuntime.computeTotals` computes chemistry from the LIVE `onPitch` list each call and multiplies all four totals by `(1 + chem/100)` after home advantage (order comment now lists it as step 6) — substitutions and red cards re-evaluate it by construction. Wiring: `_userMatchPlayer` (forecast) and **`match_session._toMatchPlayer` (the LIVE user XI path — a construction site the task Context missed; without it chemistry would work only in forecasts, never in real matches)** pass `card.base.nationality`; `season_store_opponent.loadOpponent` looks nationalities up from the dataset Players table into a map (synthetic rows with null realPlayerId stay `''`); `AiSquadPlayer` gained an optional `nationality` (default `''`) so existing fixtures compile unchanged; `match_simulator` passes `nationality: ''` explicitly for its synthetic squads.
+- **Files changed:** `lib/features/match/chemistry.dart` (new), `lib/features/match/match_event.dart`, `lib/features/match/match_engine.dart` (import), `lib/features/match/match_engine_runtime.dart`, `lib/features/match/match_session.dart`, `lib/features/season/season_store.dart`, `lib/features/season/season_store_opponent.dart`, `lib/features/season/season_ai_models.dart`, `lib/features/simulation/match_simulator.dart`, `test/features/match/chemistry_test.dart` (new), `tasks/…T-0067….md` (this file).
+- **How I tested it:** `flutter analyze` → No issues found. `flutter test test/features/match/chemistry_test.dart` → **10/10**: unit level returns exactly the owner's numbers (0 / 1 / 2 / 4 / 10, clamp at 10, blank/null never group); engine level — two identical even-strength XIs, seeds 0..199 run twice: the +10% chemistry XI's mean goals strictly higher (deterministic seeds, no flake). Zero-drift: `test/features/match/engine_snapshot_test.dart` 1/1 and `test/balance/` 86/86 with `REGEN_SNAPSHOT` **never set** — nationality-less fixtures stay at exactly 0% and the committed snapshot/bands are untouched. Full `flutter test` → **877/877 green**.
+- **Concerns / assumptions:** (1) I first implemented the opponent nationality via a drift LEFT JOIN, but `season_store_opponent.dart` is a `part of season_store.dart` whose drift import does not expose `JoinedRow`/typed result getters there — 15 analyze errors. Replaced with a plain `db.players` read into an `int→String` map (one extra query per opponent load, negligible; keeps the diff minimal and `_rowIdOf` untouched). (2) The map is built per `loadOpponent` call; if T-0068/T-0069 later need it hot, a cached dataset-level map is the follow-up — not done here to keep scope exact. (3) `AiSquadPlayer.nationality` is optional-with-default so `season_engine_test.dart`'s existing constructions compile unchanged (verified by full suite). (4) Chemistry multiplies goalkeeping too, exactly as the task's Requirement 1 wording ("multiplies the team's attack, support, defence and goalkeeping totals") and the owner's "+1% to team attack, defence, support and goalkeeping" require. (5) **Widget-fixture regression found and fixed:** `match_screen_test`'s dataset fixture gave all 60 players nationality 'Egypt', so once chemistry went live the user's XI genuinely earned +10% and the engineered defeat (opponent 95, seed 3) no longer ended in a defeat — the ad-boosted recovery card never appeared (2 failures: EN + AR recovery-card tests; same file 7/7 on clean HEAD). The feature is correct; the fixture was silently outcome-controlling. Fix: per-player distinct nationalities ('Country <id>') in that file's _rows only — the same chemistry-neutral philosophy the task applies to engine fixtures. No assertion was edited.
 
 ## Review Log
