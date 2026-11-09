@@ -2,8 +2,8 @@
 id: T-0065
 title: Localize the 47 tactic-sheet keys missing from app_ar.arb
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0064]
 created: 2026-11-09
 completed:
@@ -65,5 +65,10 @@ Expected: gap count 0, analyze clean, suites green; manually (`flutter run`, Ara
 ---
 
 ## Developer Notes
+
+- **Summary of changes:** All 47 dictated Arabic keys added to `lib/l10n/app_ar.arb` with the task's exact values (axis titles incl. `tacticsEstPossession` as `الاستحواذ المتوقع: {share}%`, the 27 step names, the 4 final-third chips, `trapOff`/`trapOn`/`trapDeepWarning`, and `restDefenceHint`). The AR implementation was regenerated with `flutter gen-l10n` — NOT hand-edited — so ARB and class can never disagree (46 getters + the parameterized `tacticsEstPossession(Object share)` method now returning `الاستحواذ المتوقع: $share%`). A pre-flight script asserted the task's 47-key table is 1:1 with the actual ARB gap before writing (no extras, no misses). Nothing else touched: EN values, the abstract signatures, every consumer file, engine/model/balance — all unchanged (git diff = `app_ar.arb` + `app_localizations_ar.dart` only).
+- **Files changed:** `lib/l10n/app_ar.arb` (+47 keys), `lib/l10n/app_localizations_ar.dart` (regenerated: the 47 English fallbacks → the Arabic values), `test/features/squad/squad_view_test.dart` (the RTL Arabic test extended, retitled `T-0064/T-0065`), `tasks/…T-0065….md` (this file).
+- **How I tested it:** Acceptance command `comm -23 <(grep -o '^  "[a-zA-Z]*"' lib/l10n/app_en.arb | sort) <(grep -o '^  "[a-zA-Z]*"' lib/l10n/app_ar.arb | sort) | wc -l` → **0**. `flutter analyze` → No issues found. `flutter test test/features/squad/squad_view_test.dart` → **12/12**, with the extended AR assertions: the pressing row label reads الضغط, its default pill متوسط and مرتفع after the mirrored max drag (still committing `PressingIntensity.high` — the RTL seam holds), the final-third chips read تمريرات داخل المنطقة / عرضيات مبكرة / التسديد عند أول فرصة, the offside toggle reads إيقاف, and both readouts read الاستحواذ المتوقع / بقاء لاعبين أكثر…; every EN assertion in the suite untouched. Zero-drift gates `flutter test test/features/match/ test/balance/` → **266/266, REGEN_SNAPSHOT never set**. Full `flutter test` → **867/867 green**. Long values (`trapDeepWarning`, `restDefenceHint`) verified verbatim post-wrap.
+- **Concerns / assumptions:** (1) The task Context called `app_localizations_ar.dart` "hand-maintained"; it is actually gen-l10n output (`l10n.yaml` + `generate: true`, confirmed by the reviewer's own `ae4cd6d` "pub get auto-regenerates it" commit) — so I wrote the ARB and regenerated rather than hand-editing, which also satisfies the ARB↔class "never disagree" rule by construction. Regeneration changed nothing outside the 47 values (no signature/type/EN drift). (2) `متوازن` previously asserted as globally unique now names four default pills (mentality + tackling/counter-press/attack-on-recovery) — the assertion is scoped to the mentality slider (`.at(9)`), preserving intent. (3) The generated `tacticsEstPossession` parameter type stays `Object share` (gen-l10n's inferred placeholder type, unchanged since before this task); the consumer still passes an int.
 
 ## Review Log
