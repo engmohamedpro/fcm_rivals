@@ -2,8 +2,8 @@
 id: T-0079
 title: Strip the tactic options sheet down to option names
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:

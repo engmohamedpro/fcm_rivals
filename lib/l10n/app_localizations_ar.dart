@@ -186,22 +186,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tacticsInPossessionTitle => 'في الاستحواذ';
 
   @override
-  String get tacticsInPossessionSubtitle =>
-      'بناء اللعب والإيقاع والعرض وأسلوب الثلث الأخير';
-
-  @override
   String get tacticsOutOfPossessionTitle => 'بدون الاستحواذ';
 
   @override
-  String get tacticsOutOfPossessionSubtitle =>
-      'خط الدفاع والضغط والالتحامات ومصيدة التسلل';
-
-  @override
   String get tacticsTransitionsTitle => 'التحولات';
-
-  @override
-  String get tacticsTransitionsSubtitle =>
-      'الضغط المرتد والهجمات المرتدة والدفاع الاحتياطي';
 
   @override
   String get tacticsSectionDefault => 'الإعداد الافتراضي';
@@ -220,11 +208,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tacticsFinalThird => 'الثلث الأخير';
-
-  @override
-  String tacticsEstPossession(Object share) {
-    return 'الاستحواذ المتوقع: $share%';
-  }
 
   @override
   String get buildUpPlayOut => 'اللعب من الخلف';
@@ -349,10 +332,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get rdAggressive => 'هجومي';
-
-  @override
-  String get restDefenceHint =>
-      'بقاء لاعبين أكثر يعني غطاءً أفضل لكن مشاركة أقل في الهجوم.';
 
   @override
   String injuryCommentaryKnock(Object player) {

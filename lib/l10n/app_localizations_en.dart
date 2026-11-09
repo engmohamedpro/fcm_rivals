@@ -186,22 +186,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tacticsInPossessionTitle => 'In Possession';
 
   @override
-  String get tacticsInPossessionSubtitle =>
-      'Build-up, tempo, width and final-third approach';
-
-  @override
   String get tacticsOutOfPossessionTitle => 'Out of Possession';
 
   @override
-  String get tacticsOutOfPossessionSubtitle =>
-      'Defensive line, pressing, tackling and the offside trap';
-
-  @override
   String get tacticsTransitionsTitle => 'Transitions';
-
-  @override
-  String get tacticsTransitionsSubtitle =>
-      'Counter-press, counter-attacking and rest defence';
 
   @override
   String get tacticsSectionDefault => 'Default setup';
@@ -220,11 +208,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tacticsFinalThird => 'Final third';
-
-  @override
-  String tacticsEstPossession(Object share) {
-    return 'Est. possession: $share%';
-  }
 
   @override
   String get buildUpPlayOut => 'Play Out from the Back';
@@ -349,10 +332,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdAggressive => 'Aggressive · 2 back';
-
-  @override
-  String get restDefenceHint =>
-      'More players back means cover but fewer joining attacks.';
 
   @override
   String injuryCommentaryKnock(Object player) {

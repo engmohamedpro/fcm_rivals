@@ -455,7 +455,6 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = l10nOf(context);
-    final mentality = mentalityFromScale(_mentalityScale);
     // The three instruction sections plus the mentality scale can grow
     // past the viewport (phases 1-3 add controls), so the sheet scrolls
     // inside a height cap instead of overflowing.
@@ -533,16 +532,6 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
                       semanticsLabel: l10n.tacticsMentality,
                       onChanged: (v) => setState(() => _mentalityScale = v),
                       onChangeEnd: _commitMentality,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      mentality.effectSummary,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: FcmColors.gold,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
                     ),
                   ],
                 ),

@@ -479,20 +479,21 @@ void main() {
     // The offside-trap toggle chip stays (Off at the default).
     expect(find.text('Off'), findsOneWidget);
 
-    // GDD 10.3 readouts survive: the honest possession estimate and
-    // the rest-defence hint.
-    expect(find.textContaining('Est. possession'), findsOneWidget);
+    // T-0079 (owner decision 2026-11-09): names only — the possession
+    // estimate and the rest-defence hint are GONE from the sheet.
+    expect(find.textContaining('Est. possession'), findsNothing);
     expect(
       find.textContaining('More players back means cover'),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(find.textContaining('No modifiers'), findsNothing);
 
     await tester.tap(find.text('DONE'));
     await tester.pumpAndSettle();
   });
 
   testWidgets('T-0064: dragging the pressing slider to the max end '
-      'commits High Press once with its summary', (tester) async {
+      'commits High Press once (names only)', (tester) async {
     tester.view.physicalSize = const Size(1600, 4000);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
@@ -535,8 +536,7 @@ void main() {
       track.top + track.height / 2,
     );
 
-    // Default: the pill reads the localized 'Mid' (pressMid); the
-    // row's summary is the identity ('No modifiers').
+    // Default: the pill reads the localized 'Mid' (pressMid).
     expect(
       find.descendant(of: pressing, matching: find.text('Mid')),
       findsOneWidget,
@@ -563,9 +563,10 @@ void main() {
       find.descendant(of: pressing, matching: find.text('Mid')),
       findsNothing,
     );
-    expect(find.textContaining('Defence +34%'), findsWidgets);
-    expect(find.textContaining('Chances +16%'), findsWidgets);
-    expect(find.textContaining('Stamina use +30%'), findsWidgets);
+    // T-0079: per-row effect summaries are gone (names only).
+    expect(find.textContaining('Defence +34%'), findsNothing);
+    expect(find.textContaining('Chances +16%'), findsNothing);
+    expect(find.textContaining('Stamina use +30%'), findsNothing);
 
     await tester.ensureVisible(find.text('DONE'));
     await tester.pumpAndSettle();
@@ -623,7 +624,8 @@ void main() {
       find.descendant(of: buildUp, matching: find.text('Long Ball')),
       findsNWidgets(2), // the pill + the scale's aggressive-end label
     );
-    expect(find.textContaining('Passing -9%'), findsWidgets);
+    // T-0079: per-row effect summaries are gone (names only).
+    expect(find.textContaining('Passing -9%'), findsNothing);
 
     await tester.ensureVisible(find.text('DONE'));
     await tester.pumpAndSettle();
@@ -684,7 +686,8 @@ void main() {
       ),
       findsNWidgets(2), // the pill + the scale's aggressive-end label
     );
-    expect(find.textContaining('Stamina use +14%'), findsWidgets);
+    // T-0079: per-row effect summaries are gone (names only).
+    expect(find.textContaining('Stamina use +14%'), findsNothing);
 
     await tester.ensureVisible(find.text('DONE'));
     await tester.pumpAndSettle();
@@ -752,11 +755,11 @@ void main() {
     expect(find.text('التسديد عند أول فرصة'), findsOneWidget);
     // The offside-trap toggle reads إيقاف at the default (off).
     expect(find.text('إيقاف'), findsOneWidget);
-    // Both GDD 10.3 readouts read Arabic.
-    expect(find.textContaining('الاستحواذ المتوقع'), findsOneWidget);
+    // T-0079: the readouts are gone in Arabic too (names only).
+    expect(find.textContaining('الاستحواذ المتوقع'), findsNothing);
     expect(
       find.textContaining('بقاء لاعبين أكثر يعني غطاءً أفضل'),
-      findsOneWidget,
+      findsNothing,
     );
 
     // The pressing slider mirrors: the aggressive (max) end sits at the
@@ -789,7 +792,8 @@ void main() {
     );
     expect(find.descendant(of: pressing, matching: find.text('متوسط')),
         findsNothing);
-    expect(find.textContaining('Defence +34%'), findsWidgets);
+    // T-0079: per-row effect summaries are gone in Arabic too.
+    expect(find.textContaining('Defence +34%'), findsNothing);
 
     await tester.ensureVisible(find.text('DONE'));
     await tester.pumpAndSettle();

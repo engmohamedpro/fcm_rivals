@@ -105,11 +105,8 @@
     }
   },
   "tacticsInPossessionTitle": "في الاستحواذ",
-  "tacticsInPossessionSubtitle": "بناء اللعب والإيقاع والعرض وأسلوب الثلث الأخير",
   "tacticsOutOfPossessionTitle": "بدون الاستحواذ",
-  "tacticsOutOfPossessionSubtitle": "خط الدفاع والضغط والالتحامات ومصيدة التسلل",
   "tacticsTransitionsTitle": "التحولات",
-  "tacticsTransitionsSubtitle": "الضغط المرتد والهجمات المرتدة والدفاع الاحتياطي",
   "tacticsSectionDefault": "الإعداد الافتراضي",
   "tacticsLabel": "الخطة",
   "injuryCommentaryKnock": "{player} يتلقى ارتطامًا ولا يستطيع الاستكمال.",
@@ -156,7 +153,6 @@
   "tacticsRestDefence": "الدفاع الوقائي",
   "tacticsFinalThird": "الثلث الأخير",
   "tacticsOffsideTrap": "مصيدة التسلل",
-  "tacticsEstPossession": "الاستحواذ المتوقع: {share}%",
   "arPatient": "صبور",
   "arBalanced": "متوازن",
   "arFast": "سريع",
@@ -190,6 +186,5 @@
   "finalThirdShootOnSight": "التسديد عند أول فرصة",
   "trapOff": "إيقاف",
   "trapOn": "تشغيل",
-  "trapDeepWarning": "لا فائدة منها مع خط عميق — مخاطرة صرفة. ارفع الخط أو أغلق المصيدة.",
-  "restDefenceHint": "بقاء لاعبين أكثر يعني غطاءً أفضل لكن مشاركة أقل في الهجوم."
+  "trapDeepWarning": "لا فائدة منها مع خط عميق — مخاطرة صرفة. ارفع الخط أو أغلق المصيدة."
 }

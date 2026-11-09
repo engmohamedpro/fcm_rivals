@@ -676,6 +676,8 @@ is user-visible** — the UI shows the estimated possession share and the
 percentage effects of each chosen combination, never raw multipliers.
 
 ### 10.3 Mentality
+> **Owner decision (2026-11-09):** tactic options show localized NAMES only — section titles, row labels, option pills/chips and min/max end labels. The always-on effect summaries, section subtitles, estimated-possession readout and rest-defence hint are removed from the Team tab sheet, the pre-match tactics phase and the live tactics screen. Effect percentages live in the engine, not the UI; this supersedes "effects must be visible" for these surfaces. The conditional offside-trap deep-line warning stays (it prevents a genuinely bad combination, it is not an explanation).
+
 
 Supported mentalities:
 

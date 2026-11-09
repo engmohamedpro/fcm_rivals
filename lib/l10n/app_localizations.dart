@@ -416,35 +416,17 @@ abstract class AppLocalizations {
   /// **'In Possession'**
   String get tacticsInPossessionTitle;
 
-  /// No description provided for @tacticsInPossessionSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Build-up, tempo, width and final-third approach'**
-  String get tacticsInPossessionSubtitle;
-
   /// No description provided for @tacticsOutOfPossessionTitle.
   ///
   /// In en, this message translates to:
   /// **'Out of Possession'**
   String get tacticsOutOfPossessionTitle;
 
-  /// No description provided for @tacticsOutOfPossessionSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Defensive line, pressing, tackling and the offside trap'**
-  String get tacticsOutOfPossessionSubtitle;
-
   /// No description provided for @tacticsTransitionsTitle.
   ///
   /// In en, this message translates to:
   /// **'Transitions'**
   String get tacticsTransitionsTitle;
-
-  /// No description provided for @tacticsTransitionsSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Counter-press, counter-attacking and rest defence'**
-  String get tacticsTransitionsSubtitle;
 
   /// No description provided for @tacticsSectionDefault.
   ///
@@ -481,12 +463,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Final third'**
   String get tacticsFinalThird;
-
-  /// No description provided for @tacticsEstPossession.
-  ///
-  /// In en, this message translates to:
-  /// **'Est. possession: {share}%'**
-  String tacticsEstPossession(Object share);
 
   /// No description provided for @buildUpPlayOut.
   ///
@@ -733,12 +709,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Aggressive · 2 back'**
   String get rdAggressive;
-
-  /// No description provided for @restDefenceHint.
-  ///
-  /// In en, this message translates to:
-  /// **'More players back means cover but fewer joining attacks.'**
-  String get restDefenceHint;
 
   /// No description provided for @injuryCommentaryKnock.
   ///

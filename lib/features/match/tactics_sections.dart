@@ -41,16 +41,12 @@ class TacticsGroupScaffold extends StatelessWidget {
         _Section(
           icon: Icons.sports_soccer_rounded,
           title: l10n.tacticsInPossessionTitle,
-          subtitle: l10n.tacticsInPossessionSubtitle,
-          summary: tactics.inPossession.effectSummary,
           child: _InPossessionControls(tactics: tactics, onChanged: onChanged),
         ),
         const SizedBox(height: 12),
         _Section(
           icon: Icons.shield_rounded,
           title: l10n.tacticsOutOfPossessionTitle,
-          subtitle: l10n.tacticsOutOfPossessionSubtitle,
-          summary: tactics.outOfPossession.effectSummary,
           child: _OutOfPossessionControls(
             tactics: tactics,
             onChanged: onChanged,
@@ -60,8 +56,6 @@ class TacticsGroupScaffold extends StatelessWidget {
         _Section(
           icon: Icons.swap_horiz_rounded,
           title: l10n.tacticsTransitionsTitle,
-          subtitle: l10n.tacticsTransitionsSubtitle,
-          summary: tactics.transitions.effectSummary,
           child: _TransitionsControls(tactics: tactics, onChanged: onChanged),
         ),
       ],
@@ -69,21 +63,18 @@ class TacticsGroupScaffold extends StatelessWidget {
   }
 }
 
-/// One section: icon + localized header, the group's visible effect
-/// summary (GDD 10.3), then the instruction controls the phases add.
+/// One section: icon + localized header, then the instruction
+/// controls the phases add. Names only — the always-on effect
+/// summaries are gone (owner decision 2026-11-09, GDD 10.3 update).
 class _Section extends StatelessWidget {
   const _Section({
     required this.icon,
     required this.title,
-    required this.subtitle,
-    required this.summary,
     required this.child,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
-  final String summary;
   final Widget child;
 
   @override
@@ -117,24 +108,6 @@ class _Section extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 10,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            summary,
-            style: TextStyle(
-              color: theme.colorScheme.primary,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
           const SizedBox(height: 8),
           child,
         ],
@@ -145,7 +118,6 @@ class _Section extends StatelessWidget {
 
 /// In Possession instruction controls (phase 1): four segmented rows —
 /// build-up, tempo, width, final-third approach — each option carrying
-/// its visible effect summary (GDD 10.3), plus the estimated-possession
 /// readout that updates as options change.
 class _InPossessionControls extends StatelessWidget {
   const _InPossessionControls({required this.tactics, required this.onChanged});
@@ -169,7 +141,6 @@ class _InPossessionControls extends StatelessWidget {
             BuildUpStyle.mixed => l10n.buildUpMixed,
             BuildUpStyle.longBall => l10n.buildUpLongBall,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) => onChanged(
             tactics.copyWith(inPossession: ip.copyWith(buildUp: v)),
           ),
@@ -184,7 +155,6 @@ class _InPossessionControls extends StatelessWidget {
             AttackTempo.standard => l10n.tempoStandard,
             AttackTempo.fast => l10n.tempoFast,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) =>
               onChanged(tactics.copyWith(inPossession: ip.copyWith(tempo: v))),
         ),
@@ -198,7 +168,6 @@ class _InPossessionControls extends StatelessWidget {
             AttackWidth.standard => l10n.widthStandardWidth,
             AttackWidth.wide => l10n.widthWide,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) =>
               onChanged(tactics.copyWith(inPossession: ip.copyWith(width: v))),
         ),
@@ -213,23 +182,8 @@ class _InPossessionControls extends StatelessWidget {
             FinalThirdApproach.earlyCrosses => l10n.finalThirdEarlyCrosses,
             FinalThirdApproach.shootOnSight => l10n.finalThirdShootOnSight,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) => onChanged(
             tactics.copyWith(inPossession: ip.copyWith(finalThird: v)),
-          ),
-        ),
-        const SizedBox(height: 8),
-        // The honest possession estimate (GDD 10.3): the share the
-        // engine's power competition actually produces.
-        Text(
-          l10n.tacticsEstPossession(
-            tactics.inPossession.estimatedPossessionShare,
-          ),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.primary,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -237,15 +191,14 @@ class _InPossessionControls extends StatelessWidget {
   }
 }
 
-/// One labelled segmented-control row: label, chips for every option,
-/// and the SELECTED option's effect summary underneath.
+/// One labelled segmented-control row: label + chips for every
+/// option — names only (owner decision 2026-11-09).
 class _SegmentedRow<T extends Enum> extends StatelessWidget {
   const _SegmentedRow({
     required this.label,
     required this.values,
     required this.selected,
     required this.display,
-    required this.summary,
     required this.onSelect,
   });
 
@@ -253,7 +206,6 @@ class _SegmentedRow<T extends Enum> extends StatelessWidget {
   final List<T> values;
   final T selected;
   final String Function(T) display;
-  final String Function(T) summary;
   final ValueChanged<T> onSelect;
 
   @override
@@ -284,15 +236,6 @@ class _SegmentedRow<T extends Enum> extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          summary(selected),
-          style: TextStyle(
-            color: theme.colorScheme.primary,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
       ],
     );
   }
@@ -300,16 +243,16 @@ class _SegmentedRow<T extends Enum> extends StatelessWidget {
 
 
 /// One ordered-instruction axis as a stepped scale slider (T-0064):
-/// the axis label, the shared branded slider with one named step per
-/// enum value, and the SELECTED step's effect summary underneath
-/// updating live during the drag (GDD 10.3). Scale-0 is the safe end,
+/// the axis label and the shared branded slider with one named step
+/// per enum value — names only (owner decision 2026-11-09). Scale-0 is
+/// the safe end,
 /// scale-100 the aggressive end (the T-0063 polarity table) — `values`
 /// order IS that polarity, so `values.first` labels the minimum end and
 /// `values.last` the maximum.
 ///
 /// One commit per gesture: `onChangeEnd` fires the owner's [onSelect]
 /// with the full updated tactics object; intermediate ticks only move
-/// the marker, the pill and the summary. Categorical axes
+/// the marker, the pill. Categorical axes
 /// (`FinalThirdApproach`) and bools (the offside trap) are NOT scales —
 /// they keep their chip row / toggle.
 class _SliderRow<T extends Enum> extends StatefulWidget {
@@ -318,7 +261,6 @@ class _SliderRow<T extends Enum> extends StatefulWidget {
     required this.values,
     required this.selected,
     required this.display,
-    required this.summary,
     required this.onSelect,
   });
 
@@ -326,7 +268,6 @@ class _SliderRow<T extends Enum> extends StatefulWidget {
   final List<T> values;
   final T selected;
   final String Function(T) display;
-  final String Function(T) summary;
   final ValueChanged<T> onSelect;
 
   @override
@@ -335,8 +276,8 @@ class _SliderRow<T extends Enum> extends StatefulWidget {
 
 class _SliderRowState<T extends Enum> extends State<_SliderRow<T>> {
   /// The row's live scale position — the committed step at rest, the
-  /// finger's snapped step during a drag (the pill and the summary
-  /// under the track follow it live, GDD 10.3).
+  /// finger's snapped step during a drag (the pill under the track
+  /// follows it live).
   late int _scale = enumToScale(widget.values, widget.selected);
 
   @override
@@ -360,7 +301,6 @@ class _SliderRowState<T extends Enum> extends State<_SliderRow<T>> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final step = enumFromScale(widget.values, _scale);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -385,15 +325,6 @@ class _SliderRowState<T extends Enum> extends State<_SliderRow<T>> {
           semanticsLabel: widget.label,
           onChanged: _onChanged,
           onChangeEnd: _onCommit,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          widget.summary(step),
-          style: TextStyle(
-            color: theme.colorScheme.primary,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
         ),
       ],
     );
@@ -471,7 +402,6 @@ class _OutOfPossessionControls extends StatelessWidget {
             DefensiveLine.standard => l10n.lineStandard,
             DefensiveLine.high => l10n.lineHigh,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) => onChanged(
             tactics.copyWith(outOfPossession: oop.copyWith(defensiveLine: v)),
           ),
@@ -486,7 +416,6 @@ class _OutOfPossessionControls extends StatelessWidget {
             PressingIntensity.mid => l10n.pressMid,
             PressingIntensity.high => l10n.pressHigh,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) => onChanged(
             tactics.copyWith(outOfPossession: oop.copyWith(pressing: v)),
           ),
@@ -501,7 +430,6 @@ class _OutOfPossessionControls extends StatelessWidget {
             TacklingAggression.balanced => l10n.tackleBalanced,
             TacklingAggression.aggressive => l10n.tackleAggressive,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) => onChanged(
             tactics.copyWith(outOfPossession: oop.copyWith(tackling: v)),
           ),
@@ -562,8 +490,8 @@ class _OutOfPossessionControls extends StatelessWidget {
 }
 
 /// Transitions instruction controls (phase 3): counter-press, attack
-/// on recovery and rest defence. The rest-defence row carries its
-/// one-line trade-off explanation (cover vs numbers forward).
+/// on recovery and rest defence — names only (owner decision
+/// 2026-11-09).
 class _TransitionsControls extends StatelessWidget {
   const _TransitionsControls({required this.tactics, required this.onChanged});
 
@@ -586,7 +514,6 @@ class _TransitionsControls extends StatelessWidget {
             CounterPress.balanced => l10n.cpBalanced,
             CounterPress.immediate => l10n.cpImmediate,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) => onChanged(
             tactics.copyWith(transitions: tr.copyWith(counterPress: v)),
           ),
@@ -601,7 +528,6 @@ class _TransitionsControls extends StatelessWidget {
             AttackOnRecovery.balanced => l10n.arBalanced,
             AttackOnRecovery.fast => l10n.arFast,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) => onChanged(
             tactics.copyWith(transitions: tr.copyWith(attackOnRecovery: v)),
           ),
@@ -616,18 +542,8 @@ class _TransitionsControls extends StatelessWidget {
             RestDefence.standard => l10n.rdStandard,
             RestDefence.aggressive => l10n.rdAggressive,
           },
-          summary: (v) => v.modifiers.effectSummary,
           onSelect: (v) => onChanged(
             tactics.copyWith(transitions: tr.copyWith(restDefence: v)),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          l10n.restDefenceHint,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontSize: 10,
-            fontStyle: FontStyle.italic,
           ),
         ),
       ],
