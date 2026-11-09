@@ -1,0 +1,68 @@
+---
+id: T-0101
+title: Remove the reveal hype captions and pull banners
+priority: medium
+status: todo
+attempts: 0
+depends_on: []
+created: 2026-11-09
+completed:
+---
+
+# T-0101: Remove the reveal hype captions and pull banners
+
+## Goal
+During the pack reveal, no text floats above the card: the legendary suspense captions and the pull banners are gone (owner request 2026-11-09 — "remove the text at the top which is epic pull and legend is coming and all these texts above the card"). The card, walkout, mystery silhouette, flash, timeline and action bar are unchanged.
+
+## Context
+- Two overlays render above the card in `lib/features/packs/pack_opening_screen.dart`:
+  - the suspense captions (legendary only) at `:708-710`, built by `_buildCaption` in `lib/features/packs/pack_opening_screen_reveal.dart:98-135` — 'A LEGEND IS COMING…' and 'WHO IS IT?' (hardcoded EN);
+  - the pull banner at `:713-741` — hardcoded 'EPIC PULL!' / 'LEGENDARY PULL!' and the localized 'PREMIUM PULL!' (`revealBannerPremium`, `lib/l10n/app_en.arb:164`, `app_ar.arb:119`).
+  - the local `bannerT` (`:490`) feeds only the banner; remove it with the banner block.
+- The reveal timeline itself (`RevealTimeline`, its intervals and durations), the mystery silhouette, the walkout (flag + position), the flash, the NEW badge (T-0091) and the action bar must not change — only the two text overlays go.
+- Tests asserting these strings today: `test/features/packs/pack_opening_screen_test.dart:448,450,483,493,539,545,551,553,558` (legendary/premium timeline tests assert 'A LEGEND IS COMING…', 'WHO IS IT?', 'LEGENDARY PULL!', 'PREMIUM PULL!').
+
+## Requirements
+1. Delete the caption overlay render site (`pack_opening_screen.dart:708-710`) and the `_buildCaption` method (`pack_opening_screen_reveal.dart:98-135`).
+2. Delete the banner overlay block (`pack_opening_screen.dart:713-741`) and the now-unused `bannerT` local; nothing else in the stage build changes.
+3. Remove `revealBannerPremium` from BOTH ARB files and regen localizations — after grepping that nothing else references it.
+4. Update the affected tests: the caption/banner assertions flip to `findsNothing` (the strings must never render), while each test's OTHER assertions (timeline progression, mystery card, action bar arrival) keep passing — a deletion of the overlays must not weaken what the tests prove about the timeline itself.
+
+## Out of Scope
+- Any timeline duration, interval, animation or stagecraft change (shake, vignette, flash, walkout, punch, foil).
+- The mystery silhouette, the card face, the NEW badge, the chain capsule, the action bar.
+- Any pack store / odds / economy behavior.
+
+## Acceptance Criteria
+- [ ] None of 'A LEGEND IS COMING…', 'WHO IS IT?', 'EPIC PULL!', 'LEGENDARY PULL!' or 'PREMIUM PULL!' (nor their Arabic counterpart) ever renders during a reveal — rare, epic, legendary and premium pulls all clean above the card.
+- [ ] Reveal timings are unchanged: the legendary and premium tests' progression assertions (mystery in, flip, stats, action bar live) still pass with their current duration expectations.
+- [ ] `revealBannerPremium` is gone from both ARBs; localization regen is clean; no unused imports or dead locals remain.
+- [ ] `flutter analyze` zero warnings; packs suite green with updated tests; full `flutter test` green, no REGEN_SNAPSHOT.
+
+## How to Verify
+```bash
+flutter analyze
+# Expected: No issues found!
+
+flutter test test/features/packs/
+# Expected: green — caption/banner assertions now findsNothing, timeline assertions unchanged
+
+flutter test
+# Expected: full suite green, no REGEN_SNAPSHOT
+```
+
+Manual: open a rare pack, an epic pull and (seed or luck permitting) a legendary one — the space above the card stays empty through the whole reveal.
+
+---
+<!-- Everything below this line is filled in by agents, never by the task author. -->
+
+## Developer Notes
+<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
+
+- **Summary of changes:**
+- **Files changed:**
+- **How I tested it:**
+- **Concerns / assumptions:**
+
+## Review Log
+<!-- Reviewer agent appends one entry per review. Never delete old entries. -->
