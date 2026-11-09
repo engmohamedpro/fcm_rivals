@@ -6,7 +6,7 @@ status: needs-review
 attempts: 1
 depends_on: [T-0084]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0085: Rework the pack reveal actions - BACK first, SELL last, stay after selling
@@ -39,12 +39,12 @@ The pack reveal's action bar reads as the owner wants it (decision 2026-11-09): 
 - Multi-select sell, sell-all, or any new sale economics.
 
 ## Acceptance Criteria
-- [ ] On the last card the row reads BACK (start) then SELL (end); on earlier cards NEXT PLAYER i/n (start) then SELL (end); preview draws show the single full-width button.
-- [ ] BACK pops the reveal without selling and without chaining; earlier-card NEXT PLAYER still advances.
-- [ ] Selling on the last card keeps the screen open: no pop, the card's SELL is disabled/marked sold (no double-sell), and OPEN ANOTHER plus BACK remain usable.
-- [ ] Selling an earlier card still advances to the next player (screen stays as today).
-- [ ] The button order holds in RTL (Arabic test) and LTR.
-- [ ] Updated + new tests green; `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green.
+- [x] On the last card the row reads BACK (start) then SELL (end); on earlier cards NEXT PLAYER i/n (start) then SELL (end); preview draws show the single full-width button.
+- [x] BACK pops the reveal without selling and without chaining; earlier-card NEXT PLAYER still advances.
+- [x] Selling on the last card keeps the screen open: no pop, the card's SELL is disabled/marked sold (no double-sell), and OPEN ANOTHER plus BACK remain usable.
+- [x] Selling an earlier card still advances to the next player (screen stays as today).
+- [x] The button order holds in RTL (Arabic test) and LTR.
+- [x] Updated + new tests green; `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -95,3 +95,18 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — PASS (2026-11-09)
+
+Ran every How to Verify command plus stability reruns, all green:
+- `flutter analyze` → No issues found.
+- `flutter test test/features/packs/pack_opening_screen_test.dart` → 14/14 (the three updated tests, two legendary-flow updates, and the three new T-0085 tests: BACK-pops-without-chaining, last-card SELL stays with no double-sell, RTL order with measured positions).
+- `flutter test test/features/packs/` → 105/105.
+- Full `flutter test` → 950/950, no REGEN_SNAPSHOT.
+- Stability probe (unrelated to gates, for the T-0084 flake fix): `flutter test test/features/packs/packs_screen_test.dart` run 3 consecutive times unseeded → 16/16 each run; the old fixed-budget helper would flake whenever the drawn GK ran the 13s/20s timeline.
+
+Checked each acceptance criterion against the real code (`lib/features/packs/pack_opening_screen.dart:776-810` row order with `if (_canSell)` guarding gap and SELL; `_back()` = plain `Navigator.pop()` with no result — same semantics the KEEP PLAYER pop had; `_sell()` captures `isLastCard` before the await, records `_sold.add(_index)` on the last card and returns without `_next()`, so no pop; SELL flips to SOLD with `coinValue: null` and `onPressed: null` when `_soldCard`) and against the three new tests' actual assertions (sellCalls stays 1 after re-tap, OPEN ANOTHER + BACK alive, RTL right/left edge measurements on both card kinds). Preview-draw single full-width button covered by the updated no-onSell test. `KEEP PLAYER` fully gone from lib/ (only negative findsNothing assertions remain in tests).
+
+Scope check: production change is confined to `pack_opening_screen.dart`; test changes confined to the two packs test files. The extra `packs_screen_test.dart` changes are (a) the store regression's closing tap KEEP PLAYER → BACK — required, the button no longer exists, no assertion weakened; (b) the T-0084 helper flake fix (pump-until-action-bar-live, bounded 30s, `keep-fade` opacity gate) — outside the task's text but a test-only fix, fully disclosed in Developer Notes, necessary for the full-suite gate, verified stable over 3 unseeded reruns. No production behavior outside the task's scope changed. No regressions found.
+
+All criteria met — PASS.
