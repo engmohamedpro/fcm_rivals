@@ -239,31 +239,43 @@ class _GameShellBodyState extends State<_GameShellBody> {
 
   @override
   Widget build(BuildContext context) {
+    // The Team tab (index 1) hides the app bar to give the squad pitch
+    // its vertical space (owner decision 2026-11-09); every other tab
+    // shows it exactly as before. The hide/show animates the whole
+    // chrome (toolbar + gold seam) collapsing to zero height over the
+    // same 200ms as the body's cross-fade — no hard jump. With the bar
+    // collapsed the Scaffold takes the status-bar inset itself, so the
+    // Team content neither sits under the status bar nor gains a gap.
+    final appBarShown = _index != 1;
     return Scaffold(
       extendBodyBehindAppBar: false,
-      appBar: AppBar(
-        centerTitle: false,
-        // The toolbar hugs the wordmark art: no dead space above or
-        // below it, and the taller mark reads as the game's masthead.
-        toolbarHeight: 52,
-        // Soft elevation shadow under the chrome — the bar floats above
-        // the page while its gold seam marks the lit edge.
-        elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: 0.45),
-        flexibleSpace: const _AppBarChrome(),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(5),
-          child: FcmGoldSeam(),
+      appBar: _CollapsibleAppBar(
+        key: const ValueKey('shell-appbar-slot'),
+        shown: appBarShown,
+        bar: AppBar(
+          centerTitle: false,
+          // The toolbar hugs the wordmark art: no dead space above or
+          // below it, and the taller mark reads as the game's masthead.
+          toolbarHeight: 52,
+          // Soft elevation shadow under the chrome — the bar floats above
+          // the page while its gold seam marks the lit edge.
+          elevation: 8,
+          shadowColor: Colors.black.withValues(alpha: 0.45),
+          flexibleSpace: const _AppBarChrome(),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(5),
+            child: FcmGoldSeam(),
+          ),
+          title: const FcmWordmark(size: 44),
+          // Dev-only: the test-coin shortcut is compiled out of profile and
+          // release builds (kDebugMode is a const, so tree shaking removes
+          // the widget entirely).
+          actions: [
+            const _LanguageToggle(),
+            if (kDebugMode) const _TestCoinButton(),
+            const _CoinBalance(),
+          ],
         ),
-        title: const FcmWordmark(size: 44),
-        // Dev-only: the test-coin shortcut is compiled out of profile and
-        // release builds (kDebugMode is a const, so tree shaking removes
-        // the widget entirely).
-        actions: [
-          const _LanguageToggle(),
-          if (kDebugMode) const _TestCoinButton(),
-          const _CoinBalance(),
-        ],
       ),
       body: FcmBackdrop(
         // Only the selected tab exists: leaving a tab disposes it (and its
@@ -288,6 +300,65 @@ class _GameShellBodyState extends State<_GameShellBody> {
         onReselected: _scrollToTop,
         onChanged: (i) => setState(() => _index = i),
       ),
+    );
+  }
+}
+
+/// The shell's app bar slot (T-0077): wraps the real [AppBar] so the
+/// Team tab can collapse it to zero height with a 200ms animation —
+/// the same duration and ease family as the body's AnimatedSwitcher
+/// cross-fade, so the chrome and the page change read as one motion.
+///
+/// The [AppBar] itself is fully preserved (chrome, wordmark, actions,
+/// gold seam bottom); only its height animates. While collapsed the
+/// reported preferred size is zero, so the Scaffold lays the body out
+/// from the status-bar inset down — no overlap, no dead gap. The bar
+/// subtree is kept alive (offstage) while hidden so its state and the
+/// coin-balance stream survive the round trip; it is simply clipped
+/// away.
+class _CollapsibleAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _CollapsibleAppBar({super.key, required this.shown, required this.bar});
+
+  static const Duration _duration = Duration(milliseconds: 200);
+  static const Curve _curve = Curves.easeOut;
+
+  /// The wrapped app bar in its fully-shown form.
+  final AppBar bar;
+
+  /// Whether the bar is expanded; false collapses it to zero height.
+  final bool shown;
+
+  @override
+  Size get preferredSize => Size.fromHeight(shown ? _expandedHeight : 0);
+
+  /// [AppBar.preferredSize] already includes the toolbar AND the
+  /// bottom seam (52 + 5 = 57 in the shell) — no extra bottom to add.
+  double get _expandedHeight => bar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: shown ? 0 : _expandedHeight, end: shown ? 1 : 0),
+      duration: _duration,
+      curve: _curve,
+      builder: (context, t, child) {
+        final height = _expandedHeight * t;
+        return ClipRect(
+          child: SizedBox(
+            height: height,
+            width: double.infinity,
+            child: OverflowBox(
+              minHeight: 0,
+              maxHeight: _expandedHeight,
+              alignment: Alignment.topCenter,
+              child: child,
+            ),
+          ),
+        );
+      },
+      // The bar is always in the tree — clipped to nothing when hidden —
+      // so its state (coin stream, language toggle) survives the cycle.
+      child: bar,
     );
   }
 }
