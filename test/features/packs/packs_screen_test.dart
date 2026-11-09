@@ -746,6 +746,140 @@ void main() {
       );
     },
   );
+
+  /// Opens one owned GK rare pack straight into its finished reveal —
+  /// the shared prefix of the two T-0084 regression tests below. GK is
+  /// a single-slot starter position (exactly 2 granted rare packs), and
+  /// the capsule sits on the action bar once the timeline is done.
+  Future<void> openGkIntoFinishedReveal(WidgetTester tester) async {
+    final gkCell = find
+        .byKey(const ValueKey('store-pack-position-GK-rare'))
+        .first;
+    await tester.ensureVisible(gkCell);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(gkCell, warnIfMissed: false);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets(
+    'T-0084: with 2 owned packs, the reveal chain capsule counts the '
+    'survivor as FREE ×1 — not the stale FREE ×2',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // The starter grant hands GK exactly two rare packs; open one.
+      final packsBefore =
+          await tester.runAsync(() => store.getAvailablePacks());
+      final gkBefore = packsBefore!
+          .where((p) => p.scopeValue == 'GK' && p.tier == 'rare')
+          .length;
+      expect(gkBefore, 2, reason: 'the starter formation grants 2 GK packs');
+
+      await openGkIntoFinishedReveal(tester);
+      expect(find.byType(PackOpeningScreen), findsOneWidget);
+
+      // The consumed pack must not be counted: one survivor, FREE ×1.
+      expect(find.text('FREE ×1'), findsOneWidget);
+      expect(
+        find.text('FREE ×2'),
+        findsNothing,
+        reason: 'the stale pre-open list still contains the consumed '
+            'pack — the T-0084 bug',
+      );
+
+      // And the DB agrees with the capsule.
+      final packsAfter =
+          await tester.runAsync(() => store.getAvailablePacks());
+      final gkAfter = packsAfter!
+          .where((p) => p.scopeValue == 'GK' && p.tier == 'rare')
+          .length;
+      expect(gkAfter, 1);
+    },
+  );
+
+  testWidgets(
+    'T-0084: opening the LAST owned pack offers the price path, not a '
+    'phantom FREE — and OPEN ANOTHER buys instead of erroring',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await seedStore(tester);
+
+      // Drop GK down to its LAST owned pack directly in the DB BEFORE
+      // the first pump, so availablePacksProvider resolves with the
+      // doctored single-pack inventory (the drained-wallet test's
+      // pattern).
+      await tester.runAsync(() async {
+        final gk = (await store.getAvailablePacks())
+            .where((p) => p.scopeValue == 'GK' && p.tier == 'rare')
+            .toList();
+        await (db.update(db.packs)
+              ..where((p) => p.id.equals(gk.first.id)))
+            .write(const PacksCompanion(opened: Value(true)));
+      });
+      await pumpScreen(tester);
+
+      await openGkIntoFinishedReveal(tester);
+      expect(find.byType(PackOpeningScreen), findsOneWidget);
+
+      // No phantom free count: with nothing owned the capsule takes the
+      // price path — the rare GK price, no FREE label anywhere.
+      expect(find.text('FREE ×1'), findsNothing);
+      expect(find.text('FREE ×0'), findsNothing);
+      final offer = (await tester.runAsync(() => store.getStoreOffers()))!
+          .firstWhere((o) =>
+              o.category == PackCategory.position &&
+              o.scopeValue == 'GK' &&
+              o.tier == PackTier.rare);
+      expect(
+        find.text(_group(offer.price)),
+        findsOneWidget,
+        reason: 'the capsule prices the next pack instead of the '
+            'phantom FREE',
+      );
+
+      // The club can afford it — tapping OPEN ANOTHER must BUY a fresh
+      // pack and chain into its reveal, not reopen the consumed row (the
+      // pre-fix stale read died on a CollectionException snackbar).
+      final coinsBefore = (await tester.runAsync(() => store.getClub()))!.coins;
+      await tester.tap(find.text('OPEN ANOTHER'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+
+      // No error snackbar from a stale read, coins actually spent, and
+      // the chain reached the next reveal.
+      expect(find.byType(SnackBar), findsNothing);
+      expect(
+        (await tester.runAsync(() => store.getClub()))!.coins,
+        coinsBefore - offer.price,
+        reason: 'OPEN ANOTHER bought the next pack at full price',
+      );
+      expect(
+        find.byType(PackOpeningScreen),
+        findsOneWidget,
+        reason: 'the chained reveal is on stage',
+      );
+    },
+  );
 }
 
 /// Mirrors the dialog's compact coin readout so the test finds real

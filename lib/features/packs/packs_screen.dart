@@ -163,13 +163,21 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     final l10n = l10nOf(context);
     SnackBar sellMessage(int credit) =>
         SnackBar(content: Text(l10n.packsSoldFor(FcmCoinChip.compact(credit))));
+    // The capsule's numbers are computed from the post-open DB state
+    // (T-0084): that needs the round-trips below, so re-check the
+    // context before the push.
+    PackChainInfo? chainInfo;
+    if (chain != null) {
+      chainInfo = await _chainInfoFor(store, chain);
+      if (!context.mounted) return;
+    }
     final chained = await AppRoutes.packReveal(
       context,
       players: result.players,
       ownedIds: result.ownedIds,
       packTint: tier.accent,
       packStars: tier.stars,
-      chainInfo: chain == null ? null : _chainInfoFor(chain),
+      chainInfo: chainInfo,
       queryBalance: () => ref.read(clubProvider).valueOrNull?.coins,
       onSell: (ownedId) => store.sellPlayers([ownedId]).then((sale) {
         ref.invalidate(collectionProvider);
@@ -192,10 +200,19 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     CollectionStore store,
     _ChainTarget target,
   ) async {
+    // Captured before the first await: the shortfall branch below fires
+    // after real DB round-trips, when this context may have unmounted.
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = l10nOf(context);
     try {
       final random = ref.read(randomProvider);
-      final packs =
-          ref.read(availablePacksProvider).valueOrNull ?? const <Pack>[];
+      // Fresh by necessity (T-0084): this runs after the previous open
+      // consumed a pack and invalidated the provider — a synchronous
+      // valueOrNull would still see that consumed row and try to reopen
+      // it. Awaiting the provider's next computation returns the
+      // post-open DB state, so the owned lookup below can never pick a
+      // pack that no longer exists.
+      final packs = await ref.read(availablePacksProvider.future);
       Pack? owned;
       for (final p in packs) {
         if (_sameSlot(p, target)) {
@@ -212,8 +229,8 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         final coins = ref.read(clubProvider).valueOrNull?.coins ?? 0;
         if (coins < offer.price) {
           // A race the capsule can't see (balance changed mid-reveal).
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10nOf(context).packsNotEnoughCoins)),
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.packsNotEnoughCoins)),
           );
           return null;
         }
@@ -277,15 +294,25 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   /// What the OPEN ANOTHER capsule shows: the same slot's price, the
   /// club balance and the owned (free) pack count. Null when the slot
   /// cannot repeat at all — no offer and nothing owned.
-  PackChainInfo? _chainInfoFor(_ChainTarget target) {
-    final packs =
-        ref.read(availablePacksProvider).valueOrNull ?? const <Pack>[];
+  ///
+  /// Async by necessity (T-0084): it runs right after the open consumed
+  /// a pack and invalidated `availablePacksProvider`, so a synchronous
+  /// valueOrNull read would still count the consumed row — the +1 the
+  /// capsule used to show. Awaiting the provider's next computation
+  /// yields the post-open DB state, and the balance is read straight
+  /// from the store so it matches the DB at push time (a mid-reveal
+  /// sale still refreshes through the reveal's queryBalance callback).
+  Future<PackChainInfo?> _chainInfoFor(
+    CollectionStore store,
+    _ChainTarget target,
+  ) async {
+    final packs = await ref.read(availablePacksProvider.future);
     final ownedCount = packs.where((p) => _sameSlot(p, target)).length;
     final offer = _offerFor(target);
     if (offer == null && ownedCount == 0) return null;
     return PackChainInfo(
       price: offer?.price ?? 0,
-      balance: ref.read(clubProvider).valueOrNull?.coins ?? 0,
+      balance: (await store.getClub())?.coins ?? 0,
       ownedCount: ownedCount,
       title: target.title,
     );

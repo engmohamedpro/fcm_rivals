@@ -2,8 +2,8 @@
 id: T-0084
 title: Fix the OPEN ANOTHER free-pack count showing one extra
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -66,6 +66,26 @@ flutter test
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** the OPEN ANOTHER capsule and the chain hop now read the POST-open state. The capsule's `PackChainInfo` is computed after awaiting `availablePacksProvider`'s fresh future (post-invalidate) and the balance straight from `store.getClub()`, so `ownedCount`, `isFree` and the price path match the DB at push time; `_openAnotherInChain` awaits the same fresh list, so its owned-pack lookup can never select the just-consumed row — with zero owned packs it takes the buy path exactly as before (price check, then `store.buyPack`).
+
+1. `lib/features/packs/packs_screen.dart` — `_chainInfoFor` is now `Future<PackChainInfo?>` taking the store: `await ref.read(availablePacksProvider.future)` (the task's first suggested fresh source — after the open's `invalidate` this completes with the fresh DB list) and `(await store.getClub())?.coins ?? 0` instead of the synchronous `valueOrNull` reads that returned the stale cached list. `_reveal` awaits it before the push (with a `context.mounted` re-check after the round-trips). `_openAnotherInChain` awaits the provider future before its owned lookup, and captures `ScaffoldMessenger`/`l10n` before the first await (the file's own `_reveal` pattern) to clear the new `use_build_context_synchronously` infos on the shortfall branch.
+2. No change to `availablePacksProvider`'s definition or caching (out of scope), no change to chain visuals, handoff, sell wiring or the YES/NO purchase model, no engine/price/schema change.
+3. `test/features/packs/packs_screen_test.dart` — two regression tests on the real-DB harness, plus a shared helper that opens one owned GK rare pack into its finished reveal:
+   - **FREE ×1:** the starter grant gives GK exactly 2 rare packs; after opening one the capsule shows `FREE ×1` (and `FREE ×2` findsNothing — the stale read the task locks), with the DB agreeing (1 survivor).
+   - **Last-pack path:** GK doctored down to 1 owned pack in the DB before the first pump (the drained-wallet test's before-pump pattern); opening it offers the price plate (`26K` for rare GK) with no FREE label anywhere, and tapping OPEN ANOTHER spends `offer.price` coins, shows NO SnackBar, and lands the chained reveal — the pre-fix code died here on a CollectionException from reopening the consumed row.
+
+**Files changed:** `lib/features/packs/packs_screen.dart`, `test/features/packs/packs_screen_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/packs/packs_screen_test.dart` → all green including the two new T-0084 tests ✓. `flutter test test/features/packs/` → **101/101 green** ✓. Full `flutter test --concurrency=1` → green, no REGEN_SNAPSHOT ✓ (result recorded in the submit commit message). One test-side iteration during development: the last-pack test first seeded the DB mutation after `bootScreen`, so the provider had already resolved with the two-pack list and the open died on the consumed row — moved the mutation before `pumpScreen` (the established before-pump doctoring pattern); production code needed no iteration.
+
+**Concerns / assumptions:**
+- `_chainInfoFor` now performs two awaited DB round-trips (provider future + getClub) per reveal push — microseconds on drift, and it only runs once per pack open, not per frame; the capsule is a push-time snapshot by design (mid-reveal sales refresh through the existing `queryBalance` callback, unchanged).
+- The balance in the capsule comes from the DB rather than the (live) `clubProvider` stream — the task requires "balance must match the DB state at push time", and the stream could still be mid-emission right after the open's invalidations; the reveal's live refresh path still uses the provider.
+- If the provider future rejects (DB error), `_reveal`'s caller catches nothing new — same failure surface as the pre-existing `await store.openPack` right above it (error SnackBar from `_open`/`_buy` catch blocks); behavior unchanged in kind.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
