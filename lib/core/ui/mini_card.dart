@@ -31,6 +31,7 @@ class FcmMiniCard extends StatelessWidget {
     this.stats,
     this.ghost = false,
     this.injuryMatchesOut,
+    this.upgradable = false,
   });
 
   final int overall;
@@ -64,6 +65,12 @@ class FcmMiniCard extends StatelessWidget {
   /// Matches the player still misses (T-0056); null or ≤ 0 hides the
   /// injury badge.
   final int? injuryMatchesOut;
+
+  /// A duplicate is owned, so this card can merge a level up
+  /// (T-0089): a small gold up-arrow pill rides the bottom-start
+  /// corner — opposite the injury badge, clear of the name slot.
+  /// Visual only; default false keeps every other consumer unchanged.
+  final bool upgradable;
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +122,17 @@ class FcmMiniCard extends StatelessWidget {
                         matchesOut: injuryMatchesOut!,
                         size: math.max(10, width * 0.18),
                       ),
+                    ),
+                  // The upgradable mark (T-0089): gold up-arrow pill on
+                  // the bottom-START corner — the injury badge owns the
+                  // top-start, so the two never collide. Icon-only: no
+                  // text, no l10n surface. Bottom-start keeps it inside
+                  // the card face in both text directions.
+                  if (!ghost && upgradable)
+                    PositionedDirectional(
+                      bottom: 2,
+                      start: 2,
+                      child: _UpgradableMark(size: math.max(10, width * 0.18)),
                     ),
                   // The ghost draws no overall and no position — the card
                   // keeps the text slots' footprint but stays wordless.
@@ -197,6 +215,35 @@ class FcmMiniCard extends StatelessWidget {
               _StaminaBar(percent: stamina!, width: width),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The gold up-arrow pill (T-0089): "a duplicate exists — this card
+/// can merge a level up". Icon-only so it stays l10n-free; the pill
+/// reads on every rarity ink exactly like the injury badge does.
+class _UpgradableMark extends StatelessWidget {
+  const _UpgradableMark({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Upgradable',
+      child: Container(
+        padding: EdgeInsets.all(size * 0.18),
+        decoration: BoxDecoration(
+          color: FcmColors.gold.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(size * 0.45),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.35)),
+        ),
+        child: Icon(
+          Icons.upload_rounded,
+          size: size,
+          color: FcmColors.ink,
         ),
       ),
     );

@@ -30,6 +30,25 @@ class SquadScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final squad = ref.watch(squadProvider);
     final club = ref.watch(clubProvider).valueOrNull;
+    // Upgradable marks (T-0089): the owned rows grouped by base player —
+    // two or more copies means a duplicate is available to merge a level
+    // up (the Collection sheet's own Merge rule). getCollection already
+    // filters status 'owned' (merged duplicates are excluded), so a
+    // plain count is the truth; watching the provider means a merge or
+    // sale on the Collection tab re-derives the marks on the next build.
+    final collection = ref.watch(collectionProvider).valueOrNull;
+    final ownedCounts = <int, int>{};
+    for (final c in collection ?? const <PlayerCard>[]) {
+      ownedCounts.update(
+        c.base.playerId,
+        (n) => n + 1,
+        ifAbsent: () => 1,
+      );
+    }
+    final upgradableIds = <int>{
+      for (final e in ownedCounts.entries)
+        if (e.value >= 2) e.key,
+    };
 
     return squad.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -109,6 +128,9 @@ class SquadScreen extends ConsumerWidget {
               // its stat bars and actions stays on the Collection
               // tab, where the actions live.
               onPlayerTap: (card) => showPlayerCardReveal(context, card: card),
+              // A card with an owned duplicate carries the upgradable
+              // mark (T-0089).
+              upgradable: (playerId) => upgradableIds.contains(playerId),
               // Hold a player and drop him on another to swap them
               // (pitch ↔ bench ↔ reserves). The same plan validates the
               // green / red hover feedback and the final drop.

@@ -53,6 +53,7 @@ class SquadPitch extends StatelessWidget {
     this.showStamina = true,
     this.showStats = true,
     this.onPlayerTap,
+    this.upgradable,
   });
 
   final Formation formation;
@@ -73,6 +74,10 @@ class SquadPitch extends StatelessWidget {
 
   /// Optional card tap (player detail sheet).
   final void Function(PlayerCard card)? onPlayerTap;
+
+  /// Upgradable marks (T-0089): true when a duplicate of the base
+  /// player is owned. Null shows no mark (non-team surfaces).
+  final bool Function(int playerId)? upgradable;
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +178,10 @@ class SquadPitch extends StatelessWidget {
                                       : null,
                                   stats: showStats ? statsOf(card) : null,
                                   injuryMatchesOut: card.injuryMatchesRemaining,
+                                  upgradable: upgradable?.call(
+                                        card.base.playerId,
+                                      ) ??
+                                      false,
                                 ),
                               )
                             : SquadDropZone(
@@ -202,6 +211,10 @@ class SquadPitch extends StatelessWidget {
                                       stats: showStats ? statsOf(card) : null,
                                       injuryMatchesOut:
                                           card.injuryMatchesRemaining,
+                                      upgradable: upgradable?.call(
+                                            card.base.playerId,
+                                          ) ??
+                                          false,
                                     ),
                                   ),
                                 ),
@@ -234,6 +247,7 @@ class SquadCardRow extends StatelessWidget {
     this.showStamina = true,
     this.showStats = true,
     this.onPlayerTap,
+    this.upgradable,
   });
 
   final List<PlayerCard> cards;
@@ -254,6 +268,10 @@ class SquadCardRow extends StatelessWidget {
 
   /// Optional card tap (player detail sheet).
   final void Function(PlayerCard card)? onPlayerTap;
+
+  /// Upgradable marks (T-0089): true when a duplicate of the base
+  /// player is owned. Null shows no mark.
+  final bool Function(int playerId)? upgradable;
 
   static const double cardWidth = 64;
 
@@ -303,6 +321,7 @@ class SquadCardRow extends StatelessWidget {
                       stamina: showStamina ? c.staminaPercent : null,
                       stats: showStats ? statsOf(c) : null,
                       injuryMatchesOut: c.injuryMatchesRemaining,
+                      upgradable: upgradable?.call(c.base.playerId) ?? false,
                     ),
                   )
                 : SquadDropZone(
@@ -328,6 +347,8 @@ class SquadCardRow extends StatelessWidget {
                           stamina: showStamina ? c.staminaPercent : null,
                           stats: showStats ? statsOf(c) : null,
                           injuryMatchesOut: c.injuryMatchesRemaining,
+                          upgradable: upgradable?.call(c.base.playerId) ??
+                              false,
                         ),
                       ),
                     ),

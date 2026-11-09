@@ -43,6 +43,7 @@ class TacticsSetupView extends StatelessWidget {
     this.showStats = true,
     this.showReserves = true,
     this.onPlayerTap,
+    this.upgradable,
     this.swapping,
   });
 
@@ -87,6 +88,11 @@ class TacticsSetupView extends StatelessWidget {
 
   /// Opens the player detail sheet; null makes the cards non-tappable.
   final void Function(PlayerCard card)? onPlayerTap;
+
+  /// Upgradable marks (T-0089): true when the club owns a duplicate of
+  /// the base player — the gold up-arrow pill on the card. Null shows
+  /// no mark anywhere (pre-match and live surfaces).
+  final bool Function(int playerId)? upgradable;
 
   /// Enables hold-and-drag swapping between the pitch, the bench and the
   /// reserves (Team tab). Null leaves every card as a plain, non-draggable
@@ -142,6 +148,7 @@ class TacticsSetupView extends StatelessWidget {
                   showStamina: showStamina,
                   showStats: showStats,
                   onPlayerTap: onPlayerTap,
+                  upgradable: upgradable,
                 ),
               ),
               // Bench and reserves never hide: the sections stay with
@@ -156,6 +163,7 @@ class TacticsSetupView extends StatelessWidget {
                 showStamina: showStamina,
                 showStats: showStats,
                 onPlayerTap: onPlayerTap,
+                upgradable: upgradable,
               ),
               if (showReserves) ...[
                 FcmSectionTitle(
@@ -168,6 +176,7 @@ class TacticsSetupView extends StatelessWidget {
                   showStamina: showStamina,
                   showStats: showStats,
                   onPlayerTap: onPlayerTap,
+                  upgradable: upgradable,
                 ),
               ],
             ],

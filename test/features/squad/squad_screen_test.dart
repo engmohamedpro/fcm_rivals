@@ -140,4 +140,150 @@ void main() {
     expect(find.byType(TacticsSetupView), findsOneWidget);
     expect(find.byType(SquadPitch), findsOneWidget);
   });
+
+  // T-0089: upgradable marks on the team screen. A club with a
+  // hand-seeded squad: three players placed through the real save
+  // path — one XI member with a second owned copy, one bench member
+  // with a second owned copy, and one XI member single-copy — plus
+  // whatever the starter packs naturally produced (the seeded draws
+  // pair many players, so the baseline is measured, not assumed).
+  Future<Set<int>> seedMarkSquad(WidgetTester tester) async {
+    final jsonText = await tester.runAsync(
+      () => rootBundle.loadString('assets/data/players_v1.json'),
+    );
+    final all = await tester.runAsync(() async {
+      final dataset = PlayerDataset.fromJson(jsonText!);
+      await store.importBundledDataset(dataset);
+      await store.createClub(
+        clubName: 'Pyramid United',
+        managerName: 'Mohamed',
+        crestIndex: 0,
+      );
+      return db.select(db.players).get();
+    });
+    final club = (await tester.runAsync(() => store.getClub()))!;
+    final now = DateTime.now();
+    // Players with position codes matching XI slot needs: GK for slot
+    // 0's keeper? No — slot 0 of the 4-3-3 pitch is the keeper. Pick
+    // players whose positions fit the formation slots they take: keep
+    // it simple — bench slots take anyone; XI slots need matching
+    // positions (the pitch renders out-of-position too, warn only).
+    final byPos = <String, List<Player>>{};
+    for (final p in all!) {
+      byPos.putIfAbsent(p.position, () => []).add(p);
+    }
+    final gk = byPos['GK']!.first;
+    final st = byPos['ST']!.first;
+    final cm = byPos['CM']!.first;
+    Future<int> seed(int playerId, {int copies = 1}) async {
+      var first = 0;
+      for (var c = 0; c < copies; c++) {
+        final id = await db
+            .into(db.ownedPlayers)
+            .insert(
+              OwnedPlayersCompanion.insert(
+                clubId: club.id,
+                playerId: playerId,
+                acquiredAt: now,
+              ),
+            );
+        first = first == 0 ? id : first;
+      }
+      return first;
+    }
+
+    // XI member WITH a duplicate (slot 0 = GK), bench member WITH a
+    // duplicate (slot 11), XI member SINGLE-copy (slot 9 = ST in the
+    // 4-3-3 front three), bench single-copy (slot 12).
+    final gkId = await seed(gk.playerId, copies: 2);
+    final cmId = await seed(cm.playerId, copies: 2);
+    final stId = await seed(st.playerId, copies: 1);
+    await tester.runAsync(
+      () => store.saveSquad({0: gkId, 9: stId, 11: cmId}),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [collectionStoreProvider.overrideWith((ref) => store)],
+        child: const MaterialApp(home: Scaffold(body: SquadScreen())),
+      ),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+    return {gk.playerId, cm.playerId};
+  }
+
+  testWidgets(
+    'T-0089: squad players with a duplicate carry the mark — pitch and '
+    'bench alike; single copies show none',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await seedMarkSquad(tester);
+
+      // Exactly the two seeded members carry the mark: one on the
+      // pitch (slot 0), one on the bench (slot 11). The single-copy
+      // members (slot 9, slot 12-empty) show none.
+      final marks = find.byIcon(Icons.upload_rounded);
+      expect(marks, findsNWidgets(2),
+          reason: 'the two-copy GK on the pitch and the two-copy CM on '
+              'the bench carry the mark; single copies do not');
+    },
+  );
+
+  testWidgets(
+    'T-0089: merging the duplicate clears the mark on the next build',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await seedMarkSquad(tester);
+      expect(find.byIcon(Icons.upload_rounded), findsNWidgets(2));
+
+      // Consume the GK's duplicate through the real merge (the
+      // collection's own flow): his mark must disappear while the CM's
+      // stays.
+      final squad = await tester.runAsync(() => store.getSquad());
+      final gkCard = squad![0]!;
+      final gkDup = ((await tester.runAsync(() => store.getCollection()))!)
+          .firstWhere(
+            (c) => c.base.playerId == gkCard.base.playerId &&
+                c.ownedId != gkCard.ownedId,
+          )
+          .ownedId;
+      await tester.runAsync(
+        () => store.mergeDuplicates(
+          targetOwnedId: gkCard.ownedId,
+          duplicateOwnedId: gkDup,
+        ),
+      );
+      // The real app path: the merge already invalidated the
+      // collection provider on the Collection tab; the Team tab's own
+      // watch re-derives when it rebuilds. Force exactly that state:
+      // invalidate through the LIVE container (the one the screen is
+      // watching), then let a real frame land before re-entering.
+      final liveContainer = ProviderScope.containerOf(
+        tester.element(find.byType(SquadScreen)),
+      );
+      liveContainer.invalidate(collectionProvider);
+      await tester.pump();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [collectionStoreProvider.overrideWith((ref) => store)],
+          child: const MaterialApp(home: Scaffold(body: SquadScreen())),
+        ),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byIcon(Icons.upload_rounded), findsOneWidget,
+          reason: 'the merged GK lost his mark; the CM keeps his');
+    },
+  );
 }
