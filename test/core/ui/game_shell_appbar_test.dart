@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
-import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmBottomNav;
+import 'package:fcm_rivals/core/ui/fcm_backdrop.dart' show FcmBackdrop;
 import 'package:fcm_rivals/l10n/app_localizations.dart';
 import 'package:fcm_rivals/main.dart' show GameShell;
 
@@ -130,29 +130,59 @@ void main() {
     );
 
     testWidgets(
-      'Team tab content starts below the status-bar inset, not under '
-      'it and not with a dead gap (dir: ${direction.name})',
+      'under a 40px status-bar inset: Team body top == 40, Season '
+      'body top == 40 + 57 (dir: ${direction.name})',
       (WidgetTester tester) async {
+        // The attempt-1 review found the collapse parked content under
+        // the status bar and clamped the expanded bar below its
+        // natural height — both because the wrapper ignored the top
+        // inset. This test injects a device-typical 40px inset and
+        // measures where the body REALLY starts on both tabs: that is
+        // the invariant the old test only claimed in its name.
         tester.view.physicalSize = const Size(800, 1600);
         tester.view.devicePixelRatio = 1.0;
+        tester.view.padding = const FakeViewPadding(
+          left: 0,
+          top: 40,
+          right: 0,
+          bottom: 0,
+        );
         addTearDown(tester.view.reset);
         await pumpShell(tester, direction);
 
         final teamLabel = direction == TextDirection.rtl ? 'الفريق' : 'Team';
+        final seasonLabel =
+            direction == TextDirection.rtl ? 'الموسم' : 'Season';
+        final backdrop = find.byType(FcmBackdrop).first;
+
+        // Season: the expanded slot absorbs the inset like the
+        // pre-change AppBar did — body starts at inset + bar (97),
+        // and the bar's own height is its natural inset-aware 97, not
+        // clamped to 57.
+        expect(
+          tester.getTopLeft(backdrop).dy,
+          40 + barHeight,
+          reason: 'Season body must start below inset + app bar',
+        );
+        final expandedSlot = find.byKey(const ValueKey('shell-appbar-slot'));
+        expect(tester.getSize(expandedSlot).height, 40 + barHeight);
+        expect(tester.takeException(), isNull);
+
+        // Team: the bar collapses to the inset alone — content starts
+        // at 40 (never under the status bar, never with a dead gap).
         await tester.tap(find.text(teamLabel));
         await settleAnimation(tester);
+        expect(
+          tester.getTopLeft(backdrop).dy,
+          40.0,
+          reason: 'Team body must start at the inset, not under it',
+        );
+        expect(tester.getSize(expandedSlot).height, 40.0);
 
-        // The Scaffold hands the body the status-bar top inset when the
-        // app bar is gone; with a zero test padding that inset is 0, so
-        // the body's top edge sits at the very top of the scaffold —
-        // the invariant checked here is the ViewPadding-to-body relation
-        // itself, which is what breaks (overlap or white gap) when the
-        // insets are mishandled.
-        final body = find.byType(FcmBottomNav);
-        expect(body, findsOneWidget);
-        final navRect = tester.getRect(body);
-        expect(navRect.top, 1600 - navRect.height,
-            reason: 'the bottom nav stays docked');
+        // Back to Season: full height again.
+        await tester.tap(find.text(seasonLabel));
+        await settleAnimation(tester);
+        expect(tester.getTopLeft(backdrop).dy, 40 + barHeight);
         expect(tester.takeException(), isNull);
       },
     );

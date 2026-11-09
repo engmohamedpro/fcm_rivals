@@ -325,39 +325,59 @@ class _CollapsibleAppBar extends StatelessWidget implements PreferredSizeWidget 
   /// The wrapped app bar in its fully-shown form.
   final AppBar bar;
 
-  /// Whether the bar is expanded; false collapses it to zero height.
+  /// Whether the bar is expanded; false collapses it to the status-bar
+  /// inset alone (the toolbar + seam fold away, the inset stays — so
+  /// the hidden state never parks content under the status bar).
   final bool shown;
 
-  @override
-  Size get preferredSize => Size.fromHeight(shown ? _expandedHeight : 0);
-
   /// [AppBar.preferredSize] already includes the toolbar AND the
-  /// bottom seam (52 + 5 = 57 in the shell) — no extra bottom to add.
-  double get _expandedHeight => bar.preferredSize.height;
+  /// bottom seam (52 + 5 = 57 in the shell) but EXCLUDES the top
+  /// inset — a real AppBar absorbs the inset internally (its natural
+  /// device height is inset + 57), so the expanded slot must budget
+  /// both or the OverflowBox clamps the bar below its natural height.
+  ///
+  /// The reported preferred size is the inset-free bar height; the
+  /// Scaffold lays the slot out from its LAID-OUT height (which this
+  /// widget drives through the animation below, inset-aware), so this
+  /// getter only matters for pre-layout consumers.
+  @override
+  Size get preferredSize => bar.preferredSize;
+
+  /// The status-bar inset the slot keeps when collapsed: zero in
+  /// tests, the device status bar height on hardware — the owner's
+  /// 57px gift to the Team tab collapses away, the inset never does.
+  static double _insetOf(BuildContext context) =>
+      MediaQuery.paddingOf(context).top;
 
   @override
   Widget build(BuildContext context) {
+    final inset = _insetOf(context);
+    final expanded = inset + bar.preferredSize.height;
+    final collapsed = inset;
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: shown ? 0 : _expandedHeight, end: shown ? 1 : 0),
+      tween: Tween(
+        begin: shown ? collapsed : expanded,
+        end: shown ? expanded : collapsed,
+      ),
       duration: _duration,
       curve: _curve,
-      builder: (context, t, child) {
-        final height = _expandedHeight * t;
+      builder: (context, height, child) {
         return ClipRect(
           child: SizedBox(
             height: height,
             width: double.infinity,
             child: OverflowBox(
               minHeight: 0,
-              maxHeight: _expandedHeight,
+              maxHeight: expanded,
               alignment: Alignment.topCenter,
               child: child,
             ),
           ),
         );
       },
-      // The bar is always in the tree — clipped to nothing when hidden —
-      // so its state (coin stream, language toggle) survives the cycle.
+      // The bar is always in the tree — clipped to the inset-high slot
+      // when hidden — so its state (coin stream, language toggle)
+      // survives the cycle.
       child: bar,
     );
   }

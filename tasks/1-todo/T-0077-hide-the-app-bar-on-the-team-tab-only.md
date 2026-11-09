@@ -2,8 +2,8 @@
 id: T-0077
 title: Hide the app bar on the Team tab only
 priority: high
-status: todo
-attempts: 1
+status: needs-review
+attempts: 2
 depends_on: []
 created: 2026-11-09
 completed:
@@ -74,3 +74,25 @@ flutter test
 2. Raise the `OverflowBox` maxHeight to the inset-aware expanded height so the real AppBar is never clamped below its natural height. Whether the residual inset-high slot paints a slim chrome strip or is clipped empty on Team is an implementation choice — both satisfy the criterion.
 3. Extend `game_shell_appbar_test.dart`: inject a nonzero top `FakeViewPadding` (e.g. 40px) and ASSERT the settled body top — Team == 40, Season == 40 + 57 — in both text directions. That is the invariant the current second test claims in its name but never checks.
 4. Re-verify: `flutter analyze`; `flutter test test/core/ui/`; full `flutter test`; and run the committed probe — its PROBE verdict line must print "content starts below the inset (OK)".
+
+## Developer Notes
+
+### Attempt 2 — rework per the review's fix plan
+
+Both attempt-1 failures fixed exactly as the review prescribed; the passing behaviours (animation, LTR/RTL cycle, mounted subtree) are preserved.
+
+1. **Inset-aware wrapper** (`lib/main.dart`, `_CollapsibleAppBar`):
+   - Expanded slot height = `MediaQuery.paddingOf(context).top + bar.preferredSize.height` (inset + 57) — and the `OverflowBox.maxHeight` is raised to the same inset-aware value, so the real AppBar is NEVER clamped below its natural device height (fixes review failure 1: on a 40px-inset device the bar now lays out at its natural 97px, body starts at 97 — identical to pre-T-0077, verified by test).
+   - Collapsed slot height = the inset itself (fixes review failure 2: the Team tab's body top = 40 under a 40px inset — no overlap, no dead gap; in zero-padding tests it is 0 exactly as before). The animation collapses only the toolbar+seam (57px) — precisely the space the owner wanted freed.
+   - `preferredSize` now reports the bar's own height; the Scaffold consumes the widget's LAID-OUT height (which the `TweenAnimationBuilder` drives, inset-aware), matching the reviewer's 3.47.9 `_ScaffoldLayout` finding instead of my attempt-1 comment that assumed inset absorption.
+   - Implementation choice (review left it open): the residual inset-high collapsed slot keeps the bar subtree mounted and CLIPPED — no chrome strip is painted on Team (the clip box is inset-high but the bar's visible region is only what the 57px toolbar+seam occupied; at collapse the seam sits at the very top edge, clipped to nothing within the inset). Coin-balance stream and language-toggle state still survive the cycle.
+2. **The dishonest test made honest** (`test/core/ui/game_shell_appbar_test.dart`, fixes review failure 3): the second test now injects a 40px `FakeViewPadding` and MEASURES the body's top edge (`FcmBackdrop.first`) — Season == 40 + 57 == 97, Team == 40, restore to Season == 97 — plus the slot's expanded (97) and collapsed (40) heights, in BOTH text directions. The zero-padding first test (slot 57 → 0 → 57) is unchanged and still passes.
+3. **The reviewer's committed probe** (`review_t0077_statusbar_probe_test.dart`) runs UNMODIFIED against the rework and prints its verdict: `PROBE verdict: content starts below the inset (OK)` — plus its season measurement (slotHeight 97, bodyTop 97) confirming the un-regressed expanded bar.
+
+**Files changed:** `lib/main.dart` (wrapper rework only — shell wiring, bar contents, body, nav untouched), `test/core/ui/game_shell_appbar_test.dart` (second test rewritten to measure the real invariant).
+
+**How tested (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/core/ui/shell_directionality_test.dart test/core/ui/fcm_bottom_nav_test.dart` + the new appbar suite → all green ✓. `flutter test test/core/ui/` → 47/47 green (includes the probe) ✓. Full `flutter test --concurrency=1` → **931/931 green, no REGEN_SNAPSHOT** ✓.
+
+**Concerns:**
+- The first (zero-padding) test still asserts slot heights 57/0/57 — those numbers are the zero-inset case of the same inset-aware code, not a separate code path; the 40px test covers the device case.
+- On devices with a notch/dynamic inset the collapsed Team slot is inset-high with the bar clipped inside it; if the owner later wants a slim chrome strip filling that band instead of empty space, it is a one-line decoration inside the collapsed branch — not done (out of scope, and "clipped empty" satisfies the criterion).
