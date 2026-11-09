@@ -2,11 +2,11 @@
 id: T-0065
 title: Localize the 47 tactic-sheet keys missing from app_ar.arb
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0064]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0065: Localize the 47 tactic-sheet keys missing from app_ar.arb
@@ -46,11 +46,11 @@ The tactic options sheet is fully Arabic in the Arabic locale: the nine axis lab
 - RTL layout changes — T-0061/T-0062 already mirror the sliders.
 
 ## Acceptance Criteria
-- [ ] `comm -23 <(grep -o '^  "[a-zA-Z]*"' lib/l10n/app_en.arb | sort) <(grep -o '^  "[a-zA-Z]*"' lib/l10n/app_ar.arb | sort) | wc -l` prints `0` — no EN key missing from the AR ARB.
-- [ ] All 47 AR values match the table in Requirement 1 exactly (reviewer spot-checks against the task).
-- [ ] The Arabic-locale widget test asserts the localized axis label, step pill, final-third chips, offside toggle and possession readout from Requirement 4; the mirrored drag still commits the same enum.
-- [ ] EN behaviour unchanged: the full existing suite green (EN assertions like `find.text('Mid')` / `find.text('Off')` must not be edited away — add AR assertions, do not rewrite EN ones).
-- [ ] `flutter analyze` reports zero warnings; `flutter test` full suite green; `test/features/match/` + `test/balance/` pass with `REGEN_SNAPSHOT` unset.
+- [x] `comm -23 <(grep -o '^  "[a-zA-Z]*"' lib/l10n/app_en.arb | sort) <(grep -o '^  "[a-zA-Z]*"' lib/l10n/app_ar.arb | sort) | wc -l` prints `0` — no EN key missing from the AR ARB.
+- [x] All 47 AR values match the table in Requirement 1 exactly (reviewer spot-checks against the task).
+- [x] The Arabic-locale widget test asserts the localized axis label, step pill, final-third chips, offside toggle and possession readout from Requirement 4; the mirrored drag still commits the same enum.
+- [x] EN behaviour unchanged: the full existing suite green (EN assertions like `find.text('Mid')` / `find.text('Off')` must not be edited away — add AR assertions, do not rewrite EN ones).
+- [x] `flutter analyze` reports zero warnings; `flutter test` full suite green; `test/features/match/` + `test/balance/` pass with `REGEN_SNAPSHOT` unset.
 
 ## How to Verify
 ```bash
@@ -72,3 +72,9 @@ Expected: gap count 0, analyze clean, suites green; manually (`flutter run`, Ara
 - **Concerns / assumptions:** (1) The task Context called `app_localizations_ar.dart` "hand-maintained"; it is actually gen-l10n output (`l10n.yaml` + `generate: true`, confirmed by the reviewer's own `ae4cd6d` "pub get auto-regenerates it" commit) — so I wrote the ARB and regenerated rather than hand-editing, which also satisfies the ARB↔class "never disagree" rule by construction. Regeneration changed nothing outside the 47 values (no signature/type/EN drift). (2) `متوازن` previously asserted as globally unique now names four default pills (mentality + tackling/counter-press/attack-on-recovery) — the assertion is scoped to the mentality slider (`.at(9)`), preserving intent. (3) The generated `tacticsEstPossession` parameter type stays `Object share` (gen-l10n's inferred placeholder type, unchanged since before this task); the consumer still passes an int.
 
 ## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran: the acceptance `comm` command (gap = **0**); a scripted exact-value diff of all 47 keys against the task table in BOTH `lib/l10n/app_ar.arb` and `lib/l10n/app_localizations_ar.dart` (47/47 each, incl. the parameterized `tacticsEstPossession` returning `الاستحواذ المتوقع: $share%`); `flutter analyze` (No issues found); `flutter test test/features/squad/squad_view_test.dart` (12/12); `flutter test test/features/match/ test/balance/` (276/276, `REGEN_SNAPSHOT` unset); full `flutter test` (**884/884**).
+- Verified the AR-locale test extensions (label الضغط, default pill متوسط → مرتفع after the mirrored max drag, the three final-third chips, إيقاف toggle, both readouts) and that every EN-locale assertion is intact — the only EN string replaced ('High' → 'مرتفع') sat inside the RTL-Arabic test, where expecting English was the very fallback bug this task fixes.
+- Scope: implement commit `eab521a` touched exactly the three declared files; the `app_en.arb` delta in the range belongs to T-0064's mentality keys, not this task.
+- Notes: the manual `flutter run` check was not executed (headless reviewer sandbox); the widget tests cover the AR surface. The scoping of the old global `متوازن` assertion to the mentality slider (`.at(9)`) is correct — the value legitimately appears in several default pills now.
