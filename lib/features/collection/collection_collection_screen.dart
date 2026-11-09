@@ -10,6 +10,7 @@ import '../../core/ui/player_card.dart' show kPlayerCardAspect;
 import '../../features/ads/ad_engine.dart' show AdEngine, AdRewardKind;
 import '../../features/economy/economy_engine.dart';
 import '../../features/squad/squad_engine.dart';
+import 'card_merge_animation.dart';
 import 'player_detail_sheet.dart';
 
 enum _Filter { all, gk, def, mid, att }
@@ -329,7 +330,9 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
       );
       ref.invalidate(collectionProvider);
       ref.invalidate(squadProvider);
-      if (context.mounted) {
+      if (!context.mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        // Reduced motion: keep the confirmation, skip the spectacle.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -337,6 +340,13 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
               '(+${result.newUpgradeLevel}% stats)',
             ),
           ),
+        );
+      } else {
+        await showCardMergeAnimation(
+          context,
+          target: target,
+          duplicate: duplicate,
+          newLevel: result.newUpgradeLevel,
         );
       }
     } catch (e) {
