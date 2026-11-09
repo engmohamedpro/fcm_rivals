@@ -2,8 +2,8 @@
 id: T-0075
 title: Graduate season coin rewards strictly by final position
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0074]
 created: 2026-11-09
 completed:
@@ -53,3 +53,24 @@ flutter test test/features/season/season_engine_test.dart test/balance/economy_b
 flutter test
 # Expected: full suite green, no REGEN_SNAPSHOT
 ```
+
+## Developer Notes
+
+### Attempt 1 — implementation
+
+**Summary:** the season coin reward is now strictly graduated by final position — every step down the table pays strictly less than the one above it, at every division — with every existing anchor preserved exactly (minimal drift, exactly the suggested shape).
+
+1. `lib/features/season/season_engine.dart` — `seasonRewardCoins` fixed ONLY at the flat spots: promotion graduates pos 2 = 1.6 / pos 3 = 1.5 (was a flat 1.5 pair); relegation graduates 0.55 / 0.52 / 0.50 for 18th / 19th / 20th (was a flat 0.50 trio). Champion stays 2.0 (div-1 = 20_000 exactly), the stayed band (4–17) is untouched — it was already strictly decreasing — and division scaling is untouched. The multipliers are SIX named private static consts next to the function (the task's option A, chosen over SeasonConfig fields because they are shape constants of this one function, not tuning knobs a config variant would legitimately override; `SeasonConfig` keeps owning the base/step that the bands actually vary). Relegation positions are derived from `config.clubsPerDivision` (not hardcoded 18/19/20), so the graduation holds for any club count. Doc comments state the dated owner decision and each constant's role.
+2. `test/features/season/season_engine_test.dart` — two new tests in the Rewards group: (a) STRICT monotonicity across all 20 positions at div 1 AND div 9 (div 9 = ×3 base, where rounding is most amplified), each step with a reason string carrying both values so a future flat step names its position; (b) anchor equalities — champion 20_000, last-place in [4_500, 5_000] and == 5_000, d4 > d1 and < 2× at position 5, and the two previously-flat spots asserted strictly ordered (2 > 3, 18 > 19 > 20).
+3. `test/balance/economy_balance_test.dart` — the relegated sample moved from position 19 to position 20 (the graduated band's 5_000 floor), exactly as the task's note anticipated; champion == 20_000 and the 0.25-ceiling assertion untouched; the d4-vs-d1 ladder test untouched.
+4. `test/features/ads/ad_economy_test.dart` — NOT touched: the ×1.25 boost on the 20_000 champion still adds exactly 5_000 (verified numerically before running: 20_000 × 1.25 = 25_000).
+5. `docs/fcm_rivals_GDD_SRS.md` §18 — one sentence recording the strict graduation (1st most … 20th least, every step strictly less, no flat pairs/trios) under the same dated owner decision 2026-11-09.
+6. Curve verified numerically BEFORE touching any test: div 1 = [20000, 16000, 15000, 10000, 9700 … 6100, 5500, 5200, 5000], div 9 strictly decreasing end to end, d4/d1 = 1.75, ad delta exactly 5_000.
+
+**Files changed:** `lib/features/season/season_engine.dart`, `test/features/season/season_engine_test.dart`, `test/balance/economy_balance_test.dart`, `docs/fcm_rivals_GDD_SRS.md` (§18 one sentence).
+
+**How tested (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/season/season_engine_test.dart test/balance/economy_balance_test.dart test/features/ads/ad_economy_test.dart` → 58/58 green ✓. `flutter test test/features/season/ test/balance/` → 164/164 green ✓. Full `flutter test --concurrency=1` → **931/931 green, no REGEN_SNAPSHOT** ✓.
+
+**Concerns:**
+- Div-1 full season bank (the 70k–160k band) is unaffected: the graduation only redistributes ~±800 coins around the old curve per finishing position (2nd +1_000, 19th +200, 18th +500, 20th/1st/4th–17th unchanged) — the band test passed unchanged.
+- The multipliers are engine-private (not on SeasonConfig); if a future task wants difficulty presets to reshape the reward curve, these six consts are the single place to lift into the config — noted for that reviewer, not done now (out of scope).

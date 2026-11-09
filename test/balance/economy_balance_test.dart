@@ -90,7 +90,10 @@ void main() {
       final champion = season.seasonRewardCoins(division: 1, position: 1);
       final promoted2 = season.seasonRewardCoins(division: 1, position: 3);
       final mid = season.seasonRewardCoins(division: 1, position: 10);
-      final relegated = season.seasonRewardCoins(division: 1, position: 19);
+      // 20th is the graduated band's floor (T-0075): position 19 now
+      // pays 5_200 — sampling 19 would pin a moving step, 20 pins the
+      // participation anchor.
+      final relegated = season.seasonRewardCoins(division: 1, position: 20);
       expect(champion, greaterThan(promoted2));
       expect(promoted2, greaterThan(mid));
       expect(mid, greaterThan(relegated));

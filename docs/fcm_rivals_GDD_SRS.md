@@ -1197,7 +1197,7 @@ Coins-only reward structure:
 | Staying in Division | Position-based coins (tapering down the table) |
 | Relegation | Participation coins (reduced payout) |
 
-Within every tier, a higher finishing position pays strictly more coins; the exact coin amounts and the position curve live in the season engine's reward config. The rewarded-ad season multiplier (+25%, §19.3) still applies to the coin payout only.
+Within every tier, a higher finishing position pays strictly more coins — the ladder is strictly graduated from 1st (most) to last (least): every step down the final table pays strictly less than the one above it, with no flat pairs or trios anywhere on the curve (owner decision 2026-11-09). The exact coin amounts and the position curve live in the season engine's reward config. The rewarded-ad season multiplier (+25%, §19.3) still applies to the coin payout only.
 
 Higher divisions offer higher rewards, but reward growth must not exceed the economic cost curve.
 

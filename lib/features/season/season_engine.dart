@@ -742,18 +742,47 @@ class SeasonEngine {
     }
   }
 
-  /// Position-based season coin rewards (GDD 18). Pack grants are decided
-  /// by the store (they need persistence context).
+  /// Position-based season coin rewards (GDD 18, owner decision
+  /// 2026-11-09: strictly graduated — 1st pays the most, 20th the least,
+  /// every step down pays strictly less). Pack grants are decided by the
+  /// store (they need persistence context).
   int seasonRewardCoins({required int division, required int position}) {
     final divisionFactor = 1.0 + config.rewardPerDivisionStep * (division - 1);
     final base = config.seasonBaseReward * divisionFactor;
     final multiplier = switch (outcomeForPosition(position)) {
-      SeasonOutcome.promoted => position == 1 ? 2.0 : 1.5,
-      SeasonOutcome.relegated => 0.5,
+      SeasonOutcome.promoted => switch (position) {
+        1 => _rewardMultiplierChampion,
+        2 => _rewardMultiplierRunnerUp,
+        _ => _rewardMultiplierThird,
+      },
+      SeasonOutcome.relegated => switch (position) {
+        _ when position == config.clubsPerDivision =>
+          _rewardMultiplierLastPlace,
+        _ when position == config.clubsPerDivision - 1 =>
+          _rewardMultiplierSecondLast,
+        _ => _rewardMultiplierThirdLast,
+      },
       SeasonOutcome.stayed => (1.0 - (position - 4) * 0.03).clamp(0.6, 1.0),
     };
     return (base * multiplier).round();
   }
+
+  /// Season-reward multipliers (GDD 18): one named constant per step of
+  /// the graduated curve so the ladder is auditable in one place. The
+  /// champion multiplier × the div-1 base (10_000) is the 20_000 anchor
+  /// the ad-economy delta test rides on; the stayed band's slope (0.03)
+  /// lives in the clamp expression above and was already strictly
+  /// decreasing — it is untouched.
+  static const double _rewardMultiplierChampion = 2.0;
+  static const double _rewardMultiplierRunnerUp = 1.6;
+  static const double _rewardMultiplierThird = 1.5;
+
+  /// Relegation graduates downward from the stayed band: 18th keeps a
+  /// soft landing, 19th less, 20th the participation floor (0.5 ×
+  /// base = 5_000 at division 1).
+  static const double _rewardMultiplierThirdLast = 0.55;
+  static const double _rewardMultiplierSecondLast = 0.52;
+  static const double _rewardMultiplierLastPlace = 0.50;
 }
 
 /// Draw tracker over the real-player pool for one division: hands out

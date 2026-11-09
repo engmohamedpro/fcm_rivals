@@ -216,6 +216,61 @@ void main() {
       expect(relegated, greaterThan(0)); // participation reward
     });
 
+    test('the ladder is STRICTLY graduated at division 1 and 9 '
+        '(owner decision 2026-11-09)', () {
+      for (final division in [1, 9]) {
+        final rewards = [
+          for (var p = 1; p <= 20; p++)
+            engine.seasonRewardCoins(division: division, position: p),
+        ];
+        // Every step down the table pays strictly less — no flat pair
+        // (the old 2–3 pair) and no flat trio (the old 18–19–20).
+        for (var p = 0; p < 19; p++) {
+          expect(
+            rewards[p],
+            greaterThan(rewards[p + 1]),
+            reason: 'div $division: position ${p + 1} must pay strictly '
+                'more than position ${p + 2} '
+                '(${rewards[p]} vs ${rewards[p + 1]})',
+          );
+        }
+        expect(rewards.first, greaterThan(0));
+        expect(rewards.last, greaterThan(0)); // participation floor
+      }
+    });
+
+    test('graduation anchors hold exactly', () {
+      // Champion anchor the ad-economy delta rides on (×1.25 ⇒ +5_000).
+      expect(engine.seasonRewardCoins(division: 1, position: 1), 20_000);
+      // Participation floor at the div-1 last place.
+      final last = engine.seasonRewardCoins(division: 1, position: 20);
+      expect(last, inInclusiveRange(4_500, 5_000));
+      expect(last, 5_000);
+      // Division scaling unchanged: d4 pays more than d1 but < 2×.
+      final d1 = engine.seasonRewardCoins(division: 1, position: 5);
+      final d4 = engine.seasonRewardCoins(division: 4, position: 5);
+      expect(d4, greaterThan(d1));
+      expect(d4, lessThan(d1 * 2));
+      // The previously flat spots are now strictly ordered.
+      final second = engine.seasonRewardCoins(division: 1, position: 2);
+      final third = engine.seasonRewardCoins(division: 1, position: 3);
+      expect(second, greaterThan(third));
+      final eighteenth = engine.seasonRewardCoins(
+        division: 1,
+        position: 18,
+      );
+      final nineteenth = engine.seasonRewardCoins(
+        division: 1,
+        position: 19,
+      );
+      final twentieth = engine.seasonRewardCoins(
+        division: 1,
+        position: 20,
+      );
+      expect(eighteenth, greaterThan(nineteenth));
+      expect(nineteenth, greaterThan(twentieth));
+    });
+
     test('higher divisions pay more but sub-linearly', () {
       final d1 = engine.seasonRewardCoins(division: 1, position: 1);
       final d5 = engine.seasonRewardCoins(division: 5, position: 1);
