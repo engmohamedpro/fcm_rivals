@@ -174,7 +174,7 @@ class _CardMergeAnimationState extends State<CardMergeAnimation>
         at: 0.62 + 0.05 * i,
         cue: SfxCue.tick,
         volume: 1.0,
-        rate: 1.0 + 0.12 * i,
+        rate: 1.0 + 0.06 * i,
         cutOnDispose: false,
       ),
     (at: 0.74, cue: SfxCue.mergeLevelUp, volume: 1.0, rate: 1.0, cutOnDispose: false),

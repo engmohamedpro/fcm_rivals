@@ -98,7 +98,7 @@ void main() {
     final second = packSoundtrackFor(
       RevealTimeline.premiumTimeline,
     ).where((e) => e.cue == SfxCue.packFinale).last;
-    expect(second.rate, greaterThan(1.0));
+    expect(second.rate, lessThan(1.0), reason: 'heavier, not brighter');
   });
 
   test('the burst and name sting escalate with the tier', () {

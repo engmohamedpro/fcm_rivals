@@ -13,7 +13,7 @@
 ///  - rising ticks under the stat count,
 ///  - the name sting when the identity lands,
 ///  - the fanfare finale (legendary once, premium twice — the second
-///    pitched up).
+///    pitched down and slower, for more weight).
 library;
 
 import '../../core/audio/fcm_sfx.dart';
@@ -89,14 +89,14 @@ List<SfxEvent> packSoundtrackFor(RevealTimeline tl) {
   );
 
   // Legendary and premium close on the fanfare; premium fires it twice,
-  // the second wave higher and a touch louder.
+  // the second wave lower and slower: heavier, not brighter.
   final finale = tl.finale;
   if (finale != null) {
     events.add(SfxEvent(finale.begin, SfxCue.packFinale));
   }
   final finale2 = tl.finale2;
   if (finale2 != null) {
-    events.add(SfxEvent(finale2.begin, SfxCue.packFinale, rate: 1.12));
+    events.add(SfxEvent(finale2.begin, SfxCue.packFinale, rate: 0.9));
   }
 
   // The walkout and the flip.
@@ -104,9 +104,9 @@ List<SfxEvent> packSoundtrackFor(RevealTimeline tl) {
   events.add(SfxEvent(tl.posIn.begin, SfxCue.whoosh, volume: 0.5));
   events.add(SfxEvent(tl.flip.begin, SfxCue.whoosh));
 
-  // The stat count: ticks climbing in pitch.
+  // The stat count: low tocks climbing subtly in pitch.
   for (var i = 0; i < tl.tick.length; i++) {
-    events.add(SfxEvent(tl.tick[i], SfxCue.tick, rate: 1.0 + 0.1 * i));
+    events.add(SfxEvent(tl.tick[i], SfxCue.tick, rate: 1.0 + 0.06 * i));
   }
 
   // Every remaining heavy haptic mark gets a thud: the charge pulses
