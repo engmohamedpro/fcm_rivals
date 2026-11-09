@@ -2,11 +2,11 @@
 id: T-0076
 title: Gate season reward coins with a seeded economy sweep
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0074, T-0075]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0076: Gate season reward coins with a seeded economy sweep
@@ -38,11 +38,11 @@ A seeded, multi-season economy sweep proves the coins-only, position-graduated s
 - A "before vs after" pack-income comparison (the old pack faucet is gone by design — measuring its historical value is dead work).
 
 ## Acceptance Criteria
-- [ ] `test/balance/season_reward_economy_test.dart` exists, runs ≥ 6 seeded simulations (≥ 3 seeds × 2 value bands × 6 seasons), and passes deterministically (same seeds, same numbers every run).
-- [ ] The four locks are asserted: per-season earned band (pinned to first-run measurements and documented), `season_reward` share ≤ 40% of season income in every season, `avgNetCoinsPerSeason` bounded above, champion < 22_500.
-- [ ] Progression locks asserted: promotion observed within 6 seasons in the majority of runs; collection growth on average season over season; relegation possibility addressed in Developer Notes with the measured evidence.
-- [ ] Measured bands and the seeds used are written in Developer Notes on submission; no production file changed (`git diff --stat` shows test + task file only).
-- [ ] `flutter analyze` zero warnings; full `flutter test` green including the new sweep.
+- [x] `test/balance/season_reward_economy_test.dart` exists, runs ≥ 6 seeded simulations (≥ 3 seeds × 2 value bands × 6 seasons), and passes deterministically (same seeds, same numbers every run).
+- [x] The four locks are asserted: per-season earned band (pinned to first-run measurements and documented), `season_reward` share ≤ 40% of season income in every season, `avgNetCoinsPerSeason` bounded above, champion < 22_500.
+- [x] Progression locks asserted: promotion observed within 6 seasons in the majority of runs; collection growth on average season over season; relegation possibility addressed in Developer Notes with the measured evidence.
+- [x] Measured bands and the seeds used are written in Developer Notes on submission; no production file changed (`git diff --stat` shows test + task file only).
+- [x] `flutter analyze` zero warnings; full `flutter test` green including the new sweep.
 
 ## How to Verify
 ```bash
@@ -82,3 +82,14 @@ flutter test
 **Concerns:**
 - The 165.5k earned outlier is 3.4% above the 70k–160k context band on a high-band division-5 season; the ±10% lock (96k–182k) absorbs it deliberately — if a reviewer considers the context band strict, the discussion belongs to the faucet (match rewards), not the season-reward share this task gates (which peaked at 0.302, comfortably under 0.40).
 - The sweep measures the coins-only world with no card-faucet noise (T-0074 removed grants; the simulator only buys) — a "before vs after" pack-income comparison is dead work per the task and was not attempted.
+
+## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran on a fresh sandbox (Flutter 3.47.9 stable reinstalled via `scripts/install_flutter.sh` after a sandbox recycle wiped `.tools/`) at HEAD 53aadad: `flutter analyze` → No issues found; `flutter test test/balance/season_reward_economy_test.dart` TWICE → 6/6 green both times in identical 1:47 (the AC's determinism check); `flutter test test/features/simulation/ test/balance/` → 114/114 green; full `flutter test` → 937/937 green, `REGEN_SNAPSHOT` unset.
+- Diff audit (7a3c75c): exactly two files — the new test + this task file. Zero production changes, as required (AC-4).
+- The documented deviation (share numerator computed via `seasonRewardCoins(division, finalPosition)` instead of querying `coinTransactions`) is verified sound, not just plausible: the store itself pays through the identical call (`season_store_standings.dart:92-94`, `baseRewardCoins = engine.seasonRewardCoins(season.division, userEntry.position)`); the ledger row's equality with that value is locked by `season_store_test.dart:271` (`ledger.first.amount == completion.rewardCoins`, reason `season_reward`); and the simulator never activates the ×1.25 season-multiplier ad (its only ad interaction is `AdRewardKind.boostedRecovery`, `economy_simulator.dart:254`, while the boost requires `ads.seasonMultiplierActive`), so in the simulated world curve == ledger and the numerator is exact. The test recomputes per season with the report's own `s.division` / `s.finalPosition` (`finalPosition: completion.finalPosition` at `economy_simulator.dart:307`) — the same inputs the store used.
+- The earned-band exceedance (max 165_500 vs the 70k–160k context) is ACCEPTED with reasoning recorded: the context band is a static baseline-season calculation (`economy_balance_test.dart:69`, fixed 14W/10D/14L at baseline match rewards), while the outlier is a high-band, division-5, season-5 save — the excess is the MATCH faucet's division escalation, not the season reward this task gates (share peaked at 0.302 ≤ 0.40). The measured band's lower bound (106_875) sits well inside the context; the whole band did not drift out. The developer reported the exceedance prominently instead of silently widening — exactly the protocol the task demanded.
+- Relegation: not observed in any of the 36 simulated seasons — documented per the task's "not necessarily observed in every seed"; the `relegated` outcome paths are exercised by `season_store_test.dart` (positions/arm assertions at lines 303, 334, 386–396). AC satisfied as specified.
+- Two reporting corrections, no functional impact: the Developer Notes' "115/115" for sim+balance is actually 114/114 (static count of test declarations in both dirs = 114, dynamic run = 114 passed, nothing skipped), and "938/938" for the full suite is actually 937/937 (previous review's 931 + the sweep's 6). Everything green — the miscounts are cosmetic.
+- One forward-looking note, no criterion impact: if a future simulator strategy ever watches the season-multiplier ad, the curve-based numerator would understate the paid ledger by ×1.25 (max share would become 0.302 × 1.25 ≈ 0.378, still under 0.40, but the margin shrinks) — the deviation note in the test's doc comment should be re-read before such a change.
