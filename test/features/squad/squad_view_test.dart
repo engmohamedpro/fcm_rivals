@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
+import 'package:fcm_rivals/core/ui/fcm_style.dart' show FcmColors;
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
     show FcmButton, FcmDropdown, FcmScaleSlider;
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
@@ -820,20 +821,30 @@ void main() {
       };
       await tester.pumpWidget(_host(xi: xi));
       await tester.pumpAndSettle();
+      final pitchRect0 = tester.getRect(find.byType(SquadPitch));
 
-      // T-0080: the badge reads on the pitch surface itself — the label
-      // is compacted (CHEM…) and the value rides beside it.
-      expect(find.text('CHEMI…'), findsOneWidget);
+      // T-0094: the badge is a premium floating capsule — the label is
+      // now FULL (the 5-char truncation existed only because bare text
+      // had no background) and the value counts up beside it.
+      expect(find.text('CHEMISTRY'), findsOneWidget);
       expect(find.text('+4%'), findsOneWidget);
-      // The compacted label is pinned INSIDE the pitch widget, never on
-      // the control card surface.
+      // The capsule is pinned INSIDE the pitch widget, never on the
+      // control card surface.
       final pitch = find.byType(SquadPitch);
       expect(
-        find.descendant(of: pitch, matching: find.text('CHEMI…')),
+        find.descendant(of: pitch, matching: find.text('CHEMISTRY')),
         findsOneWidget,
       );
-      // The control card row is gone: no full CHEMISTRY label anywhere.
-      expect(find.text('CHEMISTRY'), findsNothing);
+      // The link icon rides the capsule.
+      expect(
+        find.descendant(of: pitch, matching: find.byIcon(Icons.link_rounded)),
+        findsOneWidget,
+      );
+      // Compact: the capsule stays inside the top margin strip.
+      final capsuleTop = tester.getTopLeft(
+        find.descendant(of: pitch, matching: find.text('CHEMISTRY')),
+      );
+      expect(capsuleTop.dy, lessThan(pitchRect0.top + 40));
     },
   );
 
@@ -850,9 +861,9 @@ void main() {
       await tester.pumpWidget(_host());
       await tester.pumpAndSettle();
 
-      expect(find.text('CHEMI…'), findsNothing);
       expect(find.text('CHEMISTRY'), findsNothing);
       expect(find.text('+0%'), findsNothing);
+      expect(find.byIcon(Icons.link_rounded), findsNothing);
       expect(find.byType(SquadPitch), findsOneWidget);
     },
   );
@@ -874,10 +885,10 @@ void main() {
     await tester.pumpWidget(_host(xi: xi));
     await tester.pumpAndSettle();
 
-    // T-0080: on the pitch, dim at the neutral reading.
-    expect(find.text('CHEMI…'), findsOneWidget);
+    // T-0094: the capsule shows the full label, dim at the neutral
+    // reading.
+    expect(find.text('CHEMISTRY'), findsOneWidget);
     expect(find.text('+0%'), findsOneWidget);
-    expect(find.text('CHEMISTRY'), findsNothing);
   });
 
   testWidgets('T-0069: Arabic RTL shows الكيمياء with the same percent', (
@@ -902,24 +913,131 @@ void main() {
     await tester.pumpAndSettle();
 
     // T-0080: the Arabic label compacts to its first five glyphs
-    // (الكيم…) on the pitch, value unchanged.
-    expect(find.text('الكيم…'), findsOneWidget);
+    // T-0094: the capsule shows the FULL Arabic label (no truncation)
+    // with the same percent — mirrored, icon on the start side.
+    expect(find.text('الكيمياء'), findsOneWidget);
     expect(find.text('+4%'), findsOneWidget);
-    expect(find.text('الكيمياء'), findsNothing);
     expect(find.text('CHEMISTRY'), findsNothing);
-    // The badge stays inside the pitch bounds in RTL too — centred,
-    // so the horizontal flip cannot push it out.
     final pitch = find.byType(SquadPitch);
     expect(
-      find.descendant(of: pitch, matching: find.text('الكيم…')),
+      find.descendant(of: pitch, matching: find.text('الكيمياء')),
       findsOneWidget,
     );
+    // The icon mirrors to the START side (right edge in RTL) — Row
+    // order follows the text direction.
+    final iconDx = tester.getTopLeft(
+      find.descendant(of: pitch, matching: find.byIcon(Icons.link_rounded)),
+    ).dx;
+    final labelDx = tester.getTopLeft(
+      find.descendant(of: pitch, matching: find.text('الكيمياء')),
+    ).dx;
+    expect(iconDx, greaterThan(labelDx),
+        reason: 'RTL: the icon sits at the start (right) of the label');
+    // The capsule stays inside the pitch bounds in RTL too — centred,
+    // so the horizontal flip cannot push it out.
     final badgeRect = tester.getRect(
-      find.descendant(of: pitch, matching: find.text('الكيم…')),
+      find.descendant(of: pitch, matching: find.text('الكيمياء')),
     );
     final pitchRect = tester.getRect(pitch);
     expect(badgeRect.left, greaterThan(pitchRect.left));
     expect(badgeRect.right, lessThan(pitchRect.right));
     expect(badgeRect.top, greaterThan(pitchRect.top));
   });
+
+  // T-0094: the capsule's value counts up to its new reading when the
+  // squad changes — the count floats to the settled text, then idles
+  // static (no looping work).
+  testWidgets(
+    'T-0094: a squad change settles the capsule on the new reading',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(340, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Start at +1%: one shared pair among eleven players
+      // (2 Egypt + 9 distinct → max(0, 2−1) = 1).
+      final nationsA = [
+        'Egypt', 'Egypt',
+        'France', 'Germany', 'Spain', 'Italy', 'England',
+        'N8', 'N9', 'N10', 'N11',
+      ];
+      final xiA = <int, PlayerCard>{
+        for (var slot = 0; slot < nationsA.length; slot++)
+          slot: _natCard(slot + 1, Position.values[slot % 12], nationsA[slot]),
+      };
+      await tester.pumpWidget(_host(xi: xiA));
+      await tester.pumpAndSettle();
+      expect(find.text('+1%'), findsOneWidget);
+
+      // Two players swap to Brazil: two shared pairs now
+      // (2 Egypt + 2 Brazil + 7 distinct = 1 + 1 = 2) — the reading
+      // changes, the count-up floats to it and settles on the exact
+      // new text.
+      final nationsB = [
+        'Egypt', 'Egypt', 'Brazil', 'Brazil',
+        'France', 'Germany', 'Spain', 'Italy', 'England',
+        'N10', 'N11',
+      ];
+      final xiB = <int, PlayerCard>{
+        for (var slot = 0; slot < nationsB.length; slot++)
+          slot: _natCard(slot + 1, Position.values[slot % 12], nationsB[slot]),
+      };
+      await tester.pumpWidget(_host(xi: xiB));
+      // The count-up runs (700ms) — mid-flight the old text is gone.
+      await tester.pump(const Duration(milliseconds: 100));
+      // Settle: the capsule reads the final number.
+      await tester.pumpAndSettle();
+      expect(find.text('+2%'), findsOneWidget,
+          reason: '2 Egypt + 2 Brazil + 7 distinct = 1% + 1% = +2% — '
+              'the count settled on the new reading');
+      expect(find.text('+1%'), findsNothing);
+
+      // Idle is static: another plain frame changes nothing.
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('+2%'), findsOneWidget);
+    },
+  );
+
+  // T-0094: the Arabic capsule is the premium pill mirrored — full
+  // label, icon at the start (right) edge — already asserted in the
+  // Arabic test above; this one pins the pill's own surfaces: the
+  // glass background and gold border read in RTL exactly as EN.
+  testWidgets(
+    'T-0094: the capsule is a glass pill with a gold border (EN)',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(340, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final nations = [
+        'Egypt', 'Egypt', 'Brazil', 'Brazil', 'Brazil', 'Brazil',
+        'France', 'Germany', 'Spain', 'Italy', 'England',
+      ];
+      final xi = <int, PlayerCard>{
+        for (var slot = 0; slot < nations.length; slot++)
+          slot: _natCard(slot + 1, Position.values[slot % 12], nations[slot]),
+      };
+      await tester.pumpWidget(_host(xi: xi));
+      await tester.pumpAndSettle();
+
+      // The capsule container: dark translucent surface + thin gold
+      // border, 28px tall — the premium pill the owner asked for.
+      final pitch = find.byType(SquadPitch);
+      final capsule = find.ancestor(
+        of: find.text('CHEMISTRY'),
+        matching: find.byType(Container),
+      );
+      expect(
+        find.descendant(of: pitch, matching: capsule),
+        findsOneWidget,
+      );
+      final container = tester.widget<Container>(capsule.first);
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.border?.top.color, FcmColors.gold.withValues(alpha: 0.35));
+      expect(decoration.color, FcmColors.surface.withValues(alpha: 0.85));
+      expect(container.constraints?.maxHeight, lessThanOrEqualTo(30));
+    },
+  );
 }

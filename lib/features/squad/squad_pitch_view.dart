@@ -422,47 +422,123 @@ class _EmptyBenchCard extends StatelessWidget {
   }
 }
 
-/// Mown-grass stripes, white markings and a soft floodlight vignette.
-/// The XI's chemistry reading, pinned to the top end of the pitch
-/// artwork (T-0080): the localized label compacted beside its '+N%'
-/// value — dim at 0 (neutral) and colour-coded at n ≥ 1 through the
-/// same rating colour ramp the player cards use. Compact enough to
-/// live in the margin strip above the top penalty box without
-/// crowding the attacking line's cards.
-class _ChemistryBadge extends StatelessWidget {
+/// The XI's chemistry reading as a premium floating capsule
+/// (T-0094, over T-0080's positioning): a dark glass pill pinned to
+/// the top end of the pitch artwork — translucent surface, thin gold
+/// border, a chemistry link icon, the FULL localized label (the old
+/// 5-char truncation existed only because bare text had no
+/// background) and a '+N%' value that counts up to its new reading
+/// whenever the squad changes. One subtle scale/fade pulse fires on
+/// the value change itself; idle is fully static (no looping work).
+/// Colour semantics are the T-0080 rules: dim at 0, the same rating
+/// colour ramp at n ≥ 1. Compact (≤ 30px tall) so the margin strip
+/// above the top penalty box keeps the attacking line's tap targets.
+class _ChemistryBadge extends StatefulWidget {
   const _ChemistryBadge({required this.percent});
 
   final int percent;
 
   @override
+  State<_ChemistryBadge> createState() => _ChemistryBadgeState();
+}
+
+class _ChemistryBadgeState extends State<_ChemistryBadge>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 240),
+  );
+  int _shown = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _shown = widget.percent;
+  }
+
+  @override
+  void didUpdateWidget(_ChemistryBadge old) {
+    super.didUpdateWidget(old);
+    if (old.percent != widget.percent) {
+      // The reading changed: one soft scale/fade pulse while the
+      // count-up floats to the new number.
+      _shown = widget.percent;
+      _pulse.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final label = l10nOf(context).teamChemistry.toUpperCase();
+    final valueColor = widget.percent >= 1
+        ? ratingColor(70 + widget.percent * 3)
+        : FcmColors.textDim;
     return Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label.length > 5 ? '${label.substring(0, 5)}…' : label,
-            maxLines: 1,
-            style: const TextStyle(
-              color: FcmColors.textDim,
-              fontSize: 8,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 1, end: 1.06).animate(
+          CurvedAnimation(
+            parent: _pulse,
+            curve: const Interval(0, 0.4, curve: Curves.easeOut),
+            reverseCurve: Curves.easeIn,
+          ),
+        ),
+        child: FadeTransition(
+          opacity: Tween<double>(begin: 1, end: 0.75).animate(
+            CurvedAnimation(parent: _pulse, curve: Curves.easeOut),
+          ),
+          child: Container(
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: FcmColors.surface.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: FcmColors.gold.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.link_rounded,
+                  size: 13,
+                  color: FcmColors.gold.withValues(alpha: 0.9),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: FcmColors.textDim,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                // The value floats to the new reading on squad changes
+                // (FcmCountUp, the control card's own idiom).
+                FcmCountUp(
+                  key: ValueKey('chem-count-$_shown'),
+                  value: widget.percent,
+                  duration: const Duration(milliseconds: 700),
+                  format: (n) => '+$n%',
+                  style: TextStyle(
+                    color: valueColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 5),
-          Text(
-            '+$percent%',
-            style: TextStyle(
-              color: percent >= 1
-                  ? ratingColor(70 + percent * 3)
-                  : FcmColors.textDim,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
