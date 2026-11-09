@@ -2,8 +2,8 @@
 id: T-0080
 title: Show the chemistry percent on top of the pitch
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0079]
 created: 2026-11-09
 completed:
@@ -51,3 +51,23 @@ flutter test test/features/squad/
 flutter test
 # Expected: full suite green, no REGEN_SNAPSHOT
 ```
+
+## Developer Notes
+
+### Attempt 1 — implementation
+
+**Summary:** the XI's chemistry moved from the control card's text row to a compact badge pinned to the TOP end of the pitch artwork itself — the owner's 2026-11-09 decision — with the exact same value, colour logic and l10n key, and the empty-XI case now hides the badge outright.
+
+1. `lib/features/squad/tactics_setup_view.dart` — the `_chemistry` row, its `_ControlCard` parameter/field and the call-site plumbing are removed (the card keeps TACTICS/MENTALITY info, TEAM RATING, formation dropdown, buttons — exactly Requirement 1). The computed value now flows into `SquadPitch(chemistryPercent: xi.isEmpty ? null : chemistry)`.
+2. `lib/features/squad/squad_pitch_view.dart` — `SquadPitch` gains an optional `int? chemistryPercent` (null hides: an empty XI has no chemistry reading — this PRESERVES the empty-case hiding the task asks for, now at the pitch level instead of the card level). The badge renders inside the pitch `Stack`, `Positioned(top: ph * 0.018, left: 0, right: 0)` — top-centre, inside the pitch bounds by construction in BOTH text directions (centre placement is mirror-invariant), sitting in the margin strip above the top penalty box of `_PitchPainter` (the painter's own top margin is `w * 0.05`, goal box top at `m` — the badge rides above both). The whole badge is wrapped in `IgnorePointer` (Requirement 3): no tap interception, and no spatial overlap either — the top player line's first row sits below `kPitchMargin + stagger` per the layout solver, while the badge occupies the top 1.8% strip.
+3. `_ChemistryBadge` — the localized `teamChemistry` label compacted to its first five glyphs plus an ellipsis (`CHEMI…` EN / `الكيم…` AR — Requirement 2's shortened label), the `+N%` value, dim (`FcmColors.textDim`) at 0 and colour-coded at ≥ 1 via the SAME `ratingColor(70 + percent * 3)` expression the card row used. The value semantics are untouched (T-0069 formula final, out of scope respected).
+4. `test/features/squad/squad_view_test.dart` — the three T-0069 tests updated per Requirement 5: the +4% example now asserts the compacted label is a descendant of `SquadPitch` (ON the pitch surface) and that the full `CHEMISTRY` label exists nowhere (card row gone); the all-distinct +0% test keeps its semantics at the new location; the Arabic RTL test asserts `الكيم…` + `+4%`, no EN label, and measures the badge's rect to stay inside the pitch's rect (bounds check in RTL). A NEW test covers the empty-XI case: no badge, no `+0%`, pitch still renders.
+
+**Files changed:** `lib/features/squad/tactics_setup_view.dart`, `lib/features/squad/squad_pitch_view.dart`, `test/features/squad/squad_view_test.dart` + this task file.
+
+**How tested (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/squad/` → **234/234 green** ✓ (badge on pitch, absent from card, hidden for empty XI, LTR + RTL). Full `flutter test --concurrency=1` → **938/938 green, no REGEN_SNAPSHOT** ✓. During development I also dumped the full rendered text tree of the host to verify the badge's actual output (`CHEMI…`, `+4%`) before pinning test expectations — the first test run failed on my own expectation typo (searched `CHEM…` for a `substring(0, 5)` compaction), fixed the expectation, not the code.
+
+**Concerns:**
+- The label compaction is glyph-count based (first 5 + …). For a future locale whose `teamChemistry` is shorter than 6 glyphs the label renders whole (no compaction) — that is the intended graceful path, not a bug.
+- The badge sits in the painted margin strip; on very short screens the 1.8% top offset keeps it above the top-line cards, but if a future formation places a slot at the extreme top (y ≈ 100), the layout solver's `kPitchMargin` headroom (8px + stagger reserve) is the guaranteed clearance — measured layouts keep the first row below the badge strip in the 340×900 test surface.
+- Tap/drag on the top line is inert-passthrough by `IgnorePointer`; the drag source lives on the player chips themselves, so swap interactions are untouched (covered by the existing drag tests in the suite, all green).

@@ -98,8 +98,9 @@ class TacticsSetupView extends StatelessWidget {
     final teamRating = xi.isEmpty
         ? 0
         : (xi.values.fold<int>(0, (a, c) => a + c.overall) / xi.length).round();
-    // The XI's nationality chemistry (T-0067 formula, T-0069 display):
-    // the starting slots only — bench/reserves never count.
+    // The XI's nationality chemistry (T-0067 formula, T-0069 display,
+    // T-0080 moved to the pitch badge): the starting slots only —
+    // bench/reserves never count.
     final chemistry = chemistryPercentOf([
       for (var slot = 0; slot < 11; slot++) xi[slot]?.base.nationality,
     ]);
@@ -110,7 +111,6 @@ class TacticsSetupView extends StatelessWidget {
         FcmEntrance(
           child: _ControlCard(
             teamRating: teamRating,
-            chemistryPercent: chemistry,
             formationCode: formationCode,
             tactics: tactics,
             mentality: mentality,
@@ -138,6 +138,7 @@ class TacticsSetupView extends StatelessWidget {
                 child: SquadPitch(
                   formation: formationByCode(formationCode),
                   assignments: xi,
+                  chemistryPercent: xi.isEmpty ? null : chemistry,
                   showStamina: showStamina,
                   showStats: showStats,
                   onPlayerTap: onPlayerTap,
@@ -196,16 +197,10 @@ class _ControlCard extends StatelessWidget {
     required this.mentality,
     required this.onFormation,
     required this.onTactics,
-    this.chemistryPercent = 0,
     this.onAutoPick,
   });
 
   final int teamRating;
-
-  /// The starting XI's nationality chemistry, 0..10 (T-0069): shown as
-  /// '+N%' beside the rating so the squad-building screen surfaces the
-  /// effect the engine applies.
-  final int chemistryPercent;
   final String formationCode;
   final TeamTactics tactics;
   final Mentality mentality;
@@ -238,7 +233,6 @@ class _ControlCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          _chemistry(context),
           // The formation picker, directly on the setup card: the closed
           // field shows the live shape ('4-3-3'), tapping lists every
           // formation — no detour into the tactic options sheet.
@@ -301,37 +295,6 @@ class _ControlCard extends StatelessWidget {
         value,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    ],
-  );
-
-  /// The XI's nationality chemistry (T-0069): a CHEMISTRY row in the
-  /// TEAM RATING style — '+N%', dim at 0 (neutral) and colour-coded at
-  /// n ≥ 1, right-aligned to read as a rating property.
-  Widget _chemistry(BuildContext context) => Row(
-    mainAxisAlignment: MainAxisAlignment.end,
-    children: [
-      Text(
-        l10nOf(context).teamChemistry.toUpperCase(),
-        textAlign: TextAlign.end,
-        style: const TextStyle(
-          color: FcmColors.textDim,
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.5,
-        ),
-      ),
-      const SizedBox(width: 6),
-      Text(
-        '+$chemistryPercent%',
-        textAlign: TextAlign.end,
-        style: TextStyle(
-          color: chemistryPercent >= 1
-              ? ratingColor(70 + chemistryPercent * 3)
-              : FcmColors.textDim,
           fontSize: 13,
           fontWeight: FontWeight.w800,
         ),

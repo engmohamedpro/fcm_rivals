@@ -801,28 +801,61 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('T-0069: control card shows the XI chemistry (+4% example)',
-      (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(340, 900);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'T-0069/T-0080: the XI chemistry badge renders ON the pitch (+4%)',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(340, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    // 2 Egypt + 4 Brazil + 5 distinct = 1% + 3% = +4% (owner example).
-    final nations = [
-      'Egypt', 'Egypt', 'Brazil', 'Brazil', 'Brazil', 'Brazil',
-      'France', 'Germany', 'Spain', 'Italy', 'England',
-    ];
-    final xi = <int, PlayerCard>{
-      for (var slot = 0; slot < nations.length; slot++)
-        slot: _natCard(slot + 1, Position.values[slot % 12], nations[slot]),
-    };
-    await tester.pumpWidget(_host(xi: xi));
-    await tester.pumpAndSettle();
+      // 2 Egypt + 4 Brazil + 5 distinct = 1% + 3% = +4% (owner example).
+      final nations = [
+        'Egypt', 'Egypt', 'Brazil', 'Brazil', 'Brazil', 'Brazil',
+        'France', 'Germany', 'Spain', 'Italy', 'England',
+      ];
+      final xi = <int, PlayerCard>{
+        for (var slot = 0; slot < nations.length; slot++)
+          slot: _natCard(slot + 1, Position.values[slot % 12], nations[slot]),
+      };
+      await tester.pumpWidget(_host(xi: xi));
+      await tester.pumpAndSettle();
 
-    expect(find.text('CHEMISTRY'), findsOneWidget);
-    expect(find.text('+4%'), findsOneWidget);
-  });
+      // T-0080: the badge reads on the pitch surface itself — the label
+      // is compacted (CHEM…) and the value rides beside it.
+      expect(find.text('CHEMI…'), findsOneWidget);
+      expect(find.text('+4%'), findsOneWidget);
+      // The compacted label is pinned INSIDE the pitch widget, never on
+      // the control card surface.
+      final pitch = find.byType(SquadPitch);
+      expect(
+        find.descendant(of: pitch, matching: find.text('CHEMI…')),
+        findsOneWidget,
+      );
+      // The control card row is gone: no full CHEMISTRY label anywhere.
+      expect(find.text('CHEMISTRY'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'T-0080: an empty XI hides the chemistry badge entirely',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(340, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // No starting XI at all — the pitch renders its formation slots
+      // but no chemistry reading (the empty-collection case).
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+
+      expect(find.text('CHEMI…'), findsNothing);
+      expect(find.text('CHEMISTRY'), findsNothing);
+      expect(find.text('+0%'), findsNothing);
+      expect(find.byType(SquadPitch), findsOneWidget);
+    },
+  );
 
   testWidgets('T-0069: an all-distinct XI reads +0%', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(340, 900);
@@ -841,8 +874,10 @@ void main() {
     await tester.pumpWidget(_host(xi: xi));
     await tester.pumpAndSettle();
 
-    expect(find.text('CHEMISTRY'), findsOneWidget);
+    // T-0080: on the pitch, dim at the neutral reading.
+    expect(find.text('CHEMI…'), findsOneWidget);
     expect(find.text('+0%'), findsOneWidget);
+    expect(find.text('CHEMISTRY'), findsNothing);
   });
 
   testWidgets('T-0069: Arabic RTL shows الكيمياء with the same percent', (
@@ -866,8 +901,25 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('الكيمياء'), findsOneWidget);
+    // T-0080: the Arabic label compacts to its first five glyphs
+    // (الكيم…) on the pitch, value unchanged.
+    expect(find.text('الكيم…'), findsOneWidget);
     expect(find.text('+4%'), findsOneWidget);
+    expect(find.text('الكيمياء'), findsNothing);
     expect(find.text('CHEMISTRY'), findsNothing);
+    // The badge stays inside the pitch bounds in RTL too — centred,
+    // so the horizontal flip cannot push it out.
+    final pitch = find.byType(SquadPitch);
+    expect(
+      find.descendant(of: pitch, matching: find.text('الكيم…')),
+      findsOneWidget,
+    );
+    final badgeRect = tester.getRect(
+      find.descendant(of: pitch, matching: find.text('الكيم…')),
+    );
+    final pitchRect = tester.getRect(pitch);
+    expect(badgeRect.left, greaterThan(pitchRect.left));
+    expect(badgeRect.right, lessThan(pitchRect.right));
+    expect(badgeRect.top, greaterThan(pitchRect.top));
   });
 }

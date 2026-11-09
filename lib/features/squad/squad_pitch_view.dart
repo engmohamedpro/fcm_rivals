@@ -15,6 +15,7 @@ import '../../core/ui/country_flag.dart' show flagEmojiFor;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
+import '../../l10n/l10n_context.dart';
 import '../collection/player_detail_sheet.dart' show rarityOf;
 import 'formations.dart';
 import 'pitch_layout.dart';
@@ -48,6 +49,7 @@ class SquadPitch extends StatelessWidget {
     super.key,
     required this.formation,
     required this.assignments,
+    this.chemistryPercent,
     this.showStamina = true,
     this.showStats = true,
     this.onPlayerTap,
@@ -57,6 +59,11 @@ class SquadPitch extends StatelessWidget {
 
   /// Slot index → card for the starting XI.
   final Map<int, PlayerCard> assignments;
+
+  /// The starting XI's nationality chemistry, 0..10 (T-0069 value,
+  /// T-0080 display): null hides the badge — an empty XI has no
+  /// chemistry to read, so the pitch shows no badge either.
+  final int? chemistryPercent;
 
   /// Whether cards carry their stamina bar (hidden in the Team tab).
   final bool showStamina;
@@ -104,6 +111,22 @@ class SquadPitch extends StatelessWidget {
                   const Positioned.fill(
                     child: CustomPaint(painter: _PitchPainter()),
                   ),
+                  if (chemistryPercent != null)
+                    Positioned(
+                      top: ph * 0.018,
+                      left: 0,
+                      right: 0,
+                      // The badge reads as part of the scoreboard end
+                      // of the artwork, never as a control: it sits in
+                      // the top margin strip above the penalty box and
+                      // is fully inert so the top-line player chips keep
+                      // every tap, drag and drop.
+                      child: IgnorePointer(
+                        child: _ChemistryBadge(
+                          percent: chemistryPercent!,
+                        ),
+                      ),
+                    ),
                   for (var slot = 0; slot < formation.slots.length; slot++)
                     () {
                       final fs = formation.slots[slot];
@@ -379,6 +402,51 @@ class _EmptyBenchCard extends StatelessWidget {
 }
 
 /// Mown-grass stripes, white markings and a soft floodlight vignette.
+/// The XI's chemistry reading, pinned to the top end of the pitch
+/// artwork (T-0080): the localized label compacted beside its '+N%'
+/// value — dim at 0 (neutral) and colour-coded at n ≥ 1 through the
+/// same rating colour ramp the player cards use. Compact enough to
+/// live in the margin strip above the top penalty box without
+/// crowding the attacking line's cards.
+class _ChemistryBadge extends StatelessWidget {
+  const _ChemistryBadge({required this.percent});
+
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = l10nOf(context).teamChemistry.toUpperCase();
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label.length > 5 ? '${label.substring(0, 5)}…' : label,
+            maxLines: 1,
+            style: const TextStyle(
+              color: FcmColors.textDim,
+              fontSize: 8,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            '+$percent%',
+            style: TextStyle(
+              color: percent >= 1
+                  ? ratingColor(70 + percent * 3)
+                  : FcmColors.textDim,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PitchPainter extends CustomPainter {
   const _PitchPainter();
 
