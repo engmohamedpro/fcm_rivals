@@ -24,6 +24,7 @@ class PackOpenResult {
     required this.players,
     this.tiers = const [],
     this.ownedIds = const [],
+    this.newFlags = const [],
   });
 
   /// Drawn players (one per pack).
@@ -39,6 +40,12 @@ class PackOpenResult {
   /// Owned-player row ids of the drawn players, index-aligned with
   /// [players] — the handle for sell- straight-from-the-reveal.
   final List<int> ownedIds;
+
+  /// Per-draw first-time flags (T-0091), index-aligned with [players]:
+  /// true when the club did NOT own this player before this open AND
+  /// he was not drawn earlier in the same open — the reveal's NEW
+  /// badge; false for pre-owned or same-pack duplicates.
+  final List<bool> newFlags;
 }
 
 /// One buyable pack in the store (GDD 5.5): category, scope, store tier

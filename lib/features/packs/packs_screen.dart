@@ -171,6 +171,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       context,
       players: result.players,
       ownedIds: result.ownedIds,
+      newFlags: result.newFlags,
       packTint: tier.accent,
       packStars: tier.stars,
       chainInfo: chainInfo,

@@ -104,6 +104,7 @@ class PackOpeningScreen extends StatefulWidget {
     this.packTint,
     this.packStars = 3,
     this.ownedIds = const [],
+    this.newFlags = const [],
     this.onSell,
     this.chainInfo,
     this.queryBalance,
@@ -123,6 +124,11 @@ class PackOpeningScreen extends StatefulWidget {
   /// Owned-player row ids of the drawn players, index-aligned with
   /// [players] — SELL straight from the reveal sells through the caller.
   final List<int> ownedIds;
+
+  /// Per-draw first-time flags (T-0091), index-aligned with [players]:
+  /// true renders the gold NEW badge on the reveal card after the flip.
+  /// Empty (previews, older callers) shows no badge anywhere.
+  final List<bool> newFlags;
 
   /// Sells the currently revealed player. Null (or a player without an
   /// owned id) hides the SELL button — e.g. key-man previews.

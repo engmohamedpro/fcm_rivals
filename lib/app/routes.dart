@@ -99,6 +99,7 @@ class AppRoutes {
     BuildContext context, {
     required List<BasePlayer> players,
     required List<int> ownedIds,
+    List<bool> newFlags = const [],
     Color? packTint,
     int packStars = 3,
     PackChainInfo? chainInfo,
@@ -111,6 +112,7 @@ class AppRoutes {
         builder: (_) => PackOpeningScreen(
           players: players,
           ownedIds: ownedIds,
+          newFlags: newFlags,
           packTint: packTint,
           packStars: packStars,
           chainInfo: chainInfo,

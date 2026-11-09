@@ -172,6 +172,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packsNotEnoughCoins => 'Not enough coins for another pack';
 
   @override
+  String get packsNewCard => 'New';
+
+  @override
   String get liveTacticsTitle => 'Touchline';
 
   @override

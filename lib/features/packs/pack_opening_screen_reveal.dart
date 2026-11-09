@@ -247,28 +247,107 @@ extension _PackRevealViews on _PackOpeningScreenState {
                   cardClass: CardClass.fromOverall(_player.baseStats.overall),
                   width: cardWidth,
                 )
-              : FcmPlayerCard(
-                  player: _player,
-                  rarity: rarity,
-                  width: cardWidth,
-                  statProgress: stats,
-                  nameProgress: name,
-                  // Legendary: the name types in letter by letter, and
-                  // a redacted bar breathes where it will land.
-                  nameLetters: legend ? name : null,
-                  maskName: legend,
-                  maskPulse: pulse(_idle.value, cycles: 2),
-                  shine: shine,
-                  // Idle animation of the rarity artwork (turning rays,
-                  // glints, lightning veins, rim pulse).
-                  phase: _idle.value,
-                  glow:
-                      (0.55 + 0.45 * pulse(_idle.value)) *
-                      flipT.clamp(0.0, 1.0) *
-                      (0.6 + 0.2 * rarity.intensity),
+              : Builder(
+                  builder: (cardContext) => _withNewBadge(
+                    cardContext,
+                    flipT,
+                    cardWidth,
+                    FcmPlayerCard(
+                      player: _player,
+                      rarity: rarity,
+                      width: cardWidth,
+                      statProgress: stats,
+                      nameProgress: name,
+                      // Legendary: the name types in letter by letter,
+                      // and a redacted bar breathes where it will land.
+                      nameLetters: legend ? name : null,
+                      maskName: legend,
+                      maskPulse: pulse(_idle.value, cycles: 2),
+                      shine: shine,
+                      // Idle animation of the rarity artwork (turning
+                      // rays, glints, lightning veins, rim pulse).
+                      phase: _idle.value,
+                      glow:
+                          (0.55 + 0.45 * pulse(_idle.value)) *
+                          flipT.clamp(0.0, 1.0) *
+                          (0.6 + 0.2 * rarity.intensity),
+                    ),
+                  ),
                 ),
         ),
       ),
+    );
+  }
+
+
+  /// The T-0091 NEW badge: only for a first-time card (widget.newFlags
+  /// aligned with the draw order), only once the flip is far enough
+  /// along to show the face (never before — the back shows nothing),
+  /// as a gold pill popping over the card's top-end corner — clear of
+  /// the +N upgrade badge at the top-right. A 300ms scale pop rides
+  /// the flip's own progress.
+  Widget _withNewBadge(
+    BuildContext context,
+    double flipT,
+    double cardWidth,
+    Widget card,
+  ) {
+    final isNew = _index < widget.newFlags.length &&
+        widget.newFlags[_index];
+    if (!isNew) return card;
+    // Appear once the face is up (the same midpoint the flip itself
+    // switches on), then pop in over ~300ms of flip progress.
+    final appear = Interval(0.5, 0.8, curve: Curves.easeOutBack)
+        .transform(flipT.clamp(0.0, 1.0));
+    if (appear <= 0) return card;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        card,
+        PositionedDirectional(
+          top: -cardWidth * 0.03,
+          end: cardWidth * 0.06,
+          child: Transform.scale(
+            scale: appear,
+            alignment: AlignmentDirectional.bottomStart,
+            child: Opacity(
+              opacity: (appear * 1.4).clamp(0.0, 1.0),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: cardWidth * 0.045,
+                  vertical: cardWidth * 0.012,
+                ),
+                decoration: BoxDecoration(
+                  color: FcmColors.gold.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(cardWidth * 0.045),
+                  border: Border.all(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    width: math.max(0.5, cardWidth * 0.004),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: FcmColors.gold.withValues(alpha: 0.55),
+                      blurRadius: cardWidth * 0.08,
+                    ),
+                  ],
+                ),
+                child: Text(
+                  l10nOf(context).packsNewCard.toUpperCase(),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: FcmColors.ink,
+                    fontSize: cardWidth * 0.055,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2,8 +2,8 @@
 id: T-0091
 title: Show a NEW badge only for first-time cards in the pack reveal
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0085]
 created: 2026-11-09
 completed:
@@ -68,6 +68,26 @@ Manual: open a pack containing a player you already own — that card flips with
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** the reveal card now wears a gold NEW badge — only when the drawn player is genuinely first-time for the club and only after the card flips face-up; duplicates (pre-owned or drawn earlier in the same open) show nothing, exactly the owner's rule.
+
+1. `lib/features/collection/collection_store.dart` + `collection_results.dart` — `PackOpenResult` gains `List<bool> newFlags` index-aligned with `players`. `openPack` reads the club's owned playerIds ONCE before the inserts (`_ownedPlayerIds`, status 'owned'), then per draw: flag = NOT pre-owned AND NOT already seen earlier in this same open (a `seenThisPack` set); `ownedIds` and its sell meaning untouched.
+2. Threading — `_reveal` (`packs_screen.dart`) passes `result.newFlags` → `AppRoutes.packReveal` (`routes.dart`) → `PackOpeningScreen.newFlags` (default empty: previews and older callers show no badge). Both open paths (first open + OPEN ANOTHER chain) flow through `_reveal`, so one threading covers both.
+3. `lib/features/packs/pack_opening_screen_reveal.dart` — `_withNewBadge` wraps the face-up `FcmPlayerCard` in a `Builder`: a gold pill (surface gold 0.95, ink text, gold glow shadow) pinned top-END (clear of the +N upgrade badge at the top-right), popping in over the flip's own progress (Interval 0.5–0.8, easeOutBack scale + fade, `AlignmentDirectional.bottomStart` anchor so RTL mirrors); before the flip midpoint the back face shows nothing — the badge cannot spoil the reveal. Label localized: `packsNewCard` ('NEW' / 'جديد'), uppercased on the badge like the file's other labels.
+4. `lib/l10n/app_en.arb` + `app_ar.arb` + regenerated `app_localizations*.dart` — the new key.
+5. Tests — `collection_store_test.dart`: new-flags unit tests (first open on a fresh club → every flag true; pre-owning the drawn player via a direct row insert → the next same-seed draw flags false; a different position's pack flags true again; second open drawing the same player → false, pinning the pre-owned leg of the same-pack rule). `packs_screen_test.dart`: two real-DB widget tests — a fresh club's GK open lands the finished reveal WITH the 'NEW' badge; pre-owning the entire rare GK pool first lands it with NO badge at all (the drawn GK was already owned). The widget pair ran 3 consecutive times green (unseeded draws each time).
+
+**Files changed:** `lib/features/collection/collection_store.dart`, `lib/features/collection/collection_results.dart`, `lib/features/packs/packs_screen.dart`, `lib/app/routes.dart`, `lib/features/packs/pack_opening_screen.dart`, `lib/features/packs/pack_opening_screen_reveal.dart`, `lib/l10n/app_en.arb`, `lib/l10n/app_ar.arb`, `lib/l10n/app_localizations.dart`, `lib/l10n/app_localizations_ar.dart`, `lib/l10n/app_localizations_en.dart`, `test/features/collection/collection_store_test.dart`, `test/features/packs/packs_screen_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/packs/` → **107/107 green** ✓. Full `flutter test` → (result recorded in the submit commit message) ✓.
+
+**Concerns / assumptions:**
+- The engine draws ONE player per open today, so the "same player twice in one pack" case is theoretical; the computation still handles it (`seenThisPack` set) and the unit tests pin the pre-owned leg plus the aligned-list shape a future multi-draw will exercise. Noted honestly rather than forced.
+- The badge rides the flip's own animation (Interval 0.5–0.8 of flipT) — no extra controller, no idle work; after the pop it is static like the +N badge.
+- AR shows 'جديد' uppercased — Arabic has no case, so `toUpperCase()` is a no-op there; the EN badge reads 'NEW' matching the file's label convention.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

@@ -227,6 +227,12 @@ class CollectionStore {
     }
 
     final now = DateTime.now();
+    // T-0091: which draws are first-time players — the club's owned
+    // playerIds BEFORE this open, read once so every draw judges
+    // against the same pre-open state.
+    final preOwnedIds = await _ownedPlayerIds(pack.clubId);
+    final seenThisPack = <int>{};
+    final newFlags = <bool>[];
     final ownedIds = <int>[];
     await db.transaction(() async {
       for (final draw in draws) {
@@ -241,6 +247,13 @@ class CollectionStore {
               ),
             );
         ownedIds.add(ownedId);
+        // NEW only for a genuinely first-time card: not owned before
+        // this open, and not drawn earlier in the same open.
+        newFlags.add(
+          !preOwnedIds.contains(draw.player.playerId) &&
+              !seenThisPack.contains(draw.player.playerId),
+        );
+        seenThisPack.add(draw.player.playerId);
       }
       await (db.update(db.packs)..where((p) => p.id.equals(packId))).write(
         PacksCompanion(opened: const Value(true), openedAt: Value(now)),
@@ -250,7 +263,22 @@ class CollectionStore {
       players: [for (final d in draws) d.player],
       tiers: [for (final d in draws) d.tier],
       ownedIds: ownedIds,
+      newFlags: newFlags,
     );
+  }
+
+  /// The owned (status 'owned') playerIds of [clubId] — the pre-open
+  /// state the T-0091 new-flags judge against.
+  Future<Set<int>> _ownedPlayerIds(int clubId) async {
+    final rows = await (
+      db.selectOnly(db.ownedPlayers)
+            ..addColumns([db.ownedPlayers.playerId])
+            ..where(
+              db.ownedPlayers.clubId.equals(clubId) &
+                  db.ownedPlayers.status.equals('owned'),
+            )
+        ).get();
+    return {for (final r in rows) r.read(db.ownedPlayers.playerId)!};
   }
 
   /// Every player a pack of this scope could draw, best overall first —

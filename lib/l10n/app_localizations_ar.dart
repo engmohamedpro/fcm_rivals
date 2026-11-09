@@ -172,6 +172,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packsNotEnoughCoins => 'لا توجد عملات كافية لحزمة أخرى';
 
   @override
+  String get packsNewCard => 'جديد';
+
+  @override
   String get liveTacticsTitle => 'خط التماس';
 
   @override

@@ -91,6 +91,7 @@
     }
   },
   "packsNotEnoughCoins": "لا توجد عملات كافية لحزمة أخرى",
+  "packsNewCard": "جديد",
   "liveTacticsTitle": "خط التماس",
   "liveTacticsCancelSelection": "إلغاء التحديد",
   "pepTalkRecoveryConfirmation": "{pepTalk} (+{bonus}% استشفاء)",

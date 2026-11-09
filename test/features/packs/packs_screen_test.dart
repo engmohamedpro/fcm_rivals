@@ -910,6 +910,68 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'T-0091: a first-time card wears the NEW badge after the flip',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // Fresh club: whoever the GK pack draws is a first-time player.
+      await openGkIntoFinishedReveal(tester);
+      expect(find.byType(PackOpeningScreen), findsOneWidget);
+
+      // The reveal is done — the card is face-up, so the NEW badge is
+      // up: the localized 'NEW' label rides the card's top-end corner.
+      expect(find.text('NEW'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'T-0091: a pre-owned drawn player shows NO badge — duplicates say '
+    'nothing',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // Pre-own EVERY GK in the rare pool: whoever the pack draws is
+      // already owned, so the flip lands with no badge at all.
+      final club = (await tester.runAsync(() => store.getClub()))!;
+      final gkPool = await tester.runAsync(
+        () => store.getPackPlayers(
+          category: PackCategory.position,
+          scopeValue: 'GK',
+          tier: PackTier.rare,
+        ),
+      );
+      expect(gkPool, isNotEmpty);
+      await tester.runAsync(() async {
+        final now = DateTime.now();
+        for (final p in gkPool!) {
+          await db
+              .into(db.ownedPlayers)
+              .insert(
+                OwnedPlayersCompanion.insert(
+                  clubId: club.id,
+                  playerId: p.playerId,
+                  acquiredAt: now,
+                ),
+              );
+        }
+      });
+
+      await openGkIntoFinishedReveal(tester);
+      expect(find.byType(PackOpeningScreen), findsOneWidget);
+
+      // The drawn GK was already owned: no NEW badge anywhere on the
+      // finished reveal.
+      expect(find.text('NEW'), findsNothing);
+    },
+  );
 }
 
 /// Mirrors the dialog's compact coin readout so the test finds real

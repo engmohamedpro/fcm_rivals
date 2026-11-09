@@ -91,6 +91,7 @@
     }
   },
   "packsNotEnoughCoins": "Not enough coins for another pack",
+  "packsNewCard": "New",
   "liveTacticsTitle": "Touchline",
   "liveTacticsCancelSelection": "Cancel selection",
   "pepTalkRecoveryConfirmation": "{pepTalk} (+{bonus}% recovery)",

@@ -392,6 +392,12 @@ abstract class AppLocalizations {
   /// **'Not enough coins for another pack'**
   String get packsNotEnoughCoins;
 
+  /// No description provided for @packsNewCard.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get packsNewCard;
+
   /// No description provided for @liveTacticsTitle.
   ///
   /// In en, this message translates to:
