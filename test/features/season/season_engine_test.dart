@@ -432,15 +432,62 @@ void main() {
       expect((mean - target).abs(), lessThan(6));
     });
 
+    test(
+      'pool-path divisions the pool supplies never lift (review attempt 1)',
+      () {
+        // The reviewer's counterexample seeds: 42 lifted 3 div-1 clubs
+        // under the dead-zone gate; 77 lifted 2. The structural gate
+        // (pristine pool capacity) must keep every one of them at level
+        // 0 — a variance shortfall is not a ceiling.
+        for (final seed in [5, 42, 77, 1234]) {
+          for (final division in [1, 2, 8, 12, 13, 14]) {
+            final clubs = engine.generateAiClubs(
+              division,
+              random: _rand(seed),
+              pool: buildPool(),
+            );
+            for (final club in clubs) {
+              for (final p in club.players) {
+                expect(
+                  p.upgradeLevel,
+                  0,
+                  reason: 'div $division seed $seed lifted ${club.name}',
+                );
+              }
+            }
+          }
+        }
+      },
+    );
+
+    test(
+      'synthetic divisions under the 94 clamp never lift (review attempt 1)',
+      () {
+        // Same invariant on the no-pool path, divisions 1..14 (targets
+        // 54..93): the RNG-order fix keeps generation byte-identical and
+        // the ceiling gate keeps the lift off.
+        for (final seed in [5, 42, 77, 1234]) {
+          for (final division in [1, 7, 14]) {
+            final clubs = engine.generateAiClubs(division, random: _rand(seed));
+            for (final club in clubs) {
+              for (final p in club.players) {
+                expect(p.upgradeLevel, 0);
+              }
+            }
+          }
+        }
+      },
+    );
+
     test('division 20 (target 111): every club meets the target ±1', () {
       final clubs = engine.generateAiClubs(20, random: _rand(77));
       final target = engine.config.targetAverageOverall(20);
       expect(target, 111);
       var above99 = 0;
       for (final club in clubs) {
-        // ≥ target − 1: the 1-point dead zone the lift guards against
-        // is the floor, and division 20's gap (94-capped pool vs 111)
-        // is far past it.
+        // ≥ target − 1: per-attr rounding on the lifted values costs at
+        // most a fraction of a point, and division 20's gap (94-capped
+        // generation vs 111) is far past the ceiling gate.
         expect(
           avgEffectiveOverall(club),
           greaterThan(target - 1),

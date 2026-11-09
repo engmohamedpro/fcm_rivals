@@ -228,6 +228,10 @@ class SeasonEngine {
     final tracker = pool == null
         ? null
         : _PoolTracker(pool: pool, exclude: excludePlayerIds, random: random);
+    // The lift's structural gate, computed ONCE from the pristine pool
+    // before any club consumes it: whether the division's target is
+    // reachable without lifting at all.
+    final poolSuppliesTarget = _poolSuppliesTarget(target, tracker);
 
     for (var i = 0; i < count; i++) {
       String name;
@@ -241,10 +245,15 @@ class SeasonEngine {
       names.add(name);
 
       final formation = _pickFormation(random);
+      // RNG consumption order matches the pre-lift parent EXACTLY
+      // (review attempt 1, failure 1) — the parent had a hybrid order:
+      // the pool-path squad is drawn in this local BEFORE the crest and
+      // mentality draws, while the synthetic fallback runs inside the
+      // constructor's argument list AFTER them. Both paths are
+      // reproduced verbatim; only the lift is added at the end.
       final realSquad = tracker == null
           ? null
           : _generateRealSquad(formation, target, tracker);
-      final squad = realSquad ?? _generateSquad(target, formation, random);
       clubs.add(
         AiClubDefinition(
           name: name,
@@ -256,9 +265,14 @@ class SeasonEngine {
           mentality: _pickMentality(random),
           // Past the dataset ceiling the ladder keeps climbing: squads
           // below the division target are lifted onto it with the shared
-          // +N% upgrade math (GDD 9.6, owner decision 2026-11-09). At
-          // achievable targets N is 0 and the squad is untouched.
-          players: _liftToTarget(squad, target),
+          // +N% upgrade math (GDD 9.6, owner decision 2026-11-09). The
+          // gate is structural (see _liftToTarget): divisions whose
+          // ceiling the generator can reach are never lifted.
+          players: _liftToTarget(
+            realSquad ?? _generateSquad(target, formation, random),
+            target,
+            lift: !poolSuppliesTarget,
+          ),
           targetAverageOverall: target,
         ),
       );
@@ -266,39 +280,56 @@ class SeasonEngine {
     return clubs;
   }
 
+  /// The synthetic generator's hard attribute ceiling (review attempt 1,
+  /// failure 2): _generatePlayer clamps every overall at 94, so any
+  /// target above ~91 (94 minus the ±3 spread) is unreachable by
+  /// generation alone — the ladder has genuinely hit the dataset
+  /// ceiling and the lift is the only way forward.
+  static const int _syntheticCeiling = 94;
+
+  /// Whether the division [target] is one the generator can supply
+  /// WITHOUT the lift (review attempt 1, failure 2). Structural, not
+  /// variance-based. Synthetic path: supplies while the target sits at
+  /// or below the 94 clamp. Pool path: judged from the PRISTINE pool
+  /// (every position has a player in the natural ±3 band of the target,
+  /// ignoring what generation has already consumed) — mid-generation
+  /// band exhaustion is normal banding-widening for a 19-club division,
+  /// NOT a ceiling. Variance shortfalls at supplied divisions (gaps of
+  /// 1.6–3.0 points occur at division 1 itself) never lift: those clubs
+  /// stay exactly as generated, byte-identical to pre-lift behavior.
+  bool _poolSuppliesTarget(int target, _PoolTracker? tracker) {
+    if (tracker == null) return target <= _syntheticCeiling;
+    return tracker.pristinePoolSupplies(target);
+  }
+
   /// Lifts a whole club onto the division [target] average overall with a
   /// uniform upgrade level (GDD 9.6, owner decision 2026-11-09): when the
-  /// squad's average base overall is below the target, every player's
-  /// four attributes become `upgradedValue(attr, N)` with
+  /// division's target exceeds what the generator can supply (see
+  /// [_poolSuppliesTarget] — the dataset ceiling), every player's four
+  /// attributes become `upgradedValue(attr, N)` with
   /// N = ceil((target / avg − 1) × 100). Per-club N: weaker bases get a
   /// bigger lift, every club lands on the target — the same
-  /// band-around-target intent the pool tracker has. Clubs already at or
-  /// above the target are returned unchanged (division 1 stays exactly
-  /// as generated). Deterministic: derives from the already-seeded squad,
-  /// no new RNG draws.
+  /// band-around-target intent the pool tracker has. Divisions the
+  /// generator supplies are returned UNCHANGED, whatever the per-club
+  /// variance (byte-identical to pre-lift generation). Deterministic:
+  /// derives from the already-seeded squad, no new RNG draws.
   List<AiPlayerDefinition> _liftToTarget(
     List<AiPlayerDefinition> squad,
-    int target,
-  ) {
-    if (squad.isEmpty) return squad;
+    int target, {
+    required bool lift,
+  }) {
+    if (squad.isEmpty || !lift) return squad;
     // Average over the outfield attributes (ATT/SUP/DEF) — the same
     // three the generation tests and the existing near-target band
     // measure. Counting GK (0 for every outfield player) or the
     // keeper's own 0-ATT would read a synthetic XI ~12 points below
-    // its true strength and lift even division 1.
+    // its true strength and misread the gap.
     var sum = 0.0;
     for (final p in squad) {
       sum += (p.attack + p.support + p.defence) / 3;
     }
     final avg = sum / squad.length;
     if (avg <= 0 || avg >= target) return squad;
-    // The dead zone: the generation spread itself keeps the near-target
-    // band within ±6 (GDD 9.6 tests), so a small shortfall is normal
-    // variance, not a ceiling problem. Lifting there would drift
-    // divisions the pool already supplies (division 1 stays
-    // byte-identical, owner 2026-11-09). The lift engages only when the
-    // squad is a full point short of the target.
-    if (target - avg < 1.0) return squad;
     final level = ((target / avg - 1) * 100).ceil();
     if (level <= 0) return squad;
     return [
@@ -754,6 +785,20 @@ class _PoolTracker {
   final Map<Position, List<AiPoolPlayer>> _byPosition;
   final math.Random random;
   final Set<int> _used = {};
+
+  /// Whether every position has ANY player (used or not) within ±3 of
+  /// [targetOverall] — the pristine capacity judgment for the lift
+  /// gate: generation may exhaust a band mid-division, but the pool
+  /// still supplies that quality level, so lifting is off.
+  bool pristinePoolSupplies(int targetOverall) {
+    for (final candidates in _byPosition.values) {
+      final inBand = candidates.any(
+        (p) => (p.overall - targetOverall).abs() <= 3,
+      );
+      if (!inBand) return false;
+    }
+    return true;
+  }
 
   /// Takes one unused pool player for [position] near [targetOverall],
   /// or null when the position is exhausted. Banding starts at ±3 and
