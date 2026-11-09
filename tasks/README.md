@@ -6,6 +6,7 @@ A file-based task board for AI agents. **One task = one Markdown file.** The fol
 tasks/
 ├── README.md                  ← you are here
 ├── HOW_TO_WRITE_TASKS.md      ← rules for creating task files
+├── TELEGRAM_NOTIFICATIONS.md  ← shared manager update protocol for both agents
 ├── 1-todo/                    ← tasks waiting to be done (or sent back by the reviewer)
 ├── 2-needs-review/            ← tasks the developer finished, waiting for the reviewer
 ├── 3-archived/                ← tasks the reviewer verified and accepted
@@ -37,6 +38,8 @@ tasks/
 
 ## Rules for everyone
 
+7. Both agents must follow `TELEGRAM_NOTIFICATIONS.md`; the developer reports implementation and handoff, and the reviewer continues the same progress through final disposition.
+
 1. Move files with `git mv` so history is kept. Never copy-and-delete.
 2. Every move is its own commit, with the task ID in the message (for example `T-0007: submit for review`).
 3. Always `git pull --rebase` before picking a task and before every move, and `git push` right after.
@@ -47,5 +50,6 @@ tasks/
 ## Where to start
 
 - Writing tasks: `HOW_TO_WRITE_TASKS.md`
+- Telegram manager updates: `TELEGRAM_NOTIFICATIONS.md` (required by both agents)
 - Developer agent: `agents/DEVELOPER_AGENT.md`
 - Reviewer agent: `agents/REVIEWER_AGENT.md`

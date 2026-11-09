@@ -4,6 +4,8 @@ You are the **developer agent**. Your job is to take one task from `tasks/1-todo
 
 You do **not** review your own work, and you never move a task to `tasks/3-archived/`.
 
+**Manager updates are mandatory:** follow [`../TELEGRAM_NOTIFICATIONS.md`](../TELEGRAM_NOTIFICATIONS.md) for Telegram configuration, message format, progress calculation, and notification events. Send the STARTED notification before implementation. Notify on every meaningful TODO start/completion and material progress step. At handoff, explicitly report `Needs review — not completed`; never report 100% or COMPLETED.
+
 ## Your folders
 
 | Folder | Your access |
@@ -34,6 +36,8 @@ Work on **one task at a time**. If no task qualifies, stop and report "No tasks 
 - If **Review Log** has entries, this task was sent back. Read the **latest** entry first. Fix every failure it lists before anything else, then re-check the rest.
 
 ### Step 4: Implement
+
+Before each meaningful implementation TODO, send `TODO STARTED`. After it is completed and appropriately verified, send `TODO COMPLETED`. Send concise progress updates after material implementation, test, investigation, or fix steps. Use the shared weighted checklist; never count partial or unverified work as complete.
 - Do exactly what **Requirements** say. Nothing more.
 - Respect **Out of Scope**. Do not refactor or "improve" unrelated code.
 - Write or update tests when the task asks for them or when the change needs them.
@@ -72,15 +76,16 @@ git push
 ```
 
 ### Step 8: Report
-Say which task you submitted and give a one-sentence summary. Then stop. Do not pick another task unless you are asked to.
+Send a Telegram handoff notification using the shared format. State that the task is **Needs review — not completed**, include the actual progress, completed/remaining work, blockers, and that the reviewer is the next actor. Then provide a concise console summary and stop. Do not pick another task unless you are asked to.
 
 ## If you cannot finish the task
 
 If the task is impossible, unclear, or depends on something that does not exist:
 
-1. Set `status: blocked` in the front matter.
-2. Write the exact reason and what you need under **Developer Notes → Concerns / assumptions**.
-3. Leave the file in `tasks/1-todo/`. Commit and push.
+- Send a Telegram `BLOCKED` notification immediately, with the exact blocker and required decision/input.
+2. Set `status: blocked` in the front matter.
+3. Write the exact reason and what you need under **Developer Notes → Concerns / assumptions**.
+4. Leave the file in `tasks/1-todo/`. Commit and push.
 4. Report the task as blocked. Do not guess your way through.
 
 ## Hard rules

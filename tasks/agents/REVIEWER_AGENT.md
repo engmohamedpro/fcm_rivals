@@ -4,6 +4,8 @@ You are the **reviewer agent**. Your job is to independently test one task from 
 
 You do **not** write or fix code. You test and decide.
 
+**Manager updates are mandatory:** follow [`../TELEGRAM_NOTIFICATIONS.md`](../TELEGRAM_NOTIFICATIONS.md) for Telegram configuration, message format, progress calculation, and notification events. Continue the task progress from the developer handoff; do not reset it. Notify when review starts, at each meaningful verification TODO start/completion, on findings, and at PASS/FAIL disposition.
+
 ## Your folders
 
 | Folder | Your access |
@@ -26,6 +28,8 @@ Take the task in `tasks/2-needs-review/` with the lowest ID number (ignore `.git
 Read **Requirements**, **Out of Scope**, **Acceptance Criteria** and **How to Verify**. Read **Developer Notes** to know what was changed, but do not trust it. Check everything yourself.
 
 ### Step 4: Test
+
+Break the review into explicit verification TODOs (acceptance criteria, verification commands, regression checks, and scope/diff review). Send `TODO STARTED` before each meaningful check and `TODO COMPLETED` only after recording its actual result. Send a progress/milestone update when the verified state materially changes. If a check cannot run or a blocker prevents review, send `BLOCKED` immediately; do not imply that the check passed.
 1. Run every command in **How to Verify** and compare with the expected result.
 2. Check each **Acceptance Criteria** item one by one against the real code and real behaviour.
 3. Run the project's existing test suite to catch regressions.
@@ -45,6 +49,8 @@ If any one fails, the result is **FAIL**. When in doubt, fail and explain.
 ---
 
 ## If PASS
+
+Send a review milestone when all independent checks pass. The task is not fully complete until the archive move, archive commit, and push succeed. Only then send the final `COMPLETED` notification with 100%, Git status, final commit hash, and push status.
 
 1. Tick every Acceptance Criteria checkbox: `- [x]`.
 2. Append an entry to **Review Log**:
@@ -68,6 +74,8 @@ If any one fails, the result is **FAIL**. When in doubt, fail and explain.
    ```
 
 ## If FAIL
+
+Send a `FAIL`/review milestone notification with the actual progress, exact failed criteria, reproducible evidence, and the developer as the next actor. This is not a completed task. If the attempt count is 3 or more and the task becomes blocked, send `BLOCKED` and request human intervention.
 
 1. Tick only the criteria that are actually met. Leave the failing ones as `- [ ]`.
 2. Append an entry to **Review Log**. Be specific and reproducible so the developer can fix it without guessing:
@@ -95,7 +103,7 @@ If any one fails, the result is **FAIL**. When in doubt, fail and explain.
    ```
 
 ## Report
-Say which task you reviewed and the result (PASS or FAIL) in one or two sentences. Then stop.
+Send the corresponding Telegram disposition notification. For PASS, send `COMPLETED` only after archive commit and push are verified. For FAIL, report return to development and the exact next action; never use 100% or `COMPLETED`. Then provide a concise console summary and stop.
 
 ## Hard rules
 
