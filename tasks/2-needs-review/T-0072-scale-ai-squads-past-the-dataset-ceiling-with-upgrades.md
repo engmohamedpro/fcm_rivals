@@ -2,8 +2,8 @@
 id: T-0072
 title: Scale AI squads past the dataset ceiling with upgrade levels
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0070]
 created: 2026-11-09
 completed:
@@ -54,5 +54,11 @@ Expected: analyze clean, suites green; high-division opponents carry lifted (>99
 ---
 
 ## Developer Notes
+
+- **Summary of changes:** `generateAiClubs` now lifts every club onto the division target: after the squad is built (real or synthetic), `_liftToTarget(squad, target)` computes the club's average base overall, and when it is a full point or more below the target it applies a uniform level `N = ceil((target / avg − 1) × 100)` — every player's four attributes become `upgradedValue(attr, N)`, the shared T-0070 math, so AI and user progression are one curve. Weaker bases get bigger lifts; every club lands on the target. Deterministic (derives from the already-seeded squad, no new RNG). `AiPlayerDefinition` gained an optional `upgradeLevel` debug field (default 0, not persisted, no UI). Persistence untouched: lifted effective values are written into the existing `aiPlayers` attribute columns exactly as before. GDD 9.6 documents the dated owner decision.
+- **Files changed:** `lib/features/season/season_engine.dart` (`_liftToTarget` + call site), `lib/features/season/season_ai_models.dart` (`upgradeLevel` field), `docs/fcm_rivals_GDD_SRS.md` (9.6), `test/features/season/season_engine_test.dart` (+5 tests), `tasks/…T-0072….md`.
+- **How I tested it:** `flutter analyze` → No issues found. `test/features/season/season_engine_test.dart` → **29/29** (new: div 1 zero drift with level 0 everywhere + the near-target band still ±6; div 20 target 111 — every club's average effective overall > 110 with attributes > 99 present and level > 0; the real-pool path (buildPool caps at 94) also reaches 111 ±1; same seed twice → identical squads AND lifts; synthetic-only division 25 (target 126) and a 30-player degenerate pool at division 20 both produce full legal 18-man XIs on target). Season suite → **64/64** (all pre-existing generation tests untouched and green). Zero-drift: engine snapshot 1/1 and balance 90/90 with `REGEN_SNAPSHOT` unset. Full `flutter test` → **893/893 green**.
+- **Design decisions the tests forced (documented for review):** (1) The squad average must be computed over the OUTFIELD attributes (ATT/SUP/DEF) — the same basis the generation tests use. My first draft averaged all four, which read goalkeepers' 0-ATT and outfield players' 0-GK as weakness: a division-1 synthetic XI measured 42 instead of 53.5 and got a +30% "lift" at the easiest division. (2) The dead zone is `target − avg < 1.0` on the real gap, not `level ≤ 1`: the spread variance (±3 per player, ±6 tolerated by the near-target band) leaves some clubs 0.3–0.7 under target, and `ceil` would turn that into level 1 — a needless drift for divisions the pool supplies. The task's Requirement 3 (low divisions byte-identical) wins; the 1-point floor is far below the ±1 acceptance tolerance and the div-20 gap of ~17 points dwarfs it. (3) The lift counts BASE overall (pre-lift) for the level, so a club lands at ≥ target − 1 after rounding (per-attr rounding costs at most a fraction of a point), which the div-20 test verifies directly.
+- **Concerns / assumptions:** (1) Levels are uniform per club, exactly as specified — a star and a squad player get the same +N%; per-player targeting would smooth spikes but the spec says uniform. (2) Persisted historical squads (saves mid-career) keep their generated values — only newly generated divisions lift, per Out of Scope. (3) The `upgradeLevel` field is diagnostic; if a later task wants +N badges on opponents, it is already there to read. (4) >99 attributes flow into `computeTotals` and rating displays unchecked by design — T-0073 measures that balance; nothing here clamps them.
 
 ## Review Log
