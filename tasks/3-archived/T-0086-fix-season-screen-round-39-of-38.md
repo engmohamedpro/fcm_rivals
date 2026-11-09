@@ -2,11 +2,11 @@
 id: T-0086
 title: Fix the season screen showing Round 39 of 38
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0086: Fix the season screen showing Round 39 of 38
@@ -43,11 +43,11 @@ The season screen's progress line never shows a round beyond the season's total:
 - The other season-screen texts, layout, or the completed-season flow.
 
 ## Acceptance Criteria
-- [ ] After the last round is played (before completing the season) the screen shows `Round 38 of 38`, never `Round 39 of 38`.
-- [ ] At season start the screen shows `Round 1 of 38`, never `Round 0 of 38`; mid-season it shows the upcoming round.
-- [ ] The displayed round never exceeds `roundsTotal` in any state.
-- [ ] The completed-season line (`Final position: ...`) and the progress bar behave exactly as before.
-- [ ] The four state regression tests exist and are green; `flutter analyze` zero warnings; `flutter test test/features/season/` green; full `flutter test` green.
+- [x] After the last round is played (before completing the season) the screen shows `Round 38 of 38`, never `Round 39 of 38`.
+- [x] At season start the screen shows `Round 1 of 38`, never `Round 0 of 38`; mid-season it shows the upcoming round.
+- [x] The displayed round never exceeds `roundsTotal` in any state.
+- [x] The completed-season line (`Final position: ...`) and the progress bar behave exactly as before.
+- [x] The four state regression tests exist and are green; `flutter analyze` zero warnings; `flutter test test/features/season/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -98,3 +98,11 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran every How to Verify command on HEAD a1122b5 (implementation commit 7009b22): `flutter analyze` → No issues found; `flutter test test/features/season/season_screen_review_test.dart` → 6/6 green (2 pre-existing + the 4 new state tests); `flutter test test/features/season/` → 73/73 green; full `flutter test` → 946/946 green, `REGEN_SNAPSHOT` unset. All counts match the Developer Notes exactly (942 + 4 new = 946).
+- Diff audit (7009b22): the production change is exactly ONE line — the label expression swap to `'Round ${next?.round ?? summary.roundsTotal} of ${summary.roundsTotal}'` (`season_screen.dart:378`). Progress bar, Final-position line, fixture lists and the store/engine untouched — Out of Scope respected (3 files: production line, tests, task file).
+- AC-1 verified by test run: the all-played test asserts its preconditions through the store (`getNextFixture()` null, `isCompleted` false, `roundsPlayed` 38) before reading the UI, then `Round 38 of 38` present and `Round 39 of 38` absent — the reported bug is locked out.
+- AC-2 verified by test run: fresh season reads `Round 1 of 38` with `Round 0 of 38` absent; the mid-season test plays two fixtures through the store's real flow (startNextFixture → simulateToEnd → finish → commitFixtureResult), asserts a next fixture exists beyond round 1, and locks BOTH the new semantic (`Round ${next.round}` present) and the old wrong one (`Round 2 of 38` — the played count — absent).
+- AC-3 verified structurally, not just by the dev's word: the generator loops 0-based (`season_engine.dart:606`, `round` from 0) and the store persists `round: p.round + 1` (`season_store.dart:185`), so a stored next-fixture round is always in 1..roundsTotal; when no fixture remains the `??` branch shows exactly `roundsTotal`. The fresh and all-played tests pin both ends of that domain. The dev's decision not to add a clamp (it would hide a generator bug) is sound — the invariant is structural.
+- AC-4 verified: the completed-season test taps `Complete season` through the UI, confirms `isCompleted` via the store, then asserts `Final position:` shows and NO text containing `Round` remains anywhere; the one-line production diff cannot have moved the progress bar or anything else.
