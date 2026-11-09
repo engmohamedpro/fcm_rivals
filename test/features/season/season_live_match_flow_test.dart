@@ -201,11 +201,9 @@ void main() {
       expect(find.text('Default setup'), findsNothing);
 
       // Close the options sheet — DONE sits below the fold of the
-      // scrollable sheet on this viewport, so drag up first.
-      await tester.drag(
-        find.text('TACTIC OPTIONS'),
-        const Offset(0, -900),
-      );
+      // scrollable sheet (ten sliders tall since T-0064) — reveal it,
+      // then tap.
+      await tester.ensureVisible(find.text('DONE'));
       await _flush(tester, wait: const Duration(milliseconds: 300));
       await tester.tap(find.text('DONE'));
       await _flush(tester, wait: const Duration(milliseconds: 600));

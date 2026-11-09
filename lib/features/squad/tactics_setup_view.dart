@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n_context.dart';
 import '../match/tactics.dart';
 import '../match/tactics_sections.dart';
 import 'formations.dart';
@@ -200,6 +202,7 @@ class _ControlCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = l10nOf(context);
     final formation = formationByCode(formationCode);
     return FcmPanel(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -211,7 +214,12 @@ class _ControlCard extends StatelessWidget {
             children: [
               Flexible(child: _info('TACTICS', tactics.label)),
               const SizedBox(width: 12),
-              Flexible(child: _info('MENTALITY', mentality.displayName)),
+              Flexible(
+                child: _info(
+                  l10n.tacticsMentality.toUpperCase(),
+                  mentalityDisplayName(l10n, mentality),
+                ),
+              ),
               const Spacer(),
               _rating(),
             ],
@@ -316,6 +324,20 @@ class _ControlCard extends StatelessWidget {
   );
 }
 
+/// A mentality's localized display name (T-0064): the seven steps read
+/// their ARB names in both locales — `Mentality.displayName` stays the
+/// engine-facing English constant and is no longer shown to the user.
+String mentalityDisplayName(AppLocalizations l10n, Mentality m) =>
+    switch (m) {
+      Mentality.veryDefensive => l10n.mentalityVeryDefensive,
+      Mentality.defensive => l10n.mentalityDefensive,
+      Mentality.cautious => l10n.mentalityCautious,
+      Mentality.balanced => l10n.mentalityBalanced,
+      Mentality.positive => l10n.mentalityPositive,
+      Mentality.attacking => l10n.mentalityAttacking,
+      Mentality.veryAttacking => l10n.mentalityVeryAttacking,
+    };
+
 /// Opens the tactic options sheet (GDD 10): the custom-tactics sections
 /// and the mentality scale slider — every option listing its visible
 /// percentage effects. The formation lives directly on the control
@@ -387,6 +409,7 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = l10nOf(context);
     final mentality = mentalityFromScale(_mentalityScale);
     // The three instruction sections plus the mentality scale can grow
     // past the viewport (phases 1-3 add controls), so the sheet scrolls
@@ -438,7 +461,7 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
               // under the track updates as steps are crossed (GDD 10.3:
               // effects must be visible).
               _labeledRow(
-                label: 'MENTALITY',
+                label: l10n.tacticsMentality.toUpperCase(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -449,12 +472,20 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
                       // finger but only ever commits/rests on a step,
                       // and the reported scale is always a step
                       // position, so mentalityFromScale(scale) maps
-                      // exactly as before.
+                      // exactly as before. The pill and the end labels
+                      // read the localized names (T-0064).
                       steps: Mentality.values.length,
-                      valueLabel: (v) => mentalityFromScale(v).displayName,
-                      minLabel: Mentality.veryDefensive.displayName,
-                      maxLabel: Mentality.veryAttacking.displayName,
-                      semanticsLabel: 'Mentality',
+                      valueLabel: (v) =>
+                          mentalityDisplayName(l10n, mentalityFromScale(v)),
+                      minLabel: mentalityDisplayName(
+                        l10n,
+                        Mentality.veryDefensive,
+                      ),
+                      maxLabel: mentalityDisplayName(
+                        l10n,
+                        Mentality.veryAttacking,
+                      ),
+                      semanticsLabel: l10n.tacticsMentality,
                       onChanged: (v) => setState(() => _mentalityScale = v),
                       onChangeEnd: _commitMentality,
                     ),

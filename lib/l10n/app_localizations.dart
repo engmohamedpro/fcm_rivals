@@ -871,6 +871,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{n} player(s) injured'**
   String reportInjuries(int n);
+
+  /// No description provided for @tacticsMentality.
+  ///
+  /// In en, this message translates to:
+  /// **'Mentality'**
+  String get tacticsMentality;
+
+  /// No description provided for @mentalityVeryDefensive.
+  ///
+  /// In en, this message translates to:
+  /// **'Very Defensive'**
+  String get mentalityVeryDefensive;
+
+  /// No description provided for @mentalityDefensive.
+  ///
+  /// In en, this message translates to:
+  /// **'Defensive'**
+  String get mentalityDefensive;
+
+  /// No description provided for @mentalityCautious.
+  ///
+  /// In en, this message translates to:
+  /// **'Cautious'**
+  String get mentalityCautious;
+
+  /// No description provided for @mentalityBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get mentalityBalanced;
+
+  /// No description provided for @mentalityPositive.
+  ///
+  /// In en, this message translates to:
+  /// **'Positive'**
+  String get mentalityPositive;
+
+  /// No description provided for @mentalityAttacking.
+  ///
+  /// In en, this message translates to:
+  /// **'Attacking'**
+  String get mentalityAttacking;
+
+  /// No description provided for @mentalityVeryAttacking.
+  ///
+  /// In en, this message translates to:
+  /// **'Very Attacking'**
+  String get mentalityVeryAttacking;
 }
 
 class _AppLocalizationsDelegate

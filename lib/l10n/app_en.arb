@@ -184,5 +184,13 @@
   "injuryKindMuscle": "Muscle injury",
   "injuryKindSerious": "Serious injury",
   "reportInjuries": "{n} player(s) injured",
-  "@reportInjuries": {"placeholders": {"n": {"type": "int"}}}
+  "@reportInjuries": {"placeholders": {"n": {"type": "int"}}},
+  "tacticsMentality": "Mentality",
+  "mentalityVeryDefensive": "Very Defensive",
+  "mentalityDefensive": "Defensive",
+  "mentalityCautious": "Cautious",
+  "mentalityBalanced": "Balanced",
+  "mentalityPositive": "Positive",
+  "mentalityAttacking": "Attacking",
+  "mentalityVeryAttacking": "Very Attacking"
 }

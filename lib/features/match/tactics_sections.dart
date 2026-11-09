@@ -13,6 +13,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../core/ui/fcm_scale_slider.dart';
 import '../../l10n/l10n_context.dart';
 import 'tactics.dart';
 
@@ -159,7 +160,7 @@ class _InPossessionControls extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SegmentedRow<BuildUpStyle>(
+        _SliderRow<BuildUpStyle>(
           label: l10n.tacticsBuildUp,
           values: BuildUpStyle.values,
           selected: ip.buildUp,
@@ -174,7 +175,7 @@ class _InPossessionControls extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _SegmentedRow<AttackTempo>(
+        _SliderRow<AttackTempo>(
           label: l10n.tacticsTempo,
           values: AttackTempo.values,
           selected: ip.tempo,
@@ -188,7 +189,7 @@ class _InPossessionControls extends StatelessWidget {
               onChanged(tactics.copyWith(inPossession: ip.copyWith(tempo: v))),
         ),
         const SizedBox(height: 8),
-        _SegmentedRow<AttackWidth>(
+        _SliderRow<AttackWidth>(
           label: l10n.tacticsWidth,
           values: AttackWidth.values,
           selected: ip.width,
@@ -297,6 +298,108 @@ class _SegmentedRow<T extends Enum> extends StatelessWidget {
   }
 }
 
+
+/// One ordered-instruction axis as a stepped scale slider (T-0064):
+/// the axis label, the shared branded slider with one named step per
+/// enum value, and the SELECTED step's effect summary underneath
+/// updating live during the drag (GDD 10.3). Scale-0 is the safe end,
+/// scale-100 the aggressive end (the T-0063 polarity table) — `values`
+/// order IS that polarity, so `values.first` labels the minimum end and
+/// `values.last` the maximum.
+///
+/// One commit per gesture: `onChangeEnd` fires the owner's [onSelect]
+/// with the full updated tactics object; intermediate ticks only move
+/// the marker, the pill and the summary. Categorical axes
+/// (`FinalThirdApproach`) and bools (the offside trap) are NOT scales —
+/// they keep their chip row / toggle.
+class _SliderRow<T extends Enum> extends StatefulWidget {
+  const _SliderRow({
+    required this.label,
+    required this.values,
+    required this.selected,
+    required this.display,
+    required this.summary,
+    required this.onSelect,
+  });
+
+  final String label;
+  final List<T> values;
+  final T selected;
+  final String Function(T) display;
+  final String Function(T) summary;
+  final ValueChanged<T> onSelect;
+
+  @override
+  State<_SliderRow<T>> createState() => _SliderRowState<T>();
+}
+
+class _SliderRowState<T extends Enum> extends State<_SliderRow<T>> {
+  /// The row's live scale position — the committed step at rest, the
+  /// finger's snapped step during a drag (the pill and the summary
+  /// under the track follow it live, GDD 10.3).
+  late int _scale = enumToScale(widget.values, widget.selected);
+
+  @override
+  void didUpdateWidget(_SliderRow<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Follow the owner's committed step unless it is just echoing our
+    // own release back at us (the slider guards the same seam).
+    if (widget.selected != oldWidget.selected) {
+      final committed = enumToScale(widget.values, widget.selected);
+      if (committed != _scale) _scale = committed;
+    }
+  }
+
+  void _onChanged(int v) => setState(() => _scale = v);
+
+  void _onCommit(int v) {
+    setState(() => _scale = v);
+    widget.onSelect(enumFromScale(widget.values, v));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final step = enumFromScale(widget.values, _scale);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          widget.label.toUpperCase(),
+          style: TextStyle(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        FcmScaleSlider(
+          value: enumToScale(widget.values, widget.selected),
+          steps: widget.values.length,
+          valueLabel: (v) => widget.display(
+            enumFromScale(widget.values, v),
+          ),
+          minLabel: widget.display(widget.values.first),
+          maxLabel: widget.display(widget.values.last),
+          semanticsLabel: widget.label,
+          onChanged: _onChanged,
+          onChangeEnd: _onCommit,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          widget.summary(step),
+          style: TextStyle(
+            color: theme.colorScheme.primary,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// A compact selectable chip matching the app's tactic-option look.
 class _OptionChip extends StatelessWidget {
   const _OptionChip({
@@ -359,7 +462,7 @@ class _OutOfPossessionControls extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SegmentedRow<DefensiveLine>(
+        _SliderRow<DefensiveLine>(
           label: l10n.tacticsDefensiveLine,
           values: DefensiveLine.values,
           selected: oop.defensiveLine,
@@ -374,7 +477,7 @@ class _OutOfPossessionControls extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _SegmentedRow<PressingIntensity>(
+        _SliderRow<PressingIntensity>(
           label: l10n.tacticsPressing,
           values: PressingIntensity.values,
           selected: oop.pressing,
@@ -389,7 +492,7 @@ class _OutOfPossessionControls extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _SegmentedRow<TacklingAggression>(
+        _SliderRow<TacklingAggression>(
           label: l10n.tacticsTackling,
           values: TacklingAggression.values,
           selected: oop.tackling,
@@ -474,7 +577,7 @@ class _TransitionsControls extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SegmentedRow<CounterPress>(
+        _SliderRow<CounterPress>(
           label: l10n.tacticsCounterPress,
           values: CounterPress.values,
           selected: tr.counterPress,
@@ -489,7 +592,7 @@ class _TransitionsControls extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _SegmentedRow<AttackOnRecovery>(
+        _SliderRow<AttackOnRecovery>(
           label: l10n.tacticsAttackOnRecovery,
           values: AttackOnRecovery.values,
           selected: tr.attackOnRecovery,
@@ -504,7 +607,7 @@ class _TransitionsControls extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _SegmentedRow<RestDefence>(
+        _SliderRow<RestDefence>(
           label: l10n.tacticsRestDefence,
           values: RestDefence.values,
           selected: tr.restDefence,

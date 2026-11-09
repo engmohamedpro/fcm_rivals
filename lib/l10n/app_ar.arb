@@ -137,5 +137,13 @@
   "injuryKindMuscle": "إصابة عضلية",
   "injuryKindSerious": "إصابة خطيرة",
   "reportInjuries": "{n} لاعب مصاب",
-  "@reportInjuries": {"placeholders": {"n": {"type": "int"}}}
+  "@reportInjuries": {"placeholders": {"n": {"type": "int"}}},
+  "tacticsMentality": "العقلية",
+  "mentalityVeryDefensive": "دفاعي للغاية",
+  "mentalityDefensive": "دفاعي",
+  "mentalityCautious": "حذر",
+  "mentalityBalanced": "متوازن",
+  "mentalityPositive": "إيجابي",
+  "mentalityAttacking": "هجومي",
+  "mentalityVeryAttacking": "هجومي للغاية"
 }
