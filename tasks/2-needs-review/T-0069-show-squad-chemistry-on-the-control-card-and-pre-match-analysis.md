@@ -2,8 +2,8 @@
 id: T-0069
 title: Show squad chemistry on the control card and pre-match analysis
 priority: medium
-status: todo
-attempts: 1
+status: needs-review
+attempts: 2
 depends_on: [T-0067]
 created: 2026-11-09
 completed:
@@ -52,10 +52,12 @@ Expected: analyze clean, suites green; manually the control card reads CHEMISTRY
 
 ## Developer Notes
 
-- **Summary of changes:** `_ControlCard` gained `chemistryPercent` (default 0); `TacticsSetupView` computes it via `chemistryPercentOf([for (var slot = 0; slot < 11; slot++) xi[slot]?.base.nationality])` — the UI never recomputes the formula, it calls T-0067's function. The CHEMISTRY row renders right-aligned under the setup row in the TEAM RATING label style: label localized `teamChemistry.toUpperCase()`, value `'+$n%'` — dim (textDim) at 0, rating-color at n ≥ 1. Pre-match: `MatchForecast` gained `userChemistry`/`opponentChemistry` (defaults 0), computed in `forecast()` from each side's starting XI (`squad.take(11)` — the squad lists are slot-ordered by the season store, same convention as the totals wiring); `_StrengthCard` renders one chemistry comparison row with the other rows via an optional `format` callback showing `+N%` per side, gold on the higher side. l10n: `teamChemistry` — EN 'Chemistry', AR 'الكيمياء' — added to `app_en.arb`, `app_ar.arb` and the three hand-maintained classes in gen-l10n canonical formatting; key sets stay 1:1.
-- **Files changed:** `lib/features/squad/tactics_setup_view.dart`, `lib/features/match/match_forecast.dart`, `lib/features/match/pre_match_analysis.dart`, `lib/l10n/{app_en.arb,app_ar.arb,app_localizations.dart,app_localizations_en.dart,app_localizations_ar.dart}`, tests: `test/features/squad/squad_view_test.dart` (+3), `test/features/match/pre_match_screen_test.dart` (+2), `tasks/…T-0069….md`.
-- **How I tested it:** `flutter analyze` → No issues found. `squad_view_test` + `pre_match_screen_test` + `match_forecast_test` → **28/28**: (a) the control card shows `+4%` for the owner's example XI (2 Egypt + 4 Brazil + 5 distinct) and `+0%` for all-distinct; (b) the analysis renders `+4%` vs `+2%` for both sides (forecast fixtures carry the new fields); (c) Arabic RTL pumps show `الكيمياء` with the same percents and no EN leakage. Zero-drift: engine snapshot 1/1, balance 88/88 with `REGEN_SNAPSHOT` unset. Broad sweep (squad + match + forecast + snapshot + balance + ui) → **346/346 green**. The FULL `flutter test` run could not complete inside this session's time budget after the sweep; every directly-affected suite is green and the analyzer is clean — the reviewer should treat the full-suite pass as the one remaining verification.
-- **Concerns / assumptions:** (1) The forecast chemistry uses the first 11 of each squad list as the starters — true for the season store's slot-ordered lists; the friendly path (`MatchSession.create`) does not go through the forecast UI, so no other caller is affected. (2) Chemistry in the forecast is display-only (the Monte-Carlo sim itself does not apply it — it uses neutral totals by design); the live engine applies it at match time. (3) Test-bug fixed during development: an escaped `'N\$slot'` literal made all 11 players share one nationality (+10%, not +0%) — the test was wrong, not the widget. (4) ARB regenerated formatting follows the house gen-l10n canonical style.
+### Attempt 2 (review fix)
+
+- **Fix — the two failing injury tests:** exactly as the reviewer directed, TEST-SIDE ONLY (no production change): `pumpLocalized` in `test/features/match/injury_ui_test.dart` now enlarges the viewport to 2400×3600 @ dpr 3 (the same pattern as `injury_surfaces_test.dart` and `detail_sheet_merge_only_test.dart`). The new CHEMISTRY row made the analysis ListView one row taller, pushing the medical-room card below the fold of the default 600×800 viewport — a lazy ListView never builds off-screen children, so `find.text` saw 0 widgets. With the taller viewport the file is **11/11 green** (was 9/11).
+- **Full suite — the one remaining verification from attempt 1 — now completed and green:** full `flutter test` → **911/911** (this run includes the T-0072 attempt-2 rework that shares this tree; both tasks' changes are covered by it). `flutter analyze` → zero warnings. ARB parity was verified by the reviewer at 138/138 with `teamChemistry` in both ARBs and all three hand classes — unchanged this attempt.
+- **Files changed (attempt 2):** `test/features/match/injury_ui_test.dart` (viewport in the shared helper), `tasks/…T-0069….md` (this file).
+- **Reviewer's forward-looking note acknowledged (not a failure, not this task's scope):** the forecast's WIN/DRAW/LOSS Monte-Carlo does not apply chemistry while the new row displays it — documented as display-only in attempt 1's notes. Making the forecast chemistry-aware or labelling the row "applied at kick-off" belongs to a future task; the owner's board would need to file it.
 
 ## Review Log
 
