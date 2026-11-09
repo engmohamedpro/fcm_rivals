@@ -710,9 +710,9 @@ void main() {
         reason: 'the sequence must reach the done mark',
       );
 
-      // KEEP pops the reveal; the fullscreen-dialog exit transition then
-      // needs its own pumps before the route is gone.
-      await tester.tap(find.text('KEEP PLAYER'));
+      // BACK (T-0085: the last card's resolver) pops the reveal; the
+      // fullscreen-dialog exit transition then needs its own pumps.
+      await tester.tap(find.text('BACK'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
@@ -751,6 +751,12 @@ void main() {
   /// the shared prefix of the two T-0084 regression tests below. GK is
   /// a single-slot starter position (exactly 2 granted rare packs), and
   /// the capsule sits on the action bar once the timeline is done.
+  ///
+  /// The draw is NOT seeded in these tests (randomProvider is an
+  /// unseeded Random), so the drawn GK can be any rarity — standard 8s,
+  /// legendary 13s or premium 20s timeline. Pump UNTIL the action bar
+  /// is live (keep-fade opacity 1) instead of a fixed budget, bounded
+  /// well past the 20s premium timeline.
   Future<void> openGkIntoFinishedReveal(WidgetTester tester) async {
     final gkCell = find
         .byKey(const ValueKey('store-pack-position-GK-rare'))
@@ -763,10 +769,13 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 200));
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+      final bar = tester.widget<AnimatedOpacity>(
+        find.byKey(const ValueKey('keep-fade')),
+      );
+      if (bar.opacity == 1.0) break;
     }
-    await tester.pump(const Duration(seconds: 8));
     await tester.pump(const Duration(milliseconds: 400));
   }
 

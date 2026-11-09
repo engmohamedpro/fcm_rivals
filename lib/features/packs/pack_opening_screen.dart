@@ -152,6 +152,10 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   bool _selling = false;
   bool _chaining = false;
 
+  /// Cards already sold this reveal (T-0085): the last card STAYS on
+  /// screen after its sale, so its SELL must not run twice.
+  final Set<int> _sold = {};
+
   /// Balance re-read from the caller after a mid-reveal sale — the
   /// snapshot in [PackChainInfo] predates any SELL credit.
   int? _liveBalance;
@@ -186,9 +190,17 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   /// owned id — preview draws (key men) have nothing to sell.
   bool get _canSell => widget.onSell != null && _index < widget.ownedIds.length;
 
-  /// Sells the revealed player, then advances exactly like KEEP.
+  /// This card was already sold (T-0085): its SELL shows the SOLD mark
+  /// and cannot run again.
+  bool get _soldCard => _sold.contains(_index);
+
+  /// Sells the revealed player. An earlier card of a multi-draw then
+  /// advances exactly like NEXT PLAYER; the LAST card stays on the
+  /// reveal after its sale (T-0085) — the card is visibly marked sold
+  /// so it cannot sell twice, and BACK / OPEN ANOTHER remain usable.
   Future<void> _sell() async {
     if (_selling) return;
+    final isLastCard = _index == widget.players.length - 1;
     setState(() => _selling = true);
     _haptic(HapticFeedback.lightImpact);
     try {
@@ -203,6 +215,13 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
       return;
     }
     if (!mounted) return;
+    if (isLastCard) {
+      setState(() {
+        _selling = false;
+        _sold.add(_index);
+      });
+      return;
+    }
     _next();
   }
 
@@ -313,6 +332,11 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
       Navigator.of(context).pop();
     }
   }
+
+  /// BACK on the last card (T-0085): the card is kept — it is already
+  /// owned, keeping needs no store call — and the reveal pops without
+  /// chaining. Same semantics the KEEP PLAYER pop had.
+  void _back() => Navigator.of(context).pop();
 
   @override
   Widget build(BuildContext context) {
@@ -749,8 +773,27 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                             key: const ValueKey('reveal-actions'),
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              // T-0085 row order: the resolver FIRST
+                              // (NEXT PLAYER on earlier cards, BACK on
+                              // the last), SELL LAST. Row order follows
+                              // the text direction, so RTL mirrors it.
                               Row(
                                 children: [
+                                  Expanded(
+                                    child: FcmButton(
+                                      onPressed: _index <
+                                              widget.players.length - 1
+                                          ? _next
+                                          : _back,
+                                      icon: _index < widget.players.length - 1
+                                          ? Icons.arrow_forward_rounded
+                                          : Icons.arrow_back_rounded,
+                                      label: _index < widget.players.length - 1
+                                          ? 'NEXT PLAYER  ${_index + 1}/${widget.players.length}'
+                                          : 'BACK',
+                                    ),
+                                  ),
+                                  if (_canSell) const SizedBox(width: 10),
                                   if (_canSell)
                                     Expanded(
                                       child: FcmButton(
@@ -758,26 +801,18 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                                         // The coin value the caller pays for THIS
                                         // player — a fresh pack draw is unupgraded —
                                         // shown with the same C coin as the top bar.
-                                        label: 'SELL',
-                                        coinValue: EconomyEngine().sellPriceOf(
-                                          _player,
-                                        ),
+                                        label: _soldCard ? 'SOLD' : 'SELL',
+                                        coinValue: _soldCard
+                                            ? null
+                                            : EconomyEngine().sellPriceOf(
+                                                _player,
+                                              ),
                                         loading: _selling,
-                                        onPressed: _selling ? null : _sell,
+                                        onPressed: (_selling || _soldCard)
+                                            ? null
+                                            : _sell,
                                       ),
                                     ),
-                                  if (_canSell) const SizedBox(width: 10),
-                                  Expanded(
-                                    child: FcmButton(
-                                      onPressed: _next,
-                                      icon: _index < widget.players.length - 1
-                                          ? Icons.arrow_forward_rounded
-                                          : Icons.check_rounded,
-                                      label: _index < widget.players.length - 1
-                                          ? 'NEXT PLAYER  ${_index + 1}/${widget.players.length}'
-                                          : 'KEEP PLAYER',
-                                    ),
-                                  ),
                                 ],
                               ),
                               if (_showChain) ...[

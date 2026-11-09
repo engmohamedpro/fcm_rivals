@@ -174,7 +174,7 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('RARE'), findsOneWidget);
-    expect(find.text('KEEP PLAYER'), findsOneWidget);
+    expect(find.text('BACK'), findsOneWidget);
     // SELL carries the player's coin value (overall 55 → the economy's
     // sell price of a 90M-market-value player) behind the same C coin
     // glyph as the top-bar balance.
@@ -188,7 +188,9 @@ void main() {
     expect(done.opacity, 1);
   });
 
-  testWidgets('SELL sells the revealed player and moves on', (tester) async {
+  testWidgets('SELL sells an earlier card and advances to the next', (
+    tester,
+  ) async {
     final sold = <int>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -201,18 +203,20 @@ void main() {
     );
     await _revealAll(tester);
 
+    // T-0085 order: resolver first, SELL last.
     await tester.tap(find.textContaining('SELL'));
     await tester.pump();
     // The sale ran for the FIRST player's owned id…
     expect(sold, [501]);
     // …and the sequence advanced to the second (last) player, whose
-    // action row offers KEEP PLAYER.
+    // action row now offers BACK (T-0085) with SELL after it.
     await tester.pump(const Duration(seconds: 8));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('KEEP PLAYER'), findsOneWidget);
+    expect(find.text('BACK'), findsOneWidget);
+    expect(find.text('KEEP PLAYER'), findsNothing);
   });
 
-  testWidgets('KEEP advances without selling', (tester) async {
+  testWidgets('NEXT PLAYER advances without selling', (tester) async {
     final sold = <int>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -230,7 +234,9 @@ void main() {
     expect(sold, isEmpty);
     await tester.pump(const Duration(seconds: 8));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('KEEP PLAYER'), findsOneWidget);
+    // The last card's resolver is BACK now (T-0085).
+    expect(find.text('BACK'), findsOneWidget);
+    expect(find.text('KEEP PLAYER'), findsNothing);
   });
 
   testWidgets('no onSell callback — SELL is hidden, KEEP works alone', (
@@ -258,8 +264,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await _revealAll(tester);
     expect(find.textContaining('SELL'), findsNothing);
-    expect(find.text('KEEP PLAYER'), findsOneWidget);
-    await tester.tap(find.text('KEEP PLAYER'), warnIfMissed: false);
+    expect(find.text('KEEP PLAYER'), findsNothing);
+    // Preview draws: the single full-width resolver is BACK (T-0085).
+    expect(find.text('BACK'), findsOneWidget);
+    await tester.tap(find.text('BACK'), warnIfMissed: false);
     // The pop runs synchronously; the fullscreen-dialog exit
     // transition then unwinds across the next frames.
     await tester.pump();
@@ -269,6 +277,149 @@ void main() {
     // The single player is kept and the reveal pops back to the pusher.
     expect(find.byType(PackOpeningScreen), findsNothing);
     expect(find.text('PUSH'), findsOneWidget);
+  });
+
+  testWidgets('T-0085: BACK pops the reveal without selling or chaining', (
+    tester,
+  ) async {
+    final sold = <int>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => FilledButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<bool>(
+                fullscreenDialog: true,
+                builder: (_) => PackOpeningScreen(
+                  players: [_player()],
+                  ownedIds: const [501],
+                  onSell: (ownedId) async => sold.add(ownedId),
+                  chainInfo: const PackChainInfo(
+                    price: 26_000,
+                    balance: 50_000,
+                    ownedCount: 0,
+                    title: 'Rare Global Pack',
+                  ),
+                ),
+              ),
+            ),
+            child: const Text('PUSH'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('PUSH'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await _revealAll(tester);
+
+    // The chain capsule is offered (affordable), but BACK resolves the
+    // card WITHOUT chaining: the route pops with NO result — not `true`.
+    await tester.tap(find.text('BACK'), warnIfMissed: false);
+    await tester.pump();
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byType(PackOpeningScreen), findsNothing);
+    expect(sold, isEmpty, reason: 'BACK keeps the card — no sale');
+    expect(find.text('PUSH'), findsOneWidget);
+  });
+
+  testWidgets(
+    'T-0085: SELL on the LAST card stays on the reveal — SOLD mark, '
+    'no double sell, chain still tappable',
+    (tester) async {
+      var sellCalls = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PackOpeningScreen(
+            players: [_player()],
+            ownedIds: const [501],
+            onSell: (ownedId) async => sellCalls++,
+            chainInfo: const PackChainInfo(
+              price: 26_000,
+              balance: 50_000,
+              ownedCount: 3,
+              title: 'Rare Global Pack',
+            ),
+          ),
+        ),
+      );
+      await _revealAll(tester);
+
+      // SELL the last card: the screen STAYS (T-0085)…
+      await tester.tap(find.textContaining('SELL'));
+      await tester.pump();
+      expect(find.byType(PackOpeningScreen), findsOneWidget);
+      expect(sellCalls, 1);
+
+      // …the card is visibly sold: the steel button reads SOLD with no
+      // coin value and no enabled SELL remains…
+      expect(find.text('SOLD'), findsOneWidget);
+      expect(
+        find.text(FcmCoinChip.compact(
+          EconomyEngine().sellPriceOf(_player()),
+        )),
+        findsNothing,
+        reason: 'the sold card shows no price anymore',
+      );
+
+      // …a second tap on the sold mark does NOT sell again…
+      await tester.tap(find.text('SOLD'), warnIfMissed: false);
+      await tester.pump();
+      expect(sellCalls, 1, reason: 'the sold card cannot sell twice');
+
+      // …and the chain capsule is still offered — BACK too.
+      expect(find.text('OPEN ANOTHER'), findsOneWidget);
+      expect(find.text('FREE ×3'), findsOneWidget);
+      expect(find.text('BACK'), findsOneWidget);
+
+      // BACK then still pops the reveal.
+      await tester.tap(find.text('BACK'), warnIfMissed: false);
+      await tester.pump();
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.byType(PackOpeningScreen), findsNothing);
+    },
+  );
+
+  testWidgets('T-0085: the action row order mirrors in Arabic (RTL)', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('ar'),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: PackOpeningScreen(
+            players: [_player(), _player(overall: 60)],
+            ownedIds: const [501, 502],
+            onSell: (ownedId) async {},
+          ),
+        ),
+      ),
+    );
+    await _revealAll(tester);
+
+    // In RTL the resolver still sits at the row's START — the RIGHT
+    // edge — and SELL at the END (LEFT edge): Row order follows the
+    // text direction, so the T-0085 layout mirrors automatically.
+    final next = tester.getTopRight(find.text('NEXT PLAYER  1/2'));
+    final sell = tester.getTopLeft(find.textContaining('SELL'));
+    expect(next.dx, greaterThan(sell.dx),
+        reason: 'RTL: NEXT PLAYER starts at the right edge');
+
+    // Advance to the last card: BACK at the start (right), SELL last
+    // (left).
+    await tester.tap(find.text('NEXT PLAYER  1/2'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump(const Duration(milliseconds: 400));
+    final back = tester.getTopRight(find.text('BACK'));
+    final sellLast = tester.getTopLeft(find.textContaining('SELL'));
+    expect(back.dx, greaterThan(sellLast.dx),
+        reason: 'RTL: BACK starts at the right edge, SELL ends at the left');
   });
 
   testWidgets('a legendary pull runs a much longer, special timeline', (
@@ -346,7 +497,7 @@ void main() {
         find.byKey(const ValueKey('keep-fade')),
       );
       expect(done.opacity, 1);
-      expect(find.text('KEEP PLAYER'), findsOneWidget);
+      expect(find.text('BACK'), findsOneWidget);
     },
   );
 
@@ -369,7 +520,7 @@ void main() {
     // mark): well inside 8s the action row is back and he is KEPT last.
     await tester.pump(kStandardRevealDuration);
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('KEEP PLAYER'), findsOneWidget);
+    expect(find.text('BACK'), findsOneWidget);
     expect(find.text('RARE'), findsOneWidget);
   });
 
