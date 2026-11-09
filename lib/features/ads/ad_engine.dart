@@ -17,7 +17,6 @@ class AdConfig {
     this.boostedRecoveryBonus = 0.15,
     this.boostedRecoveryCap = 100,
     this.matchReplayWindowHours = 24,
-    this.upgradeDiscountFraction = 0.20,
     this.sellingBonusFraction = 0.20,
     this.dailyRewardMultiplier = 1.5,
     this.seasonRewardMultiplier = 1.25,
@@ -39,9 +38,6 @@ class AdConfig {
 
   /// How long after full time a match replay stays available.
   final int matchReplayWindowHours;
-
-  /// Upgrade cost discount fraction (GDD 19.3 'Upgrade cost discount').
-  final double upgradeDiscountFraction;
 
   /// Selling bonus fraction (GDD 19.3 'Player selling bonus').
   final double sellingBonusFraction;
@@ -217,18 +213,6 @@ class AdEngine {
         staminaAfterNaturalRecovery +
         naturalRecovery * config.boostedRecoveryBonus;
     return boosted.round().clamp(0, config.boostedRecoveryCap).toDouble();
-  }
-
-  /// Discounted upgrade price (GDD 19.3 'Upgrade cost discount'): the
-  /// flat fraction off, floored at 50 coins so an upgrade never becomes
-  /// free (or at the full price when that is already lower). Exactly one
-  /// discount applies per purchase — the store consumes the boost when
-  /// it is used.
-  int discountedUpgradeCost(int fullCost) {
-    final discounted = (fullCost * (1 - config.upgradeDiscountFraction))
-        .round();
-    if (fullCost <= 50) return fullCost;
-    return discounted.clamp(50, fullCost);
   }
 
   /// Selling bonus (GDD 19.3 'Player selling bonus'): the fraction added

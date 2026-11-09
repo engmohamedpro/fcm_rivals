@@ -462,7 +462,9 @@ void main() {
       expect(economy.economicValueOf(50_000_000), 30_000);
     });
 
-    test('upgrade cost curve: each level costs 1.5x the previous', () {
+    test('duplicates are the only upgrade currency (owner 2026-11-09)', () {
+      // The coin upgrade curve is gone; what remains checkable here is
+      // that a merged duplicate still prices into resale value.
       final base = pool.firstWhere(
         (p) => p.marketValueEur == 50_000_000,
         orElse: () => pool.reduce(
@@ -473,12 +475,10 @@ void main() {
               : b,
         ),
       );
-      final l0 = economy.upgradeCostOf(base, 0);
-      final l1 = economy.upgradeCostOf(base, 1);
-      final l2 = economy.upgradeCostOf(base, 2);
-      expect(l1 / l0, closeTo(1.5, 0.05));
-      expect(l2 / l1, closeTo(1.5, 0.05));
-      expect(l0, greaterThan(0));
+      final sale = economy.sellPriceOf(base);
+      final upgradedResale = economy.sellPriceOfUpgraded(base, 1);
+      expect(sale, greaterThan(0));
+      expect(upgradedResale, greaterThan(sale));
     });
   });
 

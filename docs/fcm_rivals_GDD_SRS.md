@@ -488,14 +488,12 @@ They must never modify the global Base Player record.
 
 ### 8.4 Upgrade Costs
 
-Upgrade costs depend on:
-
-- Current Market Value.
-- Current Upgrade Level.
-
-Higher Market Value and higher upgrade levels require more Coins.
-
-The Economy Engine calculates all costs.
+Upgrades cost duplicate cards only (owner decision 2026-11-09,
+replacing the former coin-cost rule): a player card is upgraded ONLY by
+merging another owned copy of the same player — merging stays free.
+There is no coin-purchase upgrade path and no upgrade cost formula; the
+duplicate IS the currency. Selling an upgraded copy still prices the
+level (+10% economic value per level).
 
 ---
 

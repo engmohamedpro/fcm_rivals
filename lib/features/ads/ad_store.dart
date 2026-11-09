@@ -209,28 +209,6 @@ class AdStore {
     );
   }
 
-  /// Whether an upgrade purchased now benefits from the ad discount, and
-  /// the discounted price (GDD 19.3 'Upgrade cost discount'). The boost
-  /// is consumed by [consumeUpgradeDiscount] once the purchase runs —
-  /// validation and consumption are separate so the UI can display the
-  /// discounted price before charging.
-  Future<bool> upgradeDiscountActive(int clubId, {DateTime? now}) async {
-    return await _kindUsedSince(
-      clubId,
-      AdRewardKind.upgradeDiscount,
-      _startOfDailyWindow(now),
-    );
-  }
-
-  Future<void> consumeUpgradeDiscount(int clubId, {DateTime? now}) async {
-    await _consumeOldestGrant(
-      clubId,
-      AdRewardKind.upgradeDiscount,
-      DateTime(2000),
-      now: now,
-    );
-  }
-
   /// Whether a sale right now earns the ad selling bonus (GDD 19.3
   /// 'Player selling bonus'). Consumed by [consumeSellingBonus] with the
   /// sale it applied to.

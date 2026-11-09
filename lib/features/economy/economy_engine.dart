@@ -28,8 +28,6 @@ class EconomyConfig {
     this.minEconomicValue = 5,
     this.maxEconomicValue = 600_000,
     this.sellingPercentage = 0.6,
-    this.upgradeValueMultiplier = 0.35,
-    this.upgradeLevelGrowth = 1.5,
     this.packMarginMultiplier = 1.25,
     // Rebalance Ch.8: at the flat 1.25x margin a Legendary pack was the
     // cheapest power-per-coin purchase in the store (~4.2 matches per
@@ -70,11 +68,6 @@ class EconomyConfig {
 
   /// Percentage of economic value returned when selling (GDD 17.3).
   final double sellingPercentage;
-
-  /// Upgrade economics: base cost = economic value * multiplier; grows with
-  /// level by [upgradeLevelGrowth]^level (GDD 8.4).
-  final double upgradeValueMultiplier;
-  final double upgradeLevelGrowth;
 
   /// Pack price = expected economic value of contents * margin (GDD 5.5).
   final double packMarginMultiplier;
@@ -137,16 +130,6 @@ class EconomyEngine {
     final ev = economicValueOf(player.marketValueEur);
     final upgraded = ev * (1 + 0.10 * upgradeLevel);
     return (upgraded * config.sellingPercentage).round();
-  }
-
-  /// Coin cost of the next upgrade for an owned copy (GDD 8.4).
-  int upgradeCostOf(BasePlayer player, int currentUpgradeLevel) {
-    final ev = economicValueOf(player.marketValueEur);
-    final cost =
-        ev *
-        config.upgradeValueMultiplier *
-        math.pow(config.upgradeLevelGrowth, currentUpgradeLevel + 1);
-    return cost.round().clamp(50, config.maxEconomicValue);
   }
 
   /// Match reward in Coins (GDD 17.6): a goals-scored baseline (par),

@@ -76,12 +76,8 @@ void main() {
 
     tearDown(() async => db.close());
 
-    test('engine math: discount, selling bonus, reward multipliers', () {
+    test('engine math: selling bonus, reward multipliers', () {
       const engine = AdEngine();
-      // Discount: 20% off, never below 50.
-      expect(engine.discountedUpgradeCost(1000), 800);
-      expect(engine.discountedUpgradeCost(60), 50);
-      expect(engine.discountedUpgradeCost(40), 40); // below floor stays full
       // Selling bonus: +20%.
       expect(engine.sellingBonus(500), 600);
       expect(engine.sellingBonus(0), 0);
@@ -132,48 +128,6 @@ void main() {
           ),
           throwsA(isA<AdException>()),
         );
-      },
-    );
-
-    test(
-      'upgrade discount: buyUpgrade charges less and consumes the boost',
-      () async {
-        // Open packs so the club owns sellable/upgradeable cards.
-        for (final pack in await collection.getAvailablePacks()) {
-          await collection.openPack(packId: pack.id, random: math.Random(17));
-        }
-        final club = (await collection.getClub())!;
-        final cards = await collection.getCollection();
-        final card = cards.first;
-        final fullCost = const EconomyEngine().upgradeCostOf(
-          card.base,
-          card.upgradeLevel,
-        );
-
-        // No boost: full price.
-        final full = await collection.buyUpgrade(ownedId: card.ownedId);
-        expect(full.discountApplied, isFalse);
-        expect(full.coins, fullCost);
-        expect(full.upgradeLevel, 1);
-
-        // Grant the discount, buy again: cheaper, boost consumed.
-        await ads.grantBoost(
-          clubId: clubId,
-          kind: AdRewardKind.upgradeDiscount,
-          playbackCompleted: true,
-        );
-        expect(await ads.upgradeDiscountActive(clubId), isTrue);
-        final discounted = await collection.buyUpgrade(
-          ownedId: card.ownedId,
-        );
-        expect(discounted.discountApplied, isTrue);
-        expect(discounted.coins, lessThan(discounted.fullCost));
-        // Consumed: a third purchase is full price again.
-        expect(await ads.upgradeDiscountActive(clubId), isFalse);
-
-        // Coins moved exactly by the charged prices.
-        final after = (await collection.getClub())!;
-        expect(after.coins, club.coins - full.coins - discounted.coins);
       },
     );
 

@@ -119,28 +119,3 @@ class DatasetUpdateReport {
   int get totalCompensation => compensations.fold(0, (a, c) => a + c.coins);
 }
 
-/// Result of buying one upgrade level with coins (GDD 8.4).
-class UpgradePurchaseResult {
-  const UpgradePurchaseResult({
-    required this.ownedId,
-    required this.playerName,
-    required this.upgradeLevel,
-    required this.coins,
-    required this.fullCost,
-    required this.discountApplied,
-  });
-
-  final int ownedId;
-  final String playerName;
-  final int upgradeLevel;
-
-  /// Coins actually charged (the discounted price when an ad discount
-  /// applied).
-  final int coins;
-
-  /// Undiscounted Economy Engine price.
-  final int fullCost;
-
-  /// Whether the GDD 19.3 ad discount was applied (and consumed).
-  final bool discountApplied;
-}

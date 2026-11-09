@@ -236,36 +236,29 @@ void main() {
     });
   });
 
-  group('sink curves — upgrades & facilities', () {
-    test('upgrade curve: affordable early, steep late, capped', () {
-      final ev2m = economy.economicValueOf(2_000_000);
-      final costs = [
-        for (var level = 0; level < 5; level++)
-          economy.upgradeCostOf(_fakePlayer(2_000_000), level),
-      ];
-      expect(costs[0], closeTo(ev2m * 0.35 * 1.5, 5));
-      for (var i = 1; i < costs.length; i++) {
-        expect(costs[i], closeTo(costs[i - 1] * 1.5, 2));
-      }
-      final total = costs.fold<int>(0, (a, c) => a + c);
-      expect(total, inInclusiveRange(10_000, 120_000));
-      final star = economy.upgradeCostOf(_fakePlayer(50_000_000), 0);
-      expect(star, greaterThan(15_000));
-    });
+  group('sink curves — duplicates & facilities', () {
+    // The coin upgrade curve is gone (owner decision 2026-11-09):
+    // duplicates are the only upgrade currency, so the upgrade sink is
+    // measured in pack draws, not coins. What still matters economically
+    // is the upgraded resale pricing (kept) and the facilities curve
+    // (kept below).
 
-    test('sell-after-upgrade never exceeds the coins spent upgrading', () {
+    test('upgraded resale prices the level (+10% EV per level)', () {
       final player = _fakePlayer(10_000_000);
-      var spent = 0;
-      for (var level = 0; level < 5; level++) {
-        spent += economy.upgradeCostOf(player, level);
-      }
+      final sellAt0 = economy.sellPriceOfUpgraded(player, 0);
       final sellAt5 = economy.sellPriceOfUpgraded(player, 5);
-      expect(sellAt5, lessThan(spent));
-      // Measured: a fully-upgraded €10M player resells at ~13% of the
-      // coins invested in his levels — upgrades are a pure progression
-      // sink, never a money loop. Kept ≥ 8% so resale stays non-zero
-      // but clearly value-losing.
-      expect(sellAt5, greaterThan(spent * 0.08));
+      // +10% economic value per level, then the selling percentage —
+      // locked against the engine's own formula, not a hand-computed EV.
+      final ev = economy.economicValueOf(player.marketValueEur);
+      expect(
+        sellAt0,
+        (ev * economy.config.sellingPercentage).round(),
+      );
+      expect(
+        sellAt5,
+        (ev * 1.5 * economy.config.sellingPercentage).round(),
+      );
+      expect(sellAt5, greaterThan(sellAt0));
     });
 
     test(
@@ -316,10 +309,17 @@ void main() {
     });
 
     test('merging a duplicate is free value vs selling it', () {
+      // Merging costs nothing and lifts every stat +1% (owner decision
+      // 2026-11-09): the duplicate's sale price is the only alternative
+      // use, and the merged card's resale gains +10% EV per level.
       final player = _fakePlayer(5_000_000);
       final sale = economy.sellPriceOf(player);
-      final upgradeCost = economy.upgradeCostOf(player, 0);
-      expect(upgradeCost, greaterThan(sale * 0.8));
+      final resaleGain =
+          economy.sellPriceOfUpgraded(player, 1) -
+          economy.sellPriceOfUpgraded(player, 0);
+      // The merge is free, so any positive resale gain is pure value.
+      expect(resaleGain, greaterThan(0));
+      expect(sale, greaterThan(0));
     });
   });
 
@@ -340,12 +340,6 @@ void main() {
       );
       final boosted = ads.boostedSeasonReward(normal);
       expect(boosted - normal, 5_000);
-    });
-
-    test('upgrade discount: 20% off, floored at 50 coins', () {
-      expect(ads.discountedUpgradeCost(1000), 800);
-      expect(ads.discountedUpgradeCost(40), 40);
-      expect(ads.discountedUpgradeCost(50), 50);
     });
 
     test('selling bonus: +20% on a sale', () {

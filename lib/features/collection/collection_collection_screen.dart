@@ -194,8 +194,6 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     bool inSquad,
   ) {
     final sellPrice = economy.sellPriceOfUpgraded(card.base, card.upgradeLevel);
-    // Unlimited levels (owner decision 2026-11-09): always offer the next.
-    final upgradeCost = economy.upgradeCostOf(card.base, card.upgradeLevel);
     final other = dupes.where((d) => d.ownedId != card.ownedId);
     showPlayerDetail(
       context,
@@ -203,8 +201,9 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
       inSquad: inSquad,
       copies: dupes.length,
       actions: PlayerDetailActions(
-        upgradeLabel: 'Upgrade · ${formatCoins(upgradeCost)} coins',
-        onUpgrade: () => _upgrade(context, ref, card),
+        // Merging duplicates is the only upgrade path (owner decision
+        // 2026-11-09): the coin-purchase button is gone, so the sheet
+        // offers Merge exactly when another copy exists.
         onMerge: other.isNotEmpty
             ? () => _merge(context, ref, card, other.first)
             : null,
@@ -316,69 +315,6 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
   /// Buys one upgrade level with coins (GDD 8.4). When the user has
   /// watched an upgrade-discount ad (GDD 19.3) the dialog shows the
   /// discounted price; the store charges and consumes it.
-  Future<void> _upgrade(
-    BuildContext context,
-    WidgetRef ref,
-    PlayerCard card,
-  ) async {
-    const economy = EconomyEngine();
-    final store = await ref.read(collectionStoreProvider.future);
-    final club = await ref.read(clubProvider.future);
-    if (club == null) return;
-    if (!context.mounted) return;
-    final ads = await ref.read(adStoreProvider.future);
-    final fullCost = economy.upgradeCostOf(card.base, card.upgradeLevel);
-    final discounted = await ads.upgradeDiscountActive(club.id);
-    final price = discounted
-        ? const AdEngine().discountedUpgradeCost(fullCost)
-        : fullCost;
-
-    if (!context.mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Upgrade ${card.base.name}?'),
-        content: Text(
-          'Next level: +${card.upgradeLevel + 1}\n'
-          'Cost: ${formatCoins(price)} coins'
-          '${discounted ? ' (ad discount applied)' : ''}\n'
-          'Balance: ${formatCoins(club.coins)} coins',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Upgrade'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    try {
-      final result = await store.buyUpgrade(ownedId: card.ownedId);
-      ref.invalidate(collectionProvider);
-      ref.invalidate(squadProvider);
-      if (context.mounted) {
-        final gains = result.upgradeLevel;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${card.base.name} upgraded to +$gains for ${formatCoins(result.coins)} coins',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
-    }
-  }
-
   Future<void> _merge(
     BuildContext context,
     WidgetRef ref,

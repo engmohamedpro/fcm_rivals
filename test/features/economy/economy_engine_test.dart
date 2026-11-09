@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
@@ -84,33 +82,6 @@ void main() {
     });
   });
 
-  group('upgrade costs (GDD 8.4)', () {
-    const eco = EconomyEngine();
-
-    test('cost grows with upgrade level', () {
-      final p = player(marketValueEur: 50_000_000);
-      final c0 = eco.upgradeCostOf(p, 0);
-      final c1 = eco.upgradeCostOf(p, 1);
-      final c5 = eco.upgradeCostOf(p, 5);
-      expect(c1, greaterThan(c0));
-      expect(c5, greaterThan(c1));
-      // level growth 1.5: cost(1) = cost(0) * 1.5
-      expect(c1, closeTo(c0 * 1.5, 2));
-    });
-
-    test('cost grows with market value', () {
-      final cheap = eco.upgradeCostOf(
-        player(id: 1, marketValueEur: 500_000),
-        0,
-      );
-      final star = eco.upgradeCostOf(
-        player(id: 2, marketValueEur: 100_000_000),
-        0,
-      );
-      expect(star, greaterThan(cheap));
-    });
-  });
-
   group('pack pricing and rewards', () {
     const eco = EconomyEngine();
 
@@ -152,6 +123,5 @@ void main() {
   test('config defaults are sane', () {
     const c = EconomyConfig();
     expect(c.sellingPercentage, inInclusiveRange(0.3, 0.9));
-    expect(math.pow(c.upgradeLevelGrowth, 0), 1);
   });
 }

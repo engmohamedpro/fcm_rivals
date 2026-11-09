@@ -59,17 +59,15 @@ Widget ownedCardView(
 }
 
 /// Buttons shown in the sheet. Null labels/callbacks hide the button.
+/// Merging duplicates is the only upgrade path (owner decision
+/// 2026-11-09) — the coin-upgrade action is gone.
 class PlayerDetailActions {
   const PlayerDetailActions({
-    this.upgradeLabel,
-    this.onUpgrade,
     this.onMerge,
     this.sellLabel,
     this.onSell,
   });
 
-  final String? upgradeLabel;
-  final VoidCallback? onUpgrade;
   final VoidCallback? onMerge;
   final String? sellLabel;
   final VoidCallback? onSell;
@@ -321,15 +319,6 @@ class _PlayerDetailSheet extends StatelessWidget {
               index: 3,
               child: Column(
                 children: [
-                  if (actions!.onUpgrade != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: FcmButton(
-                        label: actions!.upgradeLabel ?? 'Upgrade',
-                        icon: Icons.trending_up,
-                        onPressed: () => _run(context, actions!.onUpgrade),
-                      ),
-                    ),
                   if (actions!.onMerge != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
