@@ -2,8 +2,8 @@
 id: T-0070
 title: Make each upgrade level add one percent to all stats without caps
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -56,5 +56,10 @@ Expected: analyze clean, suites green; a merged card's stats match the percentag
 ---
 
 ## Developer Notes
+
+- **Summary of changes:** `upgradedValue(baseValue, level)` added to `lib/core/domain/players.dart` as the single source of truth — `base + (base × level / 100).round()`, negative levels clamped, no 99 cap. `PlayerCard` lost its four `upgraded*` fields: `overall` and `attribute()` now derive purely from `upgradeLevel`. `UpgradeEngine` rewritten: `allocateAttributeGain`, `pointsPerLevel`, the `maxUpgradeLevel` cap and the `position`/`random` parameters are gone — `merge()` returns only the new level, `canMerge` is always true by level, everything deterministic. `mergeDuplicates`/`buyUpgrade` lost their `random` parameter and the `Maximum upgrade level reached` path; both write `upgradeLevel` and ZERO the legacy `upgraded_*` columns (kept for save compatibility, marked legacy in the table comment). `MergeResult`/`MergeOutcome` dropped `attributeGain`; the merge snackbar shows "+N% stats". Detail-sheet bonuses are now derived (effective − base). The screen's upgrade-cost gate (null at max level) became unconditional — levels are unlimited. GDD 8.2 rewritten with the dated owner decision.
+- **Files changed:** `lib/core/domain/players.dart`, `lib/features/squad/squad_engine.dart`, `lib/features/upgrades/upgrade_engine.dart`, `lib/features/collection/{collection_store,squad_store,collection_results,collection_collection_screen,player_detail_sheet}.dart`, `lib/features/simulation/economy_simulator.dart`, `lib/core/database/app_database.dart` (comment only), `docs/fcm_rivals_GDD_SRS.md` (8.2), tests: `upgrade_engine_test.dart` (rewritten), `collection_store_test.dart`, `squad_engine_test.dart`, `ad_economy_test.dart`, `tasks/…T-0070….md`.
+- **How I tested it:** `flutter analyze` → No issues found. `flutter test test/features/upgrades/` → 13/13 (progression incl. past the old cap, `upgradedValue` examples 90→91/92/100/108, 60@+3→62, no-99-cap, half-up rounding, negative clamp). `flutter test test/features/collection/collection_store_test.dart` → 24/24 including two new tests: merging a +5 with a base copy → +6 with no error and the duplicate consumed (and legacy columns zeroed), and a rebalance test where an old-style row (+3 level, 5 random ATT points) reads stats derived from the level alone. Squad + ads suites green. Zero-drift: snapshot 1/1 and balance 86/86 with `REGEN_SNAPSHOT` unset. Full `flutter test` → **880/880 green** (was 877; +3 net new tests: past-cap merge, rebalance, upgradedValue suite growth net of removed allocation tests).
+- **Concerns / assumptions:** (1) `economy_simulator`'s duplicate-merge loop no longer skips "capped" pairs — every duplicate pair is now mergeable, so sim economies merge slightly more; that is the intended new rule and T-0073 measures it. (2) The `upgradeCostOf` economy curve still prices by level — at very high levels coins get expensive but that is T-0071/T-0073 territory, untouched here. (3) Old saves: a +3 card's stats may shift by a point or two (random points → +3% of base), accepted per the task. (4) `canMerge` kept as an always-true method rather than deleted, because the simulator loop and store call it — deleting it would churn callers for no benefit; documented as "store still guards same-player/owned-state".
 
 ## Review Log
