@@ -2,8 +2,8 @@
 id: T-0076
 title: Gate season reward coins with a seeded economy sweep
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0074, T-0075]
 created: 2026-11-09
 completed:
@@ -58,3 +58,27 @@ flutter test test/features/simulation/ test/balance/
 flutter test
 # Expected: full suite green, no REGEN_SNAPSHOT
 ```
+
+## Developer Notes
+
+### Attempt 1 — implementation (measurement-only, zero production changes)
+
+**Summary:** `test/balance/season_reward_economy_test.dart` runs the real economy end to end — `EconomySimulator` over real `SeasonStore`/`MatchSession` saves with real pack purchases/merges/sales — for 3 seeds (5701/5702/5703) × 2 value bands (medium, high) × 6 seasons (6 runs, ~18 s each, ~110 s total, in the existing simulator tests' runtime ballpark) and locks the four regression bands plus the progression locks. Deterministic: two consecutive runs produced identical results.
+
+**Measured raw table (first run, seeds 5701–5703, medium+high, dataset 160):**
+- Per-season `coinsEarned`: min 106_875 (seed 5702 high, s0) … max 165_500 (seed 5703 high, s4). Locked band 96_000–182_000 (measured ±10%). Consistent with the 70k–160k faucet context: the 165.5k outlier sits 3.4% above 160k on a high-band season-5 save with three divisions of escalation — reported here, not silently widened beyond ±10% headroom.
+- Season-reward share of `coinsEarned`: min 0.099 … max 0.302 (seed 5702 medium, s5: 45_000 of 149_125). Locked ≤ 0.40 — the coin ladder stays a minority of income in every season, so it can never dwarf match income.
+- `avgNetCoinsPerSeason`: measured −4_017 … +208 across the 6 runs. Locked < 20_000 (generous headroom, far under one season's income; the existing `0.8 × first.coinsEarned` pattern bound also still holds in every run).
+- Static champion ceiling: `seasonRewardCoins(div 1, pos 1)` == 20_000 < 0.25 × 90_000 ✓.
+- Progression: promotions 4–6 per save (promotion within 6 seasons in EVERY run); `collectionSize` grows in every save (e.g. 5701 medium 35 → 75); `bestSquadOverall` improves in every save (71/74 → 79/82). **Relegation: NOT observed in any of the 6 runs** (0 relegations across 36 simulated seasons) — the simulated manager's auto-picked, ever-improving squad keeps finishing top-3. Relegation remains POSSIBLE by construction (the outcome ladder and 0.5× multipliers are exercised by the engine/unit tests; `outcome == 'relegated'` paths are locked in `season_store_test.dart`), but this sweep's strategy never lands there — documented as measured, per the task's "not necessarily observed in every seed".
+- No band failed; nothing to report back to T-0075's curve.
+
+**One documented deviation (T-0072 review protocol):** the task suggests querying `coinTransactions` by reason for the season-reward share, but `EconomySimulator.run` closes its database in a `finally` block and this task forbids production changes — so the reward numerator is computed with the SAME engine curve the store pays through (`seasonRewardCoins(division, finalPosition)`). That value's equality with the ledger row is already locked by `season_store_test.dart` ("ledger.first.amount == completion.rewardCoins"), so the share is exact; the deviation is the query mechanism, not the number. Recorded in the test's library doc comment too.
+
+**Files changed:** `test/balance/season_reward_economy_test.dart` (new) + this task file. `git diff --stat` clean of any production file.
+
+**How tested (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/balance/season_reward_economy_test.dart` → 6/6 green, run TWICE with identical results (determinism) ✓. `flutter test test/features/simulation/ test/balance/` → 115/115 green ✓. Full `flutter test --concurrency=1` → **938/938 green, no REGEN_SNAPSHOT** ✓.
+
+**Concerns:**
+- The 165.5k earned outlier is 3.4% above the 70k–160k context band on a high-band division-5 season; the ±10% lock (96k–182k) absorbs it deliberately — if a reviewer considers the context band strict, the discussion belongs to the faucet (match rewards), not the season-reward share this task gates (which peaked at 0.302, comfortably under 0.40).
+- The sweep measures the coins-only world with no card-faucet noise (T-0074 removed grants; the simulator only buys) — a "before vs after" pack-income comparison is dead work per the task and was not attempted.
