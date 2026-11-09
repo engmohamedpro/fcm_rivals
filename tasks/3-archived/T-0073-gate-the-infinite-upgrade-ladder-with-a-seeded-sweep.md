@@ -2,11 +2,11 @@
 id: T-0073
 title: Gate the infinite-upgrade ladder with a seeded balance sweep
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0070, T-0072]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0073: Gate the infinite-upgrade ladder with a seeded balance sweep
@@ -33,10 +33,10 @@ The percentage-upgrade system's effect on match outcomes is measured and locked 
 - Economy effects (duplicate value, coin sink removal) — separate measurement.
 
 ## Acceptance Criteria
-- [ ] Both sweeps run seeds 0..999 with the symmetric bands (win 0.42-0.52, draw 0.22-0.32, goals 1.4-5.2) asserted at N ∈ {0, 10, 25, 50}.
-- [ ] The user-ahead sweep shows monotonic win-rate growth, caps at ≤ 0.88, with its measured bands locked in the test and the raw numbers recorded in Developer Notes.
-- [ ] The existing balance suite passes unchanged — no pre-existing band was edited to make the new test pass.
-- [ ] `flutter analyze` zero warnings; `flutter test` full suite green.
+- [x] Both sweeps run seeds 0..999 with the symmetric bands (win 0.42-0.52, draw 0.22-0.32, goals 1.4-5.2) asserted at N ∈ {0, 10, 25, 50}.
+- [x] The user-ahead sweep shows monotonic win-rate growth, caps at ≤ 0.88, with its measured bands locked in the test and the raw numbers recorded in Developer Notes.
+- [x] The existing balance suite passes unchanged — no pre-existing band was edited to make the new test pass.
+- [x] `flutter analyze` zero warnings; `flutter test` full suite green.
 
 ## How to Verify
 ```bash
@@ -91,3 +91,12 @@ User ahead (B = away lifted, A at base):
 **Concerns:** (1) The +50% violation is real and shipped-behaviour-affecting TODAY via T-0072: an AI club lifted to a far-above-ceiling division target against a user squad at base is exactly the user-ahead case — but inverted (the AI is ahead), which this gate measures symmetrically only when BOTH grow. The AI-ahead direction inherits the same stomp math (mirror of the measured table). The tuning task should be filed before any division-20+ content reaches players. (2) The locked drift margins (±0.03 win, ±0.2 goals) are tight by design — any engine change that moves these numbers will fail loudly here, which is the point of a gate.
 
 ## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran on a fresh Flutter 3.47.9 / Dart 3.13.7 install at HEAD f13f132: `flutter analyze` (No issues found); `flutter test test/balance/upgrade_ladder_balance_test.dart` (7/7 green, prints the measured tables); `flutter test test/balance/` (95/95); full `flutter test` (922/922, `REGEN_SNAPSHOT` unset — one run covers both tasks in review at this HEAD).
+- Measured tables reproduced byte-identically from Developer Notes: symmetric home win 0.451/0.479/0.491/0.518 (all inside 0.42–0.52), draw 0.260/0.243/0.245/0.232 (inside 0.22–0.32), combined goals 2.65/2.76/2.87/3.04 (inside 1.4–5.2); user-ahead away-lift 0.455/0.747/0.950, draws 0.253/0.170/0.038, B goals 1.59/2.41/4.09, B shots 12.1/16.1/22.2.
+- Scope verified: implement commit ea5cea8 adds only the new test file (357 lines, zero production changes); `git diff ea5cea8^..HEAD --stat -- test/balance/` shows no other balance file touched — no pre-existing band edited.
+- Combined-goals deviation independently verified CORRECT: `match_engine_balance_test.dart:170` accumulates `goals += scoreHome + scoreAway` and asserts 1.4–5.2 on that per-match total; the suite's own even-strength away side measures 1.15, so the task text's per-side lower bound was never satisfiable. Same documented-deviation precedent as T-0068's review. The per-side ≤ 5.2 explosion bound is asserted on top.
+- Spec flaw documented (not edited, per reviewer rules): AC-2's literal "caps at ≤ 0.88" is jointly unsatisfiable with AC-4 (full suite green) at +50%, where the engine measures 0.950 — the task's own Context prescribes the resolution the developer followed (numbers to Developer Notes, no production change, tuning filed as a separate task). The CEILING VIOLATION LOCKED test pins today's 0.950 as a regression target instead of hiding it — accepted; AC-2 is met under the task's own first-measured-run protocol (monotonic ✓, ≤ 0.88 holds at +10/+25, measured bands locked, raw numbers recorded).
+- Protocol closed by the planner alongside this review: the separate tuning task is filed as T-0082 (`tasks/1-todo/T-0082-make-the-chance-curve-scale-free.md` — scale-free normalized chance edge, re-tighten the +50% lock to ≤ 0.88 in both lift directions, existing ladder bands are the contract). Developer's Concern 1 is confirmed real: the AI-ahead mirror (a division-target-lifted AI club vs a base user squad) inherits the same stomp math today via T-0072 — T-0082 must land before division-20+ ladder content reaches players.
+- Minor note: Developer Notes' "full 918/918" is a stale count (run before the sweep's last three user-ahead tests were split out): 914 pre-existing + 7 sweep = 921 at this task's commit, +1 from T-0074 = 922 at HEAD, verified green. No impact on any criterion.
