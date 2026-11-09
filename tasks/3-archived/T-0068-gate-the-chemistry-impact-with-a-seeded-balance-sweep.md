@@ -2,11 +2,11 @@
 id: T-0068
 title: Gate the chemistry impact with a seeded balance sweep
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0067]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0068: Gate the chemistry impact with a seeded balance sweep
@@ -32,10 +32,10 @@ The chemistry bonus's effect on match outcomes is measured, recorded in this tas
 - UI display of chemistry (T-0069).
 
 ## Acceptance Criteria
-- [ ] The sweep runs seeds 0..999 at four chemistry levels and asserts bands (a)–(d) from Requirement 3.
-- [ ] Developer Notes carry the measured win/draw/goals/shots numbers for all four levels.
-- [ ] The existing balance suite (`test/balance/match_engine_balance_test.dart`) still passes unchanged — no band was edited to make the new test pass.
-- [ ] `flutter analyze` reports zero warnings; `flutter test` full suite green.
+- [x] The sweep runs seeds 0..999 at four chemistry levels and asserts bands (a)–(d) from Requirement 3.
+- [x] Developer Notes carry the measured win/draw/goals/shots numbers for all four levels.
+- [x] The existing balance suite (`test/balance/match_engine_balance_test.dart`) still passes unchanged — no band was edited to make the new test pass.
+- [x] `flutter analyze` reports zero warnings; `flutter test` full suite green.
 
 ## How to Verify
 ```bash
@@ -65,3 +65,10 @@ Expected: analyze clean; the new sweep prints the four levels' measured numbers 
 - **Concerns / assumptions:** (1) The 10% level at 0.616 sits only 0.004 under the 0.62 ceiling — the margin is thin but the test uses fixed seeds, so it is deterministic and cannot flake. (2) Chemistry is one-directional in this gate (home boosted, away 0%) — in real play both sides can field chemistry, which nets out closer to even strength; the gate measures the worst-case single-sided edge, which is the right conservative reading. (3) Environment note: the sandbox was recycled since the last session, so the repo was re-cloned and the SDK re-provisioned at Flutter 3.47.9/Dart 3.13.7 (the 3.24.5 I first fetched predates the repo's `sdk: ^3.13.7` constraint).
 
 ## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran: `flutter analyze` (No issues found), `flutter test test/balance/chemistry_balance_test.dart` (4/4), `flutter test test/balance/` (90/90), `flutter test` (893/893) — all green.
+- Reproduced the measured profile exactly (deterministic seeds): 0% win 0.451/draw 0.260/goals 1.50-1.15/shots 13.3-9.7; 3% 0.506/0.240/1.63-1.08/14.1-9.1; 5% 0.543/0.240/1.75-1.01/14.7-8.8; 10% 0.616/0.227/1.90-0.85/16.0-7.8 — byte-identical to the Developer Notes table.
+- Band (a) deviation independently verified as CORRECT: the suite's `avgGoals` is the per-MATCH total (`goals += s.scoreHome + s.scoreAway`, match_engine_balance_test.dart:170) and its own +20-gap rung measures the underdog at ~1.1 — the task text's per-side reading fails the existing ladder; the implemented per-match-total reading matches the suite's semantics. Bands (b) monotonic, (c) 0.616 < 0.62, (d) 0.451 inside 0.42–0.52 — all asserted and green.
+- No existing band edited: `git diff 3963671^..af94ddd -- test/balance/` shows only the new `chemistry_balance_test.dart` (233 insertions), zero production files touched.
+- Environment: Flutter 3.47.9 / Dart 3.13.7 — the same SDK the developer documented in Developer Notes.
