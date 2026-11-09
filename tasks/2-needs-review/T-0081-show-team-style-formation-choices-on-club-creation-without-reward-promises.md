@@ -2,11 +2,11 @@
 id: T-0081
 title: Show team-style formation choices on club creation without reward promises
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0081: Show team-style formation choices on club creation without reward promises
@@ -36,11 +36,11 @@ The club creation page picks the starter formation the same way the Team tab doe
 - Any other onboarding/intro screens.
 
 ## Acceptance Criteria
-- [ ] Club creation shows a `FcmDropdown` of formation names identical in behavior to the Team tab's picker; the census-badges list is gone.
-- [ ] No text on the screen mentions coins, packs or any reward the user will win — in English and Arabic.
-- [ ] The unused l10n keys are removed from both ARBs; generation is clean; l10n parity test passes.
-- [ ] The new widget test covers: dropdown lists all formations, selection works, promise texts absent in both locales, submit path intact.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/onboarding/ test/core/ui/l10n_test.dart` green; full `flutter test` green.
+- [x] Club creation shows a `FcmDropdown` of formation names identical in behavior to the Team tab's picker; the census-badges list is gone.
+- [x] No text on the screen mentions coins, packs or any reward the user will win — in English and Arabic.
+- [x] The unused l10n keys are removed from both ARBs; generation is clean; l10n parity test passes.
+- [x] The new widget test covers: dropdown lists all formations, selection works, promise texts absent in both locales, submit path intact.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/onboarding/ test/core/ui/l10n_test.dart` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -53,3 +53,14 @@ flutter test test/features/onboarding/ test/core/ui/l10n_test.dart
 flutter test
 # Expected: full suite green, no REGEN_SNAPSHOT
 ```
+
+---
+
+## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- File note: this task was authored without the Developer Notes / Review Log sections (older planning format); the developer's implementation summary lives in commit 2a98220's message. The Review Log section is added by this review per the reviewer workflow.
+- Ran at af32eea (fresh Flutter 3.47.9 / Dart 3.13.7): `flutter gen-l10n` → clean; `flutter analyze` → No issues found; `flutter test test/features/onboarding/ test/core/ui/l10n_test.dart` → 8/8 green (4 new club-creation tests + l10n parity); full `flutter test` → 929/929 green with `REGEN_SNAPSHOT` unset (one shared run covering both tasks in review at this HEAD).
+- Diff audit (2a98220): the bounded census list is replaced by `FcmDropdown<String>` built from `formations` with one `FcmDropdownItem` per formation — the same picker pattern as the Team tab's `tactics_setup_view.dart`; `_FormationOption` and the census badges are deleted entirely; `createYourClubIntro` and `starterFormationIntro` are removed from the screen, from BOTH `app_en.arb` and `app_ar.arb`, and from the generated `app_localizations*.dart` getters; the screen's doc comment no longer sells the packs. `createClub` and the store are untouched — behavior unchanged, only the telling (exactly what the task demands).
+- The new `test/features/onboarding/club_creation_test.dart` (218 lines, 4 tests) covers all required cases: the dropdown lists every formation and selection works (EN); no reward promises render in EN; no reward promises in AR with the dropdown mirrored (RTL); and the submit path validates fields and runs `createClub` end-to-end on a real in-memory store.
+- No out-of-scope changes: the diff touches only the screen, the l10n files, the task file and the new test.
