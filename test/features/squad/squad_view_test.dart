@@ -660,8 +660,8 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('T-0064 (RTL Arabic): the mirrored drag commits the same '
-      'enum and the mentality names localize', (tester) async {
+  testWidgets('T-0064/T-0065 (RTL Arabic): the mirrored drag commits the '
+      'same enum, and the whole tactic sheet localizes', (tester) async {
     tester.view.physicalSize = const Size(1600, 4000);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
@@ -699,17 +699,45 @@ void main() {
 
     // Arabic ambient direction: the mentality pill reads the localized
     // 'متوازن' at the default, and the scale's safe end label is the
-    // localized 'دفاعي للغاية' (T-0064 requirement 6).
-    expect(find.text('متوازن'), findsOneWidget);
+    // localized 'دفاعي للغاية' (T-0064 requirement 6). Since T-0065
+    // localized every step name, 'متوازن' also names the tackling /
+    // counter-press / attack-on-recovery pills at their defaults —
+    // assert them scoped to their sliders instead of globally unique.
+    expect(
+      find.descendant(of: find.byType(FcmScaleSlider).at(9),
+          matching: find.text('متوازن')),
+      findsOneWidget,
+    );
     expect(find.text('دفاعي للغاية'), findsOneWidget);
     expect(find.text('هجومي للغاية'), findsOneWidget);
 
+    // T-0065: the nine axis labels read Arabic in the sheet — the
+    // pressing row's label (uppercased by _SliderRow).
+    expect(find.text('الضغط'), findsOneWidget);
+    // The final-third categorical chips read Arabic.
+    expect(find.text('تمريرات داخل المنطقة'), findsOneWidget);
+    expect(find.text('عرضيات مبكرة'), findsOneWidget);
+    expect(find.text('التسديد عند أول فرصة'), findsOneWidget);
+    // The offside-trap toggle reads إيقاف at the default (off).
+    expect(find.text('إيقاف'), findsOneWidget);
+    // Both GDD 10.3 readouts read Arabic.
+    expect(find.textContaining('الاستحواذ المتوقع'), findsOneWidget);
+    expect(
+      find.textContaining('بقاء لاعبين أكثر يعني غطاءً أفضل'),
+      findsOneWidget,
+    );
+
     // The pressing slider mirrors: the aggressive (max) end sits at the
     // LEFT, so dragging LEFT from the centre commits the same High
-    // Press enum as the LTR drag to the right.
+    // Press enum as the LTR drag to the right. Its default pill reads
+    // the localized 'متوسط' (T-0065).
     final pressing = find.byType(FcmScaleSlider).at(4);
     await tester.ensureVisible(pressing);
     await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: pressing, matching: find.text('متوسط')),
+      findsOneWidget,
+    );
     final track = tester.getRect(pressing);
     await tester.dragFrom(
       Offset(track.left + track.width / 2, track.top + track.height / 2),
@@ -724,9 +752,11 @@ void main() {
       reason: 'the RTL mirrored drag commits the same enum as LTR',
     );
     expect(
-      find.descendant(of: pressing, matching: find.text('High')),
+      find.descendant(of: pressing, matching: find.text('مرتفع')),
       findsNWidgets(2), // the pill + the mirrored aggressive-end label
     );
+    expect(find.descendant(of: pressing, matching: find.text('متوسط')),
+        findsNothing);
     expect(find.textContaining('Defence +34%'), findsWidgets);
 
     await tester.ensureVisible(find.text('DONE'));

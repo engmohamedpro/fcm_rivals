@@ -218,149 +218,149 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tacticsLabel => 'الخطة';
 
   @override
-  String get tacticsBuildUp => 'Build-up';
+  String get tacticsBuildUp => 'بناء اللعب';
 
   @override
-  String get tacticsTempo => 'Tempo';
+  String get tacticsTempo => 'الإيقاع';
 
   @override
-  String get tacticsWidth => 'Width';
+  String get tacticsWidth => 'العرض';
 
   @override
-  String get tacticsFinalThird => 'Final third';
+  String get tacticsFinalThird => 'الثلث الأخير';
 
   @override
   String tacticsEstPossession(Object share) {
-    return 'Est. possession: $share%';
+    return 'الاستحواذ المتوقع: $share%';
   }
 
   @override
-  String get buildUpPlayOut => 'Play Out from the Back';
+  String get buildUpPlayOut => 'اللعب من الخلف';
 
   @override
-  String get buildUpMixed => 'Mixed Build-Up';
+  String get buildUpMixed => 'مختلط';
 
   @override
-  String get buildUpLongBall => 'Long Ball';
+  String get buildUpLongBall => 'كرات طويلة';
 
   @override
-  String get tempoSlow => 'Slow';
+  String get tempoSlow => 'بطيء';
 
   @override
-  String get tempoStandard => 'Standard';
+  String get tempoStandard => 'معتدل';
 
   @override
-  String get tempoFast => 'Fast';
+  String get tempoFast => 'سريع';
 
   @override
-  String get widthNarrow => 'Narrow';
+  String get widthNarrow => 'ضيق';
 
   @override
-  String get widthStandardWidth => 'Standard';
+  String get widthStandardWidth => 'معتدل';
 
   @override
-  String get widthWide => 'Wide';
+  String get widthWide => 'عريض';
 
   @override
-  String get finalThirdWorkBall => 'Work Ball into Box';
+  String get finalThirdWorkBall => 'تمريرات داخل المنطقة';
 
   @override
-  String get finalThirdBalanced => 'Balanced';
+  String get finalThirdBalanced => 'متوازن';
 
   @override
-  String get finalThirdEarlyCrosses => 'Early Crosses';
+  String get finalThirdEarlyCrosses => 'عرضيات مبكرة';
 
   @override
-  String get finalThirdShootOnSight => 'Shoot on Sight';
+  String get finalThirdShootOnSight => 'التسديد عند أول فرصة';
 
   @override
-  String get tacticsDefensiveLine => 'Defensive line';
+  String get tacticsDefensiveLine => 'الخط الدفاعي';
 
   @override
-  String get tacticsPressing => 'Pressing';
+  String get tacticsPressing => 'الضغط';
 
   @override
-  String get tacticsTackling => 'Tackling';
+  String get tacticsTackling => 'الالتحامات';
 
   @override
-  String get tacticsOffsideTrap => 'Offside trap';
+  String get tacticsOffsideTrap => 'مصيدة التسلل';
 
   @override
-  String get lineDeep => 'Deep';
+  String get lineDeep => 'عميق';
 
   @override
-  String get lineStandard => 'Standard';
+  String get lineStandard => 'معتدل';
 
   @override
-  String get lineHigh => 'High';
+  String get lineHigh => 'متقدم';
 
   @override
-  String get pressLow => 'Low';
+  String get pressLow => 'منخفض';
 
   @override
-  String get pressMid => 'Mid';
+  String get pressMid => 'متوسط';
 
   @override
-  String get pressHigh => 'High';
+  String get pressHigh => 'مرتفع';
 
   @override
-  String get tackleClean => 'Clean';
+  String get tackleClean => 'نظيف';
 
   @override
-  String get tackleBalanced => 'Balanced';
+  String get tackleBalanced => 'متوازن';
 
   @override
-  String get tackleAggressive => 'Aggressive';
+  String get tackleAggressive => 'شرس';
 
   @override
-  String get trapOn => 'On';
+  String get trapOn => 'تشغيل';
 
   @override
-  String get trapOff => 'Off';
+  String get trapOff => 'إيقاف';
 
   @override
   String get trapDeepWarning =>
-      'No benefit with a deep line — pure risk. Raise the line or turn the trap off.';
+      'لا فائدة منها مع خط عميق — مخاطرة صرفة. ارفع الخط أو أغلق المصيدة.';
 
   @override
-  String get tacticsCounterPress => 'Counter-press';
+  String get tacticsCounterPress => 'الضغط المضاد';
 
   @override
-  String get tacticsAttackOnRecovery => 'Attack on recovery';
+  String get tacticsAttackOnRecovery => 'الهجوم عند الاستخلاص';
 
   @override
-  String get tacticsRestDefence => 'Rest defence';
+  String get tacticsRestDefence => 'الدفاع الوقائي';
 
   @override
-  String get cpRetreat => 'Retreat to Shape';
+  String get cpRetreat => 'التراجع للتنظيم';
 
   @override
-  String get cpBalanced => 'Balanced';
+  String get cpBalanced => 'متوازن';
 
   @override
-  String get cpImmediate => 'Immediate Counter-Press';
+  String get cpImmediate => 'فوري';
 
   @override
-  String get arPatient => 'Patient';
+  String get arPatient => 'صبور';
 
   @override
-  String get arBalanced => 'Balanced';
+  String get arBalanced => 'متوازن';
 
   @override
-  String get arFast => 'Fast Counter';
+  String get arFast => 'سريع';
 
   @override
-  String get rdConservative => 'Conservative · 4 back';
+  String get rdConservative => 'محافظ';
 
   @override
-  String get rdStandard => 'Standard · 3 back';
+  String get rdStandard => 'معتاد';
 
   @override
-  String get rdAggressive => 'Aggressive · 2 back';
+  String get rdAggressive => 'هجومي';
 
   @override
   String get restDefenceHint =>
-      'More players back means cover but fewer joining attacks.';
+      'بقاء لاعبين أكثر يعني غطاءً أفضل لكن مشاركة أقل في الهجوم.';
 
   @override
   String injuryCommentaryKnock(Object player) {
