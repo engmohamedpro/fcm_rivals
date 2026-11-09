@@ -2,8 +2,8 @@
 id: T-0078
 title: Remove the name and attribute boxes from the player card
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:

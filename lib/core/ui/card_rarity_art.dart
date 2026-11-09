@@ -404,56 +404,6 @@ void _premiumVeins(Canvas canvas, Size size, Color accent, double? phase) {
   }
 }
 
-// ------------------------------------------------------------ FRAMING ----
-
-/// Outline of one attribute cell: a different shape per rarity so the
-/// stat row carries the card's character too — rounded (rare), chamfered
-/// (epic), arched tabs (legendary / premium).
-Path attributeCellPath(
-  Rect r,
-  CardRarity rarity,
-  CardClass cardClass,
-  double unit,
-) {
-  if (cardClass == CardClass.premium || rarity == CardRarity.legendary) {
-    return Path()..addRRect(
-      RRect.fromRectAndCorners(
-        r,
-        topLeft: Radius.circular(unit * 2.6),
-        topRight: Radius.circular(unit * 2.6),
-        bottomLeft: Radius.circular(unit * 0.7),
-        bottomRight: Radius.circular(unit * 0.7),
-      ),
-    );
-  }
-  if (rarity == CardRarity.epic) {
-    final c = math.min(r.height * 0.24, r.width * 0.2);
-    return Path()
-      ..moveTo(r.left + c, r.top)
-      ..lineTo(r.right - c, r.top)
-      ..lineTo(r.right, r.top + c)
-      ..lineTo(r.right, r.bottom - c)
-      ..lineTo(r.right - c, r.bottom)
-      ..lineTo(r.left + c, r.bottom)
-      ..lineTo(r.left, r.bottom - c)
-      ..lineTo(r.left, r.top + c)
-      ..close();
-  }
-  return Path()
-    ..addRRect(RRect.fromRectAndRadius(r, Radius.circular(unit * 1.4)));
-}
-
-/// How strongly the frame hairlines (name bar, attribute cells) read:
-/// the higher the rarity, the brighter the metal keylines.
-double frameStrength(CardRarity rarity, CardClass cardClass) {
-  if (cardClass == CardClass.premium) return 1.0;
-  return switch (rarity) {
-    CardRarity.rare => 0.45,
-    CardRarity.epic => 0.65,
-    CardRarity.legendary => 0.85,
-  };
-}
-
 /// Pulsing outer glow on the rim for epic and above. Skipped on the tiny
 /// pitch shields (no blur on a 56px card) and on rare cards.
 void paintRimPulse(

@@ -6,7 +6,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fcm_rivals/core/ui/card_rarity_art.dart';
 import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart';
 
@@ -51,40 +50,4 @@ void main() {
     expect(a.shouldRepaint(a), isFalse);
   });
 
-  test('frame strength climbs with the rarity', () {
-    final rare = frameStrength(CardRarity.rare, CardClass.standard);
-    final epic = frameStrength(CardRarity.epic, CardClass.standard);
-    final gold = frameStrength(CardRarity.legendary, CardClass.standard);
-    final red = frameStrength(CardRarity.legendary, CardClass.premium);
-    expect(rare, lessThan(epic));
-    expect(epic, lessThan(gold));
-    expect(gold, lessThan(red));
-  });
-
-  test('attribute cells have a different silhouette per rarity', () {
-    const r = Rect.fromLTWH(0, 0, 100, 50);
-    final rare = attributeCellPath(r, CardRarity.rare, CardClass.standard, 4);
-    final epic = attributeCellPath(r, CardRarity.epic, CardClass.standard, 4);
-    final gold = attributeCellPath(
-      r,
-      CardRarity.legendary,
-      CardClass.standard,
-      4,
-    );
-    final red = attributeCellPath(
-      r,
-      CardRarity.legendary,
-      CardClass.premium,
-      4,
-    );
-    // Epic cuts its corners; rare and legendary round them.
-    expect(rare.contains(const Offset(4, 4)), isTrue);
-    expect(epic.contains(const Offset(4, 4)), isFalse);
-    expect(gold.contains(const Offset(4, 4)), isTrue);
-    // Legendary keeps square-ish feet; rare rounds the bottom harder.
-    expect(gold.contains(const Offset(1, 49)), isTrue);
-    expect(rare.contains(const Offset(1, 49)), isFalse);
-    // Premium shares the legendary silhouette.
-    expect(red.contains(const Offset(1, 49)), isTrue);
-  });
 }

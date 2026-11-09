@@ -245,50 +245,6 @@ class CardFacePainter extends CustomPainter {
         ).createShader(edge),
     );
 
-    // Name bar and the three attribute cells — keylines brighten and the
-    // cell silhouette changes with the rarity.
-    final strength = frameStrength(rarity, cardClass);
-    final nameBar = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.07, h * 0.553, w * 0.86, h * 0.088),
-      Radius.circular(h * 0.012),
-    );
-    canvas.drawRRect(
-      nameBar,
-      Paint()..color = Colors.white.withValues(alpha: 0.07),
-    );
-    canvas.drawRRect(
-      nameBar,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = hair * (1 + strength * 0.6)
-        ..color = g[0].withValues(alpha: strength),
-    );
-    final cellW = w * 0.84 / 3;
-    for (var i = 0; i < 3; i++) {
-      final cell = attributeCellPath(
-        Rect.fromLTWH(
-          w * 0.08 + i * cellW + w * 0.012,
-          h * 0.70,
-          cellW - w * 0.024,
-          h * 0.125,
-        ),
-        rarity,
-        cardClass,
-        h * 0.01,
-      );
-      canvas.drawPath(
-        cell,
-        Paint()..color = Colors.white.withValues(alpha: 0.06),
-      );
-      canvas.drawPath(
-        cell,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = hair
-          ..color = g[0].withValues(alpha: 0.2 + 0.5 * strength),
-      );
-    }
-
     // Top gem and the brand mark at the foot.
     final gem = Offset(w / 2, h * 0.032);
     final gr = w * 0.024;
