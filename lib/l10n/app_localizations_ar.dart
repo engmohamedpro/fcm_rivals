@@ -31,10 +31,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createYourClub => 'أنشئ ناديك';
 
   @override
-  String get createYourClubIntro =>
-      'تبدأ بعملات و٢٢ حزمة مجانية — اثنتان لكل مركز في تشكيلتك الأولى.';
-
-  @override
   String get clubNameLabel => 'اسم النادي';
 
   @override
@@ -117,10 +113,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get starterFormationSection => 'التشكيلة الأولى';
-
-  @override
-  String get starterFormationIntro =>
-      'هذه تشكيلتك الأولى — يبدأ فريقك بهذه الهيئة و٢٢ حزمة مجانية تطابق مراكزها. يمكنك تغييرها في أي وقت من تبويب الفريق.';
 
   @override
   String get startManaging => 'ابدأ الإدارة';

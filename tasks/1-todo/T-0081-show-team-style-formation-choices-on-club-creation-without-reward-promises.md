@@ -2,8 +2,8 @@
 id: T-0081
 title: Show team-style formation choices on club creation without reward promises
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:

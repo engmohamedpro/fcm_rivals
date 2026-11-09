@@ -140,12 +140,6 @@ abstract class AppLocalizations {
   /// **'Create your club'**
   String get createYourClub;
 
-  /// No description provided for @createYourClubIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'You start with coins and 22 free packs — two for every position in your starter formation.'**
-  String get createYourClubIntro;
-
   /// No description provided for @clubNameLabel.
   ///
   /// In en, this message translates to:
@@ -295,12 +289,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'STARTER FORMATION'**
   String get starterFormationSection;
-
-  /// No description provided for @starterFormationIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'This is your starter formation — your team starts in this shape and your 22 free packs match its positions. You can change it any time later from the Team tab.'**
-  String get starterFormationIntro;
 
   /// No description provided for @startManaging.
   ///

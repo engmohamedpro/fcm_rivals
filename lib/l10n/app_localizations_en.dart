@@ -31,10 +31,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createYourClub => 'Create your club';
 
   @override
-  String get createYourClubIntro =>
-      'You start with coins and 22 free packs — two for every position in your starter formation.';
-
-  @override
   String get clubNameLabel => 'Club name';
 
   @override
@@ -117,10 +113,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get starterFormationSection => 'STARTER FORMATION';
-
-  @override
-  String get starterFormationIntro =>
-      'This is your starter formation — your team starts in this shape and your 22 free packs match its positions. You can change it any time later from the Team tab.';
 
   @override
   String get startManaging => 'Start managing';
