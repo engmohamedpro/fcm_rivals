@@ -2,8 +2,8 @@
 id: T-0066
 title: Show the country flag on the mini cards
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -49,5 +49,10 @@ Expected: analyze clean, suites green; manually every player chip on the Team ta
 ---
 
 ## Developer Notes
+
+- **Summary of changes:** `FcmMiniCard` gained an optional `final String? flag;` (default null). It renders inside the shield, directly under the position code in the same `Positioned` column (mirroring the big card's OVR → position → flag order): a `Text` of the flag at `fontSize: width * 0.20` with a `SizedBox(height: 2)` gap above. `flag == null` renders nothing — byte-identical layout for unset callers; the whole column sits under the existing `if (!ghost)` so ghosts never render it even if a stray value is passed. Wired `flag: flagEmojiFor(...)` at every real-player construction site: the two pitch chips (injured-inert + draggable), the two bench/reserve strip sites, `_dragFeedback`, and `pack_contents_screen.dart` (import already present there; added to `squad_pitch_view.dart`). The `_EmptySlot`/`_EmptyBenchCard` ghost placeholders intentionally pass nothing, per Requirement 2.
+- **Files changed:** `lib/core/ui/mini_card.dart`, `lib/features/squad/squad_pitch_view.dart` (import + 5 sites), `lib/features/packs/pack_contents_screen.dart` (1 site), `test/features/ui/mini_card_test.dart` (+4 cases), `tasks/…T-0066….md`.
+- **How I tested it:** `flutter analyze` → No issues found. `flutter test test/features/ui/mini_card_test.dart` → **8/8** (4 existing untouched + new: 🇪🇬 renders; `flag: null` renders no flag and no ⚽ fallback; ghost with a stray flag value renders nothing; RTL pump renders the flag with `takeException()` null — no overflow). `flutter test test/features/squad/` → **230/230**. Zero-drift: snapshot 1/1, balance 86/86, `REGEN_SNAPSHOT` unset. Full `flutter test` → **884/884 green**.
+- **Concerns / assumptions:** (1) The task Context counted "the `SquadCardRow` widgets around 339/363" as construction sites, but those two sites are the ghost placeholder cards (`_EmptySlot`, `_EmptyBenchCard`) inside that region — real-player rows are the strip sites already wired; ghosts correctly pass nothing, so the count of real-player sites is 6 (5 in squad_pitch_view + 1 in pack_contents) and all are wired. (2) `flagEmojiFor('Egypt')` returns the 🇪🇬 tag sequence; on some Android system fonts flag emoji render as letter pairs (known Flutter/platform limitation, affects the big card identically — not introduced here). (3) `stats:`/`stamina:` sites untouched — the flag column is additive only.
 
 ## Review Log
