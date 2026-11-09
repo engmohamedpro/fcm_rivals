@@ -2,11 +2,11 @@
 id: T-0071
 title: Make merging duplicates the only upgrade path
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0070]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0071: Make merging duplicates the only upgrade path
@@ -33,9 +33,9 @@ Player cards upgrade only by combining duplicate cards — the coin-purchase upg
 - Any other ad feature or the campus facilities economy.
 
 ## Acceptance Criteria
-- [ ] `grep -rn "buyUpgrade\|upgradeCostOf\|discountedUpgradeCost" lib/` returns nothing.
-- [ ] The detail sheet's only upgrade action is Merge (visible iff another copy of the player is owned); no coin amount is shown for upgrades anywhere.
-- [ ] Selling, facilities, ads (other than the upgrade discount) and the economy sim all still work; `flutter analyze` zero warnings; `flutter test` full suite green.
+- [x] `grep -rn "buyUpgrade\|upgradeCostOf\|discountedUpgradeCost" lib/` returns nothing.
+- [x] The detail sheet's only upgrade action is Merge (visible iff another copy of the player is owned); no coin amount is shown for upgrades anywhere.
+- [x] Selling, facilities, ads (other than the upgrade discount) and the economy sim all still work; `flutter analyze` zero warnings; `flutter test` full suite green.
 
 ## How to Verify
 ```bash
@@ -57,3 +57,9 @@ Expected: grep empty, analyze clean, full suite green; upgrades reachable only t
 - **Concerns / assumptions:** (1) The economy loses the upgrade coin sink by design (owner's direction: pack duplicates carry that role); T-0073's sweep measures the balance consequence — nothing re-priced here, per Out of Scope. (2) The enum value `AdRewardKind.upgradeDiscount` staying while its hooks are gone means a stored 'upgradeDiscount' grant row from an old save can no longer be consumed — it just sits inert; harmless. (3) The economy simulator's `mergeAllDuplicates`-style loop still calls `canMerge`, which is always true now — every duplicate pair merges, exactly the new rule.
 
 ## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran: acceptance grep (`grep -rn "buyUpgrade\|upgradeCostOf\|discountedUpgradeCost" lib/` → empty, exit 1), `flutter analyze` (No issues found), `flutter test test/features/collection/detail_sheet_merge_only_test.dart test/features/economy/ test/features/ads/` (38/38), full `flutter test` on HEAD.
+- Scope check: `git show abb0015 --name-only` — exactly the 13 declared files (collection, economy, ads, GDD 8.4, tests); `upgradeFacility`, merge mechanics and `sellPriceOfUpgraded` untouched; deleted knobs (`upgradeValueMultiplier`, `upgradeLevelGrowth`) have zero remaining readers in lib/ and test/; `AdRewardKind.upgradeDiscount` enum kept for stored DB strings exactly as documented.
+- Full-suite note for the record: HEAD's full run has exactly 2 failures, both in `injury_ui_test.dart` (pre-match medical room EN + AR) — A/B attribution (worktree at 362148c, i.e. WITH this task but BEFORE T-0069) shows those tests green there and red only after T-0069's chemistry row. The regression is T-0069's, not this task's; at this task's submission state the developer's 891/891 full pass is consistent with my targeted runs. No regression from THIS task.
+- Notes: the inert stored `upgradeDiscount` grant rows (concern 2) are acceptable — nothing can consume them and nothing crashes; the economy-sink removal is the owner's direction, with balance measured in T-0073's terms per Out of Scope.
