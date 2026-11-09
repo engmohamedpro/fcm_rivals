@@ -2,11 +2,11 @@
 id: T-0089
 title: Mark upgradable cards on the team screen when a duplicate exists
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0089: Mark upgradable cards on the team screen when a duplicate exists
@@ -37,11 +37,11 @@ Every player card on the team screen — pitch XI, bench and reserves — that o
 - Any text label on the mark (icon-only keeps it l10n-free).
 
 ## Acceptance Criteria
-- [ ] Cards with ≥ 2 owned copies show the mark on the pitch XI and both bench/reserve strips.
-- [ ] Cards with 1 copy show no mark; the mark disappears right after a merge consumes the duplicate.
-- [ ] No other `FcmMiniCard` consumer renders the mark (default false).
-- [ ] Drag-and-drop and existing squad tests unaffected.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
+- [x] Cards with ≥ 2 owned copies show the mark on the pitch XI and both bench/reserve strips.
+- [x] Cards with 1 copy show no mark; the mark disappears right after a merge consumes the duplicate.
+- [x] No other `FcmMiniCard` consumer renders the mark (default false).
+- [x] Drag-and-drop and existing squad tests unaffected.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -90,3 +90,22 @@ Manual: seed two copies of a squad player — the card carries the gold mark on 
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — PASS (2026-11-09)
+
+Ran every How to Verify command, all green:
+- `flutter analyze` → No issues found.
+- `flutter test test/features/squad/` → 236/236, drag-and-drop suite included.
+- Full `flutter test` → 952/952, no REGEN_SNAPSHOT.
+
+Checked each acceptance criterion against real code and behavior:
+- Mark on pitch + both strips: the predicate threads once into `SquadPitch` and `SquadCardRow` (`squad_pitch_view.dart`), and `SquadCardRow` serves bench and reserves with the same param — one code path for all three; the new tests prove it live on a pitch card (GK slot 0) and a bench card (CM slot 11), and reserves ride the identical path. Reserve-strip coverage is by code-path identity, not a dedicated seeded reserve player — noted, not blocking (same widget, same predicate, zero branch between bench and reserves).
+- Single copy shows no mark: test 1 asserts exactly 2 marks for a squad with exactly two duplicated members.
+- Merge reactivity: test 2 consumes the GK's duplicate through the real `store.mergeDuplicates`, invalidates `collectionProvider` on the live container, and re-enters — the GK's mark disappears while the CM's stays. This is the real app state after a Collection-tab merge.
+- No other consumer: `upgradable` defaults to false in `FcmMiniCard`; the only other consumer (`pack_contents_screen.dart`) untouched — verified by grep and the diff file list.
+- Owned-count truth: verified myself that `getCollection` filters `status = 'owned'` (`collection_store.dart:379-380`), so merged duplicates never count.
+- Badge geometry: bottom-start mark vs top-start injury badge — no collision; `PositionedDirectional` keeps it correct in RTL; `Semantics('Upgradable')` matches the InjuryBadge pattern.
+
+Scope check: changes confined to `mini_card.dart`, `squad_screen.dart`, `tactics_setup_view.dart`, `squad_pitch_view.dart`, `squad_screen_test.dart` — exactly the task's files. No out-of-scope production changes, no regressions.
+
+All criteria met — PASS.
