@@ -2,11 +2,11 @@
 id: T-0067
 title: Add nationality chemistry to the match engine
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0067: Add nationality chemistry to the match engine
@@ -40,11 +40,11 @@ Teams whose starting players share nationalities get a chemistry bonus: every na
 - Nationality-based squad-building rules or filters.
 
 ## Acceptance Criteria
-- [ ] `chemistryPercentOf` returns exactly the owner's numbers for the spec examples (0 / 1 / 2 / 4 / 10) and clamps at 10.
-- [ ] The four engine totals scale by `(1 + chem/100)`; the seeded sweep test proves the boosted XI scores more on average across seeds 0..199.
-- [ ] Substitutions/red cards re-evaluate chemistry (it is computed inside `computeTotals` from the live `onPitch` list — no cached per-match value).
-- [ ] Existing engine, snapshot and balance tests pass unchanged with no regeneration — zero drift for nationality-less fixtures.
-- [ ] `flutter analyze` reports zero warnings; `flutter test` full suite green.
+- [x] `chemistryPercentOf` returns exactly the owner's numbers for the spec examples (0 / 1 / 2 / 4 / 10) and clamps at 10.
+- [x] The four engine totals scale by `(1 + chem/100)`; the seeded sweep test proves the boosted XI scores more on average across seeds 0..199.
+- [x] Substitutions/red cards re-evaluate chemistry (it is computed inside `computeTotals` from the live `onPitch` list — no cached per-match value).
+- [x] Existing engine, snapshot and balance tests pass unchanged with no regeneration — zero drift for nationality-less fixtures.
+- [x] `flutter analyze` reports zero warnings; `flutter test` full suite green.
 
 ## How to Verify
 ```bash
@@ -66,3 +66,9 @@ Expected: analyze clean; chemistry unit tests match the spec examples exactly; s
 - **Concerns / assumptions:** (1) I first implemented the opponent nationality via a drift LEFT JOIN, but `season_store_opponent.dart` is a `part of season_store.dart` whose drift import does not expose `JoinedRow`/typed result getters there — 15 analyze errors. Replaced with a plain `db.players` read into an `int→String` map (one extra query per opponent load, negligible; keeps the diff minimal and `_rowIdOf` untouched). (2) The map is built per `loadOpponent` call; if T-0068/T-0069 later need it hot, a cached dataset-level map is the follow-up — not done here to keep scope exact. (3) `AiSquadPlayer.nationality` is optional-with-default so `season_engine_test.dart`'s existing constructions compile unchanged (verified by full suite). (4) Chemistry multiplies goalkeeping too, exactly as the task's Requirement 1 wording ("multiplies the team's attack, support, defence and goalkeeping totals") and the owner's "+1% to team attack, defence, support and goalkeeping" require. (5) **Widget-fixture regression found and fixed:** `match_screen_test`'s dataset fixture gave all 60 players nationality 'Egypt', so once chemistry went live the user's XI genuinely earned +10% and the engineered defeat (opponent 95, seed 3) no longer ended in a defeat — the ad-boosted recovery card never appeared (2 failures: EN + AR recovery-card tests; same file 7/7 on clean HEAD). The feature is correct; the fixture was silently outcome-controlling. Fix: per-player distinct nationalities ('Country <id>') in that file's _rows only — the same chemistry-neutral philosophy the task applies to engine fixtures. No assertion was edited.
 
 ## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran: `flutter analyze` (No issues found); `flutter test test/features/match/chemistry_test.dart` (10/10 — the eight owner-example unit cases plus the seeds 0..199 sweep and the zero-chemistry-unchanged case); `flutter test test/features/match/ test/balance/` (276/276 with `engine_snapshot_test` 1/1 and balance 86/86, `REGEN_SNAPSHOT` unset); full `flutter test` (**884/884**).
+- Verified in code: `chemistryPercentOf` is pure Dart and returns exactly the owner's examples (all-distinct 0, pair 1, triple 2, 2 Egypt + 4 Brazil + 5 distinct 4, eleven equal 10, clamp at 10, null/'' never group); `computeTotals` multiplies all four totals by `(1 + chem/100)` computed from the LIVE `onPitch` list (subs/red cards re-evaluate by construction); wiring confirmed at `_userMatchPlayer` (forecast), `match_session._toMatchPlayer` (live XI — a construction site the task Context missed, correctly found by the developer), `loadOpponent` (dataset map by realPlayerId, synthetic '') and `match_simulator`.
+- The `match_screen_test` delta is fixture data only (the 60×'Egypt' nationality column → per-player distinct 'Country N') — no assertion was edited; with chemistry live, that fixture had genuinely been outcome-controlling, so neutralizing it preserves the engineered-defeat test's meaning rather than dodging a failure.
+- Notes: the drift-LEFT-JOIN → plain-map rewrite (developer concern 1) is the simpler correct choice for a `part of` file.
