@@ -2,11 +2,11 @@
 id: T-0074
 title: Pay season rewards in coins only
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0074: Pay season rewards in coins only
@@ -38,12 +38,12 @@ Season completion pays Coins and nothing else: no reward packs are granted, show
 - The economy simulator's buying strategy (`lib/features/simulation/economy_simulator.dart` never opens granted season packs, so no sim change is needed).
 
 ## Acceptance Criteria
-- [ ] `completeSeason` grants zero packs: negative test covering a promoted and a non-promoted finish passes; no `lib/` file references `season_premium` / `season_normal` / `season_choice` anymore.
-- [ ] `SeasonCompletion` has no `rewardPackCategory` field and nothing in `lib/` or `test/` references it.
-- [ ] The completion dialog shows the season-reward coins row and the next-division row only; no "Reward pack" text renders.
-- [ ] Coin payout is unchanged by this task: `seasonRewardCoins(division: 1, position: 1) == 20_000` and the existing `economy_balance_test` season-reward assertions pass without edits.
-- [ ] GDD 18 shows the coins-only reward structure with the dated owner decision; the ledger/coin-flow behavior matches it.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/season/` green; full `flutter test` green with no `REGEN_SNAPSHOT`.
+- [x] `completeSeason` grants zero packs: negative test covering a promoted and a non-promoted finish passes; no `lib/` file references `season_premium` / `season_normal` / `season_choice` anymore.
+- [x] `SeasonCompletion` has no `rewardPackCategory` field and nothing in `lib/` or `test/` references it.
+- [x] The completion dialog shows the season-reward coins row and the next-division row only; no "Reward pack" text renders.
+- [x] Coin payout is unchanged by this task: `seasonRewardCoins(division: 1, position: 1) == 20_000` and the existing `economy_balance_test` season-reward assertions pass without edits.
+- [x] GDD 18 shows the coins-only reward structure with the dated owner decision; the ledger/coin-flow behavior matches it.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/season/` green; full `flutter test` green with no `REGEN_SNAPSHOT`.
 
 ## How to Verify
 ```bash
@@ -60,3 +60,15 @@ flutter test test/features/season/ test/balance/economy_balance_test.dart
 flutter test
 # Expected: full suite green (no REGEN_SNAPSHOT), including the season screen tests
 ```
+
+---
+
+## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- File note: this task was authored without the Developer Notes / Review Log sections (older planning format); the developer's implementation summary lives in commit 58d4d61's message. The Review Log section is added by this review per the reviewer workflow.
+- Ran at HEAD f13f132 (fresh Flutter 3.47.9 / Dart 3.13.7): `grep -rn "season_premium\|season_normal\|season_choice\|rewardPackCategory" lib/ test/` → no output; `flutter analyze` → No issues found; `flutter test test/features/season/ test/balance/economy_balance_test.dart` → 86/86; the new negative test by name (`flutter test test/features/season/season_store_test.dart --plain-name "completeSeason grants ZERO packs"`) → passed; full `flutter test` → 922/922 with `REGEN_SNAPSHOT` unset (one run covers both tasks in review at this HEAD).
+- Every requirement verified against the implement diff (58d4d61): the `packCategory` switch and the `packs` insert block are gone from `completeSeason` (`season_store_standings.dart`); `rewardPackCategory` deleted from model, constructor and dialog row (`season_models.dart`, `season_screen.dart` — the coins row and the Next-division row are untouched); GDD §18 rewritten coins-only with the dated 2026-11-09 owner decision, the ×1.25 ad note (§19.3) and the no-compensation rationale; the `season_store_test.dart` diff is pure addition (+76/−0), so every existing ledger assertion ran unchanged.
+- Coins byte-identical: `seasonRewardCoins` (`lib/features/season/season_engine.dart:747`) has zero diff lines in the implement commit; the economy suite's champion anchor `expect(champion, 20_000)` (`economy_balance_test.dart:97`) passes unedited.
+- Honest note on the dialog criterion: verified at code level — the row, the field and the "Reward pack" string no longer exist anywhere in `lib/` or `test/` (grep clean), so the text cannot render; no widget test renders the completion dialog at all (pre-existing gap — this task's Out of Scope already defers dialog coverage/localization to a separate concern).
+- No out-of-scope files: the implement commit touches exactly the four requirement targets + the task file front matter + the test file.
