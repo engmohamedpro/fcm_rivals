@@ -2,11 +2,11 @@
 id: T-0072
 title: Scale AI squads past the dataset ceiling with upgrade levels
 priority: high
-status: needs-review
+status: done
 attempts: 2
 depends_on: [T-0070]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0072: Scale AI squads past the dataset ceiling with upgrade levels
@@ -36,7 +36,7 @@ The division ladder never flattens: when a division's target overall exceeds wha
 
 ## Acceptance Criteria
 - [x] At high divisions every AI club's average effective overall meets the division target (±1), via the shared `upgradedValue` helper — attributes above 99 flow into matches.
-- [ ] Division 1 (and every division whose target the pool supplies) generates exactly today's squads — seeded generation tests and the engine snapshot pass with no `REGEN_SNAPSHOT`.
+- [x] Division 1 (and every division whose target the pool supplies) generates exactly today's squads — seeded generation tests and the engine snapshot pass with no `REGEN_SNAPSHOT`.
 - [x] Generation stays deterministic per seed, works with no dataset (synthetic path), and never crashes on empty/deg pools.
 - [x] GDD 9.6 documents the upgrade-level scaling with the dated owner decision.
 - [x] `flutter analyze` zero warnings; `flutter test` full suite green.
@@ -98,3 +98,17 @@ flutter test test/features/season/ && flutter test
 ```
 
 **What to do:** fix failure 1 (one-line ordering fix) and resolve failure 2 via (a) or an owner decision on (b), then resubmit.
+
+### Review 2026-11-09, attempt 2: PASS
+Ran (independent re-verification, same method as attempt 1): `flutter analyze` (clean), `flutter test test/features/season/` (66/66), `flutter test test/features/match/engine_snapshot_test.dart` (1/1, `REGEN_SNAPSHOT` unset), full `flutter test` on HEAD 60051c2 → **911/911**, plus the cross-version probe (`tool/review_lift_probe.dart` at 76319ef via worktree vs HEAD, divisions 1–16 × seeds {5, 42, 77, 1234} × both paths).
+
+**Both attempt-1 failures verified fixed:**
+1. RNG order — the parent's hybrid consumption order is reproduced (pool squad in the local before crest/mentality; synthetic fallback inside the `players:` argument after them; `_PoolTracker` construction and `pristinePoolSupplies` verified to draw no RNG). Probe: **zero RNG shifts** — every one of the 228 differing clubs is the SAME player with lifted attributes (name/id identical), never a different draw.
+2. Low-division byte-identity — probe: pool path divisions 1–15 byte-identical to 76319ef (0/76 clubs changed at every division); synthetic path divisions 1–14 byte-identical. The lift engages exactly where the generator's supply genuinely ends: synthetic div 15+ (target 96 > the 94 clamp), pool div 16+ (no in-band player at 96–102). Per-club landing at lifted divisions: synthetic d15 min 96.06 / d16 min 99.06, pool d16 min 98.83 — every club ≥ target − 1. The new zero-lift lock tests run the reviewer's counterexample seeds {5, 42, 77, 1234} across pool divisions {1,2,8,12,13,14} and synthetic {1,7,14}.
+3. Ladder shape (reviewer measurement, pool path): 89.32 (d13) → 90.30 (d14) → 90.48 (d15) → 99.47 (d16) — monotonic, never flat, each division at or harder than the last.
+
+**Notes (accepted trade-offs, documented by the developer, not failures):**
+- Div 15 pool path does not lift (target 96, band 93–99 contains 93/94) and clubs average 90.48 — in-band-but-bottom supply plus mid-division band exhaustion, i.e. the parent's own banding behavior preserved byte-identically as this task requires. If the owner later wants div-15 pool clubs nearer 96, the gate would need to judge "pool can reach the target" rather than "an in-band player exists" — that changes behavior at a supplied division and needs an explicit owner decision, not a silent tweak.
+- The synthetic-path dip at div 14 (84.94 vs div 13's 85.72) is pre-existing parent behavior (byte-identical division), out of this task's scope to fix.
+- The Developer Notes' summary line "div 1–14 byte-identical on BOTH paths" is imprecise — the detailed claim (and the probe) show pool identity extends through div 15. Cosmetic; the detailed numbers are the correct ones.
+

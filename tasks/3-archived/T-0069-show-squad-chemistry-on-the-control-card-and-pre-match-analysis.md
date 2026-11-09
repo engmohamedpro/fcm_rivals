@@ -2,11 +2,11 @@
 id: T-0069
 title: Show squad chemistry on the control card and pre-match analysis
 priority: medium
-status: needs-review
+status: done
 attempts: 2
 depends_on: [T-0067]
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0069: Show squad chemistry on the control card and pre-match analysis
@@ -36,7 +36,7 @@ The chemistry percentage is visible where the squad is built and before every ma
 - [x] The Team tab control card shows the XI's chemistry as `+N%` and updates after swaps/Auto Pick (it derives from the same `xi` the pitch renders).
 - [x] Pre-match analysis shows the chemistry line for both teams, EN and AR.
 - [x] The seven mentality keys and all pre-existing keys are untouched; the ARB key sets stay 1:1 (EN ↔ AR).
-- [ ] New tests (a)-(c) pass; `flutter analyze` reports zero warnings; `flutter test` full suite green with `test/features/match/` + `test/balance/` passing without `REGEN_SNAPSHOT`.
+- [x] New tests (a)-(c) pass; `flutter analyze` reports zero warnings; `flutter test` full suite green with `test/features/match/` + `test/balance/` passing without `REGEN_SNAPSHOT`.
 
 ## How to Verify
 ```bash
@@ -79,3 +79,10 @@ Ran: `flutter analyze` (clean), `flutter test test/features/squad/ test/features
 **What to do:** fix the two injury tests' viewport/scroll (test-side only — no production change needed or wanted), then resubmit with a completed full-suite run.
 
 **Reviewer note (not a failure, for a future task):** the forecast now DISPLAYS both sides' chemistry but the Monte-Carlo behind the WIN/DRAW/LOSS numbers does not apply it (display-only, as documented) — consider either making the forecast chemistry-aware or labelling the row "applied at kick-off" so the sheet cannot read as if the percentages already include it.
+
+### Review 2026-11-09, attempt 2: PASS
+- Ran: `flutter analyze` (No issues found), `flutter test test/features/match/injury_ui_test.dart` (11/11 — was 9/11), `flutter test test/features/squad/ test/features/match/pre_match_screen_test.dart test/features/match/match_forecast_test.dart` (246/246), full `flutter test` on HEAD 60051c2 → **911/911**.
+- Both attempt-1 failures verified fixed: the fix is exactly as directed — test-side only, 6 lines in `pumpLocalized` (local to injury_ui_test.dart, confirmed no other file uses the helper) enlarging the viewport to 2400×3600 @ dpr 3 with a proper tearDown reset; production code untouched this attempt (`git show a11afc2 --stat`: 1 test file).
+- The attempt-1 remaining verification (full suite) now passes; `test/balance/` green inside the full run, no `REGEN_SNAPSHOT`.
+- The forecast display-vs-simulation chemistry note stands as a documented future task, not a failure of this one.
+
