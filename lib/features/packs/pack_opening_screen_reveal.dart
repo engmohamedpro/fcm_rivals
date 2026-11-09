@@ -14,14 +14,17 @@ extension _PackRevealViews on _PackOpeningScreenState {
     Size size,
     RevealTimeline tl,
   ) {
-    final legend = tl.isLegend;
     final packW = math.min(size.width * 0.52, 230.0);
     final packH = packW / kPackAspect;
-    // Violent shake while charging — harder and faster for a legendary
-    // heartbeat.
+    // Violent shake while charging — faster and harder the rarer the pull
+    // (rare ≈ 108 / 9px, epic ≈ 122 / 11px, legendary ≈ 136 / 12px, red
+    // ≈ 153 / 14px).
     final shake =
-        math.sin(charge * (legend ? 150 : 90)) * (legend ? 13 : 9) * charge;
-    final tilt = math.sin(charge * 70) * (legend ? 0.07 : 0.05) * charge;
+        math.sin(charge * (80 + 28 * _intensity)) *
+        (6.0 + 3.2 * _intensity) *
+        charge;
+    final tilt =
+        math.sin(charge * 70) * (0.04 + 0.014 * _intensity) * charge;
     final scale = 1 + 0.14 * charge + 0.45 * tl.packBurst.transform(t);
     final fade = 1 - tl.packFade.transform(t);
     return Opacity(
@@ -206,6 +209,17 @@ extension _PackRevealViews on _PackOpeningScreenState {
     final showBack = angle >= math.pi / 2;
     final scale =
         0.55 + 0.45 * Curves.easeOutBack.transform(flipT.clamp(0.0, 1.0));
+    // The card 'punches' as the last stat lands and the buttons arrive.
+    final punch =
+        1.0 +
+        0.045 *
+            math.sin(
+              math.pi *
+                  Interval(
+                    tl.done - 0.02,
+                    math.min(1.0, tl.done + 0.05),
+                  ).transform(t),
+            );
     final stats = tl.stats.transform(t);
     // Identity lands only after the stats have counted up.
     final name = tl.nameIn.transform(t);
@@ -223,7 +237,7 @@ extension _PackRevealViews on _PackOpeningScreenState {
     return Transform.translate(
       offset: Offset(0, (1 - flipT) * 50),
       child: Transform.scale(
-        scale: scale,
+        scale: scale * punch,
         child: Transform(
           alignment: Alignment.center,
           transform: rot,
@@ -245,6 +259,9 @@ extension _PackRevealViews on _PackOpeningScreenState {
                   maskName: legend,
                   maskPulse: pulse(_idle.value, cycles: 2),
                   shine: shine,
+                  // Idle animation of the rarity artwork (turning rays,
+                  // glints, lightning veins, rim pulse).
+                  phase: _idle.value,
                   glow:
                       (0.55 + 0.45 * pulse(_idle.value)) *
                       flipT.clamp(0.0, 1.0) *

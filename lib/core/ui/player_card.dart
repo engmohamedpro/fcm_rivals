@@ -41,6 +41,7 @@ class FcmPlayerCard extends StatelessWidget {
     this.nameLetters,
     this.maskName = false,
     this.maskPulse = 0.0,
+    this.phase,
   });
 
   final BasePlayer player;
@@ -82,6 +83,11 @@ class FcmPlayerCard extends StatelessWidget {
 
   /// 0..1 breathing phase of the redacted bar.
   final double maskPulse;
+
+  /// 0..1 looping phase that animates the rarity artwork (turning
+  /// sunburst, twinkles, lightning veins, rim pulse). Null keeps the face
+  /// static — grids, sheets and the pitch never animate.
+  final double? phase;
 
   /// The attributes worth showing: outfield players hide their goalkeeping
   /// score, goalkeepers hide ATT, so every card shows meaningful numbers.
@@ -191,6 +197,7 @@ class FcmPlayerCard extends StatelessWidget {
                   cardClass: cardClass,
                   shine: shine,
                   glow: glow,
+                  phase: phase,
                 ),
               ),
             ),

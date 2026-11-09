@@ -9,6 +9,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'card_rarity_art.dart';
 import 'fcm_style.dart';
 
 /// Width : height ratio of the card.
@@ -41,39 +42,6 @@ void _insetCanvas(Canvas canvas, Size size, double inset) {
   canvas.translate(-size.width / 2, -size.height / 2);
 }
 
-/// Tapered rays fanning out of [c] — the legendary face's sunburst.
-void _paintRays(
-  Canvas canvas,
-  Offset c,
-  double radius,
-  Color color,
-  double alpha,
-  int rays,
-) {
-  final slice = 2 * math.pi / rays;
-  final paint = Paint()
-    ..shader = RadialGradient(
-      colors: [
-        color.withValues(alpha: alpha),
-        color.withValues(alpha: 0.0),
-      ],
-    ).createShader(Rect.fromCircle(center: c, radius: radius));
-  for (var i = 0; i < rays; i++) {
-    final a = i * slice;
-    canvas.drawPath(
-      Path()
-        ..moveTo(c.dx, c.dy)
-        ..lineTo(c.dx + math.cos(a) * radius, c.dy + math.sin(a) * radius)
-        ..lineTo(
-          c.dx + math.cos(a + slice * 0.45) * radius,
-          c.dy + math.sin(a + slice * 0.45) * radius,
-        )
-        ..close(),
-      paint,
-    );
-  }
-}
-
 /// Small five-point star path for the card back's rarity row.
 Path _cardStarPath(Offset c, double r) {
   final p = Path();
@@ -99,10 +67,16 @@ class CardFacePainter extends CustomPainter {
     this.cardClass = CardClass.standard,
     this.glow = 0.0,
     this.glowColor,
+    this.phase,
   });
 
   final CardRarity rarity;
   final double? shine;
+
+  /// 0..1 looping phase of the rarity artwork's idle animation (turning
+  /// sunburst, twinkles, lightning, rim pulse). Null paints a static frame
+  /// — the collection grid and pitch shields never animate.
+  final double? phase;
 
   /// The presentation-level class axis (T-0049): premium paints the red
   /// escalation above gold while the rarity stays legendary underneath.
@@ -183,45 +157,17 @@ class CardFacePainter extends CustomPainter {
       canvas.drawLine(Offset(x, 0), Offset(x + h, h), lattice);
     }
 
-    // Rarity motif behind the player.
-    final mc = Offset(w * 0.56, h * 0.29);
-    switch (rarity) {
-      case CardRarity.legendary:
-        _paintRays(canvas, mc, h * 0.62, Colors.white, 0.26, 22);
-      case CardRarity.epic:
-        void tri(
-          double x1,
-          double y1,
-          double x2,
-          double y2,
-          double x3,
-          double y3,
-          Color color,
-        ) {
-          canvas.drawPath(
-            Path()
-              ..moveTo(w * x1, h * y1)
-              ..lineTo(w * x2, h * y2)
-              ..lineTo(w * x3, h * y3)
-              ..close(),
-            Paint()..color = color,
-          );
-        }
-        final lightShard = Colors.white.withValues(alpha: 0.10);
-        final darkShard = Colors.black.withValues(alpha: 0.08);
-        tri(0, 0, 0.64, 0, 0, 0.52, lightShard);
-        tri(1, 0, 0.42, 0, 1, 0.58, darkShard);
-        tri(0, 0.30, 0.55, 0.56, 0, 0.60, darkShard);
-        tri(1, 0.36, 0.45, 0.56, 1, 0.62, lightShard);
-      case CardRarity.rare:
-        final arc = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = hair * 1.4
-          ..color = Colors.white.withValues(alpha: 0.11);
-        for (var i = 1; i <= 5; i++) {
-          canvas.drawCircle(mc, w * 0.12 * i, arc);
-        }
-    }
+    // Rarity artwork behind the player: each rarity has its own design
+    // language (holo foil / cut gem / royal crest / lightning crest).
+    paintRarityArt(
+      canvas,
+      size,
+      rarity: rarity,
+      cardClass: cardClass,
+      accent: _accent,
+      gradient: g,
+      phase: phase,
+    );
 
     // Soft top light.
     canvas.drawRect(
@@ -299,7 +245,9 @@ class CardFacePainter extends CustomPainter {
         ).createShader(edge),
     );
 
-    // Name bar and the three attribute cells.
+    // Name bar and the three attribute cells — keylines brighten and the
+    // cell silhouette changes with the rarity.
+    final strength = frameStrength(rarity, cardClass);
     final nameBar = RRect.fromRectAndRadius(
       Rect.fromLTWH(w * 0.07, h * 0.553, w * 0.86, h * 0.088),
       Radius.circular(h * 0.012),
@@ -312,30 +260,32 @@ class CardFacePainter extends CustomPainter {
       nameBar,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = hair
-        ..color = g[0].withValues(alpha: 0.45),
+        ..strokeWidth = hair * (1 + strength * 0.6)
+        ..color = g[0].withValues(alpha: strength),
     );
     final cellW = w * 0.84 / 3;
     for (var i = 0; i < 3; i++) {
-      final cell = RRect.fromRectAndRadius(
+      final cell = attributeCellPath(
         Rect.fromLTWH(
           w * 0.08 + i * cellW + w * 0.012,
           h * 0.70,
           cellW - w * 0.024,
           h * 0.125,
         ),
-        Radius.circular(h * 0.014),
+        rarity,
+        cardClass,
+        h * 0.01,
       );
-      canvas.drawRRect(
+      canvas.drawPath(
         cell,
         Paint()..color = Colors.white.withValues(alpha: 0.06),
       );
-      canvas.drawRRect(
+      canvas.drawPath(
         cell,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = hair
-          ..color = g[0].withValues(alpha: 0.28),
+          ..color = g[0].withValues(alpha: 0.2 + 0.5 * strength),
       );
     }
 
@@ -422,6 +372,15 @@ class CardFacePainter extends CustomPainter {
         ..color = Colors.white.withValues(alpha: 0.30),
     );
     canvas.restore();
+    paintRimPulse(
+      canvas,
+      size,
+      path,
+      rarity: rarity,
+      cardClass: cardClass,
+      accent: _accent,
+      phase: phase,
+    );
     canvas.drawPath(
       path,
       Paint()
@@ -438,7 +397,8 @@ class CardFacePainter extends CustomPainter {
       old.cardClass != cardClass ||
       old.shine != shine ||
       old.glow != glow ||
-      old.glowColor != glowColor;
+      old.glowColor != glowColor ||
+      old.phase != phase;
 }
 
 class CardBackPainter extends CustomPainter {

@@ -48,6 +48,7 @@ import '../../l10n/l10n_context.dart';
 import 'pack_effects.dart';
 import 'pack_opening_widgets.dart';
 import 'pack_reveal_timeline.dart';
+import 'pack_stagecraft.dart';
 
 export 'pack_reveal_timeline.dart';
 
@@ -379,16 +380,58 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     }
     // The charge glow starts from the pack's own tier metal and moves
     // toward the drawn card's rarity colour as the pack heats up.
+    // The glow then CLIMBS the rarity ladder (amethyst → sapphire → gold
+    // → crimson) and stops on the rung of the card inside; lower pulls
+    // flash the next rung for a beat (a near miss) before settling.
+    final rank = revealRank(rarity, _cardClass);
     final glowTint = Color.lerp(
       widget.packTint ?? FcmColors.goldSoft,
-      accent,
-      math.min(1.0, charge * 1.2),
+      chargeGlowColor(charge: charge, rank: rank),
+      math.min(1.0, charge * 4),
     )!;
 
     final burst = ((t - tl.burstStart) / (tl.burstEnd - tl.burstStart)).clamp(
       0.0,
       1.0,
     );
+
+    // Camera shake: the burst's impact decays over the burst, and the
+    // golden / red finales add their own hits — harder the rarer the pull.
+    final impact = (isFirst && t >= tl.burstStart) ? (1 - burst) : 0.0;
+    final kick =
+        math.sin(math.pi * fin.clamp(0.0, 1.0)) * 6 +
+        math.sin(math.pi * fin2.clamp(0.0, 1.0)) * 9;
+    final shakeAmp = (2.0 + 2.5 * _intensity) * impact * impact + kick;
+    final shake = Offset(
+      math.sin(t * 900) * shakeAmp,
+      math.cos(t * 740) * shakeAmp,
+    );
+
+    // Red-pull lightning: crackles around the charging pack and on both
+    // finale waves.
+    final lightning = premium
+        ? math.max(
+            showPack ? 0.55 * charge : 0.0,
+            math.max(
+              0.8 * math.sin(math.pi * fin.clamp(0.0, 1.0)),
+              math.sin(math.pi * fin2.clamp(0.0, 1.0)),
+            ),
+          )
+        : 0.0;
+
+    // Ambient particles around the finished card, flavoured per rarity.
+    final ambientStyle = switch (rank) {
+      1 => AmbientStyle.crystals,
+      2 => AmbientStyle.goldDust,
+      3 => AmbientStyle.embers,
+      _ => AmbientStyle.motes,
+    };
+    final ambientCount = switch (rank) {
+      1 => 22,
+      2 => 34,
+      3 => 46,
+      _ => 14,
+    };
 
     final done = t >= tl.done;
     final flipT = tl.flip.transform(t);
@@ -416,7 +459,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
     final bannerT = legend ? tl.bannerIn!.transform(t) : tl.stats.transform(t);
 
-    return Stack(
+    final stage = Stack(
       fit: StackFit.expand,
       children: [
         // Background: night sky with a rarity-tinted glow behind the action.
@@ -444,6 +487,20 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             rays: premium ? 26 : (legend ? 22 : 14),
           ),
         ),
+
+        // Energy ring orbiting the sealed pack while it charges.
+        if (showPack)
+          IgnorePointer(
+            child: CustomPaint(
+              painter: ChargeRingPainter(
+                charge: charge,
+                rotation: _spin.value,
+                color: glowTint,
+                dots: 8 + 4 * rank,
+                radius: math.min(size.width * 0.52, 230.0) / kPackAspect / 2,
+              ),
+            ),
+          ),
 
         // Legendary vignette: the room goes dark around the action.
         if (legend && vignette > 0)
@@ -495,6 +552,22 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
 
+        // Ordinary pulls get the burst's own pressure ring too — one for a
+        // rare, two for an epic (the legendary reveal owns its rings above).
+        if (!legend && isFirst)
+          IgnorePointer(
+            child: CustomPaint(
+              painter: ShockwavePainter(
+                progress: Interval(
+                  tl.burstStart,
+                  tl.burstStart + 0.12,
+                ).transform(t),
+                color: accent,
+                rings: rarity == CardRarity.epic ? 2 : 1,
+              ),
+            ),
+          ),
+
         // Sparks.
         IgnorePointer(
           child: CustomPaint(
@@ -521,6 +594,17 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
               painter: ParticleBurstPainter(
                 progress: fin2,
                 sparks: _finaleSparks,
+                color: accent,
+              ),
+            ),
+          ),
+
+        if (premium && lightning > 0)
+          IgnorePointer(
+            child: CustomPaint(
+              painter: LightningPainter(
+                strength: lightning.clamp(0.0, 1.0),
+                time: t,
                 color: accent,
               ),
             ),
@@ -562,6 +646,20 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
+
+        // Ambient particles drifting around the finished card.
+        if (flipT > 0)
+          IgnorePointer(
+            child: CustomPaint(
+              painter: AmbientPainter(
+                time: _spin.value,
+                style: ambientStyle,
+                color: accent,
+                strength: flipT.clamp(0.0, 1.0),
+                count: ambientCount,
               ),
             ),
           ),
@@ -705,5 +803,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         ),
       ],
     );
+    return Transform.translate(offset: shake, child: stage);
   }
 }
