@@ -2,11 +2,11 @@
 id: T-0070
 title: Make each upgrade level add one percent to all stats without caps
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-09
 ---
 
 # T-0070: Make each upgrade level add one percent to all stats without caps
@@ -38,11 +38,11 @@ Upgrade level N adds +N% to the player's overall and all four attributes (a +3 S
 - The `upgradeFacility` campus path — unrelated (buildings, not players).
 
 ## Acceptance Criteria
-- [ ] A +N owned card's overall and all four attributes equal `upgradedValue(base, N)` exactly, with values above 99 rendering correctly on the card and detail sheet.
-- [ ] Merging works at any level (no cap error anywhere) and stays free; the duplicate is consumed; the +N badge shows the true level.
-- [ ] No gameplay code reads the `upgraded_*` columns; new merges write 0; existing saves load with level-derived stats.
-- [ ] GDD 8.2 reflects the new math with the dated owner decision.
-- [ ] `flutter analyze` zero warnings; `flutter test` full suite green; `test/features/match/` and `test/balance/` pass without `REGEN_SNAPSHOT`.
+- [x] A +N owned card's overall and all four attributes equal `upgradedValue(base, N)` exactly, with values above 99 rendering correctly on the card and detail sheet.
+- [x] Merging works at any level (no cap error anywhere) and stays free; the duplicate is consumed; the +N badge shows the true level.
+- [x] No gameplay code reads the `upgraded_*` columns; new merges write 0; existing saves load with level-derived stats.
+- [x] GDD 8.2 reflects the new math with the dated owner decision.
+- [x] `flutter analyze` zero warnings; `flutter test` full suite green; `test/features/match/` and `test/balance/` pass without `REGEN_SNAPSHOT`.
 
 ## How to Verify
 ```bash
@@ -63,3 +63,9 @@ Expected: analyze clean, suites green; a merged card's stats match the percentag
 - **Concerns / assumptions:** (1) `economy_simulator`'s duplicate-merge loop no longer skips "capped" pairs — every duplicate pair is now mergeable, so sim economies merge slightly more; that is the intended new rule and T-0073 measures it. (2) The `upgradeCostOf` economy curve still prices by level — at very high levels coins get expensive but that is T-0071/T-0073 territory, untouched here. (3) Old saves: a +3 card's stats may shift by a point or two (random points → +3% of base), accepted per the task. (4) `canMerge` kept as an always-true method rather than deleted, because the simulator loop and store call it — deleting it would churn callers for no benefit; documented as "store still guards same-player/owned-state".
 
 ## Review Log
+
+### Review 2026-11-09, attempt 1: PASS
+- Ran: `flutter analyze` (No issues found); `flutter test test/features/upgrades/ test/features/collection/collection_store_test.dart` (37/37 — the deterministic `upgrade_engine_test` incl. the 90→91/92/100/108 and 60@+3→62 examples, the past-level-5 merge (+5 + base → +6, duplicate consumed, legacy columns zeroed) and the old-save rebalance case); `flutter test test/features/match/ test/balance/` (276/276, `REGEN_SNAPSHOT` unset); full `flutter test` (**884/884**).
+- Verified in code: `upgradedValue` is exactly `base + (base × level / 100).round()` with negative-level clamp and no 99 cap, living in `lib/core/domain/players.dart` as the single source of truth; `PlayerCard.overall`/`attribute()` derive from `upgradeLevel` alone (the four stored-point fields are gone); `UpgradeEngine` is fully deterministic (`allocateAttributeGain`/`pointsPerLevel`/`maxUpgradeLevel` deleted, no `Random` parameter, no max-level error); merging stays free and consumes the duplicate; both `mergeDuplicates` and `buyUpgrade` zero the legacy `upgraded_*` columns (marked legacy in `app_database.dart`); the detail-sheet bonuses are derived (effective − base); GDD 8.2 carries the dated owner decision and the shared-formula note for T-0072.
+- Scope: implement commit `daaf5fd` touched exactly the declared file set (the 15-file stat plus `docs/fcm_rivals_GDD_SRS.md` and `app_database.dart` at the head of the list); nothing outside it.
+- Notes: the manual merge flow (`flutter run`) was not executed (headless reviewer sandbox) — the store tests cover the merge/rebalance paths. Keeping `canMerge` as always-true rather than deleting it is acceptable (callers stay simple; the store still guards same-player/owned-state).
