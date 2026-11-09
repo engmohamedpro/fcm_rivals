@@ -12,11 +12,13 @@
 /// big moments of the game share one visual language.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/audio/fcm_sfx.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/player_card.dart' show FcmPlayerCard, pulse;
 import '../packs/pack_effects.dart'
@@ -30,6 +32,9 @@ void _haptic(Future<void> Function() fn) {
     fn().catchError((Object _) {});
   } catch (_) {}
 }
+
+/// Length of the whole sequence.
+const Duration _kMergeDuration = Duration(milliseconds: 3800);
 
 /// Timeline marks, as fractions of the master controller.
 class _T {
@@ -98,6 +103,7 @@ class _CardMergeAnimationState extends State<CardMergeAnimation>
   late final List<Spark> _sparks;
   late final List<Spark> _sparks2;
   double _lastT = 0;
+  final FcmSfx _sfx = FcmSfx();
 
   @override
   void initState() {
@@ -113,10 +119,19 @@ class _CardMergeAnimationState extends State<CardMergeAnimation>
     );
     _seq = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3800),
+      duration: _kMergeDuration,
     )
       ..addListener(_onTick)
       ..forward();
+    unawaited(
+      _sfx.preload(const [
+        SfxCue.whoosh,
+        SfxCue.tick,
+        SfxCue.mergeCharge,
+        SfxCue.mergeImpact,
+        SfxCue.mergeLevelUp,
+      ]),
+    );
     _idle = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2600),
@@ -136,8 +151,34 @@ class _CardMergeAnimationState extends State<CardMergeAnimation>
     _seq.dispose();
     _idle.dispose();
     _spin.dispose();
+    unawaited(_sfx.dispose());
     super.dispose();
   }
+
+  /// Sound cues by timeline fraction. The charge starts early enough
+  /// (its own length before the impact) to end exactly on the collision.
+  static final List<({double at, SfxCue cue, double volume, double rate, bool cutOnDispose})>
+  _cues = [
+    (at: 0.045, cue: SfxCue.whoosh, volume: 0.9, rate: 1.0, cutOnDispose: false),
+    (
+      at: _T.impact - SfxCue.mergeCharge.seconds /
+          (_kMergeDuration.inMilliseconds / 1000),
+      cue: SfxCue.mergeCharge,
+      volume: 1.0,
+      rate: 1.0,
+      cutOnDispose: true,
+    ),
+    (at: _T.impact, cue: SfxCue.mergeImpact, volume: 1.0, rate: 1.0, cutOnDispose: false),
+    for (var i = 0; i < 4; i++)
+      (
+        at: 0.62 + 0.05 * i,
+        cue: SfxCue.tick,
+        volume: 1.0,
+        rate: 1.0 + 0.12 * i,
+        cutOnDispose: false,
+      ),
+    (at: 0.74, cue: SfxCue.mergeLevelUp, volume: 1.0, rate: 1.0, cutOnDispose: false),
+  ];
 
   /// Fires haptics exactly once when the timeline crosses a mark.
   void _onTick() {
@@ -146,6 +187,22 @@ class _CardMergeAnimationState extends State<CardMergeAnimation>
     if (crossed(0.30)) _haptic(HapticFeedback.lightImpact);
     if (crossed(0.42)) _haptic(HapticFeedback.mediumImpact);
     if (crossed(_T.impact)) _haptic(HapticFeedback.heavyImpact);
+
+    // Sound: the cards whoosh in, a two-pitch charge converges and ends on
+    // the collision, the impact shatters, the stats tick up and the level
+    // chime lands with the banner.
+    for (final e in _cues) {
+      if (crossed(e.at)) {
+        unawaited(
+          _sfx.play(
+            e.cue,
+            volume: e.volume,
+            rate: e.rate,
+            cutOnDispose: e.cutOnDispose,
+          ),
+        );
+      }
+    }
     _lastT = t;
   }
 

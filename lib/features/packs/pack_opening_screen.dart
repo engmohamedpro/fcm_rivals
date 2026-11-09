@@ -33,11 +33,13 @@
 /// [Interval]s, so skipping or replaying is just moving its value.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/audio/fcm_sfx.dart';
 import '../../core/domain/players.dart';
 import '../../core/ui/country_flag.dart';
 import '../../core/ui/fcm_style.dart';
@@ -48,6 +50,7 @@ import '../../l10n/l10n_context.dart';
 import 'pack_effects.dart';
 import 'pack_opening_widgets.dart';
 import 'pack_reveal_timeline.dart';
+import 'pack_soundtrack.dart';
 import 'pack_stagecraft.dart';
 
 export 'pack_reveal_timeline.dart';
@@ -166,6 +169,11 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   /// snapshot in [PackChainInfo] predates any SELL credit.
   int? _liveBalance;
   double _lastT = 0;
+
+  /// The reveal's sound effects, fired from the same marks as the haptics.
+  final FcmSfx _sfx = FcmSfx();
+  RevealTimeline? _soundtrackFor;
+  List<SfxEvent> _soundtrack = const [];
   late List<Spark> _sparks;
   late List<Spark> _finaleSparks;
 
@@ -282,6 +290,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     // first frame, so the sealed foil is on screen for exactly that one
     // frame before the charge — no wait, no tap-to-open step.
     _haptic(HapticFeedback.lightImpact);
+    unawaited(_sfx.preload(SfxCue.values));
     _playFrom(0);
   }
 
@@ -299,6 +308,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     _seq.dispose();
     _idle.dispose();
     _spin.dispose();
+    unawaited(_sfx.dispose());
     super.dispose();
   }
 
@@ -315,6 +325,23 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     }
     for (final m in tl.tick) {
       if (crossed(m)) _haptic(HapticFeedback.selectionClick);
+    }
+    // Sound rides the same marks: one soundtrack per timeline, cached.
+    if (!identical(_soundtrackFor, tl)) {
+      _soundtrackFor = tl;
+      _soundtrack = packSoundtrackFor(tl);
+    }
+    for (final e in _soundtrack) {
+      if (crossed(e.at)) {
+        unawaited(
+          _sfx.play(
+            e.cue,
+            volume: e.volume,
+            rate: e.rate,
+            cutOnDispose: e.cutOnDispose,
+          ),
+        );
+      }
     }
     _lastT = t;
   }
