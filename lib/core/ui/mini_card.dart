@@ -25,6 +25,7 @@ class FcmMiniCard extends StatelessWidget {
     required this.name,
     required this.rarity,
     this.width = 56,
+    this.flag,
     this.warn = false,
     this.stamina,
     this.stats,
@@ -37,6 +38,11 @@ class FcmMiniCard extends StatelessWidget {
   final String name;
   final CardRarity rarity;
   final double width;
+
+  /// Country flag emoji under the position code (T-0066), mirroring the
+  /// big card's OVR → position → flag order. Null renders nothing — the
+  /// layout stays byte-identical for unset callers and ghosts.
+  final String? flag;
 
   /// Red outline when the player is out of position.
   final bool warn;
@@ -146,6 +152,15 @@ class FcmMiniCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (flag != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              flag!,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(fontSize: width * 0.20),
+                            ),
+                          ],
                         ],
                       ),
                     ),

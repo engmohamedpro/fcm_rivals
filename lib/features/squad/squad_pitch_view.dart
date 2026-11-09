@@ -11,6 +11,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/domain/players.dart' show Position, PlayerAttribute;
+import '../../core/ui/country_flag.dart' show flagEmojiFor;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
@@ -139,6 +140,7 @@ class SquadPitch extends StatelessWidget {
                                 child: FcmMiniCard(
                                   overall: card.overall,
                                   position: card.position.code,
+                                  flag: flagEmojiFor(card.base.nationality),
                                   name: card.base.name.split(' ').last,
                                   rarity: rarityOf(card),
                                   width: cardW,
@@ -166,6 +168,7 @@ class SquadPitch extends StatelessWidget {
                                     child: FcmMiniCard(
                                       overall: card.overall,
                                       position: card.position.code,
+                                      flag: flagEmojiFor(card.base.nationality),
                                       name: card.base.name.split(' ').last,
                                       rarity: rarityOf(card),
                                       width: cardW,
@@ -270,6 +273,7 @@ class SquadCardRow extends StatelessWidget {
                     child: FcmMiniCard(
                       overall: c.overall,
                       position: c.position.code,
+                      flag: flagEmojiFor(c.base.nationality),
                       name: c.base.name.split(' ').last,
                       rarity: rarityOf(c),
                       width: cardWidth,
@@ -294,6 +298,7 @@ class SquadCardRow extends StatelessWidget {
                         child: FcmMiniCard(
                           overall: c.overall,
                           position: c.position.code,
+                          flag: flagEmojiFor(c.base.nationality),
                           name: c.base.name.split(' ').last,
                           rarity: rarityOf(c),
                           width: cardWidth,
@@ -316,6 +321,7 @@ class SquadCardRow extends StatelessWidget {
 Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
   overall: card.overall,
   position: card.position.code,
+  flag: flagEmojiFor(card.base.nationality),
   name: card.base.name.split(' ').last,
   rarity: rarityOf(card),
   width: width,

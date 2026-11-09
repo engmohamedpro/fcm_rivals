@@ -334,6 +334,7 @@ class _PlayerRow extends StatelessWidget {
               child: FcmMiniCard(
                 overall: player.baseStats.overall,
                 position: player.position.code,
+                flag: flagEmojiFor(player.nationality),
                 name: player.name.split(' ').last,
                 rarity: rarity,
                 width: 56,
