@@ -439,19 +439,25 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tacticsMentality => 'العقلية';
+
   @override
   String get mentalityVeryDefensive => 'دفاعي للغاية';
+
   @override
   String get mentalityDefensive => 'دفاعي';
+
   @override
   String get mentalityCautious => 'حذر';
+
   @override
   String get mentalityBalanced => 'متوازن';
+
   @override
   String get mentalityPositive => 'إيجابي';
+
   @override
   String get mentalityAttacking => 'هجومي';
+
   @override
   String get mentalityVeryAttacking => 'هجومي للغاية';
-
 }

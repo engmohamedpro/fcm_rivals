@@ -439,19 +439,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tacticsMentality => 'Mentality';
+
   @override
   String get mentalityVeryDefensive => 'Very Defensive';
+
   @override
   String get mentalityDefensive => 'Defensive';
+
   @override
   String get mentalityCautious => 'Cautious';
+
   @override
   String get mentalityBalanced => 'Balanced';
+
   @override
   String get mentalityPositive => 'Positive';
+
   @override
   String get mentalityAttacking => 'Attacking';
+
   @override
   String get mentalityVeryAttacking => 'Very Attacking';
-
 }
