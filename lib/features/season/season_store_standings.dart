@@ -68,9 +68,9 @@ extension SeasonStandingsOps on SeasonStore {
 
   /// Completes the active season (GDD 9.3/9.5, GDD 18): computes final
   /// standings, writes final positions, resolves promotion/relegation,
-  /// pays season rewards with a ledger row, grants reward packs, retires
-  /// the AI clubs' squads and returns the completion summary. A new
-  /// season is NOT started automatically — the UI asks the player.
+  /// pays season rewards with a ledger row, retires the AI clubs'
+  /// squads and returns the completion summary. A new season is NOT
+  /// started automatically — the UI asks the player.
   Future<SeasonCompletion> completeSeason(CollectionStore store) async {
     final season = await getActiveSeason();
     if (season == null) {
@@ -103,15 +103,6 @@ extension SeasonStandingsOps on SeasonStore {
       rewardCoins = const AdEngine().boostedSeasonReward(baseRewardCoins);
       seasonMultiplierUsed = true;
     }
-
-    // GDD 18 pack rewards.
-    final packCategory = switch (outcome) {
-      SeasonOutcome.promoted =>
-        userEntry.position == 1
-            ? 'premium'
-            : (userEntry.position <= 3 ? 'normal' : 'choice'),
-      _ => null,
-    };
 
     final now = DateTime.now();
     await db.transaction(() async {
@@ -219,22 +210,6 @@ extension SeasonStandingsOps on SeasonStore {
       if (seasonMultiplierUsed) {
         await ads.consumeSeasonMultiplier(club.id, now: now);
       }
-
-      // Reward packs (GDD 18 table): 1st = premium, 2nd–3rd = normal pack,
-      // other promotions = a pack of the user's choice (stored with a
-      // 'season_choice' source the UI scopes when opening).
-      if (packCategory != null) {
-        await db
-            .into(db.packs)
-            .insert(
-              PacksCompanion.insert(
-                clubId: club.id,
-                category: 'global',
-                source: Value('season_$packCategory'),
-                createdAt: now,
-              ),
-            );
-      }
     });
 
     return SeasonCompletion(
@@ -244,7 +219,6 @@ extension SeasonStandingsOps on SeasonStore {
       outcome: outcome.name,
       nextDivision: nextDivision,
       rewardCoins: rewardCoins,
-      rewardPackCategory: packCategory,
     );
   }
 

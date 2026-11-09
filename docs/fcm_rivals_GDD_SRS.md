@@ -1183,15 +1183,19 @@ Each season contains 38 matches.
 
 Rewards depend on final position and division.
 
-Proposed reward structure:
+**Owner decision (2026-11-09): season rewards are Coins only — packs removed.** No reward packs are granted, shown, or promised at season completion; cards come from coins spent in the store, which strengthens sink coverage. The removed packs are not compensated in coins (a premium pack's dynamic price far exceeds the season-reward inflation ceiling, GDD 32).
+
+Coins-only reward structure:
 
 | Achievement | Reward |
 |---|---|
-| 1st Place | Coins + Premium Pack |
-| 2nd–3rd Place | Coins + Pack |
-| Promotion | Free Pack of User's Choice |
-| Staying in Division | Position-based Coins |
-| Relegation | Participation Reward |
+| 1st Place | Highest coin tier (double the base payout) |
+| 2nd–3rd Place | Higher coin tier (1.5× the base payout) |
+| Promotion | Coin payout of the finishing position's tier |
+| Staying in Division | Position-based coins (tapering down the table) |
+| Relegation | Participation coins (reduced payout) |
+
+Within every tier, a higher finishing position pays strictly more coins; the exact coin amounts and the position curve live in the season engine's reward config. The rewarded-ad season multiplier (+25%, §19.3) still applies to the coin payout only.
 
 Higher divisions offer higher rewards, but reward growth must not exceed the economic cost curve.
 

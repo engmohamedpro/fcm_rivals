@@ -195,13 +195,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    if (completion.rewardPackCategory != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Reward pack: ${completion.rewardPackCategory}',
-                        ),
-                      ),
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text('Next division: ${completion.nextDivision}'),

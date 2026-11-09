@@ -2,8 +2,8 @@
 id: T-0074
 title: Pay season rewards in coins only
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:

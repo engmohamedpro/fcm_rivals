@@ -71,7 +71,6 @@ class SeasonCompletion {
     required this.outcome,
     required this.nextDivision,
     required this.rewardCoins,
-    required this.rewardPackCategory,
   });
 
   final int seasonId;
@@ -82,10 +81,6 @@ class SeasonCompletion {
   final String outcome;
   final int nextDivision;
   final int rewardCoins;
-
-  /// GDD 18 pack reward: 'premium' for 1st, 'normal' for 2nd–3rd,
-  /// 'choice' for other promotions, null when staying/relegated.
-  final String? rewardPackCategory;
 }
 
 /// AI opponent squad loaded for a fixture.

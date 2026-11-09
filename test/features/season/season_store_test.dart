@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,6 +11,8 @@ import 'package:fcm_rivals/features/match/pre_match_screen.dart'
     show PreMatchTacticSelection;
 import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import 'package:fcm_rivals/features/match/match_engine.dart'
+    show matchEngineVersion;
 import 'package:fcm_rivals/features/season/season_store.dart';
 
 AppDatabase memoryDb() => AppDatabase(NativeDatabase.memory());
@@ -319,6 +322,79 @@ void main() {
         expect(teams.length, 20);
         expect(teams.every((t) => t.finalPosition != null), isTrue);
         expect(teams.map((t) => t.finalPosition).toSet().length, 20);
+      },
+      timeout: const Timeout(Duration(minutes: 4)),
+    );
+
+    test(
+      'completeSeason grants ZERO packs — coins only (GDD 18, owner '
+      'decision 2026-11-09)',
+      () async {
+        // Two fixed outcomes: 1st place (promoted, the old premium-pack
+        // arm) and 20th place (relegated, the participation arm). The
+        // user's own fixtures get hand-written results so the final
+        // position is deterministic; the AI-vs-AI remainder resolves
+        // through the normal simulation path.
+        Future<void> completeAtFixedPosition(int userGoals, int aiGoals) async {
+          await store.startSeason(division: 1);
+          final season = (await store.getActiveSeason())!;
+          final userFixtures =
+              await (db.select(db.fixtures)
+                    ..where((f) => f.seasonId.equals(season.id))
+                    ..where(
+                      (f) =>
+                          f.homeClubId.equals(season.userClubId) |
+                          f.awayClubId.equals(season.userClubId),
+                    ))
+                  .get();
+          for (final f in userFixtures) {
+            final userHome = f.homeClubId == season.userClubId;
+            await db
+                .into(db.matchResults)
+                .insert(
+                  MatchResultsCompanion.insert(
+                    fixtureId: f.id,
+                    seasonId: season.id,
+                    round: f.round,
+                    homeClubId: f.homeClubId,
+                    awayClubId: f.awayClubId,
+                    homeGoals: userHome ? userGoals : aiGoals,
+                    awayGoals: userHome ? aiGoals : userGoals,
+                    seed: f.id,
+                    engineVersion: matchEngineVersion,
+                    playedAt: DateTime(2026, 1, 1).add(Duration(days: f.round)),
+                  ),
+                );
+          }
+          await store.completeSeason(collection);
+        }
+
+        // 1st place: promoted — previously granted a premium pack.
+        await completeAtFixedPosition(3, 0);
+        var packs = await db.select(db.packs).get();
+        expect(
+          packs.where((p) => p.source.startsWith('season_')).length,
+          0,
+          reason: 'promoted finish must grant zero season_ packs',
+        );
+        // The ledger still paid the coin reward exactly once.
+        final promotedLedger = await (db.select(
+          db.coinTransactions,
+        )..where((t) => t.reason.equals('season_reward'))).get();
+        expect(promotedLedger.length, 1);
+
+        // 20th place: relegated — previously the participation arm.
+        await completeAtFixedPosition(0, 3);
+        packs = await db.select(db.packs).get();
+        expect(
+          packs.where((p) => p.source.startsWith('season_')).length,
+          0,
+          reason: 'relegated finish must grant zero season_ packs',
+        );
+        final relegatedLedger = await (db.select(
+          db.coinTransactions,
+        )..where((t) => t.reason.equals('season_reward'))).get();
+        expect(relegatedLedger.length, 2);
       },
       timeout: const Timeout(Duration(minutes: 4)),
     );
