@@ -194,4 +194,134 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  // T-0086: the progress line's round label, one test per state. The
+  // label is 'Round <n> of 38' while the season is open and the
+  // Final-position line once completed; the harness pumps the whole
+  // app so the label is read exactly as the user sees it.
+  testWidgets(
+    'T-0086: fresh season reads Round 1 of 38 — never Round 0',
+    (WidgetTester tester) async {
+      final (db, store, seasonStore) = await _seedSeason();
+      addTearDown(() => db.close());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            collectionStoreProvider.overrideWith((ref) => store),
+            seasonStoreProvider.overrideWith((ref) async => seasonStore),
+          ],
+          child: const FcmRivalsApp(),
+        ),
+      );
+      await _flush(tester);
+
+      expect(find.text('Round 1 of 38'), findsOneWidget);
+      expect(find.text('Round 0 of 38'), findsNothing);
+      expect(find.text('Round 39 of 38'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'T-0086: mid-season reads the NEXT fixture round — not roundsPlayed',
+    (WidgetTester tester) async {
+      final (db, store, seasonStore) = await _seedSeason();
+      addTearDown(() => db.close());
+
+      // Play the first two user fixtures via the store's own flow.
+      for (var i = 0; i < 2; i++) {
+        final fixture = (await seasonStore.getNextFixture())!;
+        final session = await seasonStore.startNextFixture(store);
+        session.simulateToEnd();
+        await session.finish();
+        await seasonStore.commitFixtureResult(session, fixture);
+      }
+      final next = await seasonStore.getNextFixture();
+      expect(next, isNotNull, reason: 'mid-season: a fixture remains');
+      expect(next!.round, greaterThan(1));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            collectionStoreProvider.overrideWith((ref) => store),
+            seasonStoreProvider.overrideWith((ref) async => seasonStore),
+          ],
+          child: const FcmRivalsApp(),
+        ),
+      );
+      await _flush(tester);
+
+      // The label shows the round IN PROGRESS — the next fixture's
+      // round, aligned with the screen's own Next-fixture line — not
+      // the two already played.
+      expect(find.text('Round ${next.round} of 38'), findsOneWidget);
+      expect(find.text('Round 2 of 38'), findsNothing,
+          reason: 'roundsPlayed (2) must not be the label while the '
+              'next round is ${next.round}');
+    },
+  );
+
+  testWidgets(
+    'T-0086: all 38 played but NOT completed reads Round 38 of 38 — '
+    'the reported Round 39 of 38 must never appear',
+    (WidgetTester tester) async {
+      final (db, store, seasonStore) = await _seedSeason();
+      addTearDown(() => db.close());
+
+      // Play the whole season out with the store's quick-sim; the
+      // season stays ACTIVE until the user completes it.
+      await tester.runAsync(
+        () => seasonStore.simulateRemainingFixtures(store),
+      );
+      expect(await seasonStore.getNextFixture(), isNull);
+      final summary = await tester.runAsync(seasonStore.getSeasonSummary);
+      expect(summary!.isCompleted, isFalse);
+      expect(summary.roundsPlayed, 38);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            collectionStoreProvider.overrideWith((ref) => store),
+            seasonStoreProvider.overrideWith((ref) async => seasonStore),
+          ],
+          child: const FcmRivalsApp(),
+        ),
+      );
+      await _flush(tester);
+
+      expect(find.text('Round 38 of 38'), findsOneWidget);
+      expect(find.text('Round 39 of 38'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'T-0086: completed season still swaps to the Final-position line',
+    (WidgetTester tester) async {
+      final (db, store, seasonStore) = await _seedSeason();
+      addTearDown(() => db.close());
+
+      await tester.runAsync(
+        () => seasonStore.simulateRemainingFixtures(store),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            collectionStoreProvider.overrideWith((ref) => store),
+            seasonStoreProvider.overrideWith((ref) async => seasonStore),
+          ],
+          child: const FcmRivalsApp(),
+        ),
+      );
+      await _flush(tester, wait: const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('Complete season'));
+      await _flush(tester, wait: const Duration(milliseconds: 900));
+
+      final summary = await tester.runAsync(seasonStore.getSeasonSummary);
+      expect(summary!.isCompleted, isTrue);
+      // The completed-season line replaces the round label entirely.
+      expect(find.textContaining('Final position:'), findsOneWidget);
+      expect(find.textContaining('Round'), findsNothing);
+    },
+  );
 }

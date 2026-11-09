@@ -375,7 +375,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                           Text(
                             summary.isCompleted
                                 ? 'Final position: ${summary.finalPosition} (${summary.outcome})'
-                                : 'Round ${summary.roundsPlayed + (next != null ? 0 : 1)} of ${summary.roundsTotal}',
+                                : 'Round ${next?.round ?? summary.roundsTotal} of ${summary.roundsTotal}',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: FcmColors.textDim,
                             ),

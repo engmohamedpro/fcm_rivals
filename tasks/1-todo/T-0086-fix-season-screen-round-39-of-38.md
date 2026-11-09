@@ -2,8 +2,8 @@
 id: T-0086
 title: Fix the season screen showing Round 39 of 38
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -74,6 +74,27 @@ flutter test
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** one expression. The round label now reads `'Round ${next?.round ?? summary.roundsTotal} of ${summary.roundsTotal}'` — the upcoming fixture's round while one exists (aligned with the screen's own `Next fixture · round ${next.round}` line), the season's total once every user fixture is played but the season is not yet completed. The inverted conditional (`roundsPlayed + (next != null ? 0 : 1)`) that produced `Round 0 of 38` at season start and `Round 39 of 38` at the end is gone.
+
+1. `lib/features/season/season_screen.dart` — the label expression swap above; nothing else on the screen changed: the progress bar (`roundsPlayed / roundsTotal`), the completed-season `Final position:` line and the fixture lists are untouched, and the label stays hardcoded English per the file's convention.
+2. `test/features/season/season_screen_review_test.dart` — four state tests on the existing real-DB `FcmRivalsApp` harness, exactly the task's four states:
+   - **fresh:** nothing played → `Round 1 of 38` (`Round 0 of 38` findsNothing).
+   - **mid-season:** two user fixtures played through the store's own flow (`startNextFixture` → `simulateToEnd` → `finish` → `commitFixtureResult`), a next fixture exists at round > 2 → the label shows `Round ${next.round} of 38` and `Round 2 of 38` (the played count) findsNothing.
+   - **all played, not completed:** `simulateRemainingFixtures` consumes all 38, `getNextFixture()` null, `isCompleted` false, `roundsPlayed` 38 → `Round 38 of 38`, `Round 39 of 38` findsNothing (the reported bug).
+   - **completed:** after `Complete season` (the double-tap test's own flow), `Final position:` shows and no `Round` label remains.
+
+**Files changed:** `lib/features/season/season_screen.dart`, `test/features/season/season_screen_review_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/season/season_screen_review_test.dart` → 6/6 green (2 pre-existing + the 4 new) ✓. `flutter test test/features/season/` → **73/73 green** ✓. Full `flutter test --concurrency=1` → green, no REGEN_SNAPSHOT ✓ (result recorded in the submit commit).
+
+**Concerns / assumptions:**
+- `next.round` is 1-based from the fixture generator (`generateFixtures` rounds start at 1 — the fresh-season test proves the 1, not 0), so no clamping is needed to satisfy "never greater than roundsTotal": when a next fixture exists its round is at most `roundsTotal` by construction of the round-robin schedule; when none exists the `??` branch IS the total.
+- If a future engine change ever emitted a next-fixture round beyond `roundsTotal` (impossible today), the label would show it verbatim — the task's "never greater" holds through the same invariant the fixture generator maintains, not through an added clamp (adding one would hide a generator bug; the fresh/mid tests pin the two ends of the domain).
+- The mid-season test drives the real user flow (not a DB shortcut) so `roundsPlayed` reflects exactly what the label used to mis-show; this also keeps the test resilient to store refactors.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
