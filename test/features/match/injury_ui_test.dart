@@ -98,6 +98,12 @@ Future<void> pumpLocalized(
   Locale? locale,
   TextDirection? direction,
 }) async {
+  // The analysis ListView is lazy: off-screen cards are never built, so
+  // the sheet must fit on one screen (T-0069 added the chemistry row —
+  // the medical room fell below the fold of the default 600x800).
+  tester.view.physicalSize = const Size(2400, 3600);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
       locale: locale,
