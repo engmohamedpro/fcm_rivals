@@ -84,6 +84,7 @@ class AiPlayerDefinition {
     required this.defence,
     required this.goalkeeping,
     this.realPlayerId,
+    this.upgradeLevel = 0,
   });
 
   final String name;
@@ -97,6 +98,13 @@ class AiPlayerDefinition {
   /// synthetic fallback. Persisted on AiPlayers so promoted/relegated
   /// clubs keep their identity across seasons.
   final int? realPlayerId;
+
+  /// The club-wide uniform upgrade level applied when the squad's base
+  /// average overall sits below the division target (GDD 9.6, owner
+  /// decision 2026-11-09): the four attributes above are ALREADY the
+  /// lifted effective values via `upgradedValue`. Debug/diagnostic only —
+  /// not persisted, not shown in UI.
+  final int upgradeLevel;
 }
 
 /// One persisted AI squad player with live condition, as needed for

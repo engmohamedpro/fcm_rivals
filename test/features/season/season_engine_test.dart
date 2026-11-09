@@ -403,6 +403,110 @@ void main() {
     });
   });
 
+  group('AI squad lift past the dataset ceiling (GDD 9.6, 2026-11-09)', () {
+    const engine = SeasonEngine();
+
+    /// Average effective overall of a club's 18 players, computed the
+    /// same way the lift does: mean of per-player outfield averages
+    /// (ATT/SUP/DEF — the generation tests' basis; GK would read 0 for
+    /// every outfield player).
+    double avgEffectiveOverall(AiClubDefinition club) {
+      final ratings = [
+        for (final p in club.players)
+          (p.attack + p.support + p.defence) / 3,
+      ];
+      return ratings.reduce((a, b) => a + b) / ratings.length;
+    }
+
+    test('division 1 squads are unchanged (zero drift, level 0)', () {
+      final clubs = engine.generateAiClubs(1, random: _rand(5));
+      for (final club in clubs) {
+        for (final p in club.players) {
+          expect(p.upgradeLevel, 0, reason: '${club.name} lifted at div 1');
+        }
+      }
+      // And the near-target band still holds (GDD 9.6).
+      final target = engine.config.targetAverageOverall(1);
+      final means = clubs.map(avgEffectiveOverall).toList();
+      final mean = means.reduce((a, b) => a + b) / means.length;
+      expect((mean - target).abs(), lessThan(6));
+    });
+
+    test('division 20 (target 111): every club meets the target ±1', () {
+      final clubs = engine.generateAiClubs(20, random: _rand(77));
+      final target = engine.config.targetAverageOverall(20);
+      expect(target, 111);
+      var above99 = 0;
+      for (final club in clubs) {
+        // ≥ target − 1: the 1-point dead zone the lift guards against
+        // is the floor, and division 20's gap (94-capped pool vs 111)
+        // is far past it.
+        expect(
+          avgEffectiveOverall(club),
+          greaterThan(target - 1),
+          reason: '${club.name} missed the target',
+        );
+        for (final p in club.players) {
+          if (p.attack > 99 || p.defence > 99 || p.support > 99) above99++;
+          expect(p.upgradeLevel, greaterThan(0));
+        }
+      }
+      // Lifted attributes flow past the 99 cap into matches.
+      expect(above99, greaterThan(0));
+    });
+
+    test('real-pool path also lifts at division 20', () {
+      // buildPool caps at 94: past that only the lift can reach 111.
+      final pool = buildPool();
+      final clubs = engine.generateAiClubs(20, random: _rand(21), pool: pool);
+      final target = engine.config.targetAverageOverall(20);
+      for (final club in clubs) {
+        expect(avgEffectiveOverall(club), greaterThan(target - 1));
+      }
+    });
+
+    test('same seed twice → identical squads and lifts', () {
+      final a = engine.generateAiClubs(20, random: _rand(1234));
+      final b = engine.generateAiClubs(20, random: _rand(1234));
+      for (var i = 0; i < a.length; i++) {
+        expect(a[i].name, b[i].name);
+        for (var j = 0; j < a[i].players.length; j++) {
+          final pa = a[i].players[j];
+          final pb = b[i].players[j];
+          expect(pa.name, pb.name);
+          expect(pa.attack, pb.attack);
+          expect(pa.support, pb.support);
+          expect(pa.defence, pb.defence);
+          expect(pa.goalkeeping, pb.goalkeeping);
+          expect(pa.upgradeLevel, pb.upgradeLevel);
+        }
+      }
+    });
+
+    test('thin/no pool at a high target still produces a full legal XI', () {
+      // No dataset loaded at all (synthetic path), division 25 (target
+      // 126): every club must still field 18 players at the target.
+      final clubs = engine.generateAiClubs(25, random: _rand(99));
+      final target = engine.config.targetAverageOverall(25);
+      expect(clubs.length, 19);
+      for (final club in clubs) {
+        expect(club.players.length, 18);
+        expect(avgEffectiveOverall(club), greaterThan(target - 1));
+      }
+      // And a degenerate tiny pool mid-division also survives.
+      final tiny = engine.generateAiClubs(
+        20,
+        random: _rand(3),
+        pool: buildPool().take(30).toList(),
+      );
+      final target20 = engine.config.targetAverageOverall(20);
+      for (final club in tiny) {
+        expect(club.players.length, 18);
+        expect(avgEffectiveOverall(club), greaterThan(target20 - 1));
+      }
+    });
+  });
+
   group('AI lineup rotation (GDD 11)', () {
     const engine = SeasonEngine();
 

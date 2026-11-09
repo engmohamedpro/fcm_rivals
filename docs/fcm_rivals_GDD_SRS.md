@@ -559,6 +559,15 @@ The AI squad generation system must consider the division's target Market Value 
 
 Difficulty must be tested through automated season simulations.
 
+Past the dataset ceiling (owner decision 2026-11-09): when a division's
+target overall exceeds what the player pool can supply, AI squads are
+lifted onto the target with the shared +N% upgrade math
+(`upgradedValue`, GDD 8.2) — top players first, then players with
+upgrade levels, so divisions stay harder forever (no predefined final
+division). The lift is a per-club uniform level derived from the
+squad's average base overall; divisions whose target the pool supplies
+generate exactly as before (level 0).
+
 ---
 
 ## 10. Tactical Management

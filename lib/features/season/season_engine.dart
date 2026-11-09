@@ -244,6 +244,7 @@ class SeasonEngine {
       final realSquad = tracker == null
           ? null
           : _generateRealSquad(formation, target, tracker);
+      final squad = realSquad ?? _generateSquad(target, formation, random);
       clubs.add(
         AiClubDefinition(
           name: name,
@@ -253,12 +254,66 @@ class SeasonEngine {
           formationCode: formation.code,
           tactics: const TeamTactics(),
           mentality: _pickMentality(random),
-          players: realSquad ?? _generateSquad(target, formation, random),
+          // Past the dataset ceiling the ladder keeps climbing: squads
+          // below the division target are lifted onto it with the shared
+          // +N% upgrade math (GDD 9.6, owner decision 2026-11-09). At
+          // achievable targets N is 0 and the squad is untouched.
+          players: _liftToTarget(squad, target),
           targetAverageOverall: target,
         ),
       );
     }
     return clubs;
+  }
+
+  /// Lifts a whole club onto the division [target] average overall with a
+  /// uniform upgrade level (GDD 9.6, owner decision 2026-11-09): when the
+  /// squad's average base overall is below the target, every player's
+  /// four attributes become `upgradedValue(attr, N)` with
+  /// N = ceil((target / avg − 1) × 100). Per-club N: weaker bases get a
+  /// bigger lift, every club lands on the target — the same
+  /// band-around-target intent the pool tracker has. Clubs already at or
+  /// above the target are returned unchanged (division 1 stays exactly
+  /// as generated). Deterministic: derives from the already-seeded squad,
+  /// no new RNG draws.
+  List<AiPlayerDefinition> _liftToTarget(
+    List<AiPlayerDefinition> squad,
+    int target,
+  ) {
+    if (squad.isEmpty) return squad;
+    // Average over the outfield attributes (ATT/SUP/DEF) — the same
+    // three the generation tests and the existing near-target band
+    // measure. Counting GK (0 for every outfield player) or the
+    // keeper's own 0-ATT would read a synthetic XI ~12 points below
+    // its true strength and lift even division 1.
+    var sum = 0.0;
+    for (final p in squad) {
+      sum += (p.attack + p.support + p.defence) / 3;
+    }
+    final avg = sum / squad.length;
+    if (avg <= 0 || avg >= target) return squad;
+    // The dead zone: the generation spread itself keeps the near-target
+    // band within ±6 (GDD 9.6 tests), so a small shortfall is normal
+    // variance, not a ceiling problem. Lifting there would drift
+    // divisions the pool already supplies (division 1 stays
+    // byte-identical, owner 2026-11-09). The lift engages only when the
+    // squad is a full point short of the target.
+    if (target - avg < 1.0) return squad;
+    final level = ((target / avg - 1) * 100).ceil();
+    if (level <= 0) return squad;
+    return [
+      for (final p in squad)
+        AiPlayerDefinition(
+          name: p.name,
+          position: p.position,
+          attack: upgradedValue(p.attack, level),
+          support: upgradedValue(p.support, level),
+          defence: upgradedValue(p.defence, level),
+          goalkeeping: upgradedValue(p.goalkeeping, level),
+          realPlayerId: p.realPlayerId,
+          upgradeLevel: level,
+        ),
+    ];
   }
 
   /// Draws a full 18-man squad of REAL pool players banded around
