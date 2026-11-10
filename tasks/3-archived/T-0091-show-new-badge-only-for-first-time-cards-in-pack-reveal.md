@@ -2,11 +2,11 @@
 id: T-0091
 title: Show a NEW badge only for first-time cards in the pack reveal
 priority: high
-status: needs-review
+status: done
 attempts: 2
 depends_on: [T-0085]
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0091: Show a NEW badge only for first-time cards in the pack reveal
@@ -39,7 +39,7 @@ When a pack reveals a player the club did not own before, the reveal card carrie
 
 ## Acceptance Criteria
 - [x] A drawn player the club already owned shows no badge; a first-time player shows the gold NEW badge after the flip.
-- [ ] The same-player-twice-in-one-pack case flags only the first (unit-tested).
+- [x] The same-player-twice-in-one-pack case flags only the first (unit-tested).
 - [x] The badge is localized EN + AR and never appears before the card flips.
 - [x] `ownedIds` sell behavior unchanged.
 - [x] `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green.
@@ -119,4 +119,12 @@ Manual: open a pack containing a player you already own — that card flips with
 
 **Concerns / assumptions:**
 - None new — the extraction is behavior-identical (the flag values come from the same expression, now in one pure place), and the engine's one-draw-per-open limitation is still honestly noted: the pure test bypasses it rather than forcing a multi-draw engine path that does not exist.
+
+### Review 2 — 2026-11-10 — PASS (resubmission)
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7):**
+- `flutter analyze` (current main) → No issues found! ✓
+- `flutter test test/features/packs/` (current main) → 132/132 green ✓
+- Full `flutter test` at commit 2911fec (the submission tree, via a clean worktree) → **1007/1007, "All tests passed!"** ✓ — the run's log confirms the new tests actually executed and passed: "T-0091: computeNewFlags — the same-pack duplicate leg, directly" and the retitled "pre-owned across two opens flags the second false (the pre-owned leg)". (Current main additionally carries T-0100's WIP whose own gates were never run by its developer — unrelated to this task; see T-0100's log.)
+- Fix verification (commit 0e3fbac): every point of review 1's "what to do" is done — (1) the per-draw decision extracted into `static @visibleForTesting List<bool> computeNewFlags(List<int>, Set<int>)`, pure, same `seenThisPack` logic verbatim, `openPack` calls it with the draws' playerIds and the pre-open owned set, behavior identical; (2) the direct unit test proves BOTH legs: `[10,10]∪{} → [true,false]` and `[10,11,10]∪{11} → [true,false,false]`, plus all-pre-owned and empty-list shape checks; (3) the misleading test retitled to what it actually pins. Diff stays inside scope (store + test + this file). All five criteria met.
 
