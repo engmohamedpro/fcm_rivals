@@ -122,7 +122,7 @@ void main() {
 
     String settingsSnapshot(sqlite3.Database db) => {
       for (final row in db.select('SELECT * FROM user_settings'))
-        '${_userSettingsV13Columns.map((c) => row[c]).join('|')}',
+        _userSettingsV13Columns.map((c) => row[c]).join('|'),
     }.single;
     final settingsBefore = settingsSnapshot(raw);
     final ledgerBefore = {

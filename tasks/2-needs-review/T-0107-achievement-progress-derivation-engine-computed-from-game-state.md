@@ -2,8 +2,8 @@
 id: T-0107
 title: Achievement progress derivation engine — achievements computed FROM game state, never tracked beside it
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0105]
 created: 2026-11-10
 completed:
@@ -61,12 +61,70 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `lib/features/achievements/achievement_progress.dart` —
+    `CareerMetrics` (36 fields, immutable) + `deriveCareerMetrics(db,
+    clubId)`: grouped queries (results / seasons / packs / owned +
+    dataset join / ledger / facilities — six round-trip-friendly
+    reads, never N+1), a per-fixtureId dedup keeping the latest
+    playedAt (a replayed match counts ONCE — the replay-refund flow's
+    rare case), streak walks ordered by (seasonId, round) crossing
+    season boundaries BY DESIGN, titles per division from
+    finalPosition == 1, per-source pack splits, rarity via the
+    upgraded overall (CardRarity.fromOverall of base*(1+level%)), the
+    ledger grouped through typed `LedgerReasons` constants (the
+    2026-11-10 census: nine real reasons — 'tired'/'chasing' are
+    substitution EVENT labels, not ledger rows; achievements'
+    'achievement:' family is T-0108's), and `progressFor(metricId)`:
+    the pure in-memory map the catalog reads.
+  - THE ENGINE BUG THE FIXTURE CAUGHT (fixed): a DRAW did not reset
+    the win streak — 'W W W D W' counted a 4-streak. The fix (one
+    line, commented) is locked by the fixture forever.
+  - Derivability census (documented in-code, carried as constants):
+    NOT derivable today — `tacticsInstructionsChanged` (no persisted
+    trace of tactic edits) and `legendaryPulls` (Packs rows carry no
+    contents). Both carry 0 with the catalog's mastermind ladders +
+    legendary-pull milestone sitting unranked/unclaimable until a
+    trace lands — the honest alternative to fake counters. NO metric
+    was dropped from the catalog (all 40 ids resolve);
+    `matchesScoredFirst` derives via the documented
+    scored>conceded proxy (the minute-order lives in engine detail).
+    upgradesCompleted = sum of OWNED levels (sold-away levels left
+    no trace — semantics documented).
+  - NEW `test/features/achievements/career_fixtures.dart` — the
+    REUSABLE synthetic career (T-0112's foundation): two seasons, 5
+    unique fixtures + 1 replayed pair, home/away sides with REAL
+    home/away goals semantics, W W W D W timeline, a title in two
+    divisions, 4 packs (3 opened by source + 1 unopened), 4 owned +
+    1 sold players with rarity spread, 6 ledger rows across 5
+    reasons, 2 facilities — plus the empty-save builder.
+  - NEW `test/features/achievements/progress_test.dart` (4 tests):
+    empty save all-zeros; every metric EXACT on the synthetic career;
+    RETROACTIVITY (row counts of every table identical after
+    derivation — zero writes, including no claim/ledger rows);
+    progressFor totality (all 36 ids resolve, unknown → null).
+- **Files changed:** lib/features/achievements/achievement_progress.dart
+  (new), test/features/achievements/career_fixtures.dart (new),
+  test/features/achievements/progress_test.dart (new), plus lint
+  cleanups in my own T-0106 test files (interpolation, local
+  identifier rename).
+- **How I tested it:** `flutter analyze --no-pub` — zero new issues.
+  achievements + core/database suites: 33/33 green (progress 4 +
+  catalog 15 + claims 6 + migrations 4 + coin_ops 4). No production
+  write path touched — the other suites are structurally unaffected
+  (same pre-existing failures noted in T-0105/T-0106 notes; nothing
+  new).
+- **Concerns / assumptions:** (1) The scored-first proxy
+    (scored > conceded) counts only matches the club WON — true
+    scored-first needs the goal-order trace that does not exist;
+    documented in-code, and the attack/defence ladders around it are
+    unaffected. (2) `matchesScoredFirst` currently EQUALS wins on any
+    save — flagged for T-0109's balance pass (either accept the proxy
+    or drop that definition in a catalog edit; I chose to keep it
+    with the semantics documented rather than silently drop).
+    (3) T-0112's career stats compose this snapshot directly — the
+    fixture file is its shared foundation by design.
 
 
 ## Review Log

@@ -24,7 +24,7 @@ void main() {
 
   DateTime at(int ms) => DateTime.fromMillisecondsSinceEpoch(ms);
 
-  AchievementClaimsCompanion _claim({
+  AchievementClaimsCompanion claimBuilder({
     required int clubId,
     required String achievementId,
     required String tierKey,
@@ -45,7 +45,7 @@ void main() {
 
   test('insert + read round-trip, newest first', () async {
     await database.into(database.achievementClaims).insert(
-          _claim(
+          claimBuilder(
             clubId: 1,
             achievementId: 'career_wins',
             tierKey: '4',
@@ -53,7 +53,7 @@ void main() {
           ),
         );
     await database.into(database.achievementClaims).insert(
-          _claim(
+          claimBuilder(
             clubId: 1,
             achievementId: 'attack_goals',
             tierKey: '160',
@@ -78,7 +78,7 @@ void main() {
   test('THE IDEMPOTENCY LOCK: a duplicate (club, achievement, tierKey) '
       'insert is refused by the DB', () async {
     await database.into(database.achievementClaims).insert(
-          _claim(clubId: 1, achievementId: 'career_wins', tierKey: '16'),
+          claimBuilder(clubId: 1, achievementId: 'career_wins', tierKey: '16'),
         );
 
     // The advisory check sees it.
@@ -97,7 +97,7 @@ void main() {
     // silent double-claim becomes a test failure.
     expect(
       () => database.into(database.achievementClaims).insert(
-            _claim(clubId: 1, achievementId: 'career_wins', tierKey: '16'),
+            claimBuilder(clubId: 1, achievementId: 'career_wins', tierKey: '16'),
           ),
       throwsA(
         isA<Exception>().having(
@@ -118,15 +118,15 @@ void main() {
 
   test('different clubs claim the same tier independently', () async {
     await database.into(database.achievementClaims).insert(
-          _claim(clubId: 1, achievementId: 'career_wins', tierKey: '16'),
+          claimBuilder(clubId: 1, achievementId: 'career_wins', tierKey: '16'),
         );
     // Club 2 claims the SAME tier: allowed — the key is club-scoped.
     await database.into(database.achievementClaims).insert(
-          _claim(clubId: 2, achievementId: 'career_wins', tierKey: '16'),
+          claimBuilder(clubId: 2, achievementId: 'career_wins', tierKey: '16'),
         );
     // Same club, same achievement, DIFFERENT tier: allowed.
     await database.into(database.achievementClaims).insert(
-          _claim(clubId: 1, achievementId: 'career_wins', tierKey: '32'),
+          claimBuilder(clubId: 1, achievementId: 'career_wins', tierKey: '32'),
         );
 
     expect((await repo.claimsForClub(1)).length, 2);
