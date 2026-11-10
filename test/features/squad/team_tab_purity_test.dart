@@ -52,7 +52,7 @@ void main() {
   });
 
   /// The store-provider host the other squad tests use.
-  Widget _host(Widget child) => ProviderScope(
+  Widget host(Widget child) => ProviderScope(
     overrides: [collectionStoreProvider.overrideWith((ref) => store)],
     child: MaterialApp(home: Scaffold(body: child)),
   );
@@ -101,7 +101,7 @@ void main() {
   }
 
   Future<void> pumpSquad(WidgetTester tester) async {
-    await tester.pumpWidget(_host(const SquadScreen()));
+    await tester.pumpWidget(host(const SquadScreen()));
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 200)),
     );

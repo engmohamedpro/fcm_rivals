@@ -859,6 +859,756 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Very Attacking'**
   String get mentalityVeryAttacking;
+
+  /// No description provided for @achCareerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Career'**
+  String get achCareerTitle;
+
+  /// No description provided for @achCareerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The touchline years'**
+  String get achCareerSubtitle;
+
+  /// No description provided for @achAttackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attack'**
+  String get achAttackTitle;
+
+  /// No description provided for @achAttackSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals win games'**
+  String get achAttackSubtitle;
+
+  /// No description provided for @achDefenceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Defence'**
+  String get achDefenceTitle;
+
+  /// No description provided for @achDefenceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Solid at the back'**
+  String get achDefenceSubtitle;
+
+  /// No description provided for @achSilverwareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Silverware'**
+  String get achSilverwareTitle;
+
+  /// No description provided for @achSilverwareSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Titles and promotions'**
+  String get achSilverwareSubtitle;
+
+  /// No description provided for @achSquadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Squad'**
+  String get achSquadTitle;
+
+  /// No description provided for @achSquadSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The collection you build'**
+  String get achSquadSubtitle;
+
+  /// No description provided for @achPacksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Packs'**
+  String get achPacksTitle;
+
+  /// No description provided for @achPacksSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ripping open the market'**
+  String get achPacksSubtitle;
+
+  /// No description provided for @achEconomyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Economy'**
+  String get achEconomyTitle;
+
+  /// No description provided for @achEconomySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The coin ledger'**
+  String get achEconomySubtitle;
+
+  /// No description provided for @achCampusTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Campus'**
+  String get achCampusTitle;
+
+  /// No description provided for @achCampusSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Built brick by brick'**
+  String get achCampusSubtitle;
+
+  /// No description provided for @achLoyaltyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Loyalty'**
+  String get achLoyaltyTitle;
+
+  /// No description provided for @achLoyaltySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Season after season'**
+  String get achLoyaltySubtitle;
+
+  /// No description provided for @achMastermindTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mastermind'**
+  String get achMastermindTitle;
+
+  /// No description provided for @achMastermindSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The thinking coach'**
+  String get achMastermindSubtitle;
+
+  /// No description provided for @achCareerMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches Managed'**
+  String get achCareerMatches;
+
+  /// No description provided for @achCareerMatchesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Every match you have managed, from the first whistle.'**
+  String get achCareerMatchesDesc;
+
+  /// No description provided for @achCareerWins.
+  ///
+  /// In en, this message translates to:
+  /// **'Wins'**
+  String get achCareerWins;
+
+  /// No description provided for @achCareerWinsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches won across your career.'**
+  String get achCareerWinsDesc;
+
+  /// No description provided for @achCareerWinStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Winning Streak'**
+  String get achCareerWinStreak;
+
+  /// No description provided for @achCareerWinStreakDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Your longest run of back-to-back victories.'**
+  String get achCareerWinStreakDesc;
+
+  /// No description provided for @achCareerUnbeatenStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Unbeaten Run'**
+  String get achCareerUnbeatenStreak;
+
+  /// No description provided for @achCareerUnbeatenStreakDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Wins and draws without tasting defeat.'**
+  String get achCareerUnbeatenStreakDesc;
+
+  /// No description provided for @achAttackGoals.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals Scored'**
+  String get achAttackGoals;
+
+  /// No description provided for @achAttackGoalsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Every goal your club has put past a keeper.'**
+  String get achAttackGoalsDesc;
+
+  /// No description provided for @achAttackGoalsSingleMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal Haul'**
+  String get achAttackGoalsSingleMatch;
+
+  /// No description provided for @achAttackGoalsSingleMatchDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The most goals your club scored in one match.'**
+  String get achAttackGoalsSingleMatchDesc;
+
+  /// No description provided for @achDefenceCleanSheets.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean Sheets'**
+  String get achDefenceCleanSheets;
+
+  /// No description provided for @achDefenceCleanSheetsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches finished without conceding.'**
+  String get achDefenceCleanSheetsDesc;
+
+  /// No description provided for @achDefenceShutoutStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Shutout Streak'**
+  String get achDefenceShutoutStreak;
+
+  /// No description provided for @achDefenceShutoutStreakDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Consecutive matches keeping the nets untouched.'**
+  String get achDefenceShutoutStreakDesc;
+
+  /// No description provided for @achSilverwareTitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Champion'**
+  String get achSilverwareTitles;
+
+  /// No description provided for @achSilverwareTitlesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Division championships won, at any level.'**
+  String get achSilverwareTitlesDesc;
+
+  /// No description provided for @achSilverwarePromotions.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotions'**
+  String get achSilverwarePromotions;
+
+  /// No description provided for @achSilverwarePromotionsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Seasons finished with a climb up the ladder.'**
+  String get achSilverwarePromotionsDesc;
+
+  /// No description provided for @achSquadCardsOwned.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards Owned'**
+  String get achSquadCardsOwned;
+
+  /// No description provided for @achSquadCardsOwnedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The players your club holds right now.'**
+  String get achSquadCardsOwnedDesc;
+
+  /// No description provided for @achSquadLegendaries.
+  ///
+  /// In en, this message translates to:
+  /// **'Legendary Squad'**
+  String get achSquadLegendaries;
+
+  /// No description provided for @achSquadLegendariesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Legendary cards (80+ overall) owned at once.'**
+  String get achSquadLegendariesDesc;
+
+  /// No description provided for @achSquadEpics.
+  ///
+  /// In en, this message translates to:
+  /// **'Epic Squad'**
+  String get achSquadEpics;
+
+  /// No description provided for @achSquadEpicsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Epic cards (70–79 overall) owned at once.'**
+  String get achSquadEpicsDesc;
+
+  /// No description provided for @achSquadUpgrades.
+  ///
+  /// In en, this message translates to:
+  /// **'Merges Completed'**
+  String get achSquadUpgrades;
+
+  /// No description provided for @achSquadUpgradesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicates merged into stronger cards.'**
+  String get achSquadUpgradesDesc;
+
+  /// No description provided for @achSquadHighestUpgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Masterwork'**
+  String get achSquadHighestUpgrade;
+
+  /// No description provided for @achSquadHighestUpgradeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The highest upgrade level one card has reached.'**
+  String get achSquadHighestUpgradeDesc;
+
+  /// No description provided for @achPacksOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Packs Opened'**
+  String get achPacksOpened;
+
+  /// No description provided for @achPacksOpenedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Every pack ripped open, whatever its source.'**
+  String get achPacksOpenedDesc;
+
+  /// No description provided for @achPacksPurchased.
+  ///
+  /// In en, this message translates to:
+  /// **'Packs Purchased'**
+  String get achPacksPurchased;
+
+  /// No description provided for @achPacksPurchasedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Packs bought with hard-earned coins.'**
+  String get achPacksPurchasedDesc;
+
+  /// No description provided for @achPacksRewarded.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewards Earned'**
+  String get achPacksRewarded;
+
+  /// No description provided for @achPacksRewardedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Packs granted by season rewards.'**
+  String get achPacksRewardedDesc;
+
+  /// No description provided for @achEconomyLifetimeEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Lifetime Earnings'**
+  String get achEconomyLifetimeEarned;
+
+  /// No description provided for @achEconomyLifetimeEarnedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Every coin the club has ever earned.'**
+  String get achEconomyLifetimeEarnedDesc;
+
+  /// No description provided for @achEconomyPackSpend.
+  ///
+  /// In en, this message translates to:
+  /// **'Market Spending'**
+  String get achEconomyPackSpend;
+
+  /// No description provided for @achEconomyPackSpendDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins spent on the pack market.'**
+  String get achEconomyPackSpendDesc;
+
+  /// No description provided for @achEconomyUpgradeSpend.
+  ///
+  /// In en, this message translates to:
+  /// **'Investment Spending'**
+  String get achEconomyUpgradeSpend;
+
+  /// No description provided for @achEconomyUpgradeSpendDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins poured into upgrades and facilities.'**
+  String get achEconomyUpgradeSpendDesc;
+
+  /// No description provided for @achCampusFacilityLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'Facility Levels'**
+  String get achCampusFacilityLevels;
+
+  /// No description provided for @achCampusFacilityLevelsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The sum of every level across your campus.'**
+  String get achCampusFacilityLevelsDesc;
+
+  /// No description provided for @achLoyaltySeasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Seasons Completed'**
+  String get achLoyaltySeasons;
+
+  /// No description provided for @achLoyaltySeasonsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Full seasons seen through to the final whistle.'**
+  String get achLoyaltySeasonsDesc;
+
+  /// No description provided for @achMastermindTacticsChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Touchline Calls'**
+  String get achMastermindTacticsChanged;
+
+  /// No description provided for @achMastermindTacticsChangedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tactical instructions changed from the dugout.'**
+  String get achMastermindTacticsChangedDesc;
+
+  /// No description provided for @achMilestoneFirstWin.
+  ///
+  /// In en, this message translates to:
+  /// **'First Victory'**
+  String get achMilestoneFirstWin;
+
+  /// No description provided for @achMilestoneFirstWinDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The win that started it all.'**
+  String get achMilestoneFirstWinDesc;
+
+  /// No description provided for @achMilestoneFirstTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'First Championship'**
+  String get achMilestoneFirstTitle;
+
+  /// No description provided for @achMilestoneFirstTitleDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Lift your first division title.'**
+  String get achMilestoneFirstTitleDesc;
+
+  /// No description provided for @achMilestoneFirstLegendary.
+  ///
+  /// In en, this message translates to:
+  /// **'The Golden Signature'**
+  String get achMilestoneFirstLegendary;
+
+  /// No description provided for @achMilestoneFirstLegendaryDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Own your first legendary card.'**
+  String get achMilestoneFirstLegendaryDesc;
+
+  /// No description provided for @achMilestoneFirstEpic.
+  ///
+  /// In en, this message translates to:
+  /// **'A Cut Above'**
+  String get achMilestoneFirstEpic;
+
+  /// No description provided for @achMilestoneFirstEpicDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Own your first epic card.'**
+  String get achMilestoneFirstEpicDesc;
+
+  /// No description provided for @achMilestoneFirstLegendaryPull.
+  ///
+  /// In en, this message translates to:
+  /// **'Golden Pull'**
+  String get achMilestoneFirstLegendaryPull;
+
+  /// No description provided for @achMilestoneFirstLegendaryPullDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull a legendary card from a pack.'**
+  String get achMilestoneFirstLegendaryPullDesc;
+
+  /// No description provided for @achMilestoneFirstMillion.
+  ///
+  /// In en, this message translates to:
+  /// **'Millionaire Manager'**
+  String get achMilestoneFirstMillion;
+
+  /// No description provided for @achMilestoneFirstMillionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Earn one million coins in your career.'**
+  String get achMilestoneFirstMillionDesc;
+
+  /// No description provided for @achMilestoneFirstSeason.
+  ///
+  /// In en, this message translates to:
+  /// **'The Long Haul'**
+  String get achMilestoneFirstSeason;
+
+  /// No description provided for @achMilestoneFirstSeasonDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete your first full season.'**
+  String get achMilestoneFirstSeasonDesc;
+
+  /// No description provided for @achMilestoneFirstFacilityMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Campus Landmark'**
+  String get achMilestoneFirstFacilityMax;
+
+  /// No description provided for @achMilestoneFirstFacilityMaxDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Take one facility to its maximum level.'**
+  String get achMilestoneFirstFacilityMaxDesc;
+
+  /// No description provided for @achTitleCareerWins1.
+  ///
+  /// In en, this message translates to:
+  /// **'The Winner'**
+  String get achTitleCareerWins1;
+
+  /// No description provided for @achTitleCareerWins2.
+  ///
+  /// In en, this message translates to:
+  /// **'Serial Winner'**
+  String get achTitleCareerWins2;
+
+  /// No description provided for @achTitleUnbeaten1.
+  ///
+  /// In en, this message translates to:
+  /// **'Unbeaten'**
+  String get achTitleUnbeaten1;
+
+  /// No description provided for @achTitleUnbeaten2.
+  ///
+  /// In en, this message translates to:
+  /// **'Fortress Manager'**
+  String get achTitleUnbeaten2;
+
+  /// No description provided for @achTitleGoals1.
+  ///
+  /// In en, this message translates to:
+  /// **'The Marksman'**
+  String get achTitleGoals1;
+
+  /// No description provided for @achTitleGoals2.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal Machine'**
+  String get achTitleGoals2;
+
+  /// No description provided for @achTitleCleanSheets1.
+  ///
+  /// In en, this message translates to:
+  /// **'The Wall'**
+  String get achTitleCleanSheets1;
+
+  /// No description provided for @achTitleCleanSheets2.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked Down'**
+  String get achTitleCleanSheets2;
+
+  /// No description provided for @achTitleTitles1.
+  ///
+  /// In en, this message translates to:
+  /// **'Champion'**
+  String get achTitleTitles1;
+
+  /// No description provided for @achTitleTitles2.
+  ///
+  /// In en, this message translates to:
+  /// **'Dynasty Builder'**
+  String get achTitleTitles2;
+
+  /// No description provided for @achTitleLegendaries1.
+  ///
+  /// In en, this message translates to:
+  /// **'Galactico'**
+  String get achTitleLegendaries1;
+
+  /// No description provided for @achTitleLegendaries2.
+  ///
+  /// In en, this message translates to:
+  /// **'Squad of Legends'**
+  String get achTitleLegendaries2;
+
+  /// No description provided for @achTitlePacks1.
+  ///
+  /// In en, this message translates to:
+  /// **'Market Raider'**
+  String get achTitlePacks1;
+
+  /// No description provided for @achTitleCoins1.
+  ///
+  /// In en, this message translates to:
+  /// **'The Banker'**
+  String get achTitleCoins1;
+
+  /// No description provided for @achTitleSeasons1.
+  ///
+  /// In en, this message translates to:
+  /// **'Loyal Gaffer'**
+  String get achTitleSeasons1;
+
+  /// No description provided for @achTitleMastermind1.
+  ///
+  /// In en, this message translates to:
+  /// **'The Tactician'**
+  String get achTitleMastermind1;
+
+  /// No description provided for @achievementDivisionChampion.
+  ///
+  /// In en, this message translates to:
+  /// **'Division {division} Champion'**
+  String achievementDivisionChampion(int division);
+
+  /// No description provided for @achCareerDraws.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares of the Spoils'**
+  String get achCareerDraws;
+
+  /// No description provided for @achCareerDrawsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches that ended all square.'**
+  String get achCareerDrawsDesc;
+
+  /// No description provided for @achCareerLosses.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard Lessons'**
+  String get achCareerLosses;
+
+  /// No description provided for @achCareerLossesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The defeats that shaped the manager you became.'**
+  String get achCareerLossesDesc;
+
+  /// No description provided for @achDefenceGoalsAgainst.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals Conceded'**
+  String get achDefenceGoalsAgainst;
+
+  /// No description provided for @achDefenceGoalsAgainstDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Every goal shipped at the wrong end — the counterweight of the clean sheets.'**
+  String get achDefenceGoalsAgainstDesc;
+
+  /// No description provided for @achDefenceScoredFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'First Blood'**
+  String get achDefenceScoredFirst;
+
+  /// No description provided for @achDefenceScoredFirstDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches where your club struck the opening goal.'**
+  String get achDefenceScoredFirstDesc;
+
+  /// No description provided for @achCareerAwayMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Travelling Support'**
+  String get achCareerAwayMatches;
+
+  /// No description provided for @achCareerAwayMatchesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches managed on hostile ground.'**
+  String get achCareerAwayMatchesDesc;
+
+  /// No description provided for @achEconomyPlayerSales.
+  ///
+  /// In en, this message translates to:
+  /// **'Market Sales'**
+  String get achEconomyPlayerSales;
+
+  /// No description provided for @achEconomyPlayerSalesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Players moved on for the right price.'**
+  String get achEconomyPlayerSalesDesc;
+
+  /// No description provided for @achLoyaltyRelegations.
+  ///
+  /// In en, this message translates to:
+  /// **'Weathered the Storm'**
+  String get achLoyaltyRelegations;
+
+  /// No description provided for @achLoyaltyRelegationsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Relegations endured without walking away.'**
+  String get achLoyaltyRelegationsDesc;
+
+  /// No description provided for @achPacksStartingPacks.
+  ///
+  /// In en, this message translates to:
+  /// **'From the Ground Up'**
+  String get achPacksStartingPacks;
+
+  /// No description provided for @achPacksStartingPacksDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The starter packs that built the first squad.'**
+  String get achPacksStartingPacksDesc;
+
+  /// No description provided for @achCareerHomeMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Fortress'**
+  String get achCareerHomeMatches;
+
+  /// No description provided for @achCareerHomeMatchesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches managed in front of your own crowd.'**
+  String get achCareerHomeMatchesDesc;
+
+  /// No description provided for @achCampusRecoveryLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'The Recovery Room'**
+  String get achCampusRecoveryLevel;
+
+  /// No description provided for @achCampusRecoveryLevelDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The Recovery Centre\'s level — where tired legs come back.'**
+  String get achCampusRecoveryLevelDesc;
+
+  /// No description provided for @achTitlePacks2.
+  ///
+  /// In en, this message translates to:
+  /// **'Market Mogul'**
+  String get achTitlePacks2;
+
+  /// No description provided for @achTitleCoins2.
+  ///
+  /// In en, this message translates to:
+  /// **'The Magnate'**
+  String get achTitleCoins2;
+
+  /// No description provided for @achTitleSeasons2.
+  ///
+  /// In en, this message translates to:
+  /// **'Club Legend'**
+  String get achTitleSeasons2;
+
+  /// No description provided for @achTitleMastermind2.
+  ///
+  /// In en, this message translates to:
+  /// **'The Professor'**
+  String get achTitleMastermind2;
 }
 
 class _AppLocalizationsDelegate

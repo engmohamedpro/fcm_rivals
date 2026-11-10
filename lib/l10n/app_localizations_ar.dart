@@ -416,4 +416,401 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get mentalityVeryAttacking => 'هجومي للغاية';
+
+  @override
+  String get achCareerTitle => 'المسيرة';
+
+  @override
+  String get achCareerSubtitle => 'سنوات على خط التماس';
+
+  @override
+  String get achAttackTitle => 'الهجوم';
+
+  @override
+  String get achAttackSubtitle => 'الأهداف تكسب المباريات';
+
+  @override
+  String get achDefenceTitle => 'الدفاع';
+
+  @override
+  String get achDefenceSubtitle => 'حصن منيع في الخلف';
+
+  @override
+  String get achSilverwareTitle => 'البطولات';
+
+  @override
+  String get achSilverwareSubtitle => 'ألقاب وترقيات';
+
+  @override
+  String get achSquadTitle => 'القائمة';
+
+  @override
+  String get achSquadSubtitle => 'مجموعتك التي تبنيها';
+
+  @override
+  String get achPacksTitle => 'العبوات';
+
+  @override
+  String get achPacksSubtitle => 'تمزيق أغلفة السوق';
+
+  @override
+  String get achEconomyTitle => 'الاقتصاد';
+
+  @override
+  String get achEconomySubtitle => 'دفتر العملات';
+
+  @override
+  String get achCampusTitle => 'الحي الجامعي';
+
+  @override
+  String get achCampusSubtitle => 'بُنى طوبًا طوبًا';
+
+  @override
+  String get achLoyaltyTitle => 'الوفاء';
+
+  @override
+  String get achLoyaltySubtitle => 'موسمًا بعد موسم';
+
+  @override
+  String get achMastermindTitle => 'العقل المدبر';
+
+  @override
+  String get achMastermindSubtitle => 'المدرب المفكر';
+
+  @override
+  String get achCareerMatches => 'مباريات أشرفت عليها';
+
+  @override
+  String get achCareerMatchesDesc =>
+      'كل مباراة أدرتها منذ صافرة البداية الأولى.';
+
+  @override
+  String get achCareerWins => 'الانتصارات';
+
+  @override
+  String get achCareerWinsDesc => 'المباريات التي كسبتها عبر مسيرتك.';
+
+  @override
+  String get achCareerWinStreak => 'سلسلة الانتصارات';
+
+  @override
+  String get achCareerWinStreakDesc => 'أطول سلسلة انتصارات متتالية حققتها.';
+
+  @override
+  String get achCareerUnbeatenStreak => 'سلسلة بلا هزائم';
+
+  @override
+  String get achCareerUnbeatenStreakDesc =>
+      'انتصارات وتعادلات دون أن تتذوق طعم الخسارة.';
+
+  @override
+  String get achAttackGoals => 'الأهداف المسجلة';
+
+  @override
+  String get achAttackGoalsDesc => 'كل هدف سجله نادلك في مرمى الخصوم.';
+
+  @override
+  String get achAttackGoalsSingleMatch => 'مهرجان أهداف';
+
+  @override
+  String get achAttackGoalsSingleMatchDesc =>
+      'أكبر عدد من الأهداف سجلها نادلك في مباراة واحدة.';
+
+  @override
+  String get achDefenceCleanSheets => 'الشباك النظيفة';
+
+  @override
+  String get achDefenceCleanSheetsDesc => 'مباريات أُغلقت فيها شباكك بالضبات.';
+
+  @override
+  String get achDefenceShutoutStreak => 'سلسلة نظيفة';
+
+  @override
+  String get achDefenceShutoutStreakDesc =>
+      'مباريات متتالية بقيت فيها الشباك بعيدة عن الخطر.';
+
+  @override
+  String get achSilverwareTitles => 'البطل';
+
+  @override
+  String get achSilverwareTitlesDesc =>
+      'بطولات الدوري التي رفعتها، في أي مستوى.';
+
+  @override
+  String get achSilverwarePromotions => 'الترقيات';
+
+  @override
+  String get achSilverwarePromotionsDesc => 'مواسم أنهيتها بتسلق درجة أعلى.';
+
+  @override
+  String get achSquadCardsOwned => 'الكروت المملوكة';
+
+  @override
+  String get achSquadCardsOwnedDesc => 'اللاعبون الذين يملكهم نادلك الآن.';
+
+  @override
+  String get achSquadLegendaries => 'قائمة أسطورية';
+
+  @override
+  String get achSquadLegendariesDesc =>
+      'كروت أسطورية (تقييم 80 فأعلى) تملكها في وقت واحد.';
+
+  @override
+  String get achSquadEpics => 'قائمة ملحمية';
+
+  @override
+  String get achSquadEpicsDesc =>
+      'كروت ملحمية (تقييم 70–79) تملكها في وقت واحد.';
+
+  @override
+  String get achSquadUpgrades => 'عمليات الدمج';
+
+  @override
+  String get achSquadUpgradesDesc => 'المكررات التي دمجتها في كروت أقوى.';
+
+  @override
+  String get achSquadHighestUpgrade => 'التحفة';
+
+  @override
+  String get achSquadHighestUpgradeDesc =>
+      'أعلى مستوى ترقية وصل إليه كارت واحد.';
+
+  @override
+  String get achPacksOpened => 'عبوات فتحتها';
+
+  @override
+  String get achPacksOpenedDesc => 'كل عبوة مزقت غلافها، مهما كان مصدرها.';
+
+  @override
+  String get achPacksPurchased => 'عبوات اشتريتها';
+
+  @override
+  String get achPacksPurchasedDesc =>
+      'عبوات اقتنيتها بعملات كسبتها بعرق الجبين.';
+
+  @override
+  String get achPacksRewarded => 'مكافآت حصلت عليها';
+
+  @override
+  String get achPacksRewardedDesc => 'عبوات منحتها إياك مكافآت نهاية الموسم.';
+
+  @override
+  String get achEconomyLifetimeEarned => 'إجمالي الدخل';
+
+  @override
+  String get achEconomyLifetimeEarnedDesc =>
+      'كل عملة دخل بها النادي على الإطلاق.';
+
+  @override
+  String get achEconomyPackSpend => 'إنفاق السوق';
+
+  @override
+  String get achEconomyPackSpendDesc => 'العملات التي أنفقتها على سوق العبوات.';
+
+  @override
+  String get achEconomyUpgradeSpend => 'إنفاق التطوير';
+
+  @override
+  String get achEconomyUpgradeSpendDesc =>
+      'العملات التي ضخختها في الترقيات والمرافق.';
+
+  @override
+  String get achCampusFacilityLevels => 'مستويات المرافق';
+
+  @override
+  String get achCampusFacilityLevelsDesc =>
+      'مجموع مستويات مرافق حيك الجامعي كلها.';
+
+  @override
+  String get achLoyaltySeasons => 'مواسم أكملتها';
+
+  @override
+  String get achLoyaltySeasonsDesc => 'مواسم كاملة أوصلتها لصافرة النهاية.';
+
+  @override
+  String get achMastermindTacticsChanged => 'قرارات التماس';
+
+  @override
+  String get achMastermindTacticsChangedDesc =>
+      'التعليمات التكتيكية التي غيرتها من على خط التماس.';
+
+  @override
+  String get achMilestoneFirstWin => 'أول انتصار';
+
+  @override
+  String get achMilestoneFirstWinDesc => 'الانتصار الذي بدأ منه كل شيء.';
+
+  @override
+  String get achMilestoneFirstTitle => 'أول بطولة';
+
+  @override
+  String get achMilestoneFirstTitleDesc => 'ارفع أول درع دوري لنادلك.';
+
+  @override
+  String get achMilestoneFirstLegendary => 'التوقيع الذهبي';
+
+  @override
+  String get achMilestoneFirstLegendaryDesc => 'امتلك أول كارت أسطوري لك.';
+
+  @override
+  String get achMilestoneFirstEpic => 'نخبة متفوقة';
+
+  @override
+  String get achMilestoneFirstEpicDesc => 'امتلك أول كارت ملحمي لك.';
+
+  @override
+  String get achMilestoneFirstLegendaryPull => 'السحبة الذهبية';
+
+  @override
+  String get achMilestoneFirstLegendaryPullDesc =>
+      'اسحب كارتًا أسطوريًا من عبوة.';
+
+  @override
+  String get achMilestoneFirstMillion => 'مدرب المليونير';
+
+  @override
+  String get achMilestoneFirstMillionDesc => 'اربح مليون عملة في مسيرتك.';
+
+  @override
+  String get achMilestoneFirstSeason => 'الماراثون';
+
+  @override
+  String get achMilestoneFirstSeasonDesc => 'أكمل أول موسم كامل لك.';
+
+  @override
+  String get achMilestoneFirstFacilityMax => 'معلم الحي الجامعي';
+
+  @override
+  String get achMilestoneFirstFacilityMaxDesc =>
+      'أوصل أحد المرافق إلى مستواه الأقصى.';
+
+  @override
+  String get achTitleCareerWins1 => 'الفائز';
+
+  @override
+  String get achTitleCareerWins2 => 'فائز بطبعه';
+
+  @override
+  String get achTitleUnbeaten1 => 'لا يُقهر';
+
+  @override
+  String get achTitleUnbeaten2 => 'مدرب الحصن';
+
+  @override
+  String get achTitleGoals1 => 'القناص';
+
+  @override
+  String get achTitleGoals2 => 'آلة الأهداف';
+
+  @override
+  String get achTitleCleanSheets1 => 'السد العالي';
+
+  @override
+  String get achTitleCleanSheets2 => 'مقفل الشباك';
+
+  @override
+  String get achTitleTitles1 => 'البطل';
+
+  @override
+  String get achTitleTitles2 => 'باني الإمبراطورية';
+
+  @override
+  String get achTitleLegendaries1 => 'الغلاكتيكو';
+
+  @override
+  String get achTitleLegendaries2 => 'قائمة الأساطير';
+
+  @override
+  String get achTitlePacks1 => 'مغير الأسواق';
+
+  @override
+  String get achTitleCoins1 => 'الصراف';
+
+  @override
+  String get achTitleSeasons1 => 'المدرب المخلص';
+
+  @override
+  String get achTitleMastermind1 => 'الخطيط';
+
+  @override
+  String achievementDivisionChampion(int division) {
+    return 'بطل الدرجة $division';
+  }
+
+  @override
+  String get achCareerDraws => 'قسمة الغنائم';
+
+  @override
+  String get achCareerDrawsDesc => 'المباريات التي انتهت بالتعادل.';
+
+  @override
+  String get achCareerLosses => 'دروس قاسية';
+
+  @override
+  String get achCareerLossesDesc => 'الهزائم التي صنعت المدرب الذي أصبحته.';
+
+  @override
+  String get achDefenceGoalsAgainst => 'الأهداف المستقبلة';
+
+  @override
+  String get achDefenceGoalsAgainstDesc =>
+      'كل هدف دخل شباكك — الكفة المقابلة للشباك النظيفة.';
+
+  @override
+  String get achDefenceScoredFirst => 'الضربة الأولى';
+
+  @override
+  String get achDefenceScoredFirstDesc =>
+      'مباريات سجل فيها نادلك هدف المبادرة.';
+
+  @override
+  String get achCareerAwayMatches => 'الجمهور المسافر';
+
+  @override
+  String get achCareerAwayMatchesDesc =>
+      'مباريات أدرتها على أرض الخصم وسط جمهوره.';
+
+  @override
+  String get achEconomyPlayerSales => 'بيع في السوق';
+
+  @override
+  String get achEconomyPlayerSalesDesc => 'لاعبون بِعوا بالسعر المناسب.';
+
+  @override
+  String get achLoyaltyRelegations => 'رباطة الجأش';
+
+  @override
+  String get achLoyaltyRelegationsDesc => 'هبوط ذقته ولم تغادر على إثره.';
+
+  @override
+  String get achPacksStartingPacks => 'من الصفر';
+
+  @override
+  String get achPacksStartingPacksDesc =>
+      'عبوات البداية التي شيّدت أول تشكيلة.';
+
+  @override
+  String get achCareerHomeMatches => 'الحصن الداخلي';
+
+  @override
+  String get achCareerHomeMatchesDesc => 'مباريات أدرتها أمام جمهورك.';
+
+  @override
+  String get achCampusRecoveryLevel => 'غرفة الاستشفاء';
+
+  @override
+  String get achCampusRecoveryLevelDesc =>
+      'مستوى مركز الاستشفاء — حيث تعود الأرجل المتعبة.';
+
+  @override
+  String get achTitlePacks2 => 'أمير الأسواق';
+
+  @override
+  String get achTitleCoins2 => 'التاجر الكبير';
+
+  @override
+  String get achTitleSeasons2 => 'أسطول النادي';
+
+  @override
+  String get achTitleMastermind2 => 'البروفيسور';
 }

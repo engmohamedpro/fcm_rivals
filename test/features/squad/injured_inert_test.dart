@@ -17,11 +17,9 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart' show NativeDatabase;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/injury_badge.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
@@ -97,7 +95,7 @@ void main() {
   /// The club's saved squad (slot → card) as the matchday pitch
   /// renders it: showCondition TRUE (the pre-match duplicate's view).
   /// The slot mapping lives in the DB rows, not on PlayerCard.
-  Future<Map<int, PlayerCard>> _savedXi() async {
+  Future<Map<int, PlayerCard>> savedXi() async {
     final club = await store.getClub();
     final rows = await (db.select(db.ownedPlayers)
           ..where((o) => o.clubId.equals(club!.id)))
@@ -114,7 +112,7 @@ void main() {
 
   Future<void> pumpMatchdayPitch(WidgetTester tester,
       {Locale? locale}) async {
-    final xi = await _savedXi();
+    final xi = await savedXi();
     await tester.pumpWidget(
       locale == null
           ? MaterialApp(

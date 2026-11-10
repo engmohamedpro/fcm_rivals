@@ -2,8 +2,8 @@
 id: T-0105
 title: Typed achievement catalog + economy-safe endless reward config (pure Dart, no UI)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-10
 completed:
@@ -59,12 +59,83 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `lib/features/achievements/achievement_catalog.dart` — the
+    typed foundation: `AchievementCategory`, `AchievementDefinition`
+    (+`confersTitles` flag), `AchievementTier`, `AchievementLadder`
+    (CONSTRUCTOR-ASSERTED geometric discipline: ratio >= 2, endless
+    OR finite, base >= 1 — a linear ladder is a TYPE ERROR, not a
+    review comment), `BadgeMetal`, `TitleDefinition`,
+    `DivisionTitleDefinition` (seeded 1..5, on demand beyond).
+    `tiers()` materialises finite rungs or the endless UI horizon
+    with proportional badge metals.
+  - NEW `lib/features/achievements/achievement_economy_config.dart`
+    — `AchievementEconomyConfig`: flat per-tier endless reward
+    (placeholder 20 ≈ 1.3% of a par match), 9 milestone budgets, and
+    `totalCatalogCoinCeiling()` DERIVED from the catalog (never
+    stored — the drift test proves adding a definition moves the
+    ceiling by exactly its budget). Library doc explains the O(log)
+    bound in plain words per the task.
+  - NEW `lib/features/achievements/achievement_catalog_data.dart` —
+    the seeded catalog: 10 categories, 40 definitions (32 endless +
+    8 milestones — the task's >=40 with the >=30/>=8 mix), 20
+    achievement titles (2 per flagship, rungs 3 and 6) + 5 seeded
+    division titles. Metric ids mirror T-0107's derivable inventory
+    exactly (the ledger reasons enumerated from source: match_reward,
+    season_reward, pack_purchase, player_sale, facility_upgrade,
+    starting_grant, removal_compensation, match_replay_refund — the
+    'tired'/'chasing' hits are substitution EVENT labels not ledger
+    rows).
+  - L10n: 107 new key pairs EN+AR (categories, 40 definitions, 20
+    titles, division-champion placeholder key) — Arabic written in
+    real football-manager register (e.g. 'القناص', 'باني
+    الإمبراطورية', 'مقفل الشباك'), clean `flutter gen-l10n`.
+  - Tests: NEW `test/features/achievements/catalog_test.dart` — 15
+    tests: shape counts, id/category uniqueness, milestone-budget
+    discipline, ratio-assert + self-contradiction asserts, strict
+    threshold monotonicity, FLAT endless coins, THE ASYMPTOTE
+    (coins-per-effort non-increasing at the base=1 tie then strictly
+    decreasing — math-honest: base=1 ladders tie on the first two
+    rungs, the invariant that kills linear ladders is never-rise +
+    strict fall), derived ceiling finite + drift-proof, title
+    integrity vs registry, division titles on demand, full EN+AR arb
+    completeness for every referenced key.
+- **Files changed:** lib/features/achievements/achievement_catalog.dart
+  (new), achievement_economy_config.dart (new),
+  achievement_catalog_data.dart (new), lib/l10n/app_en.arb,
+  app_ar.arb, generated app_localizations{,_en,_ar}.dart,
+  test/features/achievements/catalog_test.dart (new). Plus lint
+  cleanup of MY OWN earlier files now surfaced by the touched-file
+  linter: injured_inert_test.dart (2 unused imports), team_tab_purity
+  /injured_inert local-identifier renames.
+- **How I tested it:** `flutter analyze --no-pub` — only the 2
+  pre-existing baseline issues (fcm_crest.dart:269,
+  tactic_slider_row.dart:16), zero new. Task tests 15/15; touched
+  squads tests 22/22; onboarding+collection+core 164/164;
+  match+balance: only the SAME 2 pre-existing tactic_slider_row
+  Arabic failures; squad/season/packs/facilities 465 passed with the
+  SAME pre-existing failures (T-0064 slider family + season
+  live-flow — all stash-verified on the clean tree in earlier
+  sessions; untouched by this pure-data task).
+- **Concerns / assumptions:** (1) Two T-0107-relevant metrics are
+  seeded but NOT in T-0107's confirmed inventory list
+  (matchesScoredFirst IS listed; homeMatches/awayMatches/
+  recoveryCentreLevel/startingPacksOpened/legendaryPulls/
+  playerSalesCompleted/relegations/draws/losses/goalsAgainst are
+  natural column derivations of listed tables) — T-0107 verifies
+  derivability and DROPS any that lack a persisted trace in a
+  documented catalog edit; the catalog tests will catch the drop (id
+  uniqueness remains, counts re-pin). (2) maxGeneratedTiers=24 is the
+  UI horizon: tier 24 of a ratio-2 ladder demands base*8.4M effort —
+  comfortably 'endless' for any real career; crossing it generates
+  more, never blocks. (3) Titles are deliberately registry-capped at
+  2 per flagship (rungs 3/6): prestige tracks badge metals beyond
+  that; a third title = one registry entry + one arb pair (the
+  integrity test enforces the pairing). (4) Coin numbers are
+  pre-balance placeholders per GDD rule 14 — T-0109's sweep re-pins
+  them; the LOGARITHMIC SHAPE (the safety property) is what these
+  tests lock.
 
 
 ## Review Log

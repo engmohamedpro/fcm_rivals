@@ -416,4 +416,408 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mentalityVeryAttacking => 'Very Attacking';
+
+  @override
+  String get achCareerTitle => 'Career';
+
+  @override
+  String get achCareerSubtitle => 'The touchline years';
+
+  @override
+  String get achAttackTitle => 'Attack';
+
+  @override
+  String get achAttackSubtitle => 'Goals win games';
+
+  @override
+  String get achDefenceTitle => 'Defence';
+
+  @override
+  String get achDefenceSubtitle => 'Solid at the back';
+
+  @override
+  String get achSilverwareTitle => 'Silverware';
+
+  @override
+  String get achSilverwareSubtitle => 'Titles and promotions';
+
+  @override
+  String get achSquadTitle => 'Squad';
+
+  @override
+  String get achSquadSubtitle => 'The collection you build';
+
+  @override
+  String get achPacksTitle => 'Packs';
+
+  @override
+  String get achPacksSubtitle => 'Ripping open the market';
+
+  @override
+  String get achEconomyTitle => 'Economy';
+
+  @override
+  String get achEconomySubtitle => 'The coin ledger';
+
+  @override
+  String get achCampusTitle => 'Campus';
+
+  @override
+  String get achCampusSubtitle => 'Built brick by brick';
+
+  @override
+  String get achLoyaltyTitle => 'Loyalty';
+
+  @override
+  String get achLoyaltySubtitle => 'Season after season';
+
+  @override
+  String get achMastermindTitle => 'Mastermind';
+
+  @override
+  String get achMastermindSubtitle => 'The thinking coach';
+
+  @override
+  String get achCareerMatches => 'Matches Managed';
+
+  @override
+  String get achCareerMatchesDesc =>
+      'Every match you have managed, from the first whistle.';
+
+  @override
+  String get achCareerWins => 'Wins';
+
+  @override
+  String get achCareerWinsDesc => 'Matches won across your career.';
+
+  @override
+  String get achCareerWinStreak => 'Winning Streak';
+
+  @override
+  String get achCareerWinStreakDesc =>
+      'Your longest run of back-to-back victories.';
+
+  @override
+  String get achCareerUnbeatenStreak => 'Unbeaten Run';
+
+  @override
+  String get achCareerUnbeatenStreakDesc =>
+      'Wins and draws without tasting defeat.';
+
+  @override
+  String get achAttackGoals => 'Goals Scored';
+
+  @override
+  String get achAttackGoalsDesc =>
+      'Every goal your club has put past a keeper.';
+
+  @override
+  String get achAttackGoalsSingleMatch => 'Goal Haul';
+
+  @override
+  String get achAttackGoalsSingleMatchDesc =>
+      'The most goals your club scored in one match.';
+
+  @override
+  String get achDefenceCleanSheets => 'Clean Sheets';
+
+  @override
+  String get achDefenceCleanSheetsDesc => 'Matches finished without conceding.';
+
+  @override
+  String get achDefenceShutoutStreak => 'Shutout Streak';
+
+  @override
+  String get achDefenceShutoutStreakDesc =>
+      'Consecutive matches keeping the nets untouched.';
+
+  @override
+  String get achSilverwareTitles => 'Champion';
+
+  @override
+  String get achSilverwareTitlesDesc =>
+      'Division championships won, at any level.';
+
+  @override
+  String get achSilverwarePromotions => 'Promotions';
+
+  @override
+  String get achSilverwarePromotionsDesc =>
+      'Seasons finished with a climb up the ladder.';
+
+  @override
+  String get achSquadCardsOwned => 'Cards Owned';
+
+  @override
+  String get achSquadCardsOwnedDesc => 'The players your club holds right now.';
+
+  @override
+  String get achSquadLegendaries => 'Legendary Squad';
+
+  @override
+  String get achSquadLegendariesDesc =>
+      'Legendary cards (80+ overall) owned at once.';
+
+  @override
+  String get achSquadEpics => 'Epic Squad';
+
+  @override
+  String get achSquadEpicsDesc => 'Epic cards (70–79 overall) owned at once.';
+
+  @override
+  String get achSquadUpgrades => 'Merges Completed';
+
+  @override
+  String get achSquadUpgradesDesc => 'Duplicates merged into stronger cards.';
+
+  @override
+  String get achSquadHighestUpgrade => 'Masterwork';
+
+  @override
+  String get achSquadHighestUpgradeDesc =>
+      'The highest upgrade level one card has reached.';
+
+  @override
+  String get achPacksOpened => 'Packs Opened';
+
+  @override
+  String get achPacksOpenedDesc =>
+      'Every pack ripped open, whatever its source.';
+
+  @override
+  String get achPacksPurchased => 'Packs Purchased';
+
+  @override
+  String get achPacksPurchasedDesc => 'Packs bought with hard-earned coins.';
+
+  @override
+  String get achPacksRewarded => 'Rewards Earned';
+
+  @override
+  String get achPacksRewardedDesc => 'Packs granted by season rewards.';
+
+  @override
+  String get achEconomyLifetimeEarned => 'Lifetime Earnings';
+
+  @override
+  String get achEconomyLifetimeEarnedDesc =>
+      'Every coin the club has ever earned.';
+
+  @override
+  String get achEconomyPackSpend => 'Market Spending';
+
+  @override
+  String get achEconomyPackSpendDesc => 'Coins spent on the pack market.';
+
+  @override
+  String get achEconomyUpgradeSpend => 'Investment Spending';
+
+  @override
+  String get achEconomyUpgradeSpendDesc =>
+      'Coins poured into upgrades and facilities.';
+
+  @override
+  String get achCampusFacilityLevels => 'Facility Levels';
+
+  @override
+  String get achCampusFacilityLevelsDesc =>
+      'The sum of every level across your campus.';
+
+  @override
+  String get achLoyaltySeasons => 'Seasons Completed';
+
+  @override
+  String get achLoyaltySeasonsDesc =>
+      'Full seasons seen through to the final whistle.';
+
+  @override
+  String get achMastermindTacticsChanged => 'Touchline Calls';
+
+  @override
+  String get achMastermindTacticsChangedDesc =>
+      'Tactical instructions changed from the dugout.';
+
+  @override
+  String get achMilestoneFirstWin => 'First Victory';
+
+  @override
+  String get achMilestoneFirstWinDesc => 'The win that started it all.';
+
+  @override
+  String get achMilestoneFirstTitle => 'First Championship';
+
+  @override
+  String get achMilestoneFirstTitleDesc => 'Lift your first division title.';
+
+  @override
+  String get achMilestoneFirstLegendary => 'The Golden Signature';
+
+  @override
+  String get achMilestoneFirstLegendaryDesc => 'Own your first legendary card.';
+
+  @override
+  String get achMilestoneFirstEpic => 'A Cut Above';
+
+  @override
+  String get achMilestoneFirstEpicDesc => 'Own your first epic card.';
+
+  @override
+  String get achMilestoneFirstLegendaryPull => 'Golden Pull';
+
+  @override
+  String get achMilestoneFirstLegendaryPullDesc =>
+      'Pull a legendary card from a pack.';
+
+  @override
+  String get achMilestoneFirstMillion => 'Millionaire Manager';
+
+  @override
+  String get achMilestoneFirstMillionDesc =>
+      'Earn one million coins in your career.';
+
+  @override
+  String get achMilestoneFirstSeason => 'The Long Haul';
+
+  @override
+  String get achMilestoneFirstSeasonDesc => 'Complete your first full season.';
+
+  @override
+  String get achMilestoneFirstFacilityMax => 'Campus Landmark';
+
+  @override
+  String get achMilestoneFirstFacilityMaxDesc =>
+      'Take one facility to its maximum level.';
+
+  @override
+  String get achTitleCareerWins1 => 'The Winner';
+
+  @override
+  String get achTitleCareerWins2 => 'Serial Winner';
+
+  @override
+  String get achTitleUnbeaten1 => 'Unbeaten';
+
+  @override
+  String get achTitleUnbeaten2 => 'Fortress Manager';
+
+  @override
+  String get achTitleGoals1 => 'The Marksman';
+
+  @override
+  String get achTitleGoals2 => 'Goal Machine';
+
+  @override
+  String get achTitleCleanSheets1 => 'The Wall';
+
+  @override
+  String get achTitleCleanSheets2 => 'Locked Down';
+
+  @override
+  String get achTitleTitles1 => 'Champion';
+
+  @override
+  String get achTitleTitles2 => 'Dynasty Builder';
+
+  @override
+  String get achTitleLegendaries1 => 'Galactico';
+
+  @override
+  String get achTitleLegendaries2 => 'Squad of Legends';
+
+  @override
+  String get achTitlePacks1 => 'Market Raider';
+
+  @override
+  String get achTitleCoins1 => 'The Banker';
+
+  @override
+  String get achTitleSeasons1 => 'Loyal Gaffer';
+
+  @override
+  String get achTitleMastermind1 => 'The Tactician';
+
+  @override
+  String achievementDivisionChampion(int division) {
+    return 'Division $division Champion';
+  }
+
+  @override
+  String get achCareerDraws => 'Shares of the Spoils';
+
+  @override
+  String get achCareerDrawsDesc => 'Matches that ended all square.';
+
+  @override
+  String get achCareerLosses => 'Hard Lessons';
+
+  @override
+  String get achCareerLossesDesc =>
+      'The defeats that shaped the manager you became.';
+
+  @override
+  String get achDefenceGoalsAgainst => 'Goals Conceded';
+
+  @override
+  String get achDefenceGoalsAgainstDesc =>
+      'Every goal shipped at the wrong end — the counterweight of the clean sheets.';
+
+  @override
+  String get achDefenceScoredFirst => 'First Blood';
+
+  @override
+  String get achDefenceScoredFirstDesc =>
+      'Matches where your club struck the opening goal.';
+
+  @override
+  String get achCareerAwayMatches => 'Travelling Support';
+
+  @override
+  String get achCareerAwayMatchesDesc => 'Matches managed on hostile ground.';
+
+  @override
+  String get achEconomyPlayerSales => 'Market Sales';
+
+  @override
+  String get achEconomyPlayerSalesDesc =>
+      'Players moved on for the right price.';
+
+  @override
+  String get achLoyaltyRelegations => 'Weathered the Storm';
+
+  @override
+  String get achLoyaltyRelegationsDesc =>
+      'Relegations endured without walking away.';
+
+  @override
+  String get achPacksStartingPacks => 'From the Ground Up';
+
+  @override
+  String get achPacksStartingPacksDesc =>
+      'The starter packs that built the first squad.';
+
+  @override
+  String get achCareerHomeMatches => 'Home Fortress';
+
+  @override
+  String get achCareerHomeMatchesDesc =>
+      'Matches managed in front of your own crowd.';
+
+  @override
+  String get achCampusRecoveryLevel => 'The Recovery Room';
+
+  @override
+  String get achCampusRecoveryLevelDesc =>
+      'The Recovery Centre\'s level — where tired legs come back.';
+
+  @override
+  String get achTitlePacks2 => 'Market Mogul';
+
+  @override
+  String get achTitleCoins2 => 'The Magnate';
+
+  @override
+  String get achTitleSeasons2 => 'Club Legend';
+
+  @override
+  String get achTitleMastermind2 => 'The Professor';
 }
