@@ -39,6 +39,11 @@ abstract final class LedgerReasons {
   static const removalCompensation = 'removal_compensation';
   static const matchReplayRefund = 'match_replay_refund';
   static const testGrant = 'test_grant';
+
+  /// Achievement claims (T-0108): detail carries
+  /// `<achievementId>:<tierKey>` so the economy sweep attributes
+  /// achievement income precisely.
+  static const achievement = 'achievement';
 }
 
 /// The career's derived metric snapshot — every number the achievement

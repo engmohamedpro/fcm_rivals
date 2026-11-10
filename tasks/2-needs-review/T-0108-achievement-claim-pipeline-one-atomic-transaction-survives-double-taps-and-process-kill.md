@@ -56,12 +56,67 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `lib/features/achievements/achievement_claim_service.dart` —
+    `AchievementClaimService.claimTier`: eligibility re-derived from
+    T-0107 inside the decision (state-derived, never
+    request-declared — a stale/tampered UI cannot mint a claim),
+    then ONE `database.transaction`: the UNIQUE-guarded claim row
+    insert + `creditCoins` (the composed coin_ops building block —
+    the service never touches the ledger directly). The UNIQUE
+    violation is caught BROADLY (never string-matched — the message
+    is not a stable API) and VERIFIED against the claims table before
+    mapping to AlreadyClaimed; an unknown failure rethrows honestly
+    with the transaction already rolled back (neither row landed).
+  - Sealed `ClaimResult { ClaimGranted, ClaimAlreadyClaimed,
+    ClaimNotEligible }` — no exceptions across the boundary for the
+    expected cases; Granted carries the credited coins + the
+    conferred titleId, NotEligible carries the derived progress vs
+    the threshold for the UI's X-of-Y display.
+  - `claimStateFor` — the UI's zero-write pre-flight mirroring the
+    three outcomes (claimed / eligible / locked) for T-0110's
+    render-from-tables contract. `claimAllTiers` — the batch path:
+    eligible-and-unclaimed tiers only, EACH through the same
+    single-tier transaction (a loop of transactions, never one
+    mega-transaction — partial batch success persists, the UI
+    re-renders from the claims table).
+  - `LedgerReasons.achievement` joined T-0107's typed constants; the
+    ledger row carries `detail: '<achievementId>:<tierKey>'` for
+    T-0109's sweep attribution. Milestones pay their fixed budgets;
+    ladder tiers the flat rate. Title tiers record their titleId on
+    the claim row (granting ≠ equipping — T-0112 owns equipping).
+  - NEW `test/features/achievements/claim_service_test.dart` (7
+    tests on T-0107's synthetic career): happy path (granted + exact
+    ledger convention + balance moved), double claim (AlreadyClaimed
+    idempotent no-op, balance provably unchanged, still ONE ledger
+    row + ONE claim row), not-eligible (derived 4-wins vs threshold
+    64 — no rows, no coins), title recording (career_wins tier '4'
+    → title1 on the claim row), batch (3 eligible unclaimed rungs of
+    career_wins → 3 Granted + 60 coins; re-run → empty), milestone
+    budget (300, not the flat 20), claimStateFor (all three mirrors,
+    zero writes).
+- **Files changed:** lib/features/achievements/achievement_claim_service.dart
+  (new), achievement_progress.dart (the LedgerReasons.achievement
+  constant), test/features/achievements/claim_service_test.dart (new).
+- **How I tested it:** `flutter analyze --no-pub` — zero new issues
+  (only the 2 pre-existing baseline entries). achievements suite
+  32/32 green (catalog 15 + progress 4 + claims repo 6 + service 7);
+  +database suites 40/40. No production path touched beyond the two
+  new files + one constant.
+- **Concerns / assumptions:** (1) The process-kill guarantee: drift's
+  transaction either commits both rows or neither — the tests pin
+  the committed post-state (both rows + moved balance) and the
+  double-claim never-lands path; a literal kill-mid-transaction
+  harness was judged a re-test of SQLite's own rollback, not of this
+  code (documented rather than faked). (2) Replays (T-0099) are
+  transparent to claims BY CONSTRUCTION: the derivation counts a
+  fixture once, so a replay never un-claims a claimed tier nor
+  refunds anything — documented in the service's doc comment.
+  (3) claimAllTiers skips AlreadyClaimed tiers silently (they are
+  not the batch's results — the UI's claim-all affordance wants the
+  NEWLY granted set); NotEligible tiers are skipped by the
+  eligibility filter before any transaction.
 
 
 ## Review Log
