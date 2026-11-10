@@ -2,8 +2,8 @@
 id: T-0116
 title: Goal announcement moment — a screen-level "GOAL!" flash the user cannot miss (banner burst + score pulse + audio timing)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0115]
 created: 2026-11-10
 completed:
@@ -56,12 +56,58 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `lib/features/match/goal_banner.dart` — `GoalBanner`: full-width
+    announcement overlay (IgnorePointer, one AnimationController
+    created/disposed properly, RepaintBoundary, no shaders). Entrance
+    (0-0.19: scale 0.86->1 easeOutBack + slide up + fade), hold
+    (wordmark pulsing 5%, light sweep via a plain CustomPainter, scorer
+    name, new score in the side colour), exit (0.69-1: fade + rise).
+    Opponent goals: same mechanics at 0.55 intensity + 0.92 scale.
+    1.6s total. `onFinished` fires exactly once — the HOST clears the
+    banner (banner never unmounts itself).
+  - `lib/features/match/match_screen.dart` — goal detection in the
+    existing per-minute event loop (same loop that drives the cheer):
+    first goal event per minute, only while the live view owns the
+    screen (guard: not finished, no half-time card), sets
+    `_goalFlash` (scorer via `session.allPlayerNames`, new score,
+    isUserGoal, side colour); a second goal replaces it and the
+    banner's `didUpdateWidget` restarts from the top. Mount:
+    `Positioned.fill` in the existing overlay Stack, clears state via
+    `onFinished`. The commentary card's own sweep (T-0115 dressing)
+    unchanged — banner = loud channel, card = informative channel.
+  - Tests: NEW `test/features/match/goal_banner_test.dart` (5 tests:
+    wordmark+scorer+score render & onFinished fires once; tap
+    pass-through with IgnorePointer — with a coloured child under it,
+    an empty SizedBox.expand is hit-test-transparent and would fail
+    for the wrong reason; second goal restarts not queues; reduced
+    intensity variant; controller disposal). match_screen_test +
+    live_match_ux_test re-run green (29/29 across the three files).
+- **Files changed:** lib/features/match/goal_banner.dart (new),
+  lib/features/match/match_screen.dart,
+  test/features/match/goal_banner_test.dart (new).
+- **How I tested it:** `flutter analyze --no-pub` — only the 2
+  pre-existing baseline warnings (fcm_crest.dart:269,
+  tactic_slider_row.dart:16), zero new. Full
+  `flutter test test/features/match --no-pub`: 244 passed, the SAME
+  2 pre-existing tactic_slider_row Arabic wording failures (verified
+  pre-existing on the clean tree during T-0115 — untouched by this
+  task). Task's own files: 5/5 banner + screen/UX suites green.
+- **Concerns / assumptions:** (1) The task asked for a scoreboard
+  score PULSE — the score's AnimatedSwitcher already scale-pulses on
+  every change (match_header.dart:87-110, easeOutBack); adding a glow
+  ring behind it would need a stateful MatchHeader change I judged
+  not worth the coupling for v1 — the banner shows the new score at
+  26px in the side colour which carries the moment. If the owner
+  wants the literal gold pulse on the digits, that is a small
+  follow-up. (2) The banner shows while the clock keeps running —
+  deliberate (celebration, not interruption, per the task's
+  IgnorePointer contract). (3) Scorer name resolution uses
+  `session.allPlayerNames`; a missing id degrades to an empty name,
+  never a crash. (4) The goal cheer ordering is inherently correct:
+  the cheer trigger and the banner trigger sit in the same event loop
+  iteration.
 
 
 ## Review Log

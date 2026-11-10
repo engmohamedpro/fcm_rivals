@@ -15,6 +15,7 @@ import '../../l10n/injury_l10n.dart';
 import 'live_commentary_feed.dart';
 import 'live_match_views.dart';
 import 'live_tactics_panel.dart';
+import 'goal_banner.dart';
 import 'match_audio.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
@@ -144,6 +145,13 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// The newest commentary moment — the ONE line the ticker shows.
   CommentaryLine? get _latest => _lines.isEmpty ? null : _lines.last;
 
+  /// The goal announcement moment (T-0116): while non-null the GOAL
+  /// banner bursts over the pitch. Re-entered on a second goal (the
+  /// banner restarts, never queues), cleared when its animation
+  /// completes — and never shown while a touchline card holds the
+  /// screen (half-time talk), which the mount guard below enforces.
+  ({String scorer, String score, bool isUserGoal, Color color})? _goalFlash;
+
   @override
   void initState() {
     super.initState();
@@ -260,6 +268,29 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       // together.
       setState(() {
         _lines.addAll(lines);
+        // The GOAL announcement (T-0116): the loudest moment gets the
+        // loudest channel — a screen-level banner, not a quiet card
+        // glow. Only while the live view owns the screen (no
+        // half-time/recovery card up, match not finished); a second
+        // goal restarts the banner from the top.
+        for (final event in events) {
+          if (event.type == MatchEventType.goal &&
+              !_halfTimeCardUp &&
+              !session.isFinished) {
+            final names = session.allPlayerNames;
+            final live = session.engine.state;
+            final flashColor = event.side == session.userSide
+                ? (_userTeamColor ?? FcmColors.gold)
+                : opponentMomentumColor;
+            _goalFlash = (
+              scorer: names[event.primaryPlayerId] ?? '',
+              score: '${live.scoreHome} - ${live.scoreAway}',
+              isUserGoal: event.side == session.userSide,
+              color: flashColor,
+            );
+            break; // one banner per minute even on a double.
+          }
+        }
         // Friendly previews without a persisted club have no team ids —
         // the bar stays on its baseline rather than mis-attributing
         // events.
@@ -531,6 +562,36 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                             ),
                         ],
                       ),
+                      // The GOAL announcement (T-0116): the banner bursts
+                      // over the pitch while the match keeps playing —
+                      // celebration, not interruption. Never mounted
+                      // while the half-time card holds the screen.
+                      if (_goalFlash != null && !_halfTimeCardUp)
+                        Positioned.fill(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              child: GoalBanner(
+                                scorerName: _goalFlash!.scorer,
+                                scoreline: _goalFlash!.score,
+                                color: _goalFlash!.color,
+                                isUserGoal: _goalFlash!.isUserGoal,
+                                // When the animation completes the banner
+                                // clears itself and the screen rebuilds
+                                // without it.
+                                onFinished: () {
+                                  if (mounted &&
+                                      _goalFlash != null &&
+                                      !_halfTimeCardUp) {
+                                    setState(() => _goalFlash = null);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
                       // Half-time touchline card over the frozen match.
                       if (!_finished && _halfTimeCardUp)
                         _buildHalfTimeCard(),
