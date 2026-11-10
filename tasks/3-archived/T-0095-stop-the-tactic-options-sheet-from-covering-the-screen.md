@@ -2,11 +2,11 @@
 id: T-0095
 title: Stop the tactic options sheet from covering the screen
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0095: Stop the tactic options sheet from covering the screen
@@ -32,9 +32,9 @@ The TACTIC OPTIONS bottom sheet opens as a compact sheet instead of a near-full-
 - Making the cap a parameter or per-caller value — one compact cap for every caller.
 
 ## Acceptance Criteria
-- [ ] The TACTIC OPTIONS sheet opens at most ~62% of the screen height on the Team tab and the pre-match surface alike — the pitch stays visible behind it.
-- [ ] All controls (sections, slider, DONE) remain reachable by scrolling inside the sheet; DONE still pops it.
-- [ ] The new height-cap test and the existing sheet tests green; `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
+- [x] The TACTIC OPTIONS sheet opens at most ~62% of the screen height on the Team tab and the pre-match surface alike — the pitch stays visible behind it.
+- [x] All controls (sections, slider, DONE) remain reachable by scrolling inside the sheet; DONE still pops it.
+- [x] The new height-cap test and the existing sheet tests green; `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -50,3 +50,21 @@ flutter test test/features/squad/
 flutter test
 # Expected: full suite green, no REGEN_SNAPSHOT
 ```
+
+---
+
+## Review Log
+<!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7, current main):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/squad/squad_view_test.dart` → **21/21 green** ✓ (includes the new 'T-0095: the tactic options sheet opens compact' test)
+- `flutter test test/features/squad/` → **247/247 green** ✓ (the existing open/closed, mentality slider, axis-drag and RTL sheet tests pass unmodified)
+- Full `flutter test` → **1004/1004, "All tests passed!"** on the re-run ✓. The first run failed exactly one test — the known intermittent audio flake at `packs_screen_test.dart:801` ("the sequence must reach the done mark", Expected 1.0 / Actual 0.0), which has its own pending task (T-0103, stub audioplayers channels) and is unrelated to this change's area; the identical suite passed cleanly on the immediate re-run, and the packs suite also passed 132/132 standalone this session.
+- Diff scope check (commit e1f105a): 3 files — the one-line cap change `height * 0.85` → `height * 0.62` with a T-0095 comment in `tactics_setup_view.dart` (drag handle, title, sections, slider, DONE, immediate-apply callbacks, `isScrollControlled` and the internal `SingleChildScrollView` all untouched), the new height-cap test, and this task file's front matter. All inside scope; no caller flag, the one cap applies to every caller ✓.
+- The new test opens the sheet through the real `showTacticsOptionsSheet` entry on an 800×1600 viewport, asserts the rendered `BottomSheet` rect ≤ 63% of the screen height (992px cap vs 1008px bound — no slack for the old 85%), then `ensureVisible(DONE)` + tap pops the sheet — pinning both AC1 and AC2 ✓.
+
+All three criteria met; every verify command run by the reviewer.
+
