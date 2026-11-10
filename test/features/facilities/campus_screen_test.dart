@@ -17,7 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
-import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmButton, FcmPill;
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmPill;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/facilities/campus_screen.dart';
@@ -98,7 +98,7 @@ void main() {
     expect(find.text('LV 0'), findsNWidgets(6));
     expect(find.byType(FacilityCard), findsNWidgets(6));
     // Price button per card (level 1 costs 4k).
-    expect(find.byType(FcmButton), findsNWidgets(6));
+    expect(find.text('4K'), findsNWidgets(6));
 
     // The text diet: none of the old verbose fragments survive.
     expect(find.textContaining('for every player'), findsNothing);
@@ -137,7 +137,7 @@ void main() {
         .widgetList<FacilityCard>(find.byType(FacilityCard))
         .first;
     expect(card.facility, Facility.attack);
-    await tester.tap(find.byType(FcmButton).first);
+    await tester.tap(find.text('4K').first);
     await tester.pumpAndSettle();
     // Real I/O for the upgrade write + provider invalidation.
     await tester.runAsync(
@@ -179,8 +179,46 @@ void main() {
     expect(find.byType(FcmPill), findsOneWidget);
     expect(find.text('MAX'), findsOneWidget);
     // Five price buttons remain for the other facilities.
-    expect(find.byType(FcmButton), findsNWidgets(5));
+    expect(find.text('4K'), findsNWidgets(5));
     // Maxed card shows the final effect with no next-level delta.
     expect(find.text('+9.0% Attack'), findsOneWidget);
   });
+
+  testWidgets(
+    'T-0088: the upgrade control is pill-sized — same height as the '
+    'MAX pill, hit area >= 40px',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await seedStore(tester);
+      await tester.runAsync(() async {
+        final club = await store.getClub();
+        await db
+            .into(db.facilityLevels)
+            .insert(
+              FacilityLevelsCompanion.insert(
+                clubId: club!.id,
+                facility: Facility.attack.name,
+                level: const Value(10),
+              ),
+            );
+      });
+      await pumpScreen(tester);
+
+      // The visual pill of the FIRST non-maxed facility sits at the
+      // MAX pill's height (both ~24px at the test's logical scale).
+      // The price text's own decorated Container IS the visual pill
+      // box — measure it against the MAX pill.
+      final maxPill = tester.getSize(find.byType(FcmPill));
+      final visualSize = tester.getSize(
+        find.byKey(const ValueKey('upgrade-pill-visual')).first,
+      );
+      expect(
+        visualSize.height,
+        closeTo(maxPill.height, 0.5),
+        reason: 'the upgrade control matches the MAX pill height',
+      );
+    },
+  );
 }

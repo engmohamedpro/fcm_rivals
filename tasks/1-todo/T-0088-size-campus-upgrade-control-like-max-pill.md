@@ -2,8 +2,8 @@
 id: T-0088
 title: Size the campus upgrade control like the MAX pill
 priority: low
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -61,6 +61,21 @@ flutter test
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:**
+1. `lib/features/facilities/campus_screen.dart` — the facility card's upgrade control is a pill the exact height of `FcmPill('MAX')`: `_UpgradePill` (same padding 9×2 + radius 20 family, gold accent when affordable / silver when not) carrying the mini coin glyph + `FcmCoinChip.compact` price; the busy spinner replaces the glyph mid-upgrade; `FcmPressable` wraps it with 9px vertical hit padding so the tappable area is ≥ 40px tall while the visual box stays pill-sized (keyed `upgrade-pill-visual` for the size test). The `FcmButton` is gone from the row — no more height jump when a level tops out. The upgrade path itself (`CampusScreen._upgrade` → `store.upgradeFacility` → `ref.invalidate`) is untouched.
+2. `test/features/facilities/campus_screen_test.dart` — the FcmButton assertions became price-text assertions ('4K' per non-maxed card, 6 fresh / 5 when one is maxed); new T-0088 test pumps a maxed card beside a non-maxed one and asserts `tester.getSize` of the keyed visual pill equals the MAX pill's height within 0.5px (measured 23 == 23) and the wrapper stays ≥ 40px tall.
+
+**Files changed:** `lib/features/facilities/campus_screen.dart`, `test/features/facilities/campus_screen_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/facilities/` → **13/13 green** ✓ including the new size assertion. Full `flutter test` → (result recorded in the submit commit message) ✓. The golden test in the suite passed unregenerated (the pill's geometry change is inside the same row cell) — no REGEN_SNAPSHOT needed.
+
+**Concerns / assumptions:**
+- The visual height match came from padding 9×2 + the coin Row (measured 23px == the MAX pill's 23px); if `FcmPill`'s padding ever changes, the size test catches the drift immediately.
+- `widget_test.dart`'s club-creation flow needed a drag-until-visible + generous provider flush loop after T-0098 grew the crest section — fixed in this commit too (it was failing on the committed tree, a T-0098 fallout the full-suite gate caught).
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

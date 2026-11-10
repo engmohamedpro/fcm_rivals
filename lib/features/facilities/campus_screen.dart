@@ -221,21 +221,124 @@ class FacilityCard extends StatelessWidget {
                 const FcmPill('MAX')
               else ...[
                 const SizedBox(width: 8),
-                FcmButton(
-                  compact: true,
-                  coinValue: price,
-                  label: '',
-                  loading: busy,
-                  style: affordable
-                      ? FcmButtonStyle.gold
-                      : FcmButtonStyle.steel,
-                  onPressed: busy ? null : onUpgrade,
+                // T-0088: the upgrade control is pill-sized — the SAME
+                // height as the MAX pill (no row jump when the level
+                // tops out). The hit area carries the touch padding so
+                // the ~24px visual stays comfortably tappable (>= 40px
+                // tall); the visual box never grows.
+                _UpgradePill(
+                  price: price,
+                  affordable: affordable,
+                  busy: busy,
+                  onPressed: onUpgrade,
                 ),
               ],
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// T-0088: the facility upgrade control — a pill the exact height of
+/// `FcmPill('MAX')` (same radius/fill family, gold when affordable,
+/// steel when not) carrying the coin glyph + compact price. The busy
+/// spinner replaces the glyph while the upgrade runs. Pressability
+/// wraps the pill with generous hit padding: the visual box stays
+/// pill-sized, the tappable area is >= 40px tall.
+class _UpgradePill extends StatelessWidget {
+  const _UpgradePill({
+    required this.price,
+    required this.affordable,
+    required this.busy,
+    required this.onPressed,
+  });
+
+  final int price;
+  final bool affordable;
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = affordable ? FcmColors.gold : FcmColors.silver;
+    return FcmPressable(
+      onTap: busy ? null : onPressed,
+      child: Padding(
+        // The hit padding — OUTSIDE the visual pill.
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        child: AnimatedOpacity(
+          opacity: busy ? 0.55 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: Container(
+            // The visual box: pill-family fill, radius and type scale.
+            // Keyed for the T-0088 size test.
+            key: const ValueKey('upgrade-pill-visual'),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: color.withValues(alpha: 0.6),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (busy)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: FcmColors.goldSoft,
+                    ),
+                  )
+                else ...[
+                  const _MiniCoin(),
+                  const SizedBox(width: 5),
+                  Text(
+                    FcmCoinChip.compact(price),
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The coin glyph at pill scale — the same glowing disc the HUD chip
+/// shows, shrunk to fit the 24px-tall control.
+class _MiniCoin extends StatelessWidget {
+  const _MiniCoin();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 14,
+      height: 14,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: FcmColors.goldGradient,
+        boxShadow: [
+          BoxShadow(color: Color(0x73F7C948), blurRadius: 6),
+        ],
+      ),
+      child: const Icon(Icons.star_rounded, size: 8, color: Colors.white),
     );
   }
 }

@@ -73,17 +73,30 @@ void main() {
         'Pyramid United',
       );
       await tester.enterText(find.byType(TextFormField).at(1), 'Mohamed');
-      await tester.ensureVisible(find.text('Start managing'));
+      // T-0098's crest builder grows the form — the submit button sits
+      // below the fold, so drag it into view and re-settle before the
+      // tap (ensureVisible alone leaves the entrance animations
+      // mid-flight and the tap lands off-target).
+      await tester.dragUntilVisible(
+        find.text('Start managing'),
+        find.byType(Scrollable).first,
+        const Offset(0, -200),
+      );
       await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.tap(find.text('Start managing'));
       await tester.pump();
 
-      // Club creation + provider invalidation run real async work.
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 300)),
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-      await tester.pump(const Duration(milliseconds: 50));
+      // Club creation + provider invalidation run real async work; the
+      // invalidated season/collection providers reload in sequence, so
+      // flush generously (runAsync ticks let drift I/O and the riverpod
+      // futures resolve between them).
+      for (var i = 0; i < 8; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       // The season summary provider resolves asynchronously as well.
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 200)),
@@ -92,13 +105,26 @@ void main() {
 
       // Game shell with the four tabs (league matches are played live
       // from the Season tab; the squad lives on the Team tab).
+      // DEBUG: what is on screen after submit?
       expect(find.text('Season'), findsWidgets);
       expect(find.text('Team'), findsWidgets);
       expect(find.text('Collection'), findsWidgets);
       expect(find.text('Store'), findsWidgets);
       expect(find.text('Match'), findsNothing);
 
-      // The Season tab opens first: the first campaign entry point renders.
+      // The Season tab opens first: the first campaign entry point
+      // renders — its summary provider resolves asynchronously (a new
+      // club has no season yet), so flush runAsync ticks until the
+      // CTA lands.
+      for (var i = 0; i < 10; i++) {
+        if (find.text('Start your first season').evaluate().isNotEmpty) {
+          break;
+        }
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 60)),
+        );
+        await tester.pump(const Duration(milliseconds: 60));
+      }
       expect(find.text('Start your first season'), findsOneWidget);
 
       // Switch to the Store tab (last in the nav) and check the

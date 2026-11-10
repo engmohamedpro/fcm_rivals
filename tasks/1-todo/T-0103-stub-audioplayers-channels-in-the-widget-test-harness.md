@@ -2,8 +2,8 @@
 id: T-0103
 title: Stub the audioplayers platform channels in the widget-test harness
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-10
 completed:
@@ -67,6 +67,22 @@ flutter test test/features/packs/
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:**
+1. `test/flutter_test_config.dart` (new) — ONE mechanism, applied globally: a `testExecutable` that installs the audioplayers channel mocks for EVERY test file `flutter test` loads (the harness owns the stubbing, no per-file import). Two rounds of fixing it into shape: (a) `flutter_test_config.dart` must expose `testExecutable` (not `main` — the loader calls it around each file's suite); (b) the shared `helpers/audioplayers_mocks.dart` cannot be reused verbatim here because `setMockStreamHandler` registers an `addTearDown`, and `testExecutable` runs OUTSIDE any test — so the config installs the SAME four channels (`xyz.luan/audioplayers.global/events` empty stream, `xyz.luan/audioplayers` player-command channel whose `create` also wires that player's `xyz.luan/audioplayers/events/<id>` empty stream, `plugins.flutter.io/path_provider` → `/tmp/fcm_test_audio`, and the global control channel) through RAW binary-messenger message handlers with nothing to tear down. `TestWidgetsFlutterBinding.ensureInitialized()` first — the messenger does not exist pre-suite.
+2. No production file touched — `FcmSfx`, `PackSoundtrack`, the reveal timeline and every call site are exactly as before; the handlers live only in the test binding, never in debug/profile/release builds, so runtime audio behavior is unchanged. Every audio entry point a widget test can reach is covered because the stubbing sits at the CHANNEL level (pack reveal soundtrack, card merge sound, match ambience — all of it resolves silently).
+
+**Files changed:** `test/flutter_test_config.dart` (new), this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. The flaky test run ALONE: **3/3 consecutive green** (it failed every solo run before the config — reproduced 3/3 failures first, then 3/3 passes after). `flutter test test/features/packs/` → **132/132 green** ✓. Full `flutter test` + `grep -c MissingPluginException` → (result recorded in the submit commit message) ✓.
+
+**Concerns / assumptions:**
+- The raw-handler stream answers `listen`/`cancel` with a success envelope (null) rather than the helper's MockStreamHandler — same observable behavior, but no tearDown registration; the binding clears mock handlers between files itself.
+- The per-file `installAudioplayersMocks` helpers stay (three match-flow tests still import them); with the global config they are belt-and-braces — the double install is idempotent (handlers overwrite).
+- `AudioPlayer.preparationTimeout` shortening lives only in the per-file helper; the global config does not set it (no 30s stall is possible once the channels answer).
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
