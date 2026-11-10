@@ -2,11 +2,11 @@
 id: T-0092
 title: Hide the tactics summary row on the Team tab
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0092: Hide the tactics summary row on the Team tab
@@ -34,10 +34,10 @@ The Team tab's control card no longer shows the three-part summary row — TACTI
 - Removing the now-unused `_info` / `_rating` helpers if any caller still shows the row — they are still used by the default path; do not delete them.
 
 ## Acceptance Criteria
-- [ ] On the Team tab the control card shows no TACTICS/MENTALITY/TEAM RATING row: none of the three texts render; the card reads formation dropdown then Auto Pick + TACTICS.
-- [ ] The pre-match and live tactics screens still show the summary row exactly as today (default `showSetupSummary: true`).
-- [ ] Updated + new tests green (Team-tab absence, view-level opt-in/opt-out contract).
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
+- [x] On the Team tab the control card shows no TACTICS/MENTALITY/TEAM RATING row: none of the three texts render; the card reads formation dropdown then Auto Pick + TACTICS.
+- [x] The pre-match and live tactics screens still show the summary row exactly as today (default `showSetupSummary: true`).
+- [x] Updated + new tests green (Team-tab absence, view-level opt-in/opt-out contract).
+- [x] `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -78,3 +78,7 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7):** `flutter analyze` → No issues found! ✓. `flutter test test/features/squad/` → 246/246 green ✓ (Team-tab absence test + the two showSetupSummary contract tests included; pre-match/live surfaces unbroken). Full `flutter test` → 995/995, All tests passed! ✓. Diff scope check (commit 0688c8a): `showSetupSummary` (default true) threaded view → `_ControlCard` exactly as specified, the summary Row + spacer gated behind it, only the Team tab passes false, pre-match/live call sites untouched, `_info`/`_rating` kept for the default path ✓. All four criteria met; every verify command run by the reviewer.
