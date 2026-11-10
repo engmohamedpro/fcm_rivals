@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
+import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/match/live_commentary_feed.dart';
@@ -163,6 +164,12 @@ void main() {
     // 4x is gone — the ladder stops at 3x.
     expect(find.text('4x'), findsNothing);
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+
+    // T-0114: no AppBar during live play — the label that used to own
+    // the bar now whispers inside the header panel itself, and the
+    // reclaimed band flows to the content column.
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.text('League · Round 1'), findsOneWidget);
 
     // The momentum bar lives IN the header, between the live dot and the
     // clock — bare tug-of-war, no label, no numbers. The broadcast stats
@@ -518,4 +525,68 @@ void main() {
       expect(find.text('Continue'), findsOneWidget);
     },
   );
+
+  testWidgets('T-0114: no live AppBar and the fixture label whispers '
+      'inside the header', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    final store = await seededSquadStore(db);
+    final session = await _session(store);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchScreen(session: session, title: 'League · Round 3'),
+      ),
+    );
+    await _play(tester, frames: 6);
+
+    // No AppBar at all during live play — the label lives INSIDE the
+    // header panel now, as one dim caption line above the scoreboard.
+    expect(find.byType(AppBar), findsNothing);
+    final caption = find.text('League · Round 3');
+    expect(caption, findsOneWidget);
+    final captionStyle = tester.widget<Text>(caption).style!;
+    expect(captionStyle.color, FcmColors.textDim);
+    expect(captionStyle.fontSize, lessThan(11));
+    // The caption sits ABOVE the header's scoreboard row (the team
+    // name row): smaller y than any team-chip text.
+    final captionY = tester.getTopLeft(caption).dy;
+    final homeName = find.text(session.homeTeamName);
+    expect(tester.getTopLeft(homeName).dy, greaterThan(captionY));
+    // And the content column starts higher than the AppBar band it
+    // used to sit below: the header's top is inside the first ~90px
+    // of the viewport (56px AppBar + panel padding used to push it
+    // past 60px alone).
+    expect(tester.getTopLeft(find.byType(MatchHeader)).dy, lessThan(24));
+  });
+
+  testWidgets('T-0114: null title renders no caption row at all', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = memoryDb();
+    addTearDown(() => db.close());
+    final store = await seededSquadStore(db);
+    final session = await _session(store);
+
+    await tester.pumpWidget(
+      MaterialApp(home: MatchScreen(session: session)),
+    );
+    await _play(tester, frames: 6);
+
+    expect(find.byType(AppBar), findsNothing);
+    // No fallback text, no phantom row — the header simply starts at
+    // the scoreboard.
+    expect(find.text('Live match'), findsNothing);
+    expect(find.byType(MatchHeader), findsOneWidget);
+  });
 }

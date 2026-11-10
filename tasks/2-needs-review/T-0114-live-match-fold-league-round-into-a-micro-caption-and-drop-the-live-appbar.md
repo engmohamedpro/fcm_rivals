@@ -2,8 +2,8 @@
 id: T-0114
 title: Live match — fold 'League · Round N' into a micro-caption and drop the live AppBar (reclaim vertical space)
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-10
 completed:
@@ -55,12 +55,49 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - `lib/features/match/match_header.dart` — new optional
+    `fixtureLabel` parameter: one dim micro-caption (9.5px,
+    FcmColors.textDim, w700, letterSpacing 1.2, centered, ellipsized,
+    7px bottom padding) above the team-chip row, INSIDE the existing
+    FcmPanel. Null/empty renders NO row at all (no fallback text, no
+    phantom row) — MatchHeader's widget API is additive so no other
+    consumer changes.
+  - `lib/features/match/match_screen.dart` — the live AppBar is gone
+    (`appBar: null` during play AND full time; the report path had
+    already removed it at `_finished`, so behaviour there is
+    unchanged). `MatchHeader` now receives `fixtureLabel:
+    widget.title`. The SafeArea is the new content top, so the stadium
+    backdrop fills the reclaimed band — verified no seam (the
+    backdrop is a positioned full-bleed stack behind everything).
+  - `test/features/match/match_screen_test.dart` — the compact-header
+    test now asserts `find.byType(AppBar)` findsNothing + the label
+    present; TWO new tests: (1) label renders as the caption above
+    the scoreboard (top-left y smaller than the team-name row's, the
+    header panel starts inside the first ~24px of the viewport —
+    measured, the AppBar band used to sit ~56px before the panel
+    even began); (2) null title renders no caption row, no fallback.
+- **Files changed:** lib/features/match/match_header.dart,
+  lib/features/match/match_screen.dart,
+  test/features/match/match_screen_test.dart.
+- **How I tested it:** `flutter analyze --no-pub` — only the 2
+  pre-existing baseline issues, zero new. Match suites:
+  match_screen + live_match_ux + goal_banner 31/31 green; full
+  `flutter test test/features/match --no-pub` 246 passed with the
+  SAME 2 pre-existing tactic_slider_row Arabic wording failures
+  (verified pre-existing on the clean tree during T-0115 — not from
+  this task). Reclaimed-band measurement: MatchHeader's top-left y
+  < 24px at 800x1600/DPR1 (the old AppBar alone was ~56px).
+- **Concerns / assumptions:** (1) The label string itself ('League ·
+  Round N') still comes from the season flow in English — its l10n
+  status is pre-existing behaviour, deliberately untouched (task's
+  Out of Scope). (2) The removed 'Live match' null-title fallback is
+  intentionally NOT re-created anywhere: a match without a title now
+  shows no caption at all (cleaner than a fake label; both hosts in
+  lib/ always pass a title). (3) extendBodyBehindAppBar stays true
+  with appBar: null — harmless (no bar to extend behind); kept to
+  avoid churning the property for no behavioural difference.
 
 
 ## Review Log

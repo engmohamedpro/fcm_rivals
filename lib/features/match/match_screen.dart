@@ -427,18 +427,18 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       // live screen; the report's Continue button ends the flow.
       canPop: _finished,
       child: Scaffold(
-        // The stadium backdrop flows behind the transparent app bar, so
-        // the photo frames the scoreboard instead of a flat bar.
+        // No AppBar during live play (T-0114): it held only the fixture
+        // label — no back button (PopScope blocks leaving anyway), no
+        // actions — while costing the content column ~56px plus its
+        // safe-area overlap. The label now whispers inside the header
+        // panel and the stadium backdrop starts that much higher. At
+        // full time there is no header at all: the report owns the
+        // screen exactly as before.
         extendBodyBehindAppBar: true,
-        appBar: _finished
-            ? null
-            : AppBar(
-                automaticallyImplyLeading: false,
-                title: Text(widget.title ?? 'Live match'),
-              ),
+        appBar: null,
         body: FcmMatchBackdrop(
-          // The photo runs edge to edge behind the app bar; the content
-          // column stays below it.
+          // The photo runs edge to edge; the content column starts at
+          // the safe area top instead of below a dead bar.
           child: SafeArea(
             child: _error != null
                 ? Center(
@@ -474,6 +474,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               minute: state.minute,
                               fullTime: _finished || state.isFinished,
                               userIsHome: session.userSide == MatchSide.home,
+                              fixtureLabel: widget.title,
                               paused: _paused,
                               speed: _speed,
                               onTogglePause: _togglePause,

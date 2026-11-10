@@ -12,10 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/features/match/goal_banner.dart';
 
-Widget _host(GoalBanner banner, {VoidCallback? onFinished}) => MaterialApp(
-  home: Scaffold(
-    body: Center(child: banner),
-  ),
+Widget _host(GoalBanner banner) => MaterialApp(
+  home: Scaffold(body: Center(child: banner)),
 );
 
 void main() {
@@ -84,7 +82,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       _host(
-        const GoalBanner(
+        GoalBanner(
           scorerName: 'P 9',
           scoreline: '1 - 0',
           color: FcmColors.gold,
@@ -97,7 +95,7 @@ void main() {
     // with the NEW scorer and score.
     await tester.pumpWidget(
       _host(
-        const GoalBanner(
+        GoalBanner(
           scorerName: 'P 4',
           scoreline: '2 - 0',
           color: FcmColors.gold,
@@ -119,7 +117,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       _host(
-        const GoalBanner(
+        GoalBanner(
           scorerName: 'P 7',
           scoreline: '0 - 1',
           color: FcmColors.danger,
@@ -138,7 +136,7 @@ void main() {
   testWidgets('the controller is disposed with the widget', (tester) async {
     await tester.pumpWidget(
       _host(
-        const GoalBanner(
+        GoalBanner(
           scorerName: 'P 9',
           scoreline: '1 - 0',
           color: FcmColors.gold,

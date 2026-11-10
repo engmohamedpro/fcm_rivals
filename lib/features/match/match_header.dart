@@ -45,6 +45,7 @@ class MatchHeader extends StatelessWidget {
     this.momentumShare = 0.5,
     this.homeColor = FcmColors.gold,
     this.awayColor = opponentMomentumColor,
+    this.fixtureLabel,
   });
 
   final String home;
@@ -69,6 +70,12 @@ class MatchHeader extends StatelessWidget {
   /// Colour of the away side's half of the momentum bar.
   final Color awayColor;
 
+  /// The fixture whisper (T-0114), e.g. 'League · Round 3' — one dim
+  /// caption line at the very top of the panel, replacing the ~56px
+  /// AppBar that held the same string. Null (or empty) renders NO
+  /// caption row at all — no fallback text, no phantom row.
+  final String? fixtureLabel;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -79,6 +86,26 @@ class MatchHeader extends StatelessWidget {
         glow: true,
         child: Column(
           children: [
+            // The fixture whisper (T-0114): the label that used to own
+            // a full AppBar band now reads as one dim caption line —
+            // a whisper above the scoreboard, not a row of chrome.
+            if (fixtureLabel != null && fixtureLabel!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(bottom: 7),
+                child: Text(
+                  fixtureLabel!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: FcmColors.textDim,
+                    fontSize: 9.5,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
             Row(
               children: [
                 Expanded(
