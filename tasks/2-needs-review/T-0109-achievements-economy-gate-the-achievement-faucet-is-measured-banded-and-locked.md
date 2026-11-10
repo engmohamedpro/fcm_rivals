@@ -2,8 +2,8 @@
 id: T-0109
 title: Achievements economy gate — the achievement faucet is measured, banded and locked against the match faucet
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0108]
 created: 2026-11-10
 completed:
@@ -56,12 +56,59 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - `lib/features/simulation/economy_simulator.dart` — the task's
+    "extend it to route achievement claims" made real: a
+    `claimAchievements` run parameter (default false — every existing
+    caller unchanged) that, at each season boundary, claims every
+    eligible unclaimed tier through T-0108's REAL
+    AchievementClaimService (the claim-all path: real UNIQUE-guarded
+    transactions, real ledger rows). `SeasonEconomyReport` gained
+    `achievementCoins` (per-season faucet, measured from the claims
+    granted — the same service the screen will call). No production
+    write path outside the simulator changed; the report field is
+    additive.
+  - NEW `test/balance/achievement_economy_test.dart` — the gate: 2
+    seeds × medium × 6 seasons with the faucet ON, four bands locked
+    to MEASURED reality (the T-0076 tradition — measured table in the
+    doc comment, bands with 2-3x headroom, never at the edge):
+    Band 1: season-1 peak < 5% (measured 2.4-2.8%), seasons 2+ < 3.5%
+    (measured ≤ 1.2%); Band 2: decay with one noisy season tolerated
+    (measured means 2.6% → 0.8% → 0.5% → 0.15% → 0.1% → 0.1%); Band 3:
+    lifetime < 2% (measured 0.6% both seeds — a TENTH of the task's
+    20% brief; the tighter band is the better lock); Band 4: catalog
+    ceiling 21,520 coins < 15% of measured income (measured ratio
+    ~1.7%).
+  - THE MEASUREMENT vs THE HYPOTHESIS: the expected shape held (early
+    front-load, strict decay) — but the faucet measured FAR smaller
+    than the bands anticipated (a rounding error, not a competitor).
+    No re-pin was needed (Requirement 3's one round stayed unused —
+    the placeholder numbers from T-0105 were already conservative);
+    the bands were locked TIGHTER than the brief where measurement
+    allowed, which is the stronger regression lock.
+- **Files changed:** lib/features/simulation/economy_simulator.dart,
+  test/balance/achievement_economy_test.dart (new).
+- **How I tested it:** `flutter analyze --no-pub` — zero new issues.
+  The gate: green (40s). The full balance directory: 102/102 green —
+  T-0076's gate and this one co-exist, no band fights (the match
+  economy bands are untouched: claimAchievements defaults off there).
+  Deterministic: seeds 5801/5802.
+- **Concerns / assumptions:** (1) The attribution: the simulator's
+  achievementCoins accumulates from the REAL ClaimGranted results of
+  the real service (which itself wrote real 'achievement' ledger rows
+  through creditCoins) — real rows, not curve arithmetic, per
+  Requirement 2. (2) The simulated manager claims at season
+  boundaries (all-at-once), a real player can claim mid-season —
+  timing cannot change totals (claims are threshold-derived and
+  terminal), so the band math is timing-invariant. (3) Matches
+  attributed to a season use the same per-season ledger snapshot the
+  T-0076 report already uses; the starting-grant strip is inherited
+  from that report's construction. (4) The claims exercise the
+  synthetic dataset's SIMULATED stats (SimDataset) — the derivation
+  is the same code path reading whatever the save holds; production
+  numbers would need a real-dataset sweep, which is T-0113's release
+  gate territory.
 
 
 ## Review Log

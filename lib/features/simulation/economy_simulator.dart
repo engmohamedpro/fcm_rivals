@@ -28,6 +28,8 @@ import '../season/season_store.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart' show PlayerCard;
 import '../upgrades/upgrade_engine.dart';
+import '../achievements/achievement_claim_service.dart';
+import '../achievements/achievement_catalog_data.dart';
 import 'economy_simulator_dataset.dart';
 
 /// Per-season economy measurement (GDD 30 list).
@@ -45,6 +47,7 @@ class SeasonEconomyReport {
     required this.collectionSize,
     required this.bestSquadOverall,
     required this.injuriesSustained,
+    this.achievementCoins = 0,
   });
 
   final int seasonIndex;
@@ -72,6 +75,11 @@ class SeasonEconomyReport {
   /// Injuries the USER club sustained this season (T-0055, GDD 11.7) —
   /// the end-to-end rate the season calibration band locks.
   final int injuriesSustained;
+
+  /// Achievement coins claimed this season (T-0109's faucet, real
+  /// ledger rows with the 'achievement' reason). Zero when the sweep
+  /// runs without claimAchievements.
+  final int achievementCoins;
 
   /// Net coin change this season (earned - spent).
   int get netCoins => coinsEarned - coinsSpent;
@@ -149,6 +157,7 @@ class EconomySimulator {
     SimValueBand valueBand = SimValueBand.medium,
     bool useAds = false,
     int datasetSize = 240,
+    bool claimAchievements = false,
   }) async {
     final db = AppDatabase(NativeDatabase.memory());
     try {
@@ -267,6 +276,25 @@ class EconomySimulator {
           await collection.autoPickSquad();
         }
 
+        // T-0109: the achievement faucet, exercised exactly as a real
+        // player would — every eligible unclaimed tier claimed through
+        // the real service at the season boundary (the screen's
+        // claim-all affordance). Real transactions, real ledger rows.
+        var achievementCoinsThisSeason = 0;
+        if (claimAchievements) {
+          final claimService = AchievementClaimService(db);
+          final clubId = (await collection.getClub())!.id;
+          for (final d in AchievementCatalog.definitions) {
+            final results = await claimService.claimAllTiers(
+              clubId: clubId,
+              achievementId: d.id,
+            );
+            for (final r in results) {
+              if (r is ClaimGranted) achievementCoinsThisSeason += r.coins;
+            }
+          }
+        }
+
         final completion = await seasonStore.completeSeason(collection);
         if (completion.outcome == SeasonOutcome.promoted.name) promotions++;
         if (completion.outcome == SeasonOutcome.relegated.name) relegations++;
@@ -300,6 +328,7 @@ class EconomySimulator {
             collectionSize: (await collection.getCollection()).length,
             bestSquadOverall: bestOverall,
             injuriesSustained: injuriesThisSeason,
+            achievementCoins: achievementCoinsThisSeason,
           ),
         );
         // Coins balance check at the end of each season.
