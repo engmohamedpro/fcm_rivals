@@ -24,6 +24,32 @@ Future<void> _settle(WidgetTester tester) async {
   }
 }
 
+/// T-0104: polls `runAsync(tick) + pump` until [finder] matches at
+/// least one widget, failing with a clear message after [timeout].
+///
+/// The smoke test's async waits resolve through REAL drift I/O and
+/// riverpod future providers, so a fixed-iteration wait is a guess at
+/// machine speed — under full-suite load on a cold build cache the
+/// guess runs out and the test fails while the app is fine. A bounded
+/// poll with a wall-clock deadline waits exactly as long as the work
+/// actually needs and no longer; when the finder is already satisfied
+/// it returns without a single tick.
+Future<void> pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 5),
+  Duration tick = const Duration(milliseconds: 60),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (finder.evaluate().isEmpty) {
+    if (DateTime.now().isAfter(deadline)) {
+      fail('pumpUntilFound: $finder did not appear within $timeout');
+    }
+    await tester.runAsync(() => Future<void>.delayed(tick));
+    await tester.pump(tick);
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -87,25 +113,15 @@ void main() {
       await tester.tap(find.text('Start managing'));
       await tester.pump();
 
-      // Club creation + provider invalidation run real async work; the
-      // invalidated season/collection providers reload in sequence, so
-      // flush generously (runAsync ticks let drift I/O and the riverpod
-      // futures resolve between them).
-      for (var i = 0; i < 8; i++) {
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 100)),
-        );
-        await tester.pump(const Duration(milliseconds: 100));
-      }
-      // The season summary provider resolves asynchronously as well.
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 200)),
-      );
-      await tester.pump(const Duration(milliseconds: 100));
+      // Club creation + provider invalidation run real async work —
+      // the shell's tab bar appears once the providers resolve. Poll
+      // for the first tab instead of flushing a fixed iteration count:
+      // the count is a guess at machine speed (T-0104), the poll waits
+      // exactly as long as the work needs.
+      await pumpUntilFound(tester, find.text('Season'));
 
       // Game shell with the four tabs (league matches are played live
       // from the Season tab; the squad lives on the Team tab).
-      // DEBUG: what is on screen after submit?
       expect(find.text('Season'), findsWidgets);
       expect(find.text('Team'), findsWidgets);
       expect(find.text('Collection'), findsWidgets);
@@ -114,17 +130,8 @@ void main() {
 
       // The Season tab opens first: the first campaign entry point
       // renders — its summary provider resolves asynchronously (a new
-      // club has no season yet), so flush runAsync ticks until the
-      // CTA lands.
-      for (var i = 0; i < 10; i++) {
-        if (find.text('Start your first season').evaluate().isNotEmpty) {
-          break;
-        }
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 60)),
-        );
-        await tester.pump(const Duration(milliseconds: 60));
-      }
+      // club has no season yet), so poll until the CTA lands (T-0104).
+      await pumpUntilFound(tester, find.text('Start your first season'));
       expect(find.text('Start your first season'), findsOneWidget);
 
       // Switch to the Store tab (last in the nav) and check the
