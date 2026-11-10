@@ -285,7 +285,6 @@ void main() {
           ),
           homeTeamName: 'Pyramid United',
           awayTeamName: 'Rivers United',
-          pepTalk: null,
           onContinue: () {},
         ),
       );
@@ -315,7 +314,6 @@ void main() {
           ),
           homeTeamName: 'Pyramid United',
           awayTeamName: 'Rivers United',
-          pepTalk: null,
           onContinue: () {},
         ),
       );

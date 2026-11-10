@@ -17,7 +17,6 @@ import '../squad/squad_engine.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
 import 'pre_match_tactics_selection.dart';
-import 'stamina.dart';
 import 'tactics.dart';
 
 /// Complete post-match output for the report screen and persistence.
@@ -463,23 +462,12 @@ class MatchSession {
   /// Runs the remaining minutes without live input (quick-sim path).
   List<MatchEvent> simulateToEnd() => engine.simulateToEnd();
 
-  /// Full-time processing: builds the report, persists stamina (GDD 11),
-  /// credits match rewards with a ledger row (GDD 17.6) and applies the
-  /// optional post-match pep talk (GDD 11.6) in one transaction.
-  ///
-  /// [adBoostedRecovery] switches the recovery path to the ad-supported
-  /// +15% natural recovery bonus (GDD 19.3) INSTEAD of a normal pep talk —
-  /// ad bonuses never stack with pep talk bonuses on one transaction
-  /// (GDD 19.4).
-  Future<MatchReportResult> finish({
-    PepTalk? pepTalk,
-    int restDays = 3,
-    bool adBoostedRecovery = false,
-  }) async {
-    assert(
-      !(pepTalk != null && adBoostedRecovery),
-      'Ad bonus and pep talk cannot stack on one transaction (GDD 19.4)',
-    );
+  /// Full-time processing: builds the report, persists stamina (GDD 11)
+  /// and credits match rewards with a ledger row (GDD 17.6) in one
+  /// transaction. T-0100: the post-match pep-talk / boosted-recovery
+  /// choice is gone — every match settles with the default recovery
+  /// (natural + campus bonus, [restDays] rest).
+  Future<MatchReportResult> finish({int restDays = 3}) async {
     if (!engine.isFinished) {
       engine.simulateToEnd();
     }
@@ -557,9 +545,7 @@ class MatchSession {
           ),
       ],
       injuries: injuries,
-      pepTalk: pepTalk,
       restDays: restDays,
-      adBoostedRecovery: adBoostedRecovery,
     );
 
     return MatchReportResult(

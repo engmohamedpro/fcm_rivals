@@ -19,8 +19,6 @@ import 'dart:math' as math;
 import 'package:drift/native.dart';
 
 import '../../core/database/app_database.dart';
-import '../ads/ad_engine.dart';
-import '../ads/ad_store.dart';
 import '../collection/collection_store.dart';
 import '../packs/pack_engine.dart';
 import '../match/match_engine.dart';
@@ -184,7 +182,6 @@ class EconomySimulator {
         db: db,
         random: math.Random(_random.nextInt(1 << 31)),
       );
-      final adStore = AdStore(db: db);
       final startingCoins = (await collection.getClub())!.coins;
 
       final seasons = <SeasonEconomyReport>[];
@@ -247,20 +244,9 @@ class EconomySimulator {
           final userWon = userGoals > opponentGoals;
 
           if (useAds && !userWon) {
-            // GDD 33: boosted recovery ad after a non-win (validated +
-            // limited by the AdStore).
-            try {
-              await adStore.completeAd(
-                kind: AdRewardKind.boostedRecovery,
-                rewardKey: 'match:${next.fixtureId}',
-                playbackCompleted: true,
-                clubId: (await collection.getClub())!.id,
-              );
-              adsWatched++;
-              await session.finish(adBoostedRecovery: true);
-            } on AdException {
-              await session.finish();
-            }
+            // T-0100: the boosted-recovery ad path left with the
+            // post-match pep-talk step — default recovery everywhere.
+            await session.finish();
           } else {
             await session.finish();
           }

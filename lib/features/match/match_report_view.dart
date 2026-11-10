@@ -10,94 +10,25 @@ import 'package:flutter/material.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../l10n/l10n_context.dart';
-import '../../l10n/pep_talk_l10n.dart';
 import 'live_match_views.dart';
 import 'match_engine.dart';
 import 'match_report.dart';
 import 'match_session.dart';
-import 'stamina.dart';
-
-/// One post-match recovery option row (touchline card style).
-class RecoveryOption extends StatelessWidget {
-  const RecoveryOption({
-    super.key,
-    required this.title,
-    required this.effect,
-    required this.onTap,
-    this.gold = false,
-  });
-
-  final String title;
-  final String effect;
-  final VoidCallback onTap;
-  final bool gold;
-
-  @override
-  Widget build(BuildContext context) {
-    return FcmPressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: gold ? FcmColors.gold : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    effect,
-                    style: const TextStyle(
-                      color: FcmColors.gold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: FcmColors.textDim,
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Post-match report (GDD 14 post-match screen): result, reward, Man
 /// of the Match, the full-match momentum flow and both squads' player
 /// ratings in ONE tabbed panel — the user's XI opens first, the
 /// opponent one tap away. The team-statistics table is gone — the
 /// momentum graph (the same one the live match shows) tells how the
-/// game flowed. The pep-talk choice is gone from here (it happens on
-/// the full-time touchline card); the screen ends with a CONTINUE
-/// button that closes the match flow.
+/// game flowed (T-0100: the pep-talk step is gone — full time lands
+/// here directly); the screen ends with a CONTINUE button that closes
+/// the match flow.
 class MatchReportView extends StatefulWidget {
   const MatchReportView({
     super.key,
     required this.report,
     required this.homeTeamName,
     required this.awayTeamName,
-    required this.pepTalk,
-    this.adBoostedRecovery = false,
     this.userSide,
     this.momentumSeries,
     this.userTeamColor = FcmColors.gold,
@@ -107,13 +38,6 @@ class MatchReportView extends StatefulWidget {
   final MatchReportResult report;
   final String homeTeamName;
   final String awayTeamName;
-
-  /// The post-match pep talk applied at full time (shown as a status
-  /// line — the choice itself was made on the touchline card).
-  final PepTalk? pepTalk;
-
-  /// Whether the ad-supported boosted recovery was applied (GDD 19.3).
-  final bool adBoostedRecovery;
 
   /// Which side the player managed; drives the VICTORY / DEFEAT banner
   /// and which ratings tab opens first.
@@ -279,49 +203,6 @@ class _MatchReportViewState extends State<MatchReportView> {
                                 color: FcmColors.danger,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 8),
-                      // The recovery decision made on the full-time
-                      // touchline card, restated as a status line.
-                      if (widget.adBoostedRecovery)
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.movie, size: 14, color: FcmColors.gold),
-                            SizedBox(width: 5),
-                            Text(
-                              'Ad-boosted recovery applied (+15% natural '
-                              'recovery)',
-                              style: TextStyle(
-                                color: FcmColors.gold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        )
-                      else if (widget.pepTalk != null)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.healing_rounded,
-                              size: 14,
-                              color: FcmColors.success,
-                            ),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                l10nOf(context).pepTalkRecoveryConfirmation(
-                                  l10nOf(context).pepTalkName(widget.pepTalk!),
-                                  (widget.pepTalk!.recoveryBonus * 100).round(),
-                                ),
-                                style: const TextStyle(
-                                  color: FcmColors.success,
-                                  fontSize: 11,
-                                ),
                               ),
                             ),
                           ],
@@ -580,14 +461,4 @@ class _RatingsPanel extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Post-match recovery choice: one free Pep Talk or the ad-boosted path.
-class RecoveryChoice {
-  const RecoveryChoice({this.pepTalk}) : boosted = false;
-  const RecoveryChoice.boosted() : pepTalk = null, boosted = true;
-  const RecoveryChoice.none() : pepTalk = null, boosted = false;
-
-  final PepTalk? pepTalk;
-  final bool boosted;
 }

@@ -3,7 +3,7 @@ id: T-0100
 title: Remove the post-match pep talk step
 priority: high
 status: todo
-attempts: 0
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -65,6 +65,22 @@ Manual: play a match to full time (win one, lose one) → the report opens immed
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — IN PROGRESS (cut off by session time budget; NOT ready for review)
+
+**Status: code complete, analyze 0 — test suites NOT yet run (honest: interrupted before any suite run). The next session must run the gates before flipping to needs-review.**
+
+Code done (all compiles, `flutter analyze` → No issues found):
+1. `match_screen.dart` — recovery chooser fully removed (fields, completer, dispose unblock, `_finishMatch` wait, card builder, scrim machinery, build conditions); full time calls `session.finish()` straight to the report.
+2. `match_session.dart` — `finish({int restDays = 3})`: pepTalk/adBoosted params + GDD 19.4 assert gone; stamina import dropped.
+3. `collection_store_match.dart` — `applyMatchResult` params gone; the recovery branch is now plain natural+campus recovery for every match.
+4. `stamina.dart` — `PepTalk`, `PepTalkTarget`, `pepTalkAppliesTo`, `applyPepTalkBonus` deleted.
+5. `match_report_view.dart` — pepTalk/adBoostedRecovery fields, both status-line sections, `RecoveryChoice`, `RecoveryOption`, imports gone.
+6. `lib/l10n/pep_talk_l10n.dart` DELETED; 12 keys + 1 @metadata entry removed from BOTH ARBs, gen-l10n regenerated; `l10n_test.dart` tapAgainToSkip assertion dropped.
+7. Tests reworked (compile-clean, NOT yet run): match_screen_test — 5 recovery-card tests replaced by 2 straight-to-report tests (win + defeat, no card ever, no status lines, report sections render) + `driveToRecoveryCard` → `driveToFullTimeReport`; stamina_test — pep-talk group removed; ad_store_test — boosted-recovery comparison replaced by default-recovery sanity; injury_ui_test — pepTalk:null args dropped; match_session_test — pep-talk comparison replaced by determinism check; economy_simulator — boosted-recovery ad path replaced by plain finish().
+
+**REMAINING for the next session:** run `flutter test test/features/match/` + full `flutter test` (expect ad_store_test's `averageStamina` helper may need one more touch — its `restDays` call sites), fix any failures, then move to 2-needs-review + push. The work-in-progress commit is pushed to main as `T-0100: WIP` so nothing is lost.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

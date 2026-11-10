@@ -15,9 +15,7 @@ extension MatchResultOps on CollectionStore {
     required int rewardCoins,
     required List<({int ownedId, double stamina, int minutesPlayed})> players,
     List<({int ownedId, String kind, int matchesOut})> injuries = const [],
-    PepTalk? pepTalk,
     int restDays = 3,
-    bool adBoostedRecovery = false,
     DateTime? now,
   }) async {
     final timestamp = now ?? DateTime.now();
@@ -76,25 +74,9 @@ extension MatchResultOps on CollectionStore {
             restDays: restDays,
             campusRecoveryBonus: campusRecoveryBonus,
           );
-          if (adBoostedRecovery) {
-            // Ad-supported boosted recovery (GDD 19.3): +15% natural
-            // recovery for eligible players. Mutually exclusive with a
-            // pep talk on the same transaction (GDD 19.4).
-            next = adEngine.boostedRecovery(
-              staminaAfterNaturalRecovery: afterNatural,
-              naturalRecovery: afterNatural - p.stamina,
-            );
-          } else if (pepTalk != null) {
-            next = applyPepTalkBonus(
-              pepTalk: pepTalk,
-              currentStamina: p.stamina,
-              naturalRecovery: afterNatural - p.stamina,
-              staminaAfterNaturalRecovery: afterNatural,
-              minutesPlayed: p.minutesPlayed,
-            );
-          } else {
-            next = afterNatural;
-          }
+          // T-0100: the pep-talk / ad-boost recovery choice is gone —
+          // natural (+ campus bonus) recovery for every match.
+          next = afterNatural;
         } else {
           // Players who missed the match still REST: the same natural
           // recovery minus the workload, applied to their current

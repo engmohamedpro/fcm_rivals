@@ -9,7 +9,6 @@ import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/ads/ad_engine.dart';
 import 'package:fcm_rivals/features/ads/ad_store.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
-import 'package:fcm_rivals/features/match/stamina.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/season/season_store.dart';
 
@@ -173,10 +172,7 @@ void main() {
 
       // Simulate a drained match state: report every starter at low
       // stamina with full minutes, then compare recovery paths.
-      Future<double> averageStamina({
-        PepTalk? pepTalk,
-        bool adBoosted = false,
-      }) async {
+      Future<double> averageStamina() async {
         // Reset stamina to the same drained baseline each run.
         for (final card in starters) {
           await (db.update(db.ownedPlayers)
@@ -190,8 +186,6 @@ void main() {
             for (final card in starters)
               (ownedId: card.ownedId, stamina: 30.0, minutesPlayed: 90),
           ],
-          pepTalk: pepTalk,
-          adBoostedRecovery: adBoosted,
         );
         final refreshed = await collection.getSquad();
         var sum = 0.0;
@@ -201,14 +195,12 @@ void main() {
         return sum / 11;
       }
 
+      // T-0100: the boosted-recovery ad path is gone with the
+      // post-match pep-talk step — the drained squad still recovers
+      // naturally above the baseline, capped at 100.
       final plain = await averageStamina();
-      final boosted = await averageStamina(adBoosted: true);
-      expect(boosted, greaterThan(plain));
-
-      // The boost is +15% of the natural recovery (GDD 19.3), and the
-      // cap keeps everything within 100.
-      expect(boosted, lessThanOrEqualTo(100));
-      expect(boosted - plain, greaterThan(0));
+      expect(plain, greaterThan(30));
+      expect(plain, lessThanOrEqualTo(100));
     });
 
     test('replay offer requires a non-win result in the window', () async {

@@ -3,7 +3,7 @@
 /// Dynamic consumption during matches and post-match recovery with pep
 /// talk bonuses. Consumption happens inside the Match Engine using
 /// [StaminaConfig]; recovery runs post-match via [recoverStamina] and
-/// [applyPepTalkBonus]. All values are pre-balance placeholders.
+/// recovery. All values are pre-balance placeholders.
 library;
 
 import '../../core/domain/players.dart';
@@ -130,82 +130,3 @@ double recoverStamina({
   return next.clamp(0, config.maxStamina);
 }
 
-/// Post-match pep talk choices (GDD 11.6): a bonus multiplier applied to
-/// the player's natural recovery, not a direct stamina addition.
-enum PepTalk {
-  restEveryone('Rest, everyone deserves it!', 0.05, PepTalkTarget.all),
-  focusExhausted(
-    'Focus on exhausted players!',
-    0.10,
-    PepTalkTarget.belowThreshold,
-  ),
-  rewardSubstitutes(
-    'Reward the substitutes!',
-    0.10,
-    PepTalkTarget.playedUnderThreshold,
-  ),
-  everyoneGaveBest(
-    'Everyone gave their best!',
-    0.07,
-    PepTalkTarget.playedThresholdOrMore,
-  );
-
-  const PepTalk(this.displayName, this.recoveryBonus, this.target);
-
-  final String displayName;
-
-  /// Bonus fraction of the natural recovery (e.g. 0.10 = +10%).
-  final double recoveryBonus;
-
-  final PepTalkTarget target;
-}
-
-enum PepTalkTarget {
-  all,
-  belowThreshold,
-  playedUnderThreshold,
-  playedThresholdOrMore,
-}
-
-/// Whether a player is affected by [pepTalk] (GDD 11.6: the game must show
-/// the affected player count before confirmation).
-bool pepTalkAppliesTo({
-  required PepTalk pepTalk,
-  required StaminaConfig config,
-  required double staminaAfterNaturalRecovery,
-  required int minutesPlayed,
-}) {
-  switch (pepTalk.target) {
-    case PepTalkTarget.all:
-      return true;
-    case PepTalkTarget.belowThreshold:
-      return staminaAfterNaturalRecovery < config.exhaustedThreshold;
-    case PepTalkTarget.playedUnderThreshold:
-      return minutesPlayed > 0 &&
-          minutesPlayed < config.subPlayedThresholdMinutes;
-    case PepTalkTarget.playedThresholdOrMore:
-      return minutesPlayed >= config.subPlayedThresholdMinutes;
-  }
-}
-
-/// Applies the pep talk: a bonus to the player's natural recovery amount
-/// (never a direct stamina point addition, GDD 11.6).
-double applyPepTalkBonus({
-  required PepTalk pepTalk,
-  required double currentStamina,
-  required double naturalRecovery,
-  required double staminaAfterNaturalRecovery,
-  required int minutesPlayed,
-  StaminaConfig config = defaultStaminaConfig,
-}) {
-  if (!pepTalkAppliesTo(
-    pepTalk: pepTalk,
-    config: config,
-    staminaAfterNaturalRecovery: staminaAfterNaturalRecovery,
-    minutesPlayed: minutesPlayed,
-  )) {
-    return staminaAfterNaturalRecovery;
-  }
-  return (staminaAfterNaturalRecovery + naturalRecovery * pepTalk.recoveryBonus)
-      .clamp(0, config.maxStamina);
-}

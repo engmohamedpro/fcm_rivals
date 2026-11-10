@@ -28,7 +28,6 @@ void main() {
     expect(ar.createYourClub, 'أنشئ ناديك');
     expect(ar.playMatch, 'العب المباراة');
     expect(ar.startSeasonInDivision(2), 'ابدأ الموسم في الدرجة 2');
-    expect(ar.tapAgainToSkip, contains('مرة أخرى'));
   });
 
   test('only en and ar are supported; the shell resolves the rest',

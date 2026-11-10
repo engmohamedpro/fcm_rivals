@@ -28,7 +28,6 @@ import 'package:fcm_rivals/features/match/live_commentary_feed.dart';
 import 'package:fcm_rivals/features/match/live_match_views.dart';
 import 'package:fcm_rivals/features/match/match_screen.dart';
 import 'package:fcm_rivals/features/match/match_session.dart';
-import 'package:fcm_rivals/features/match/stamina.dart' show PepTalk;
 import 'package:fcm_rivals/features/match/team_tactics.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
@@ -447,12 +446,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   }
 
-  /// Bounded pump loop until the recovery card is up, dismissing the
-  /// half-time talk on the way (the same pattern the full-time test
-  /// above uses).
-  Future<void> driveToRecoveryCard(
+  /// Bounded pump loop until the full-time report is up, dismissing
+  /// the half-time talk on the way (T-0100: full time lands on the
+  /// report directly — there is no recovery card anymore).
+  Future<void> driveToFullTimeReport(
     WidgetTester tester, {
-    String cardTitle = 'Post-match recovery',
+    String marker = 'Full time:',
   }) async {
     for (var i = 0; i < 400; i++) {
       await tester.pump(const Duration(milliseconds: 200));
@@ -460,214 +459,63 @@ void main() {
         await tester.tap(find.text('Say nothing — back to the match'));
         await tester.pump(const Duration(milliseconds: 400));
       }
-      if (find.text(cardTitle).evaluate().isNotEmpty) return;
+      if (find.textContaining(marker).evaluate().isNotEmpty) return;
     }
-    fail('The recovery card never came up');
+    fail('The full-time report never came up');
   }
 
-  Future<void> flushFrames(WidgetTester tester) async {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 300)),
-    );
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-  }
+  testWidgets(
+    'T-0100: full time after a WIN lands straight on the report — no '
+    'recovery card, default recovery',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-  testWidgets('recovery card: pep-talk tap is committed once and shown in '
-      'the report (double tap picks the first)', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(800, 1600);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+      final db = memoryDb();
+      addTearDown(() => db.close());
+      sessionDb = db;
+      final store = await seededSquadStore(db);
+      final session = await winSession(store);
 
-    final db = memoryDb();
-    addTearDown(() => db.close());
-    sessionDb = db;
-    final store = await seededSquadStore(db);
-    final session = await winSession(store);
+      await pumpMatch(tester, session);
+      await driveToFullTimeReport(tester);
 
-    await pumpMatch(tester, session);
-    await driveToRecoveryCard(tester);
+      // The report is up — the recovery card never appeared.
+      expect(find.textContaining('Full time:'), findsOneWidget);
+      expect(find.text('Post-match recovery'), findsNothing);
+      // No pep-talk / ad-boost status line on the report either.
+      expect(find.textContaining('recovery)'), findsNothing);
+      expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
+      // The report's own sections still render.
+      expect(find.textContaining('Reward:'), findsOneWidget);
+      expect(find.text('CONTINUE'), findsOneWidget);
+    },
+  );
 
-    // Two rapid taps on different options in the same frame: the first
-    // wins, the second is swallowed by the choice guard.
-    await tester.tap(find.text(PepTalk.restEveryone.displayName));
-    await tester.tap(find.text(PepTalk.focusExhausted.displayName));
-    await tester.pump(const Duration(milliseconds: 100));
+  testWidgets(
+    'T-0100: full time after a DEFEAT also lands straight on the report',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    // The card is gone immediately — the report lands after persistence.
-    expect(find.text('Post-match recovery'), findsNothing);
-    await flushFrames(tester);
-    for (var i = 0; i < 5; i++) {
-      if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
-      await flushFrames(tester);
-    }
+      final db = memoryDb();
+      addTearDown(() => db.close());
+      sessionDb = db;
+      final store = await seededSquadStore(db);
+      final session = await lossSession(store);
 
-    expect(find.textContaining('Full time:'), findsOneWidget);
-    // The chosen talk is restated on the report — not the second tap's.
-    expect(
-      find.textContaining(
-        '${PepTalk.restEveryone.displayName} '
-        '(+${(PepTalk.restEveryone.recoveryBonus * 100).round()}% recovery)',
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.textContaining(PepTalk.focusExhausted.displayName),
-      findsNothing,
-    );
-    // A win never offered the ad boost — and none was applied.
-    expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
-  });
+      await pumpMatch(tester, session);
+      await driveToFullTimeReport(tester);
 
-  testWidgets('recovery card: ad-boosted recovery after a defeat', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(800, 1600);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final db = memoryDb();
-    addTearDown(() => db.close());
-    sessionDb = db;
-    final store = await seededSquadStore(db);
-    final session = await lossSession(store);
-
-    await pumpMatch(tester, session);
-    await driveToRecoveryCard(tester);
-
-    // A defeat offers the ad-boosted recovery row.
-    expect(find.text('Watch ad: boosted recovery'), findsOneWidget);
-    await tester.tap(find.text('Watch ad: boosted recovery'));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Post-match recovery'), findsNothing);
-
-    await flushFrames(tester);
-    for (var i = 0; i < 5; i++) {
-      if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
-      await flushFrames(tester);
-    }
-
-    expect(find.textContaining('Full time:'), findsOneWidget);
-    expect(find.textContaining('Ad-boosted recovery applied'), findsOneWidget);
-    // The boost replaced the pep talk (mutually exclusive, GDD 19.4).
-    expect(find.textContaining(PepTalk.restEveryone.displayName), findsNothing);
-  });
-
-  testWidgets('recovery card: scrim skip demands a second tap — the '
-      'first only arms the hint', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(800, 1600);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final db = memoryDb();
-    addTearDown(() => db.close());
-    sessionDb = db;
-    final store = await seededSquadStore(db);
-    final session = await winSession(store);
-
-    await pumpMatch(tester, session);
-    await driveToRecoveryCard(tester);
-
-    // A stray tap on the dim scrim must NOT skip: it only arms the hint.
-    await tester.tapAt(const Offset(400, 200));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(
-      find.text('Tap outside again to skip without a pep talk'),
-      findsOneWidget,
-    );
-    expect(find.text('Post-match recovery'), findsOneWidget);
-    expect(find.textContaining('Full time:'), findsNothing);
-
-    // The second tap confirms the skip.
-    await tester.tapAt(const Offset(400, 200));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Post-match recovery'), findsNothing);
-
-    await flushFrames(tester);
-    for (var i = 0; i < 5; i++) {
-      if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
-      await flushFrames(tester);
-    }
-
-    expect(find.textContaining('Full time:'), findsOneWidget);
-    // Skipped: neither a pep talk nor the ad boost was applied.
-    expect(find.textContaining(PepTalk.restEveryone.displayName), findsNothing);
-    expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
-  });
-
-  testWidgets('recovery card: Arabic locale renders the card, options and '
-      'the armed skip hint through the ARB bundle', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(800, 1600);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final db = memoryDb();
-    addTearDown(() => db.close());
-    sessionDb = db;
-    final store = await seededSquadStore(db);
-    // A defeat so the ad-boosted row is on the card too.
-    final session = await lossSession(store);
-
-    await pumpMatch(tester, session, locale: const Locale('ar'));
-    await driveToRecoveryCard(tester, cardTitle: 'الاستشفاء بعد المباراة');
-
-    // Every option row renders localized copy, not enum displayNames.
-    expect(find.text('راحة، الجميع يستحقها!'), findsOneWidget);
-    expect(find.text('شاهد إعلانًا: استشفاء معزز'), findsOneWidget);
-    expect(find.text('بدون حديث — الاستشفاء الافتراضي'), findsOneWidget);
-    // And the EN literal is gone.
-    expect(find.text('Watch ad: boosted recovery'), findsNothing);
-    expect(
-      find.text(PepTalk.restEveryone.displayName),
-      findsNothing,
-      reason: 'the enum displayName must not leak into the AR UI',
-    );
-
-    // First scrim tap arms the hint — in Arabic copy.
-    await tester.tapAt(const Offset(400, 200));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(
-      find.text('اضغط خارج البطاقة مرة أخرى للتخطي بدون حديث'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('disposing the screen while the recovery card is up '
-      'surfaces no setState-after-dispose error', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(800, 1600);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final db = memoryDb();
-    addTearDown(() => db.close());
-    sessionDb = db;
-    final store = await seededSquadStore(db);
-    final session = await winSession(store);
-
-    await pumpMatch(tester, session);
-    await driveToRecoveryCard(tester);
-
-    // Tear the screen down mid-finish: the parked Completer errors out
-    // in dispose, the finish proceeds with the default recovery and the
-    // mounted guards keep every setState/ref access away.
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 500)),
-    );
-    for (var i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-    // The match screen is gone and no framework error surfaced (any
-    // setState() after dispose() or ref use after dispose fails the
-    // test by itself).
-    expect(find.text('Post-match recovery'), findsNothing);
-  });
+      expect(find.textContaining('Full time:'), findsOneWidget);
+      // The defeat never offered the ad-boosted recovery row.
+      expect(find.text('Post-match recovery'), findsNothing);
+      expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
+      expect(find.text('CONTINUE'), findsOneWidget);
+    },
+  );
 }

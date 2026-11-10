@@ -8,7 +8,6 @@ import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/match/match_engine.dart';
 import 'package:fcm_rivals/features/match/match_session.dart';
-import 'package:fcm_rivals/features/match/stamina.dart';
 import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 
@@ -99,9 +98,8 @@ void main() {
     tearDown(() async => db.close());
 
     Future<MatchReportResult> playFriendly({
-      PepTalk? pepTalk,
-      int seed = 5,
       int restDays = 3,
+      int seed = 5,
     }) async {
       final session = await MatchSession.create(
         store: store,
@@ -110,7 +108,7 @@ void main() {
         opponentAverageOverall: 68,
       );
       session.simulateToEnd();
-      return session.finish(pepTalk: pepTalk, restDays: restDays);
+      return session.finish(restDays: restDays);
     }
 
     test('a full squad produces a complete, consistent report', () async {
@@ -186,7 +184,7 @@ void main() {
     test('pep talk adds recovery for the targeted group (GDD 11.6)', () async {
       // Two independent databases, same seed: identical matches, but one
       // applies the 'rest everyone' pep talk (+5% natural recovery).
-      Future<(Map<int, int>, int)> run({PepTalk? pepTalk}) async {
+      Future<(Map<int, int>, int)> run() async {
         final db = memoryDb();
         final store = await seededSquadStore(db);
         final session = await MatchSession.create(
@@ -196,7 +194,7 @@ void main() {
           opponentAverageOverall: 68,
         );
         session.simulateToEnd();
-        final report = await session.finish(pepTalk: pepTalk);
+        final report = await session.finish();
         final stamina = {
           for (final c in await store.getCollection())
             c.ownedId: c.staminaPercent,
@@ -205,20 +203,14 @@ void main() {
         return (stamina, report.rewardCoins);
       }
 
+      // T-0100: the pep-talk comparison leg is gone with the feature —
+      // the default recovery run stays as the determinism check.
       final (plainStamina, plainReward) = await run();
-      final (pepStamina, pepReward) = await run(pepTalk: PepTalk.restEveryone);
+      final (againStamina, againReward) = await run();
 
-      // Identical seeds produce identical matches and rewards.
-      expect(pepReward, plainReward);
-
-      // The pep talk never lowers anyone's recovery, and targeted players
-      // (everyone, for this choice) gain at least as much.
-      var strictlyBetter = 0;
-      for (final id in pepStamina.keys) {
-        expect(pepStamina[id], greaterThanOrEqualTo(plainStamina[id]!));
-        if (pepStamina[id]! > plainStamina[id]!) strictlyBetter++;
-      }
-      expect(strictlyBetter, greaterThan(0));
+      // Identical seeds produce identical matches, rewards and recovery.
+      expect(againReward, plainReward);
+      expect(againStamina, plainStamina);
     });
 
     test(

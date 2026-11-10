@@ -64,10 +64,6 @@
   "fieldRequired": "Required",
   "clubNameHintField": "The name on the crest",
   "managerNameHintField": "How the commentary calls you",
-  "tapAgainToSkip": "Tap outside again to skip without a pep talk",
-  "postMatchRecoveryTitle": "Post-match recovery",
-  "postMatchRecoveryIntro": "One focus for the squad on the rest days ahead:",
-  "recoveryBonusEffect": "+{bonus}% natural recovery",
   "@recoveryBonusEffect": {
     "placeholders": {
       "bonus": {
@@ -75,13 +71,6 @@
       }
     }
   },
-  "pepTalkRestEveryone": "Rest, everyone deserves it!",
-  "pepTalkFocusExhausted": "Focus on exhausted players!",
-  "pepTalkRewardSubstitutes": "Reward the substitutes!",
-  "pepTalkEveryoneGaveBest": "Everyone gave their best!",
-  "watchAdBoostedRecovery": "Watch ad: boosted recovery",
-  "watchAdBoostedEffect": "+15% natural recovery for the whole squad (GDD 19.3)",
-  "noPepTalkDefault": "No pep talk — default recovery",
   "packsSoldFor": "Sold for {coins} coins",
   "@packsSoldFor": {
     "placeholders": {
@@ -97,17 +86,6 @@
   "revealUpgrade": "Upgrade",
   "liveTacticsTitle": "Touchline",
   "liveTacticsCancelSelection": "Cancel selection",
-  "pepTalkRecoveryConfirmation": "{pepTalk} (+{bonus}% recovery)",
-  "@pepTalkRecoveryConfirmation": {
-    "placeholders": {
-      "pepTalk": {
-        "type": "String"
-      },
-      "bonus": {
-        "type": "int"
-      }
-    }
-  },
   "tacticsInPossessionTitle": "In Possession",
   "tacticsOutOfPossessionTitle": "Out of Possession",
   "tacticsTransitionsTitle": "Transitions",
