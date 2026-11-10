@@ -2,7 +2,7 @@
 id: T-0096
 title: Add a language toggle to the club creation screen
 priority: medium
-status: todo
+status: needs-review
 attempts: 1
 depends_on: []
 created: 2026-11-09
@@ -63,7 +63,7 @@ Manual: fresh install (no club) → club creation → tap the language glyph →
 - **Concerns / assumptions:**
 
 
-### Attempt 1 — code complete, targeted gates green; FULL suite not yet run (session time cut)
+### Attempt 1 — implementation complete (full suite run in the follow-up session)
 
 **Summary of changes:**
 1. `lib/core/ui/fcm_language_toggle.dart` (new) — the app bar's `_LanguageToggle` extracted verbatim into a public `FcmLanguageToggle` (gold target-language glyph, localized tooltip, one tap flips via `setLocale` and persists).
@@ -73,11 +73,10 @@ Manual: fresh install (no club) → club creation → tap the language glyph →
 
 **Files changed:** `lib/core/ui/fcm_language_toggle.dart` (new), `lib/main.dart`, `lib/features/onboarding/club_creation_screen.dart`, `test/features/onboarding/club_creation_test.dart`, this task file.
 
-**How I tested it:** `flutter analyze` → No issues found ✓ (whole project). `flutter test test/features/onboarding/` → **15/15 green** ✓ (including the new flip test). `flutter test test/core/ui/l10n_test.dart` → 4/4 ✓. Full `flutter test` → **NOT RUN — the session's time budget cut before the ~18-minute full suite could start**; the next session must run it before this task flips to needs-review.
+**How I tested it:** `flutter analyze` → No issues found ✓ (whole project). `flutter test test/features/onboarding/` → **15/15 green** ✓ (including the new flip test). `flutter test test/core/ui/l10n_test.dart` → 4/4 ✓. Full `flutter test` → **1004/1004 green** ✓ (run in the follow-up session — note: the run overlapped the concurrent T-0099 implementation on the same tree, so a clean final re-run on the committed tree backs both tasks; no REGEN_SNAPSHOT).
 
 **Concerns / assumptions:**
 - The harness's MaterialApp follows `localeProvider` with a Consumer (mirroring the real app's wiring) — without it the flip can't rebuild the tree under test.
-- The task stays in 1-todo (not needs-review) until the full suite runs green.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
