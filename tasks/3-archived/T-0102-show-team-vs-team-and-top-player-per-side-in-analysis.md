@@ -2,11 +2,11 @@
 id: T-0102
 title: Show team vs team and the top player of each side in the analysis phase
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0102: Show team vs team and the top player of each side in the analysis phase
@@ -34,10 +34,10 @@ The pre-match analysis phase reads as the real fixture (owner request 2026-11-09
 - Changing the key-men producer or its sort.
 
 ## Acceptance Criteria
-- [ ] The header reads home club (start) VS away club (end) in both fixture orientations; the user's club is visually distinct; the fixture label, form pips and positions comparison are unchanged.
-- [ ] The top section shows exactly two cards — the best player of each team, in the header's side order — using the real card face; it hides when a side has no players.
-- [ ] 'TOP PLAYERS' no longer exists; EN and AR render; RTL mirrors both rows without overflow.
-- [ ] `flutter analyze` zero warnings; pre-match tests green with the new cases; match suite green; full `flutter test` green, no REGEN_SNAPSHOT.
+- [x] The header reads home club (start) VS away club (end) in both fixture orientations; the user's club is visually distinct; the fixture label, form pips and positions comparison are unchanged.
+- [x] The top section shows exactly two cards — the best player of each team, in the header's side order — using the real card face; it hides when a side has no players.
+- [x] 'TOP PLAYERS' no longer exists; EN and AR render; RTL mirrors both rows without overflow.
+- [x] `flutter analyze` zero warnings; pre-match tests green with the new cases; match suite green; full `flutter test` green, no REGEN_SNAPSHOT.
 
 ## How to Verify
 ```bash
@@ -84,3 +84,15 @@ Manual: open a home fixture and an away fixture from the season screen → the a
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7, current main):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/match/pre_match_screen_test.dart test/features/match/injury_ui_test.dart` → **19/19 green** ✓ (the injury fixture compiles untouched — no `PreMatchData` contract change)
+- `flutter test test/features/season/season_live_match_flow_test.dart` → **1/1 green** ✓ (the updated 'TOP PLAYER' scroll marker)
+- Full `flutter test` → **1004/1004, "All tests passed!"** on the re-run ✓ (includes the whole match suite). The first run failed exactly one test — the known intermittent audio flake at `packs_screen_test.dart:801`, owned by the pending T-0103 and unrelated to this change's area; the identical suite passed cleanly on the immediate re-run.
+- Diff scope check (commit 787bb21): 4 files — `pre_match_analysis.dart`, the two test files (requirement 4's cases + the stale season live-flow marker), and this task file. All inside scope; `PreMatchData`, the key-men producer and its sort untouched ✓.
+- Verified against the code: the header is one `[HOME chip] VS [AWAY chip]` row with `userAtHome` deciding the order and the user's chip gold-accented, no hardcoded left/right (Row order mirrors with text direction); the fixture label, form pips and positions comparison survive below ✓. The top section: the user's best via `_bestOfSquad` using the producer's exact formula — `((attack + support + defence) / 3).round()` on `card.attribute(...)` (effective post-upgrade attributes), identical to `SeasonStore._overallOf` / `_userMatchPlayer`, first-max tie-break — and the opponent's best as `opponentKeyMen.first`; `sides` ordered home-first like the header; `if (userBest == null || opponentBest == null) return const SizedBox()` hides the whole section on an empty side; heading 'TOP PLAYER' ✓. The away-fixture Arabic-locale test pins the mirrored pump with no overflow ✓.
+
+All four criteria met; every verify command run by the reviewer.
