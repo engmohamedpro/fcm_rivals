@@ -398,6 +398,24 @@ abstract class AppLocalizations {
   /// **'New'**
   String get packsNewCard;
 
+  /// No description provided for @revealBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get revealBack;
+
+  /// No description provided for @revealSell.
+  ///
+  /// In en, this message translates to:
+  /// **'Sell'**
+  String get revealSell;
+
+  /// No description provided for @revealUpgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade'**
+  String get revealUpgrade;
+
   /// No description provided for @liveTacticsTitle.
   ///
   /// In en, this message translates to:

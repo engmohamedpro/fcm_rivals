@@ -438,7 +438,9 @@ class CollectionStore {
   }
 
   /// Sells owned copies (FR-013): upgraded pricing applies per copy; the
-  /// credit and status change share one transaction.
+  /// credit and status change share one transaction. Squad members are
+  /// refused — the Team tab's full-card view sells those through
+  /// [sellPlayerFromSquad] instead.
   Future<SaleResult> sellPlayers(List<int> ownedIds) async {
     if (ownedIds.isEmpty) {
       throw const CollectionException('Nothing to sell');
@@ -448,6 +450,63 @@ class CollectionStore {
       throw const CollectionException('No club');
     }
 
+    for (final id in ownedIds) {
+      final copy =
+          await (db.select(db.ownedPlayers)
+                ..where((o) => o.id.equals(id) & o.status.equals('owned')))
+              .getSingleOrNull();
+      if (copy == null) continue;
+      if (copy.squadSlot != null) {
+        throw CollectionException(
+          'Player is in the squad (slot ${copy.squadSlot})',
+        );
+      }
+    }
+
+    return _sellCopies(club, ownedIds);
+  }
+
+  /// Squad-aware sell for the Team tab's full-card view (T-0090): an XI
+  /// card's slot is cleared and auto re-picked INSIDE the sale's own
+  /// transaction — the replacement, not the man being sold, takes the
+  /// slot (the mergeDuplicates pattern; GDD 6.4 invariant: every XI
+  /// slot stays filled). A bench/reserve card just sells (its slot is
+  /// freed by the sale itself). The ad selling-bonus still applies.
+  Future<SaleResult> sellPlayerFromSquad(int ownedId) async {
+    final club = await getClub();
+    if (club == null) {
+      throw const CollectionException('No club');
+    }
+
+    final copy =
+        await (db.select(db.ownedPlayers)
+              ..where((o) => o.id.equals(ownedId) & o.status.equals('owned')))
+            .getSingleOrNull();
+    if (copy == null) {
+      throw const CollectionException('Nothing to sell');
+    }
+
+    return db.transaction(() async {
+      // Re-pick BEFORE the sale: the sold copy must not be re-picked
+      // back into the XI he is about to leave.
+      if (copy.squadSlot != null &&
+          copy.squadSlot! < Formation.startingXiSize) {
+        final cards = await getCollection();
+        final formation = formationByCode(club.formationCode);
+        final others = cards
+            .where((c) => c.ownedId != ownedId)
+            .toList(growable: false);
+        await saveSquad(squad.autoPick(others, formation));
+      }
+      return _sellCopies(club, [ownedId]);
+    });
+  }
+
+  /// The shared sale transaction (used by [sellPlayers] and
+  /// [sellPlayerFromSquad]): prices every owned row, marks it 'sold',
+  /// frees its slot and credits the club — the ledger and the coin
+  /// balance move in the SAME transaction.
+  Future<SaleResult> _sellCopies(Club club, List<int> ownedIds) async {
     var credit = 0;
     final sold = <int>[];
     // GDD 19.3 'Player selling bonus': one ad boosts this sale by +20%.
@@ -463,11 +522,6 @@ class CollectionStore {
                   ..where((o) => o.id.equals(id) & o.status.equals('owned')))
                 .getSingleOrNull();
         if (copy == null) continue;
-        if (copy.squadSlot != null) {
-          throw CollectionException(
-            'Player is in the squad (slot ${copy.squadSlot})',
-          );
-        }
         final base = await (db.select(
           db.players,
         )..where((p) => p.playerId.equals(copy.playerId))).getSingle();

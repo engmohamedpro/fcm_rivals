@@ -317,6 +317,110 @@ void main() {
     );
 
     test(
+      'T-0090: selling an XI player from the squad re-picks the slot, '
+      'credits and removes the row',
+      () async {
+        // 22 owned players (one per pack) — enough for a full XI.
+        final packs = await store.getAvailablePacks();
+        for (final pack in packs) {
+          await store.openPack(packId: pack.id, random: math.Random(5));
+        }
+        await store.autoPickSquad();
+        final squad = await store.getSquad();
+        final xi = {
+          for (final e in squad.entries)
+            if (e.key < 11) e.key: e.value,
+        };
+        expect(xi.length, 11, reason: 'the XI is full before the sale');
+
+        final victim = xi.values.first;
+        final clubBefore = await store.getClub();
+        final price = EconomyEngine().sellPriceOfUpgraded(
+          victim.base,
+          victim.upgradeLevel,
+        );
+
+        final sale = await store.sellPlayerFromSquad(victim.ownedId);
+
+        // The sale went through…
+        expect(sale.soldOwnedIds, [victim.ownedId]);
+        expect(sale.credit, price);
+        // …the coins landed…
+        final clubAfter = await store.getClub();
+        expect(clubAfter!.coins - clubBefore!.coins, price);
+        // …the row is sold…
+        final collection = await store.getCollection();
+        expect(
+          collection.any((c) => c.ownedId == victim.ownedId),
+          isFalse,
+          reason: 'the sold row left the owned collection',
+        );
+        // …and the XI re-picked: 11 valid slots, none of them the
+        // sold man.
+        final squadAfter = await store.getSquad();
+        final xiAfter = {
+          for (final e in squadAfter.entries)
+            if (e.key < 11) e.key: e.value,
+        };
+        expect(xiAfter.length, 11,
+            reason: 'GDD 6.4 invariant — every XI slot stays filled');
+        expect(
+          xiAfter.values.any((c) => c.ownedId == victim.ownedId),
+          isFalse,
+          reason: 'the sold player must not be re-picked',
+        );
+      },
+    );
+
+    test(
+      'T-0090: a bench card sells through sellPlayerFromSquad too',
+      () async {
+        final packs = await store.getAvailablePacks();
+        for (final pack in packs) {
+          await store.openPack(packId: pack.id, random: math.Random(5));
+        }
+        await store.autoPickSquad();
+        final squad = await store.getSquad();
+        final bench = {
+          for (final e in squad.entries)
+            if (e.key >= 11) e.key: e.value,
+        };
+        expect(bench, isNotEmpty);
+
+        final victim = bench.values.first;
+        final sale = await store.sellPlayerFromSquad(victim.ownedId);
+        expect(sale.soldOwnedIds, [victim.ownedId]);
+        expect(sale.credit, greaterThan(0));
+
+        final squadAfter = await store.getSquad();
+        expect(
+          squadAfter.values.any((c) => c.ownedId == victim.ownedId),
+          isFalse,
+        );
+        // The XI is untouched — a bench sale never re-picks.
+        final xiKeysBefore = {
+          for (final e in squad.entries)
+            if (e.key < 11) e.key: e.value.ownedId,
+        };
+        final xiKeysAfter = {
+          for (final e in squadAfter.entries)
+            if (e.key < 11) e.key: e.value.ownedId,
+        };
+        expect(xiKeysAfter, xiKeysBefore);
+      },
+    );
+
+    test(
+      'T-0090: sellPlayerFromSquad still refuses the un-owned',
+      () async {
+        expect(
+          () => store.sellPlayerFromSquad(99999),
+          throwsA(isA<CollectionException>()),
+        );
+      },
+    );
+
+    test(
       'collection grows across packs and duplicates are separate copies',
       () async {
         final packs = await store.getAvailablePacks();

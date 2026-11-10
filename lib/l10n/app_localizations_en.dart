@@ -175,6 +175,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packsNewCard => 'New';
 
   @override
+  String get revealBack => 'Back';
+
+  @override
+  String get revealSell => 'Sell';
+
+  @override
+  String get revealUpgrade => 'Upgrade';
+
+  @override
   String get liveTacticsTitle => 'Touchline';
 
   @override

@@ -2,8 +2,8 @@
 id: T-0090
 title: Add back, sell and upgrade actions to the team card full view
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0089]
 created: 2026-11-09
 completed:
@@ -69,6 +69,26 @@ Manual: tap an XI card with a duplicate — UPGRADE (gold) merges and the card l
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** tapping a team card now manages the card in place — BACK / SELL / UPGRADE on the full-card view, UPGRADE the gold primary; SELL is squad-aware (an XI card's slot is cleared and auto re-picked inside the sale's own transaction), and an upgrade re-renders the stronger card in place with the view staying open.
+
+1. `lib/features/collection/collection_store.dart` — new `sellPlayerFromSquad(ownedId)`: an XI member's slot is re-picked from everyone-but-him BEFORE the sale, inside one transaction (the mergeDuplicates pattern; GDD 6.4 invariant); a bench/reserve card just sells. `sellPlayers` was refactored into a shared `_sellCopies` (pricing, 'sold' status, ledger, coin credit — the bonus path untouched); its squad refusal moved to a pre-transaction check, so `sellPlayers` behavior is byte-for-byte the same for the Collection tab.
+2. `lib/features/squad/player_card_reveal.dart` — the reveal takes `duplicates` / `onSell` / `onUpgrade` / `onRefreshRegistered`. Once the entrance finishes, callers with actions get the bottom bar: `[BACK ghost] [SELL steel] [UPGRADE gold]` (localized revealBack/Sell/Upgrade, flex 2/3/3, busy-gated); showcase-only callers keep the TAP TO CLOSE hint. UPGRADE disables when no copy remains. `refreshCard` re-renders the levelled card in place (re-sparked burst). Buttons swallow their own taps so tap-anywhere dismiss still works outside the bar.
+3. `lib/features/squad/squad_screen.dart` — `_openCardView` computes the tapped player's other copies (the T-0089 owned-count grouping) and wires the flows. `_sellFromView`: the ad selling-bonus offer → confirm dialog → `sellPlayerFromSquad` → pop the reveal → invalidate squad/collection/club → snackbar 'Sold for N coins' — byte-for-byte the Collection tab's flow. `_upgradeFromView`: `mergeDuplicates` → (reduced-motion snackbar | `showCardMergeAnimation`) → re-reads the fresh row and the remaining copies → `refreshCard` in place.
+4. l10n: `revealBack`/`revealSell`/`revealUpgrade` EN (Back/Sell/Upgrade) + AR (رجوع/بيع/ترقية), regenerated.
+5. Tests — store (real drift): XI sale keeps 11 valid slots none of which is the sold man, credits exactly `sellPriceOfUpgraded`, row leaves the owned collection; bench sale leaves the XI untouched; un-owned id refuses. Reveal (widget): showcase keeps TAP TO CLOSE; the bar renders BACK/SELL/UPGRADE with UPGRADE disabled when no duplicate; BACK pops; UPGRADE runs the callback, +2→+3 renders in place, view stays open and the button disables once copies run out; SELL hands the card to the caller.
+
+**Files changed:** `lib/features/collection/collection_store.dart`, `lib/features/squad/player_card_reveal.dart`, `lib/features/squad/squad_screen.dart`, `lib/l10n/app_en.arb`, `lib/l10n/app_ar.arb`, `lib/l10n/app_localizations.dart`, `lib/l10n/app_localizations_ar.dart`, `lib/l10n/app_localizations_en.dart`, `test/features/collection/collection_store_test.dart`, `test/features/squad/player_card_reveal_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/squad/ test/features/collection/` → **286/286 green** ✓. Full `flutter test` → (result recorded in the submit commit message) ✓.
+
+**Concerns / assumptions:**
+- The sell/upgrade dialogs are EN literals inside `squad_screen.dart`, mirroring the Collection tab's identical literals — matching the file's current convention (its snackbars are English literals too); full localization of both tabs' dialog strings is a separate sweep, not this task's Requirements.
+- `sellPlayerFromSquad` re-picks from a snapshot read inside the transaction; drift serializes writes on one connection, so the re-pick + sale stay atomic — same pattern mergeDuplicates already relies on.
+- No integration test drives the full screen tap-through to the dialogs (the reveal + store layers are each covered directly; the screen wiring is the same pattern the Collection screen tests already pin).
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

@@ -6,6 +6,10 @@ import '../../l10n/l10n_context.dart';
 import '../../app/providers.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import '../ads/ad_engine.dart' show AdEngine, AdRewardKind;
+import '../collection/card_merge_animation.dart' show showCardMergeAnimation;
+import '../economy/economy_engine.dart'
+    show EconomyEngine, formatCoins;
 import '../match/tactics.dart';
 import 'formations.dart';
 import 'player_card_reveal.dart';
@@ -127,7 +131,20 @@ class SquadScreen extends ConsumerWidget {
               // no counting, no masked name. The detail sheet with
               // its stat bars and actions stays on the Collection
               // tab, where the actions live.
-              onPlayerTap: (card) => showPlayerCardReveal(context, card: card),
+              onPlayerTap: (card) => _openCardView(
+                context,
+                ref,
+                card,
+                // The T-0089 owned-count plumbing feeds the reveal's
+                // UPGRADE: the other copies of THIS player (the same
+                // grouping, filtered to the tapped card's base).
+                [
+                  for (final c in collection ?? const <PlayerCard>[])
+                    if (c.base.playerId == card.base.playerId &&
+                        c.ownedId != card.ownedId)
+                      c,
+                ],
+              ),
               // A card with an owned duplicate carries the upgradable
               // mark (T-0089).
               upgradable: (playerId) => upgradableIds.contains(playerId),
@@ -229,5 +246,203 @@ class SquadScreen extends ConsumerWidget {
     final store = await ref.read(collectionStoreProvider.future);
     await store.changeFormation(code);
     ref.invalidate(squadProvider);
+  }
+
+  /// Opens the full-card view with the T-0090 actions wired: SELL is
+  /// the squad-aware sale (XI slot re-picked inside the transaction),
+  /// UPGRADE merges the first duplicate and refreshes the card in
+  /// place. The view pops itself on a successful SELL (the sold row
+  /// no longer exists); an upgrade keeps it open, stronger.
+  Future<void> _openCardView(
+    BuildContext context,
+    WidgetRef ref,
+    PlayerCard card,
+    List<PlayerCard> duplicates,
+  ) async {
+    // The bridge the upgrade flow uses to re-render the revealed card
+    // in place after a merge (Requirement 4): the reveal registers its
+    // refresh here when its state exists.
+    final refreshBridge = ValueNotifier<void Function(PlayerCard,
+        List<PlayerCard>)?>((_, _) {});
+    await showPlayerCardReveal(
+      context,
+      card: card,
+      duplicates: duplicates,
+      onSell: () => _sellFromView(context, ref, card),
+      onUpgrade: (duplicate) => _upgradeFromView(
+        context,
+        ref,
+        card,
+        duplicate,
+        refreshBridge,
+      ),
+      onRefreshRegistered:
+          (refresh) => refreshBridge.value = refresh,
+    );
+  }
+
+  /// SELL from the full view: the ad selling-bonus offer first (same
+  /// as the Collection tab — both tabs must sell identically), then
+  /// the confirm dialog, then the squad-aware sale. Success pops the
+  /// reveal (the row is gone) and refreshes the team screen's data.
+  Future<void> _sellFromView(
+    BuildContext context,
+    WidgetRef ref,
+    PlayerCard card,
+  ) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final adStore = await ref.read(adStoreProvider.future);
+    final club = await ref.read(clubProvider.future);
+    final canBoost =
+        club != null &&
+        await adStore.remainingToday(club.id, AdRewardKind.sellingBonus) > 0;
+    var bonusWatched = false;
+    if (canBoost) {
+      if (!context.mounted) return;
+      bonusWatched =
+          await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Boost this sale?'),
+              content: const Text(
+                'Watch a rewarded ad to add +20% to the selling price of '
+                'this sale. Ads are always optional.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('No thanks'),
+                ),
+                FilledButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('Watch ad'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (bonusWatched) {
+        try {
+          await adStore.grantBoost(
+            clubId: club.id,
+            kind: AdRewardKind.sellingBonus,
+            playbackCompleted: true,
+          );
+        } catch (_) {
+          bonusWatched = false;
+        }
+      }
+    }
+    if (!context.mounted) return;
+
+    final economy = EconomyEngine();
+    final price = economy.sellPriceOfUpgraded(card.base, card.upgradeLevel);
+    final boosted = bonusWatched ? AdEngine().sellingBonus(price) : price;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sell player?'),
+        content: Text(
+          '${card.base.name} will be sold for ${formatCoins(boosted)} coins. '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sell'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final store = await ref.read(collectionStoreProvider.future);
+    try {
+      final result = await store.sellPlayerFromSquad(card.ownedId);
+      ref.invalidate(collectionProvider);
+      ref.invalidate(squadProvider);
+      navigator.pop();
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Sold for ${formatCoins(result.credit)} coins'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  /// UPGRADE from the full view: merge the tapped card with its first
+  /// duplicate (free, levels unlimited), play the merge animation,
+  /// then refresh the revealed card in place — the view stays open
+  /// showing the stronger man.
+  Future<void> _upgradeFromView(
+    BuildContext context,
+    WidgetRef ref,
+    PlayerCard target,
+    PlayerCard duplicate,
+    ValueNotifier<void Function(PlayerCard, List<PlayerCard>)?> refreshBridge,
+  ) async {
+    final revealContext = context;
+    final store = await ref.read(collectionStoreProvider.future);
+    try {
+      final result = await store.mergeDuplicates(
+        targetOwnedId: target.ownedId,
+        duplicateOwnedId: duplicate.ownedId,
+      );
+      ref.invalidate(collectionProvider);
+      ref.invalidate(squadProvider);
+      // Re-render the revealed card in place: the merge consumed one
+      // duplicate and levelled the target — re-read the fresh row (the
+      // squad/collection providers were just invalidated) and hand it
+      // plus the remaining copies to the reveal.
+      final fresh = await ref.read(squadProvider.future);
+      final targetRow = fresh.values
+          .where((c) => c.ownedId == target.ownedId)
+          .firstOrNull;
+      if (targetRow != null) {
+        final collectionNow = await ref.read(collectionProvider.future);
+        final remaining = <PlayerCard>[
+          for (final c in collectionNow)
+            if (c.base.playerId == target.base.playerId &&
+                c.ownedId != target.ownedId)
+              c,
+        ];
+        refreshBridge.value?.call(targetRow, remaining);
+      }
+      if (!revealContext.mounted) return;
+      if (MediaQuery.disableAnimationsOf(revealContext)) {
+        ScaffoldMessenger.of(revealContext).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${target.base.name} upgraded to +${result.newUpgradeLevel} '
+              '(+${result.newUpgradeLevel}% stats)',
+            ),
+          ),
+        );
+      } else {
+        await showCardMergeAnimation(
+          revealContext,
+          target: target,
+          duplicate: duplicate,
+          newLevel: result.newUpgradeLevel,
+        );
+      }
+    } catch (e) {
+      if (revealContext.mounted) {
+        ScaffoldMessenger.of(revealContext)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
   }
 }

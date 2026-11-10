@@ -175,6 +175,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packsNewCard => 'جديد';
 
   @override
+  String get revealBack => 'رجوع';
+
+  @override
+  String get revealSell => 'بيع';
+
+  @override
+  String get revealUpgrade => 'ترقية';
+
+  @override
   String get liveTacticsTitle => 'خط التماس';
 
   @override

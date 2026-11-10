@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
+import 'package:fcm_rivals/core/ui/fcm_button.dart' show FcmButton;
 import 'package:fcm_rivals/core/ui/player_card.dart'
     show FcmPlayerCard, FcmPlayerCardBack;
 import 'package:fcm_rivals/features/squad/player_card_reveal.dart';
@@ -99,4 +100,129 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(FcmPlayerCard), findsNothing);
   });
+
+  testWidgets('T-0090: showcase callers keep the plain TAP TO CLOSE', (
+    WidgetTester tester,
+  ) async {
+    await _open(tester);
+    await tester.pump(const Duration(milliseconds: 1500));
+    // No callbacks wired: the hint, not the action bar.
+    expect(find.text('TAP TO CLOSE'), findsOneWidget);
+    expect(find.byKey(const ValueKey('reveal-back')), findsNothing);
+    expect(find.byKey(const ValueKey('reveal-sell')), findsNothing);
+    expect(find.byKey(const ValueKey('reveal-upgrade')), findsNothing);
+  });
+
+  testWidgets(
+    'T-0090: the action bar shows BACK / SELL / UPGRADE — upgrade '
+    'disabled without a duplicate',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(_host());
+      final context = tester.element(find.text('REVEAL'));
+      showPlayerCardReveal(
+        context,
+        card: _card(),
+        onSell: () async {},
+        onUpgrade: (_) async {},
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1500));
+
+      // The three localized actions replace the hint.
+      expect(find.text('TAP TO CLOSE'), findsNothing);
+      expect(find.byKey(const ValueKey('reveal-back')), findsOneWidget);
+      expect(find.byKey(const ValueKey('reveal-sell')), findsOneWidget);
+      final upgrade = tester.widget<FcmButton>(
+        find.byKey(const ValueKey('reveal-upgrade')),
+      );
+      expect(upgrade.onPressed, isNull,
+          reason: 'no other copy exists — UPGRADE is disabled');
+
+      // BACK pops the view without any action running.
+      await tester.tap(find.byKey(const ValueKey('reveal-back')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(FcmPlayerCard), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'T-0090: UPGRADE with a duplicate runs the merge and the card '
+    'levels up IN PLACE — the view stays open',
+    (WidgetTester tester,
+        {bool secondCall = false}) async {
+      await tester.pumpWidget(_host());
+      final context = tester.element(find.text('REVEAL'));
+      PlayerCard? merged;
+      showPlayerCardReveal(
+        context,
+        card: _card(),
+        // One other copy of the same player.
+        duplicates: [_card2()],
+        onSell: () async {},
+        onUpgrade: (duplicate) async {
+          merged = _cardUpgraded();
+        },
+        onRefreshRegistered: (refresh) => _refreshHook = refresh,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1500));
+
+      expect(find.text('+2'), findsOneWidget, reason: 'level before');
+      await tester.tap(find.byKey(const ValueKey('reveal-upgrade')));
+      await tester.pump();
+      expect(merged, isNotNull, reason: 'the upgrade callback ran');
+
+      // The caller hands the stronger card back: +3 renders IN PLACE
+      // and the view stays open.
+      _refreshHook?.call(_cardUpgraded(), []);
+      await tester.pump();
+      expect(find.byType(FcmPlayerCard), findsOneWidget,
+          reason: 'Requirement 5 — the view stays open after upgrade');
+      expect(find.text('+3'), findsOneWidget);
+
+      // Copies ran out: UPGRADE now disabled.
+      final upgrade = tester.widget<FcmButton>(
+        find.byKey(const ValueKey('reveal-upgrade')),
+      );
+      expect(upgrade.onPressed, isNull,
+          reason: 'no copy remains — UPGRADE disabled');
+    },
+  );
+
+  testWidgets('T-0090: SELL hands the card to the caller', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(_host());
+    final context = tester.element(find.text('REVEAL'));
+    var sold = false;
+    showPlayerCardReveal(
+      context,
+      card: _card(),
+      onSell: () async => sold = true,
+      onUpgrade: (_) async {},
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1500));
+
+    await tester.tap(find.byKey(const ValueKey('reveal-sell')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(sold, isTrue, reason: 'the sell callback ran (the caller pops)');
+  });
 }
+
+void Function(PlayerCard card, List<PlayerCard> duplicates)?
+    _refreshHook;
+
+PlayerCard _card2() => PlayerCard(
+  ownedId: 8,
+  upgradeLevel: 0,
+  base: _card().base,
+);
+
+PlayerCard _cardUpgraded() => PlayerCard(
+  ownedId: 7,
+  upgradeLevel: 3,
+  base: _card().base,
+);
