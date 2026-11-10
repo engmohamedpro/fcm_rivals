@@ -152,6 +152,25 @@ void main() {
     },
   );
 
+  testWidgets(
+    'T-0093: the drag-to-swap hint sentence is gone from the team screen',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // The Team tab always passes swapping — the hint sentence that
+      // rode above the pitch is gone, while the pitch itself and the
+      // hold-to-drag machinery still render.
+      expect(
+        find.text('Hold a player and drop him on another to swap'),
+        findsNothing,
+      );
+      expect(find.byType(SquadPitch), findsOneWidget);
+    },
+  );
+
   // The pattern guard for every localized screen: delegates + AR locale
   // resolve the Arabic copy end-to-end through the generated bundle.
   testWidgets('Arabic locale renders the hint through the delegates', (

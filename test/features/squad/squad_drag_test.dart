@@ -136,9 +136,11 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     // 11 starters + 7 bench + 5 reserves.
     expect(find.byType(LongPressDraggable<PlayerCard>), findsNWidgets(23));
+    // T-0093: the hint sentence is gone — nothing renders it anymore
+    // (asserted once more on the Team tab in squad_screen_test).
     expect(
       find.text('Hold a player and drop him on another to swap'),
-      findsOneWidget,
+      findsNothing,
     );
   });
 
@@ -150,10 +152,6 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     expect(find.byType(LongPressDraggable<PlayerCard>), findsNothing);
     expect(find.byType(DragTarget<PlayerCard>), findsNothing);
-    expect(
-      find.text('Hold a player and drop him on another to swap'),
-      findsNothing,
-    );
   });
 
   testWidgets('dropping a bench player on a starter reports the swap', (

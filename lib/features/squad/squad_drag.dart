@@ -258,34 +258,3 @@ class SquadDropZone extends StatelessWidget {
     );
   }
 }
-
-/// The one-line instruction shown above the pitch when swapping is on.
-class SquadSwapHint extends StatelessWidget {
-  const SquadSwapHint({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.swap_horiz_rounded, size: 16, color: FcmColors.textDim),
-          SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              'Hold a player and drop him on another to swap',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: FcmColors.textDim,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

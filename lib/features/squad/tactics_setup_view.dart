@@ -146,7 +146,6 @@ class TacticsSetupView extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (swapping != null) const SquadSwapHint(),
               FcmEntrance(
                 index: 1,
                 child: SquadPitch(

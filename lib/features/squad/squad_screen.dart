@@ -152,7 +152,9 @@ class SquadScreen extends ConsumerWidget {
               // mark (T-0089).
               upgradable: (playerId) => upgradableIds.contains(playerId),
               // Hold a player and drop him on another to swap them
-              // (pitch ↔ bench ↔ reserves). The same plan validates the
+              // (pitch ↔ bench ↔ reserves) — no hint line anymore
+              // (T-0093); the interaction teaches itself. The same
+              // plan validates the
               // green / red hover feedback and the final drop.
               swapping: SquadSwapping(
                 rejection: (dragged, target) => planSquadDrop(
