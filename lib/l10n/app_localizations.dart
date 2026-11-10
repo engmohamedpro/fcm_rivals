@@ -1651,6 +1651,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} claimed'**
   String achClaimedRungs(int count);
+
+  /// No description provided for @navProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get navProfile;
+
+  /// No description provided for @profileUnsetName.
+  ///
+  /// In en, this message translates to:
+  /// **'The New Coach'**
+  String get profileUnsetName;
+
+  /// No description provided for @profileUnsetClub.
+  ///
+  /// In en, this message translates to:
+  /// **'A new club'**
+  String get profileUnsetClub;
+
+  /// No description provided for @profileJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'Here since {year}-{month}-{day}'**
+  String profileJoined(int year, int month, int day);
+
+  /// No description provided for @profileStatMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches'**
+  String get profileStatMatches;
+
+  /// No description provided for @profileStatWinRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Win rate'**
+  String get profileStatWinRate;
+
+  /// No description provided for @profileStatWins.
+  ///
+  /// In en, this message translates to:
+  /// **'Wins'**
+  String get profileStatWins;
+
+  /// No description provided for @profileStatDraws.
+  ///
+  /// In en, this message translates to:
+  /// **'Draws'**
+  String get profileStatDraws;
+
+  /// No description provided for @profileStatLosses.
+  ///
+  /// In en, this message translates to:
+  /// **'Losses'**
+  String get profileStatLosses;
+
+  /// No description provided for @profileStatGoalsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals for'**
+  String get profileStatGoalsFor;
+
+  /// No description provided for @profileStatGoalsAgainst.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals against'**
+  String get profileStatGoalsAgainst;
+
+  /// No description provided for @profileStatCleanSheets.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean sheets'**
+  String get profileStatCleanSheets;
+
+  /// No description provided for @profileStatWinStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Best win run'**
+  String get profileStatWinStreak;
+
+  /// No description provided for @profileStatUnbeaten.
+  ///
+  /// In en, this message translates to:
+  /// **'Best unbeaten'**
+  String get profileStatUnbeaten;
+
+  /// No description provided for @profileNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts now'**
+  String get profileNoMatches;
+
+  /// No description provided for @profilePercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{value}%'**
+  String profilePercent(num value);
+
+  /// No description provided for @profileTitlesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} trophies won'**
+  String profileTitlesCount(int count);
+
+  /// No description provided for @profileNoTitles.
+  ///
+  /// In en, this message translates to:
+  /// **'The cabinet is waiting'**
+  String get profileNoTitles;
+
+  /// No description provided for @profileDivisionPlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Div {division} ×{count}'**
+  String profileDivisionPlate(int division, int count);
+
+  /// No description provided for @profileSeasonHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Season history'**
+  String get profileSeasonHistory;
+
+  /// No description provided for @profileNoSeasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Your career starts now'**
+  String get profileNoSeasons;
+
+  /// No description provided for @profileSeasonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Season {ordinal} · Div {division}'**
+  String profileSeasonTitle(int ordinal, int division);
+
+  /// No description provided for @profileFinalPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished {position}'**
+  String profileFinalPosition(int position);
+
+  /// No description provided for @profileOutcomePromoted.
+  ///
+  /// In en, this message translates to:
+  /// **'Promoted'**
+  String get profileOutcomePromoted;
+
+  /// No description provided for @profileOutcomeRelegated.
+  ///
+  /// In en, this message translates to:
+  /// **'Relegated'**
+  String get profileOutcomeRelegated;
+
+  /// No description provided for @profileOutcomeStayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Stayed'**
+  String get profileOutcomeStayed;
 }
 
 class _AppLocalizationsDelegate

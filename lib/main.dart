@@ -14,6 +14,7 @@ import 'core/ui/fcm_style.dart';
 import 'core/ui/fcm_language_toggle.dart';
 import 'core/ui/fcm_widgets.dart';
 import 'features/achievements/achievements_screen.dart';
+import 'features/profile/profile_screen.dart';
 import 'features/facilities/campus_screen.dart';
 import 'features/onboarding/club_creation_screen.dart';
 import 'features/packs/pack_effects.dart' show precachePackLogo;
@@ -148,6 +149,9 @@ class GameShell extends ConsumerWidget {
       FcmNavItem(l10n.navAchievements, Icons.military_tech_rounded),
       FcmNavItem(l10n.navCampus, Icons.apartment_rounded),
       FcmNavItem(l10n.navStore, Icons.storefront_rounded, badge: packs),
+      // T-0111: the self destination closes the row — the mid-session
+      // tabs (Season/Team) stay adjacent on the hot path.
+      FcmNavItem(l10n.navProfile, Icons.badge_rounded),
     ];
 
     return _GameShellBody(items: items);
@@ -203,7 +207,8 @@ class _GameShellBodyState extends State<_GameShellBody> {
     1 => const SquadScreen(),
     2 => const AchievementsScreen(),
     3 => const CampusScreen(),
-    _ => const PacksScreen(),
+    4 => const PacksScreen(),
+    _ => const ProfileScreen(),
   };
 
   @override

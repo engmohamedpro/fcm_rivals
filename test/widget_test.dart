@@ -126,6 +126,7 @@ void main() {
       expect(find.text('Team'), findsWidgets);
       expect(find.text('Achievements'), findsWidgets);
       expect(find.text('Store'), findsWidgets);
+      expect(find.text('Profile'), findsWidgets);
       expect(find.text('Match'), findsNothing);
 
       // The Season tab opens first: the first campaign entry point

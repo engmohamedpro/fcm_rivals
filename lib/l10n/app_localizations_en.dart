@@ -845,4 +845,94 @@ class AppLocalizationsEn extends AppLocalizations {
   String achClaimedRungs(int count) {
     return '$count claimed';
   }
+
+  @override
+  String get navProfile => 'Profile';
+
+  @override
+  String get profileUnsetName => 'The New Coach';
+
+  @override
+  String get profileUnsetClub => 'A new club';
+
+  @override
+  String profileJoined(int year, int month, int day) {
+    return 'Here since $year-$month-$day';
+  }
+
+  @override
+  String get profileStatMatches => 'Matches';
+
+  @override
+  String get profileStatWinRate => 'Win rate';
+
+  @override
+  String get profileStatWins => 'Wins';
+
+  @override
+  String get profileStatDraws => 'Draws';
+
+  @override
+  String get profileStatLosses => 'Losses';
+
+  @override
+  String get profileStatGoalsFor => 'Goals for';
+
+  @override
+  String get profileStatGoalsAgainst => 'Goals against';
+
+  @override
+  String get profileStatCleanSheets => 'Clean sheets';
+
+  @override
+  String get profileStatWinStreak => 'Best win run';
+
+  @override
+  String get profileStatUnbeaten => 'Best unbeaten';
+
+  @override
+  String get profileNoMatches => 'Starts now';
+
+  @override
+  String profilePercent(num value) {
+    return '$value%';
+  }
+
+  @override
+  String profileTitlesCount(int count) {
+    return '$count trophies won';
+  }
+
+  @override
+  String get profileNoTitles => 'The cabinet is waiting';
+
+  @override
+  String profileDivisionPlate(int division, int count) {
+    return 'Div $division ×$count';
+  }
+
+  @override
+  String get profileSeasonHistory => 'Season history';
+
+  @override
+  String get profileNoSeasons => 'Your career starts now';
+
+  @override
+  String profileSeasonTitle(int ordinal, int division) {
+    return 'Season $ordinal · Div $division';
+  }
+
+  @override
+  String profileFinalPosition(int position) {
+    return 'Finished $position';
+  }
+
+  @override
+  String get profileOutcomePromoted => 'Promoted';
+
+  @override
+  String get profileOutcomeRelegated => 'Relegated';
+
+  @override
+  String get profileOutcomeStayed => 'Stayed';
 }

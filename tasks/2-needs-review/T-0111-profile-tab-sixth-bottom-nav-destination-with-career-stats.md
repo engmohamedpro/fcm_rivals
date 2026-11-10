@@ -2,8 +2,8 @@
 id: T-0111
 title: Profile tab — sixth bottom-nav destination with career stats (W/D/L, win rate, goals, silverware)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0107]
 created: 2026-11-10
 completed:
@@ -55,12 +55,71 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `lib/features/profile/profile_screen.dart` — the career card,
+    thin widgets all the way: identity header (the REAL crest —
+    CrestSpec.fromJsonString with the legacy-index fallback, club +
+    coach names, joined date, the equipped-title chip empty-safe via
+    a registry switch over the seeded title ids), the stat panel
+    (matches, W/D/L with success/danger accents, win rate through
+    the locale's percent placeholder — never a hardcoded '%', goals
+    for/against, clean sheets, both streak records), silverware
+    (trophy count + per-division plates sorted by division), and the
+    season history as a sliver list (grows forever at 60fps; outcome
+    in the standings' colour language: green promoted / red
+    relegated / dim stayed). Header + stat panel in RepaintBoundarys
+    (the ambient animation's hot-path isolation). RTL: directional
+    layout only, no hardcoded left/right.
+  - NEW `lib/features/profile/profile_providers.dart` — seasonHistory
+    (completed seasons, newest first — one query) and profileClub
+    (a ONE-SHOT read, not the live stream: identity data is stable,
+    and the shell's fake-clock widget tests cannot open drift's
+    watch streams — the one-shot composes the same derivation world
+    with none of that fragility). The metrics re-use T-0110's
+    careerMetricsProvider VERBATIM — one derivation, many surfaces
+    (the task's own rule).
+  - `lib/main.dart`: the sixth FcmNavItem (navProfile, badge icon —
+    reads best at 24px, the person glyph is too thin at this size)
+    LAST after Store; the body switch extended (_ => ProfileScreen).
+    Verified non-cramped: the shell test pumps at 360dp×800 with
+    takeException() null — the six Expanded items fit (labels
+    ~11.5px one-word, icons 24px).
+  - L10n: 32 new key pairs EN+AR (navProfile, the full stat label
+    set, percent/joined/plate/position placeholders, outcome words,
+    the zero-state copy) with clean gen-l10n. AR copy in the real
+    football register ('أطول سلسلة بلا هزيمة', 'خزانة الألقاب تنتظر').
+  - NEW `test/features/profile/profile_screen_test.dart` (6 tests):
+    exact fixture stats (4W-1D-0L → '80.0%' one-decimal locale
+    format, goals 9/2, streaks 3/5), silverware grouping (Div 1 ×1 /
+    Div 2 ×1 plates + '2 trophies won'), season history rows
+    (newest first, Promoted/Stayed, Finished 1), the zero-state
+    ('Starts now' instead of NaN, the cabinet + career copy), the
+    six-nav-items render with Profile last at 360dp (no overflow
+    exception), and the Arabic/RTL pass (stat labels localized,
+    Directionality.rtl).
+  - Smoke test: Profile asserted alongside the other five.
+- **Files changed:** lib/features/profile/profile_screen.dart (new),
+  profile_providers.dart (new), lib/main.dart, lib/l10n/app_en.arb +
+  app_ar.arb (+32 pairs) with clean gen-l10n, test/widget_test.dart,
+  test/features/profile/profile_screen_test.dart (new).
+- **How I tested it:** `flutter analyze --no-pub` — zero new issues.
+  profile suite 6/6; profile + achievements + smoke 45/45 green;
+  onboarding+season sweep 96 pass with ONLY the pre-existing
+  season_live_match_flow failure (stash-verified); the GameShell
+  consumers (appbar + directionality tests) 6/6 green with the sixth
+  tab.
+- **Concerns / assumptions:** (1) The win-rate percent renders
+    through the intl placeholder ({value}%) — the AR locale formats
+    the number with locale digits; the '٪' AR sign is in the ARB. (2)
+    The stat values render as plain digits (the HUD's Western-digits
+    convention, matching FcmCoinChip) — labels localize, digits stay
+    Western by design. (3) The identity header re-reads on
+    achievements-refresh invalidation (claims move lifetime earned,
+    not identity — cheap either way). (4) profileClub being one-shot
+    means an edited club name elsewhere would need a manual
+    invalidate; no in-app rename flow exists today, so this is
+    documented, not speculative.
 
 
 ## Review Log

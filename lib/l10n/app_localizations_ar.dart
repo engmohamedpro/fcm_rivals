@@ -838,4 +838,94 @@ class AppLocalizationsAr extends AppLocalizations {
   String achClaimedRungs(int count) {
     return '$count مُستحقة';
   }
+
+  @override
+  String get navProfile => 'الملف الشخصي';
+
+  @override
+  String get profileUnsetName => 'المدرب الجديد';
+
+  @override
+  String get profileUnsetClub => 'نادٍ جديد';
+
+  @override
+  String profileJoined(int year, int month, int day) {
+    return 'هنا منذ $year-$month-$day';
+  }
+
+  @override
+  String get profileStatMatches => 'المباريات';
+
+  @override
+  String get profileStatWinRate => 'نسبة الفوز';
+
+  @override
+  String get profileStatWins => 'فوز';
+
+  @override
+  String get profileStatDraws => 'تعادل';
+
+  @override
+  String get profileStatLosses => 'خسارة';
+
+  @override
+  String get profileStatGoalsFor => 'أهداف له';
+
+  @override
+  String get profileStatGoalsAgainst => 'أهداف عليه';
+
+  @override
+  String get profileStatCleanSheets => 'شباك نظيفة';
+
+  @override
+  String get profileStatWinStreak => 'أطول سلسلة فوز';
+
+  @override
+  String get profileStatUnbeaten => 'أطول سلسلة بلا هزيمة';
+
+  @override
+  String get profileNoMatches => 'تبدأ الآن';
+
+  @override
+  String profilePercent(num value) {
+    return '$value٪';
+  }
+
+  @override
+  String profileTitlesCount(int count) {
+    return '$count بطولة';
+  }
+
+  @override
+  String get profileNoTitles => 'خزانة الألقاب تنتظر';
+
+  @override
+  String profileDivisionPlate(int division, int count) {
+    return 'الدرجة $division ×$count';
+  }
+
+  @override
+  String get profileSeasonHistory => 'سجل المواسم';
+
+  @override
+  String get profileNoSeasons => 'مسيرتك تبدأ الآن';
+
+  @override
+  String profileSeasonTitle(int ordinal, int division) {
+    return 'الموسم $ordinal · الدرجة $division';
+  }
+
+  @override
+  String profileFinalPosition(int position) {
+    return 'أنهيت في المركز $position';
+  }
+
+  @override
+  String get profileOutcomePromoted => 'صعد';
+
+  @override
+  String get profileOutcomeRelegated => 'هبط';
+
+  @override
+  String get profileOutcomeStayed => 'بقي';
 }
