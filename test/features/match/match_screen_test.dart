@@ -2,9 +2,9 @@
 //
 //  * the header fuses scoreboard, clock and controls into one panel —
 //    no separate controls block below it;
-//  * the MOMENTUM meter sits above the commentary — pressure
-//    percentages, a plain-words status, a tug-of-war bar and a trend wave
-//    (the broadcast stats rows are gone entirely);
+//  * the MOMENTUM bar is a bare tug-of-war in the header, between the
+//    live dot and the clock — no text, no percentages (the broadcast
+//    stats rows are gone entirely);
 //  * the commentary is a premium feed: the newest moment on a featured
 //    card with a short fading timeline under it — no scrolling surface;
 //  * the LIVE TACTICS panel under it queues mentality / live-order
@@ -164,11 +164,12 @@ void main() {
     expect(find.text('4x'), findsNothing);
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
 
-    // The momentum bar rides where the old stats strip sat — between
-    // the header and the feed, with the team names at its two ends and
-    // the MOMENTUM label centred. The broadcast stats rows are gone.
-    expect(find.byType(MomentumBar), findsOneWidget);
-    expect(find.text('MOMENTUM'), findsOneWidget);
+    // The momentum bar lives IN the header, between the live dot and the
+    // clock — bare tug-of-war, no label, no numbers. The broadcast stats
+    // rows are gone.
+    expect(find.byType(MomentumTugBar), findsOneWidget);
+    expect(find.byType(MomentumBar), findsNothing);
+    expect(find.text('MOMENTUM'), findsNothing);
     expect(find.text('Possession'), findsNothing);
     expect(find.text('Shots'), findsNothing);
     expect(find.text('On target'), findsNothing);

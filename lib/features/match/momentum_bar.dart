@@ -246,6 +246,52 @@ class MomentumBar extends StatelessWidget {
   }
 }
 
+/// The bare momentum bar: no words, no numbers — just the tug-of-war.
+/// The home side fills from the left, the away side from the right, and
+/// a glowing knob rides the split. When pressure swings, the knob slides
+/// smoothly to its new place, so who is pushing is something you SEE.
+///
+/// Used inside the live match header, where it replaces the old static
+/// clock bar. [share] is the HOME side's pressure share, 0..1 (0.5 = dead
+/// level) — the last value of `computeMomentumSeries`.
+class MomentumTugBar extends StatelessWidget {
+  const MomentumTugBar({
+    super.key,
+    required this.share,
+    this.homeColor = FcmColors.gold,
+    this.awayColor = opponentMomentumColor,
+    this.height = 14,
+  });
+
+  final double share;
+  final Color homeColor;
+  final Color awayColor;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = share.clamp(0.0, 1.0).toDouble();
+    final home = _legible(homeColor);
+    final away = _legible(awayColor);
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: target),
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) => SizedBox(
+        height: height,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _TugPainter(
+            share: value,
+            homeColor: home,
+            awayColor: away,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// One side's reading: club name over its big pressure percentage.
 class _SideReading extends StatelessWidget {
   const _SideReading({

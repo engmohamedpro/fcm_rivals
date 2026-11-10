@@ -448,38 +448,23 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               onTogglePause: _togglePause,
                               onSetSpeed: _setSpeed,
                               onTactics: () => _openLiveTactics(context),
-                            ),
-                            // Momentum meter: who is on top RIGHT NOW,
-                            // said in words (status pill), as a tug-of-
-                            // war bar whose knob slides every minute
-                            // and as a trend wave of the match so far.
-                            // The user's crest colour tints their side.
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-                              child: FcmPanel(
-                                padding: const EdgeInsets.fromLTRB(
-                                  12,
-                                  10,
-                                  12,
-                                  8,
-                                ),
-                                accent: FcmColors.bronze,
-                                child: MomentumBar(
-                                  series: _momentumSeries ?? const [],
-                                  homeTeamName: session.homeTeamName,
-                                  awayTeamName: session.awayTeamName,
-                                  homeColor: userIsHome
-                                      ? userColor
-                                      : opponentMomentumColor,
-                                  awayColor: userIsHome
-                                      ? opponentMomentumColor
-                                      : userColor,
-                                ),
-                              ),
+                              // Momentum rides the clock bar: the home
+                              // share of the latest minute, the user's
+                              // crest colour tinting their side.
+                              momentumShare: (_momentumSeries?.isNotEmpty ??
+                                      false)
+                                  ? _momentumSeries!.last
+                                  : 0.5,
+                              homeColor: userIsHome
+                                  ? userColor
+                                  : opponentMomentumColor,
+                              awayColor: userIsHome
+                                  ? opponentMomentumColor
+                                  : userColor,
                             ),
                           ],
-                          // Commentary feed / report. Under the momentum
-                          // meter: the newest moment on a premium card
+                          // Commentary feed / report. Under the header:
+                          // the newest moment on a premium card
                           // with a short fading timeline beneath it (no
                           // scrolling — the full record stays in the
                           // engine and the report). Below it the live

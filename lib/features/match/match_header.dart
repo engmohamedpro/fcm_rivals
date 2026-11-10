@@ -14,18 +14,19 @@ import 'package:flutter/material.dart';
 
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
+import 'momentum_bar.dart';
 
 /// Compact live header: one tight panel fusing scoreboard, clock and
-/// controls. Team crest chips and score on the first row, the 90-minute
-/// progress bar with the live minute under it, and the play/pause +
+/// controls. Team crest chips and score on the first row, the momentum
+/// bar with the live minute under it, and the play/pause +
 /// 1x–3x speed + tactics controls in the last row — roughly half the
 /// vertical space of the old stack (scoreboard panel, then a separate
 /// controls row), which is vertical budget the commentary feed now owns.
 ///
-/// Momentum lives in its own meter between this header and the feed —
-/// `MomentumBar` in `momentum_bar.dart` — not inside the header: the
-/// tug-of-war bar and trend wave need more height than a compact
-/// scoreboard can spare.
+/// The momentum bar (`MomentumTugBar`, `momentum_bar.dart`) sits between
+/// the live dot and the clock: no text, no numbers — the home side's
+/// colour presses in from the left, the away side's from the right, and
+/// the knob slides as the pressure swings.
 class MatchHeader extends StatelessWidget {
   const MatchHeader({
     super.key,
@@ -41,6 +42,9 @@ class MatchHeader extends StatelessWidget {
     required this.onTogglePause,
     required this.onSetSpeed,
     required this.onTactics,
+    this.momentumShare = 0.5,
+    this.homeColor = FcmColors.gold,
+    this.awayColor = opponentMomentumColor,
   });
 
   final String home;
@@ -56,9 +60,17 @@ class MatchHeader extends StatelessWidget {
   final ValueChanged<int> onSetSpeed;
   final VoidCallback onTactics;
 
+  /// The home side's momentum share, 0..1 (0.5 = level).
+  final double momentumShare;
+
+  /// Colour of the home side's half of the momentum bar.
+  final Color homeColor;
+
+  /// Colour of the away side's half of the momentum bar.
+  final Color awayColor;
+
   @override
   Widget build(BuildContext context) {
-    final progress = (minute / 90).clamp(0.0, 1.0);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
       child: FcmPanel(
@@ -103,41 +115,16 @@ class MatchHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            // Match clock: the 90-minute progress bar with the live
-            // minute riding at its right end.
+            // Match clock row: live dot, the momentum bar, the minute.
             Row(
               children: [
                 const _LiveDot(),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: SizedBox(
-                      height: 5,
-                      child: Stack(
-                        children: [
-                          Container(
-                            color: Colors.white.withValues(alpha: 0.10),
-                          ),
-                          TweenAnimationBuilder<double>(
-                            tween: Tween(
-                              begin: 0,
-                              end: fullTime ? 1.0 : progress,
-                            ),
-                            duration: const Duration(milliseconds: 400),
-                            builder: (context, f, _) => FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: f,
-                              child: const DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: FcmColors.goldGradient,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: MomentumTugBar(
+                    share: momentumShare,
+                    homeColor: homeColor,
+                    awayColor: awayColor,
                   ),
                 ),
                 const SizedBox(width: 8),
