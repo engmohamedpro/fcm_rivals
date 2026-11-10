@@ -2,8 +2,8 @@
 id: T-0087
 title: Move the pack odds strip from the store cells into the pack contents screen
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -64,6 +64,23 @@ Manual: open the store — cells show pack art + price plate only; tap a cell's 
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** the store grid cells no longer show the four-band odds; the sheet lives now at the top of the pack contents screen (visible on open, above the filters and the players list), with the chip font bumped 9 → 11 in the roomier sheet. Zero-weight bands still drop, the atomic-Text chip pattern and the dim-text look are unchanged, and nothing else moved.
+
+1. `lib/features/packs/packs_store_widgets.dart` — removed the `SizedBox(height: 16)` + `Wrap` strip under the price plate (the plate slot stays); `_bandChips`/`_rarityLabel` moved out with it; three imports became unused and were dropped.
+2. `lib/features/packs/pack_contents_screen.dart` — new `_OddsStrip` header widget above `_FiltersBar`: same `_bandChips` (from `defaultPackOddsConfig.oddsFor(tier)`, `PackRarity` order, zero-weight dropped) and `_rarityLabel` (existing `packRarityRare/Epic/Legendary/Premium` l10n keys, EN + AR), chips at fontSize 11, height 22 with the dim `FcmColors.textDim` look.
+3. Tests — `packs_screen_test.dart`: two new widget tests per the Requirements — (a) the store grid renders no odds text at all (`textContaining('%')` findsNothing plus every rarity label followed by a space findsNothing); (b) opening a pack's contents from the players icon shows the rare tier's three non-zero band chips with their exact percents and no Premium chip. The two pre-existing T-0059 odds tests (EN fallback + AR RTL) were rewritten to the strip's new home — they open a contents screen first — because their grid-side assertions now contradict the task's goal by definition; the AR premium-absence check matches the chip shape (label + percent) since player rows legitimately carry 'نخبة' class labels of their own.
+
+**Files changed:** `lib/features/packs/packs_store_widgets.dart`, `lib/features/packs/pack_contents_screen.dart`, `test/features/packs/packs_screen_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/packs/` → **132/132 green** ✓ (including the rewritten pair and the two new assertions). Full `flutter test` → (result recorded in the submit commit message) ✓. No packs visual golden exists, so no REGEN_SNAPSHOT was needed.
+
+**Concerns / assumptions:**
+- The two old T-0059 tests were MODIFIED (not deleted): their subject — the odds sheet's content and RTL safety — still stands at its new home; the test names keep their T-0059 provenance with the T-0087 move noted in the comments.
+- The strip's height budget (22px) assumes one chip line on the 2400px-wide test canvas and phones; on very narrow layouts the Wrap can wrap to a second line inside the same SizedBox — the store cell never had this room, so it is still a net win, flagged for the reviewer's eye.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

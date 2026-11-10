@@ -20,6 +20,8 @@ import '../../core/ui/player_card.dart' show FcmMiniCard;
 import '../../l10n/card_class_l10n.dart';
 import '../../l10n/l10n_context.dart';
 import 'pack_engine.dart' show PackCategory, PackTier;
+import 'pack_rarity.dart'
+    show PackRarity, defaultPackOddsConfig;
 import 'pack_tier_colors.dart';
 
 /// The contents list of one store pack.
@@ -118,6 +120,16 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
             )
           : Column(
               children: [
+                // The four-band odds sheet (T-0059, moved here by
+                // T-0087): the tier's rarity table (PackOddsConfig) as
+                // one chip per band — each label+percent is a single
+                // atomic Text, no sentence interpolation, so RTL
+                // reorders the chips freely and localized labels render
+                // in both directions. Zero-weight bands (premium
+                // outside the Legendary pack) render nothing, so the
+                // strip shows exactly what the pack can roll. Visible
+                // on open, above the filters and the list.
+                _OddsStrip(tier: widget.tier),
                 _FiltersBar(
                   controller: _search,
                   nationalities: _nationalities(),
@@ -169,6 +181,66 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+/// The pack's four-band rarity odds as a header strip (T-0087): one
+/// dim chip per non-zero band, in [PackRarity] order. The sheet has
+/// room, so the chips read at ~11px — bigger than the store cell's old
+/// 9px, same dim-text look.
+class _OddsStrip extends StatelessWidget {
+  const _OddsStrip({required this.tier});
+
+  final PackTier tier;
+
+  /// The tier's rarity table reduced to the chips rendered, in
+  /// [PackRarity] order, zero-weight bands dropped.
+  static List<(PackRarity, double)> _bandChips(PackTier tier) {
+    final odds = defaultPackOddsConfig.oddsFor(tier);
+    return [
+      for (final (rarity, weight) in [
+        (PackRarity.rare, odds.rare),
+        (PackRarity.epic, odds.epic),
+        (PackRarity.legendary, odds.legendary),
+        (PackRarity.premium, odds.premium),
+      ])
+        if (weight > 0) (rarity, weight),
+    ];
+  }
+
+  static String _rarityLabel(BuildContext context, PackRarity rarity) =>
+      switch (rarity) {
+        PackRarity.rare => l10nOf(context).packRarityRare,
+        PackRarity.epic => l10nOf(context).packRarityEpic,
+        PackRarity.legendary => l10nOf(context).packRarityLegendary,
+        PackRarity.premium => l10nOf(context).packRarityPremium,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 22,
+      child: Center(
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 2,
+          alignment: WrapAlignment.center,
+          children: [
+            for (final (rarity, weight) in _bandChips(tier))
+              Text(
+                '${_rarityLabel(context, rarity)} '
+                '${(weight * 100).round()}%',
+                style: const TextStyle(
+                  color: FcmColors.textDim,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

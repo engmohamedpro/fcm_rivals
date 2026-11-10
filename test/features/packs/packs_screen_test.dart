@@ -24,6 +24,8 @@ import 'package:fcm_rivals/features/packs/pack_contents_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart'
     show PackCategory, PackTier;
+import 'package:fcm_rivals/features/packs/pack_rarity.dart'
+    show defaultPackOddsConfig;
 import 'package:fcm_rivals/features/packs/packs_screen.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
 
@@ -82,26 +84,33 @@ void main() {
     await pumpScreen(tester);
   }
 
-  testWidgets('the odds sheet renders the four-band rarity table on every '
-      'store cell (T-0059, EN fallback)', (WidgetTester tester) async {
+  testWidgets('the odds sheet renders the four-band rarity table in the '
+      'contents screen (T-0059 store cells, T-0087 move)', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(2400, 3600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // The chips are one atomic Text per band — label + percent, no
-    // sentence interpolation — so RTL can reorder them freely. Every
-    // position shelves all three tiers (the T-0047 regrade made the 80+
-    // pools grow), so each shipped table shows up on its tier's cells:
-    // rare cells carry Rare 75% / Epic 20% / Legendary 5% with NO
-    // premium chip; legendary cells carry the reversed matrix incl.
-    // Premium 2%.
-    expect(find.text('Rare 75%'), findsWidgets);
-    expect(find.text('Epic 20%'), findsWidgets);
-    expect(find.text('Legendary 5%'), findsWidgets);
-    expect(find.text('Rare 40%'), findsWidgets);
-    expect(find.text('Legendary 43%'), findsWidgets);
-    expect(find.text('Premium 2%'), findsWidgets);
+    // T-0087: the strip moved from the store cells into the contents
+    // screen — the store grid itself carries no odds text (asserted by
+    // the dedicated T-0087 test), so open a rare pack's contents and
+    // read the table there. The chips stay one atomic Text per band —
+    // label + percent — so RTL can reorder them freely. Rare tier:
+    // Rare 75% / Epic 20% / Legendary 5% with NO premium chip.
+    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.byType(PackContentsScreen), findsOneWidget);
+
+    expect(find.text('Rare 75%'), findsOneWidget);
+    expect(find.text('Epic 20%'), findsOneWidget);
+    expect(find.text('Legendary 5%'), findsOneWidget);
     expect(find.text('Premium 0%'), findsNothing,
         reason: 'zero-weight bands render nothing — the strip shows '
             'exactly what the pack can roll');
@@ -130,9 +139,34 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('نادر 75%'), findsWidgets);
-    expect(find.text('أسطوري 43%'), findsWidgets);
-    expect(find.text('نخبة 2%'), findsWidgets);
+    // Same move as the EN test: the chips live in the contents screen
+    // now, so open one under the AR locale.
+    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.byType(PackContentsScreen), findsOneWidget);
+
+    expect(find.text('نادر 75%'), findsOneWidget);
+    expect(find.text('ملحمي 20%'), findsOneWidget);
+    expect(find.text('أسطوري 5%'), findsOneWidget);
+    // The premium BAND chip is absent — the player rows may carry
+    // their own 'نخبة' class labels, so match the chip shape (label
+    // followed by a percent) rather than the bare word.
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is Text &&
+            w.data != null &&
+            w.data!.startsWith('نخبة ') &&
+            w.data!.endsWith('%'),
+      ),
+      findsNothing,
+      reason: 'rare pack: the zero-weight premium band drops',
+    );
   });
 
   testWidgets('sectioned store: shared scope titles, tier cells per '
@@ -557,6 +591,68 @@ void main() {
     expect(find.textContaining('Balance:'), findsNothing);
     expect(find.textContaining('after'), findsNothing);
   });
+
+  testWidgets(
+    'T-0087: the store grid carries no odds text — the strip lives in '
+    'the contents screen now',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // No localized rarity label with a percent anywhere on the store
+      // grid: the four-band odds sheet moved to the contents screen
+      // (T-0087). Any tier × any band would do — check the rare pack's
+      // bands as the representative set.
+      for (final label in ['Rare', 'Epic', 'Legendary', 'Premium']) {
+        expect(
+          find.textContaining('$label '),
+          findsNothing,
+          reason: 'no odds chip may render on the store grid',
+        );
+      }
+      expect(find.textContaining('%'), findsNothing,
+          reason: 'no percentage text on the store at all');
+    },
+  );
+
+  testWidgets(
+    'T-0087: the contents screen shows the tier non-zero odds bands '
+    'above the players list',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // Open the rare ST pack's contents from the players icon.
+      await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byType(PackContentsScreen), findsOneWidget);
+      // The rare tier's odds table: rare / epic / legendary non-zero,
+      // premium zero (dropped). The top band's chip is present with
+      // its percent — the strip renders above the list, visible on
+      // open without scrolling.
+      final odds = defaultPackOddsConfig.oddsFor(PackTier.rare);
+      expect(odds.rare, greaterThan(0));
+      expect(odds.premium, 0, reason: 'rare pack: premium band dropped');
+      expect(find.text('Rare ${(odds.rare * 100).round()}%'),
+          findsOneWidget);
+      expect(find.text('Epic ${(odds.epic * 100).round()}%'),
+          findsOneWidget);
+      expect(find.text('Legendary ${(odds.legendary * 100).round()}%'),
+          findsOneWidget);
+      expect(find.textContaining('Premium'), findsNothing,
+          reason: 'zero-weight band renders nothing');
+    },
+  );
 
   testWidgets(
     'players icon opens the pack contents as cards, best rated first',
