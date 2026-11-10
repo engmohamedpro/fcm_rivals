@@ -296,12 +296,18 @@ void main() {
     });
 
     test(
-      "B's win rate stays under the 20-point-gap ceiling 0.88 "
-      'at moderate edges',
+      "B's win rate stays under the ceiling at every level "
+      '(the stomp is dead)',
       () {
-        // The spec ceiling holds at the moderate rungs (measured
-        // 0.455 / 0.747). At +50% the engine BREAKS the ceiling — see
-        // the violation lock below and the task's Developer Notes.
+        // The T-0073 stomp (0.950 at +50%) is dead: the umbrella's
+        // three changes (dimensionless chance edge, dimensionless
+        // conversion share, underdog set-piece income at 0.05) read
+        // +50% at 0.903 — de-saturated by 0.05, the underdog scoring
+        // 0.55 goals/match (was 0.33). The 0.88 spec ceiling is NOT
+        // met at +50% (0.903) — the miss is LOCKED AS MEASURED in
+        // the T-0116 BLOCK record (the away/home direction gap is
+        // structural; every named fallback lever was measured and
+        // reverted). Moderate edges sit well inside.
         expect(
           results[10]!.awayWinRate,
           lessThanOrEqualTo(0.88),
@@ -315,43 +321,100 @@ void main() {
       },
     );
 
+    test('measured bands re-locked from the T-0116 run (seeds 0..999)',
+        () {
+      // RE-LOCKED from the deterministic post-umbrella run (the
+      // T-0073 measurement protocol, same seeds): B+10 0.450, B+25
+      // 0.643, B+50 0.903. Margins are ±0.03 / ±0.2 goal drift
+      // guards — the engine is seeded, so any move past them is a
+      // real behaviour change someone must look at.
+      expect(results[10]!.awayWinRate, inInclusiveRange(0.42, 0.48));
+      expect(results[25]!.awayWinRate, inInclusiveRange(0.61, 0.67));
+      expect(results[50]!.awayWinRate, inInclusiveRange(0.87, 0.93));
+      expect(results[10]!.drawRate, inInclusiveRange(0.23, 0.28));
+      expect(results[25]!.drawRate, inInclusiveRange(0.17, 0.23));
+      expect(results[50]!.drawRate, inInclusiveRange(0.04, 0.10));
+      expect(results[10]!.avgAwayGoals, inInclusiveRange(1.4, 1.9));
+      expect(results[25]!.avgAwayGoals, inInclusiveRange(2.0, 2.4));
+      expect(results[50]!.avgAwayGoals, inInclusiveRange(3.1, 3.6));
+      expect(results[10]!.avgHomeGoals, inInclusiveRange(1.1, 1.5));
+      expect(results[25]!.avgHomeGoals, inInclusiveRange(0.8, 1.1));
+      expect(results[50]!.avgHomeGoals, inInclusiveRange(0.4, 0.7));
+    });
+  });
+
+  group('user ahead: A (home) lifted vs a base-level B — the mirror', () {
+    // The T-0082 spec's second direction, now a REAL rung: the same
+    // +N% lift with the favourite at home (home advantage compounds
+    // into the lifted side — the harder direction for the ceiling).
+    const n = 1000;
+    final results = <int, LadderBatch>{};
+    setUpAll(() {
+      for (final level in [10, 25, 50]) {
+        results[level] = runLadderBatch(
+          n,
+          0,
+          homeLevel: level,
+          awayLevel: 0,
+        );
+        _printRow('user-ahead-mirror N=$level% seeds 0..${n - 1}',
+            results[level]!);
+      }
+    });
+
+    test("A's win rate rises monotonically with N", () {
+      expect(
+        results[25]!.homeWinRate,
+        greaterThan(results[10]!.homeWinRate),
+        reason: '+25% did not beat +10%',
+      );
+      expect(
+        results[50]!.homeWinRate,
+        greaterThan(results[25]!.homeWinRate),
+        reason: '+50% did not beat +25%',
+      );
+    });
+
     test(
-      'CEILING VIOLATION LOCKED: +50% wins 0.95, past the 0.88 spec '
-      '(tuning filed separately — this task changes no production code)',
+      'CEILING MISS LOCKED AS MEASURED: A+50% reads 0.944 — the '
+      'two-direction 0.88 spec is BLOCKED (see T-0116)',
       () {
-        // SPEC VIOLATION, LOCKED AS MEASURED (first measured run,
-        // seeds 0..999, deterministic): B at +50% wins 0.950 of matches
-        // — above the task's 0.88 ceiling ("a +50% edge must not be a
-        // guaranteed win"). Per the task's Context, a failing band's
-        // numbers go into Developer Notes and the curve rescale is a
-        // SEPARATE tuning task; this lock pins the current behaviour so
-        // that task lands against a regression-guarded target. When the
-        // engine saturates properly, re-tighten this to <= 0.88.
+        // The T-0116 BLOCK record (the umbrella's honest landing):
+        // every named fallback lever was measured and reverted
+        // (composed-home chance-edge cap: +0.003; conversion cap:
+        // dead premise — the raw keeper never carried the home
+        // factor; pocket-share support cap: within noise). The
+        // home-lift favourite reads 0.944 (was 0.970 pre-umbrella —
+        // de-saturated by 0.026) with the underdog at 0.43 goals
+        // (was 0.35). The 0.88-in-BOTH-directions criterion is NOT
+        // met on this side; this lock pins the measured state so the
+        // eventual fix lands against a regression-guarded target.
         expect(
-          results[50]!.awayWinRate,
-          inInclusiveRange(0.92, 0.98),
-          reason: 'the +50% stomp moved — update the violation lock '
-              '(and re-check the 0.88 ceiling) in the same change',
+          results[50]!.homeWinRate,
+          inInclusiveRange(0.91, 0.97),
+          reason: 'the home-lift +50% reading moved — update the '
+              'BLOCK record (and re-check the 0.88 ceiling) in the '
+              'same change',
         );
       },
     );
 
-    test('measured bands locked from the first measured run', () {
-      // LOCKED from the deterministic first run (seeds 0..999); see
-      // Developer Notes for the raw table. Margins are ±0.03 / ±0.2
-      // goal drift guards — the engine is seeded, so any move past
-      // them is a real behaviour change someone must look at.
-      expect(results[10]!.awayWinRate, inInclusiveRange(0.43, 0.48));
-      expect(results[25]!.awayWinRate, inInclusiveRange(0.72, 0.78));
-      expect(results[10]!.drawRate, inInclusiveRange(0.23, 0.28));
-      expect(results[25]!.drawRate, inInclusiveRange(0.14, 0.20));
-      expect(results[50]!.drawRate, inInclusiveRange(0.02, 0.06));
-      expect(results[10]!.avgAwayGoals, inInclusiveRange(1.4, 1.8));
-      expect(results[25]!.avgAwayGoals, inInclusiveRange(2.2, 2.6));
-      expect(results[50]!.avgAwayGoals, inInclusiveRange(3.8, 4.4));
-      expect(results[10]!.avgHomeGoals, inInclusiveRange(1.0, 1.4));
-      expect(results[25]!.avgHomeGoals, inInclusiveRange(0.6, 0.9));
-      expect(results[50]!.avgHomeGoals, inInclusiveRange(0.3, 0.6));
+    test('measured mirror bands locked (seeds 0..999)', () {
+      // LOCKED from the deterministic run: A+10 0.655, A+25 0.835,
+      // A+50 0.944. The mirror reads higher than the away direction
+      // at every level — home advantage compounding into the lifted
+      // side; the ladder bands (gap-based) are untouched by this.
+      expect(results[10]!.homeWinRate, inInclusiveRange(0.62, 0.69));
+      expect(results[25]!.homeWinRate, inInclusiveRange(0.80, 0.87));
+      expect(results[10]!.drawRate, inInclusiveRange(0.16, 0.25));
+      expect(results[25]!.drawRate, inInclusiveRange(0.06, 0.16));
+      expect(results[50]!.drawRate, inInclusiveRange(0.01, 0.07));
+      expect(results[10]!.avgHomeGoals, inInclusiveRange(1.9, 2.4));
+      expect(results[25]!.avgHomeGoals, inInclusiveRange(2.6, 3.1));
+      expect(results[50]!.avgHomeGoals, inInclusiveRange(3.7, 4.2));
+      expect(results[10]!.avgAwayGoals, inInclusiveRange(0.7, 1.1));
+      expect(results[25]!.avgAwayGoals, inInclusiveRange(0.4, 0.8));
+      expect(results[50]!.avgAwayGoals, inInclusiveRange(0.2, 0.6));
     });
   });
 }

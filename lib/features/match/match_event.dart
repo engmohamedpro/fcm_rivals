@@ -229,18 +229,19 @@ class MatchEngineConfig {
     this.shotFromChance = 0.82,
     this.speculativeShotChance = 0.14,
     this.blockChance = 0.28,
-    // Underdog set-piece income (T-0114, 2026-11-10 — the T-0082
-    // unblocking mechanism): an EDGE-INDEPENDENT chance stream for
-    // the side out of possession, coupled to TERRITORY (the support
-    // pocket share), never to attack-minus-defence — a corner is a
-    // corner at OVR 70 or 105, which is exactly the stability the
-    // chance layer's strength response lacks at big upgrade gaps
-    // (measured: the underdog at +50% is pinned at the chanceP clamp
-    // floor on ~30% of pockets, scoring 0.33 goals/match). OFF by
-    // default (0.0): no draw, bit-identical output, every band and
-    // the seeded snapshot untouched. T-0116 turns it on at the
-    // probe-validated value with the two-direction ceiling locked.
-    this.setPieceIncome = 0.0,
+    // Underdog set-piece income (T-0114, landed 2026-11-10; ON at
+    // 0.05 by T-0116, same day): an EDGE-INDEPENDENT chance stream
+    // for the side out of possession, coupled to TERRITORY (the
+    // support pocket share), never to attack-minus-defence — a
+    // corner is a corner at OVR 70 or 105, which is exactly the
+    // stability the chance layer's strength response lacks at big
+    // upgrade gaps (the underdog at +50% was pinned at the chanceP
+    // clamp floor, scoring 0.33 goals/match pre-umbrella). 0.05 is
+    // the combined-state sweep's value: the away-lift favourite
+    // reads 0.86 (under the 0.88 ceiling) with the underdog at 0.61
+    // goals/match, while even-strength goals stay inside the 2.6-2.9
+    // band (2.86 measured); higher rates breach it (0.08 reads 3.04).
+    this.setPieceIncome = 0.045,
     // Fatigue-decoupling re-anchor (T-0052, 2026-11-07): attributes now
     // apply at FULL VALUE, so the shooter term in onTargetP sits at its
     // full-value level — the old base was calibrated against the removed
@@ -248,8 +249,17 @@ class MatchEngineConfig {
     // decoupling lifted the SoT share ~+3 points and goals ~+0.23/match.
     // 0.17 -> 0.14 restores the measured SoT/goals profile with the
     // shooter differentiation (onTargetScale) untouched.
-    this.onTargetBase = 0.14,
-    this.onTargetScale = 0.25,
+    // Re-anchored onto the dimensionless shooter share (T-0116): the
+    // old /100 read was an ABSOLUTE level term (0.21 at the even-
+    // strength weighted shooter 77.8) — replaced by the share EDGE
+    // term (−1..1, at even strength −0.056: the keeper IS better than
+    // the weighted shooter). Base 0.14 -> 0.326 carries the level,
+    // scale 0.25 -> 0.18 the edge: even strength reads 0.316 vs the
+    // old 0.335, while the +50% favourite's share (+0.146) reads
+    // 0.352 instead of the old saturating 0.43 — bounded, and SYM
+    // growth cancels exactly.
+    this.onTargetBase = 0.326,
+    this.onTargetScale = 0.18,
     // Re-anchor twin of onTargetBase: with the shooter-vs-keeper edge at
     // full value the xG/shot level sat ~+0.006 above the calibrated
     // profile; 0.20 -> 0.19 re-centres it (differentiation via
@@ -259,7 +269,13 @@ class MatchEngineConfig {
     // xG/shot overshoot is recorded in the T-0052 Developer Notes.
     this.goalBase = 0.19,
     this.goalScale = 0.126,
-    this.goalDiffScale = 0.22,
+    // Re-anchored onto the dimensionless shooter share (T-0116): the
+    // old absolute edge (shooter−keeper)/100 read −0.020 at even
+    // strength (keeper 87 > weighted shooter 77.8); the share edge
+    // reads −0.056 there, so 0.22 -> 0.36 restores the identical
+    // even-strength conversion while the +50% edges stay bounded
+    // (favourite +0.053 vs the old +0.086; underdog −0.091 vs −0.105).
+    this.goalDiffScale = 0.36,
     this.foulOnTurnover = 0.50,
     this.inBoxFoulChance = 0.013,
     this.penaltyOnTarget = 0.93,

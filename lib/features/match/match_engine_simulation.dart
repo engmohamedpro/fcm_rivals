@@ -81,7 +81,19 @@ extension _MatchEngineSim on MatchEngine {
             defendingSide,
             out,
             _runtimeOf(attackerSide),
-            ChanceQuality.normal,
+            // Set-piece quality is a deterministic 50/50 mix — odd
+            // minutes a big chance (a corner/free-kick delivery
+            // against a set defence), even minutes a snatched
+            // half-chance — the minute-parity trick the corner-claim
+            // already uses (no extra random draw; the stream stays
+            // byte-identical). The mix is what holds the conversion
+            // anchor: the pure-normal carrier read 10.9% (floor
+            // 11.5) and the pure-bigChance carrier 12.6% (ceiling
+            // 12.5) — the parity mix lands between them, and it is
+            // where real set pieces live anyway.
+            minute.isOdd
+                ? ChanceQuality.bigChance
+                : ChanceQuality.normal,
           ),
         );
         // The minute's possession pocket is consumed by the set
@@ -178,10 +190,13 @@ extension _MatchEngineSim on MatchEngine {
     // infinite upgrade ladder (T-0070) grows the WORLD without
     // distorting matches; a one-sided lift reads a bounded fraction
     // (±0.5 at ±100%), never a growing absolute number that
-    // saturates the logistic. Home advantage (1.07 on the home
-    // totals) stays where computeTotals applies it — measured
-    // attempt evidence: dividing it out of the edge breaks the
-    // gap-0 even-strength band (0.373 vs 0.42–0.52).
+    // saturates the logistic.
+    // Home advantage (1.085 on the home totals) stays where
+    // computeTotals applies it — measured attempt evidence: dividing
+    // it out of the edge breaks the gap-0 even-strength band (0.373
+    // vs 0.42–0.52); the T-0116 composed-home cap experiments were
+    // measured INEFFECTIVE (+0.003 / within noise) and reverted —
+    // see T-0116's Developer Notes.
     final attackEdge =
         (attTotals.attack - defTotals.defence) /
         ((attTotals.attack + defTotals.defence) / 2);

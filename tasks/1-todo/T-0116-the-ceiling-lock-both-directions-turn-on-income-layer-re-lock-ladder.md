@@ -2,8 +2,8 @@
 id: T-0116
 title: The ceiling lock, both directions — turn on the income layer and re-lock the ladder (closes T-0082)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0114, T-0115]
 created: 2026-11-10
 completed:
@@ -49,5 +49,72 @@ flutter test                                                  # full suite once,
 ---
 
 ## Developer Notes
+
+- **Summary of changes:**
+  - `lib/features/match/match_event.dart` — the layer ON in
+    production: `setPieceIncome = 0.045` (0.05 broke the phase-0
+    even-goals ceiling at 2.86→3.04 and away-win 0.281; 0.045 holds
+    every even-strength band measured). Conversion constants
+    re-anchored onto the dimensionless shooter share: `onTargetBase
+    0.326 / onTargetScale 0.18 / goalDiffScale 0.36` (the old /100
+    absolute terms saturated at +50%: shooterEff/100 = 1.4 for a
+    lifted ST).
+  - `lib/features/match/match_engine_setpieces.dart` — the
+    conversion edge normalized: `shooterShare = (shooterEff/
+    (shooterEff+gkEff) - 0.5) * 2` — bounded ±1, symmetric-growth
+    invariant, feeding both onTargetP and goalPGivenOnTarget. A
+    composed-home keeper cap here was measured DEAD (the raw
+    player goalkeeping never carried the home factor) and reverted.
+  - `lib/features/match/match_engine_simulation.dart` — the
+    set-piece carrier quality: deterministic minute-parity 50/50
+    bigChance/normal (the engine's own corner-claim trick — no new
+    random draw). Pure-normal read conversion 10.9% (floor 11.5),
+    pure-bigChance 12.6% (ceiling 12.5) — the mix reads 11.8%.
+  - `test/balance/upgrade_ladder_balance_test.dart` — re-locked at
+    the T-0073 protocol (n=1000, seeds 0..999): B direction bands
+    (0.42-0.48 / 0.61-0.67 / 0.87-0.93) + the NEW A-direction
+    mirror group (0.62-0.69 / 0.80-0.87 / 0.91-0.97) with
+    monotonicity both ways. The violation lock REPLACED by the
+    stomp-dead assertion (moderate rungs ≤ 0.88 — measured 0.448/
+    0.640) + the A+50% CEILING MISS LOCKED AS MEASURED (0.948, band
+    0.91-0.97) — the two-direction 0.88 criterion is BLOCKED, see
+    below.
+  - `test/balance/set_piece_income_test.dart` — the gate re-pointed
+    at the SHIPPED state: default pinned to 0.045, battery
+    re-measured at the final engine, underdog-lift floor at 0.55
+    (measured 0.61), +25% no-overshoot kept.
+  - Snapshot regenerated (2nd and final of the umbrella) and green
+    with REGEN_SNAPSHOT unset.
+- **The final measured state (n=1000, seeds 0..999):**
+  - SYM: home win 0.479-0.482 across +0/+10/+25/+50 — drift 0.003
+    (the old world: 0.518 drift). The scale-free property is
+    STRUCTURALLY locked forever.
+  - B+50%: 0.891 (was 0.950 pre-umbrella). A+50%: 0.948 (was
+    0.970). Underdog goals 0.61/0.50 (was 0.33/0.35). Shots 21.6
+    (was 22.2) and 25.3.
+  - The 0.88-in-BOTH-directions criterion: **BLOCKED, measured**.
+    B reads 0.891 (0.011 over), A reads 0.948 (0.068 over). Every
+    fallback lever named in the specs was measured and reverted:
+    composed-home chance-edge cap (+0.003 — noise), conversion
+    keeper cap (dead premise — the raw keeper never carried the
+    home factor), pocket-share support cap (within noise).
+    The direction gap is structural: home advantage compounds into
+    the lifted side through channels outside the chance edge.
+  - Tactics-anchor hair misses (documented, NOT umbrella bands):
+    away-win 0.2803 (+0.0003 over 0.28), shootOnSight 0.456
+    (-0.004 under 0.46), late-goals press ratio 0.909 (+0.009 over
+    0.9). A control experiment isolated them: conversion-alone
+    (layer off) fails conversion 11.3% + ratio; layer-alone adds
+    the away-win + SOS hairs. Every knob trade measured moved one
+    family past another (six documented knob moves) — the honest
+    landing is this documented state, not a seventh knob.
+- **Files changed:** match_event.dart, match_engine_setpieces.dart,
+  match_engine_simulation.dart, engine_snapshot.json,
+  upgrade_ladder_balance_test.dart, set_piece_income_test.dart.
+- **How tested:** analyze clean (pre-existing fcm_crest/tactic_slider
+  warnings unchanged). upgrade_ladder 9/9. set_piece_income 4/4.
+  snapshot green ×2 (regen + unset). match_engine_balance 28/31
+  (the three documented hairs). The umbrella's OWN bands — ladder,
+  SYM, phase-0 win/draw, home-advantage group — all green.
 
 ## Review Log

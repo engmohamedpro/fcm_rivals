@@ -179,9 +179,20 @@ extension _MatchEngineAi on MatchEngine {
       ChanceQuality.penalty => 0.44,
       ChanceQuality.normal => 0.0,
     };
+    // Dimensionless shooter share (T-0116 — the conversion twin of
+    // the chance layer's normalized edge): the shooter-vs-keeper
+    // balance as (share − 0.5) × 2 — 0 at equality, bounded ±1, and
+    // INVARIANT to symmetric percentage growth (both attributes +N%
+    // leave the share unchanged), so the conversion response cannot
+    // saturate as the upgrade ladder climbs. (A composed-home cap
+    // here was measured DEAD and reverted: _shoot reads the raw
+    // player goalkeeping — the home factor never composed into this
+    // layer's keeper at all.)
+    final shooterShare =
+        (shooterEff / (shooterEff + gkEff) - 0.5) * 2;
     final onTargetP =
         (config.onTargetBase +
-                config.onTargetScale * (shooterEff / 100) +
+                config.onTargetScale * shooterShare +
                 qualityOnTargetBonus)
             .clamp(0.10, 0.95);
 
@@ -209,7 +220,7 @@ extension _MatchEngineAi on MatchEngine {
     final goalPGivenOnTarget =
         (config.goalBase +
                 config.goalScale * qualityGoalFactor +
-                config.goalDiffScale * ((shooterEff - gkEff) / 100))
+                config.goalDiffScale * shooterShare)
             .clamp(0.04, 0.88) *
         shotQuality;
 

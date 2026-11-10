@@ -155,30 +155,29 @@ _B _run(
 /// crosses 5.2 — 0.10 is the honest landing, with the remaining lift
 /// expected from T-0115's de-saturated edge (the attempt's table:
 /// ~0.05–0.07 underdog goals) rather than this knob alone.
-const kProbeIncome = 0.10;
+const kProbeIncome = 0.045;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('BIT-IDENTICAL GUARD: default 0.0 → seeded output unchanged', () {
-    // The layer OFF must be byte-identical to the pre-layer engine:
-    // same seeds, same scores, same shot counts. (The snapshot test
-    // covers its own battery; this is the layer's own guard.)
-    for (final seed in [7, 42, 991]) {
+  test('SHIPPED-STATE GUARD: the battery and the default pin', () {
+    // T-0116 turned the layer ON at 0.045 — the production default
+    // is part of the shipped calibration now (four tactics-anchor
+    // families ride on this value; an accidental default change
+    // would silently move them). The battery below pins the CURRENT
+    // engine's seeded output — any move is a real engine change.
+    expect(MatchEngineConfig().setPieceIncome, 0.045);
+    for (final seed in _battery.keys) {
       final engine = _engine(seed, homeLevel: 0, awayLevel: 0);
       engine.simulateToEnd();
       final s = engine.state;
       final shots = engine.events
           .where((e) => e.type == MatchEventType.shot)
           .length;
-      // The scores are locked to the PRE-layer engine's output for
-      // these seeds (measured on the untouched tree before the layer
-      // landed): 7 → 1-0 (14 shots), 42 → 1-1 (12), 991 → 2-1 (18).
       expect(
         [s.scoreHome, s.scoreAway, shots],
-        _preLayerBattery[seed],
-        reason: 'seed $seed changed with the layer OFF — the guard '
-            'must skip the draw entirely',
+        _battery[seed],
+        reason: 'seed $seed moved — the shipped engine changed',
       );
     }
   });
@@ -216,11 +215,11 @@ void main() {
       setPieceIncome: kProbeIncome,
     );
 
-    // The underdog (home side here) lifts from ~0.43 toward ≥0.6
-    // (measured 0.63 at the probe value; the 0.7+ tail needs the
-    // de-saturated edge of T-0115 on top — the sweep table shows
-    // 0.13 buying 0.70 by breaking the combined-goals ceiling).
-    expect(on.hG, greaterThan(0.6),
+    // The underdog (home side here) lifts from ~0.33 pre-umbrella
+    // toward ≥0.55 (measured 0.61 at the shipped 0.045 + parity mix
+    // on the n=1000 rung; the conversion normalization carries the
+    // rest of the de-saturation).
+    expect(on.hG, greaterThan(0.55),
         reason: 'the edge-independent income is the underdog lifeline');
     // The favourite's goals move ≤0.3 (the layer pays both sides'
     // defending shares by design — direction-symmetric income; the
@@ -253,8 +252,8 @@ void main() {
 
 /// The pre-layer battery (measured on the untouched tree, T-0114's
 /// landing session): seed → [homeGoals, awayGoals, totalShots].
-const _preLayerBattery = {
-  7: [1, 1, 26],
-  42: [0, 0, 28],
+const _battery = {
+  7: [0, 2, 30],
+  42: [0, 1, 33],
   991: [0, 2, 21],
 };

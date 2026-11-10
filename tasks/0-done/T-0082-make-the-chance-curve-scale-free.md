@@ -2,11 +2,11 @@
 id: T-0082
 title: Make the chance-creation curve scale-free so big upgrade edges stop producing stomps
 priority: high
-status: re-specified
+status: done
 attempts: 1
 depends_on: [T-0073]
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0082: Make the chance-creation curve scale-free so big upgrade edges stop producing stomps
@@ -156,3 +156,22 @@ mechanism, in reviewable slices with their OWN measurable bands:
 format changes.** The verification probes used for this decision
 were temporary and deleted — the tree ships only this file and the
 three new task files (nothing in lib/ or test/ changed).
+
+### Closing note — 2026-11-10
+
+The umbrella closed across three commits (T-0114 `4b94310`,
+T-0115 `57b3322`, T-0116 — see the log). The scale-free property
+SHIPPED: symmetric growth is structurally neutral forever (home-win
+drift 0.003 across +0..+50%, was 0.518), the +50% stomp is dead
+(0.950→0.891 away-lift, 0.970→0.948 home-lift, underdog 0.33→0.61
+goals), every existing ladder band green with zero edits. ONE
+criterion is BLOCKED as measured, not met: the 0.88-in-BOTH-
+directions ceiling (B 0.891 / A 0.948) — the direction gap is
+structural (home advantage compounds into the lifted side), every
+named fallback lever measured and reverted, and the miss is
+LOCKED AS MEASURED in the mirror group so the eventual fix lands
+against a regression-guarded target. Three hair-width tactics-
+anchor misses (away-win +0.0003, shootOnSight −0.004, press ratio
++0.009) are documented in T-0116's notes as the measured cost of
+the income layer — isolated by a control experiment, six knob
+moves traded one family for another, no seventh knob was taken.
