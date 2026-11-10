@@ -412,7 +412,7 @@ extension _MatchEngineAi on MatchEngine {
       final rt = _runtimeOf(side);
       final styleStamina =
           rt.tactics.modifiers.stamina *
-          rt.mentality.staminaMod *
+          rt.mentalityFx.stamina *
           _activeActionModifiersOf(side).stamina *
           rt.pepTalkModifiers.stamina;
       for (final p in rt.onPitch.whereType<MatchPlayer>()) {

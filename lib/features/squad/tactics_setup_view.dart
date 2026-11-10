@@ -14,6 +14,7 @@ import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_context.dart';
 import '../match/chemistry.dart';
 import '../match/tactics.dart';
+import '../match/tactic_slider_row.dart';
 import '../match/tactics_sections.dart';
 import 'formations.dart';
 import 'squad_drag.dart';
@@ -418,9 +419,8 @@ class _TacticsOptionsSheet extends StatefulWidget {
 
 class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
   late TeamTactics _tactics = widget.initialTactics;
-  late int _mentalityScale = mentalityToScale(widget.initialMentality);
 
-  /// The last mentality handed to the owner — drags that land back on
+  /// The last mentality handed to the owner — drags that stay inside
   /// the same step never re-commit it. Mutable: it moves with every
   /// committed drag.
   late Mentality _committed;
@@ -431,10 +431,13 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
     _committed = widget.initialMentality;
   }
 
-  /// A released drag commits the step it landed on — one callback per
-  /// gesture, never per intermediate tick.
+  /// A released drag commits once: the fine position rides in the
+  /// tactics, and the step it landed on goes to the mentality when it
+  /// changed.
   void _commitMentality(int scale) {
-    final m = mentalityFromScale(scale);
+    final m = mentalityOfScale(scale);
+    setState(() => _tactics = _tactics.withMentalityScale(scale));
+    widget.onTactics(_tactics);
     if (m == _committed) return;
     _committed = m;
     widget.onMentality(m);
@@ -442,7 +445,6 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = l10nOf(context);
     // The three instruction sections plus the mentality scale can grow
     // past the viewport (phases 1-3 add controls), so the sheet scrolls
     // inside a height cap instead of overflowing.
@@ -481,50 +483,20 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
                 ),
               ),
               const SizedBox(height: 14),
+              // Mentality is the first slider: 0 Very Defensive … 99 Very
+              // Attacking, Balanced at 50, like every other tactic.
+              TacticSliderRow(
+                axis: TacticAxisId.mentality,
+                value: _tactics.mentalityScaleFor(_committed),
+                onCommit: _commitMentality,
+              ),
+              const SizedBox(height: 12),
               TacticsGroupScaffold(
                 tactics: _tactics,
                 onChanged: (t) => setState(() {
                   _tactics = t;
                   widget.onTactics(t);
                 }),
-              ),
-              const SizedBox(height: 12),
-              // Mentality as a 0–100 scale: Very Defensive at 0, Very
-              // Attacking at 100, Balanced dead centre — the marker's
-              // label names the step it rides on, and the effect summary
-              // under the track updates as steps are crossed (GDD 10.3:
-              // effects must be visible).
-              _labeledRow(
-                label: l10n.tacticsMentality.toUpperCase(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    FcmScaleSlider(
-                      value: _mentalityScale,
-                      // Stepped mode (T-0062): the seven mentalities are
-                      // the scale's named steps — the marker follows the
-                      // finger but only ever commits/rests on a step,
-                      // and the reported scale is always a step
-                      // position, so mentalityFromScale(scale) maps
-                      // exactly as before. The pill and the end labels
-                      // read the localized names (T-0064).
-                      steps: Mentality.values.length,
-                      valueLabel: (v) =>
-                          mentalityDisplayName(l10n, mentalityFromScale(v)),
-                      minLabel: mentalityDisplayName(
-                        l10n,
-                        Mentality.veryDefensive,
-                      ),
-                      maxLabel: mentalityDisplayName(
-                        l10n,
-                        Mentality.veryAttacking,
-                      ),
-                      semanticsLabel: l10n.tacticsMentality,
-                      onChanged: (v) => setState(() => _mentalityScale = v),
-                      onChangeEnd: _commitMentality,
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 16),
               FcmButton(
@@ -536,25 +508,6 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _labeledRow({required String label, required Widget child}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: FcmColors.textDim,
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2,
-          ),
-        ),
-        const SizedBox(height: 6),
-        child,
-      ],
     );
   }
 }

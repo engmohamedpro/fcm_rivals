@@ -241,7 +241,7 @@ extension _MatchEngineSim on MatchEngine {
       attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
     );
     final styleDrain = def.tactics.modifiers.stamina *
-        def.mentality.staminaMod *
+        def.mentalityFx.stamina *
         _activeActionModifiersOf(
           attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
         ).stamina *

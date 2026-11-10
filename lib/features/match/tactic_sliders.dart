@@ -33,6 +33,10 @@ const int kScaleMid = 50;
 /// Every continuous tactic slider, grouped like the three instruction
 /// groups. [key] is the stable persistence name.
 enum TacticAxisId {
+  // The team's overall mentality: the first slider of the sheet. It is
+  // stored apart from the three instruction groups (see
+  // `TeamTactics.mentalityScale`).
+  mentality,
   // In possession.
   buildUp,
   tempo,

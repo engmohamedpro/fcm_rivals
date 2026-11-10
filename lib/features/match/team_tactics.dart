@@ -8,10 +8,12 @@
 library;
 
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'in_possession_tactics.dart';
 import 'out_of_possession_tactics.dart';
 import 'tactic_modifiers.dart';
+import 'tactic_sliders.dart';
 import 'transition_tactics.dart';
 
 /// A team's full tactical setup (GDD 10.2 Custom Tactics): three
@@ -28,6 +30,7 @@ class TeamTactics {
     this.inPossession = const InPossessionTactics(),
     this.outOfPossession = const OutOfPossessionTactics(),
     this.transitions = const TransitionTactics(),
+    this.mentalityScale,
   });
 
   /// What the team does with the ball (phase 1 fills the instructions).
@@ -39,6 +42,39 @@ class TeamTactics {
   /// What the team does right after losing/winning the ball (phase 3
   /// fills the instructions).
   final TransitionTactics transitions;
+
+  /// The mentality slider's fine position (0–99) when it sits BETWEEN
+  /// the seven named steps' canonical positions; null when the slider
+  /// is on a step (the club's `mentality` column alone says it).
+  ///
+  /// The mentality itself stays a 7-step enum in its own column — the
+  /// pre-match picker, live nudges and the AI all read it — so this
+  /// override rides in the tactics JSON. It only counts while the step
+  /// it falls in IS the current mentality: if the mentality is changed
+  /// elsewhere, a stale override is ignored (see [mentalityScaleFor]).
+  final int? mentalityScale;
+
+  /// The slider position to show for [mentality]: the stored fine
+  /// value when it belongs to that step, otherwise the step's own
+  /// canonical position.
+  int mentalityScaleFor(Mentality mentality) {
+    final s = mentalityScale;
+    if (s != null && mentalityOfScale(s) == mentality) return s;
+    return mentalityStepScale(mentality);
+  }
+
+  /// This setup with the mentality slider at [value] (0–99). Normalised:
+  /// a value on a step's canonical position stores nothing.
+  TeamTactics withMentalityScale(int value) {
+    final v = clampScale(value);
+    final onStep = v == mentalityStepScale(mentalityOfScale(v));
+    return TeamTactics(
+      inPossession: inPossession,
+      outOfPossession: outOfPossession,
+      transitions: transitions,
+      mentalityScale: onStep ? null : v,
+    );
+  }
 
   /// The composed bundle the engine consumes at its hook points. Today
   /// every group contributes the identity; each phase multiplies in its
@@ -69,6 +105,7 @@ class TeamTactics {
     'inPossession': inPossession.toJson(),
     'outOfPossession': outOfPossession.toJson(),
     'transitions': transitions.toJson(),
+    if (mentalityScale != null) 'mentalityScale': mentalityScale,
   };
 
   /// Parses a persisted payload. Anything missing or malformed maps to
@@ -79,7 +116,16 @@ class TeamTactics {
       _asMap(json['outOfPossession']),
     ),
     transitions: TransitionTactics.fromJson(_asMap(json['transitions'])),
+    mentalityScale: _parseMentalityScale(json['mentalityScale']),
   );
+
+  /// A persisted fine mentality position: numbers only, clamped, and
+  /// dropped when it is just a step's canonical position.
+  static int? _parseMentalityScale(Object? raw) {
+    if (raw is! num) return null;
+    final v = clampScale(raw.round());
+    return v == mentalityStepScale(mentalityOfScale(v)) ? null : v;
+  }
 
   static Map<String, dynamic> _asMap(Object? value) =>
       value is Map<String, dynamic> ? value : const {};
@@ -99,6 +145,7 @@ class TeamTactics {
     inPossession: inPossession ?? this.inPossession,
     outOfPossession: outOfPossession ?? this.outOfPossession,
     transitions: transitions ?? this.transitions,
+    mentalityScale: mentalityScale,
   );
 
   @override
@@ -106,10 +153,12 @@ class TeamTactics {
       other is TeamTactics &&
       other.inPossession == inPossession &&
       other.outOfPossession == outOfPossession &&
-      other.transitions == transitions;
+      other.transitions == transitions &&
+      other.mentalityScale == mentalityScale;
 
   @override
-  int get hashCode => Object.hash(inPossession, outOfPossession, transitions);
+  int get hashCode =>
+      Object.hash(inPossession, outOfPossession, transitions, mentalityScale);
 }
 
 /// Parses a persisted club tactics column into [TeamTactics].
@@ -191,6 +240,62 @@ enum Mentality {
     describe('Stamina use', staminaMod);
     return parts.isEmpty ? 'No modifiers' : parts.join(' · ');
   }
+}
+
+/// The attack / defence / stamina multipliers a mentality contributes
+/// to the engine.
+class MentalityEffect {
+  const MentalityEffect(this.attack, this.defence, this.stamina);
+
+  final double attack;
+  final double defence;
+  final double stamina;
+}
+
+/// The canonical 0–99 slider position of a mentality step:
+/// 0, 17, 33, 50, 66, 83, 99 (Balanced dead centre at 50).
+int mentalityStepScale(Mentality m) =>
+    stepToScale(m.index, Mentality.values.length);
+
+/// The mentality step a 0–99 slider position falls in (boundaries at
+/// 8/9, 25, 41/42, 58, 74/75, 91).
+Mentality mentalityOfScale(int value) =>
+    Mentality.values[scaleToStep(value, Mentality.values.length)];
+
+/// What [mentality] contributes to the engine, optionally refined by the
+/// slider's fine position [scale] (see [TeamTactics.mentalityScale]).
+///
+/// Without a usable [scale] — none stored, or one that belongs to a
+/// different step than [mentality] — this is exactly the step's tuned
+/// numbers (bit-identical to the 7-step build). With one, the three
+/// multipliers are blended geometrically between the two neighbouring
+/// steps' canonical positions, so the tuned pairs stay the anchors and
+/// the curve between them is continuous.
+MentalityEffect mentalityEffect(Mentality mentality, [int? scale]) {
+  MentalityEffect step(Mentality m) =>
+      MentalityEffect(m.attackMod, m.defenceMod, m.staminaMod);
+  if (scale == null) return step(mentality);
+  final v = clampScale(scale);
+  if (mentalityOfScale(v) != mentality) return step(mentality);
+  final all = Mentality.values;
+  var i = 0;
+  while (i < all.length - 2 && v >= mentalityStepScale(all[i + 1])) {
+    i++;
+  }
+  final lo = all[i];
+  final hi = all[i + 1];
+  final a = mentalityStepScale(lo);
+  final b = mentalityStepScale(hi);
+  if (v <= a) return step(lo);
+  if (v >= b) return step(hi);
+  final t = (v - a) / (b - a);
+  double blend(double x, double y) =>
+      math.exp(math.log(x) * (1 - t) + math.log(y) * t);
+  return MentalityEffect(
+    blend(lo.attackMod, hi.attackMod),
+    blend(lo.defenceMod, hi.defenceMod),
+    blend(lo.staminaMod, hi.staminaMod),
+  );
 }
 
 /// Converts a 0–100 scale position to the step of an ordered enum

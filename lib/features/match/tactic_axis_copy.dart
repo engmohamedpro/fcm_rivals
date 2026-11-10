@@ -43,6 +43,19 @@ class TacticAxisCopy {
 
 /// Every slider's wording.
 const Map<TacticAxisId, TacticAxisCopy> kTacticAxisCopy = {
+  // ---- Mentality
+  TacticAxisId.mentality: TacticAxisCopy(
+    nameEn: 'Mentality',
+    nameAr: 'العقلية',
+    bandsEn: [
+      'Very defensive',
+      'Defensive',
+      'Balanced',
+      'Attacking',
+      'Very attacking',
+    ],
+    bandsAr: ['دفاعي للغاية', 'دفاعي', 'متوازن', 'هجومي', 'هجومي للغاية'],
+  ),
   // ---- In possession
   TacticAxisId.buildUp: TacticAxisCopy(
     nameEn: 'Build-Up',

@@ -124,6 +124,12 @@ class _TeamRuntime {
   Formation formation;
   TeamTactics tactics;
   Mentality mentality;
+
+  /// The mentality's contribution, refined by the tactics' fine
+  /// mentality slider when it belongs to the current step.
+  MentalityEffect get mentalityFx =>
+      mentalityEffect(mentality, tactics.mentalityScale);
+
   final bool aiControlled;
 
   /// On-pitch players by formation slot; null = empty slot (sent off).
@@ -194,19 +200,19 @@ class _TeamRuntime {
     }
     final attack =
         (attackW > 0 ? attackSum / attackW : 0) *
-        mentality.attackMod *
+        mentalityFx.attack *
         tactics.modifiers.attack *
         actionModifiers.attack *
         pepTalkModifiers.attack;
     final support = supportW > 0 ? supportSum / supportW : 0;
     final defence =
         (defenceW > 0 ? defenceSum / defenceW : 0) *
-        mentality.defenceMod *
+        mentalityFx.defence *
         tactics.modifiers.defence *
         actionModifiers.defence *
         pepTalkModifiers.defence;
     final goalkeeping =
-        gkEff * mentality.defenceMod * tactics.modifiers.defence;
+        gkEff * mentalityFx.defence * tactics.modifiers.defence;
     // Nationality chemistry (owner spec 2026-11-09): every shared
     // nationality group of n ≥ 2 on-pitch players adds (n − 1) points,
     // and the sum multiplies all four totals. Computed from the live

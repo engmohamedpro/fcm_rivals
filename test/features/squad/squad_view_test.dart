@@ -311,26 +311,20 @@ void main() {
     expect(find.text('Transitions'), findsOneWidget);
     expect(find.textContaining('FORMATION'), findsNothing);
 
-    // Dead centre default: the marker's floating label reads Balanced,
-    // the scale's ends are named Very Defensive / Very Attacking. The
-    // marker assertion is scoped to the MENTALITY slider (the last of
-    // ten, T-0064) so the nine axis pills can never disturb it.
+    // Dead centre default: the mentality slider (the FIRST of the
+    // twelve) shows 50 and its pill reads Balanced. Scoped to that
+    // slider so the other pills can never disturb it.
     expect(
       find.descendant(
-        of: find.byType(FcmScaleSlider).at(9),
+        of: find.byType(FcmScaleSlider).first,
         matching: find.text('Balanced'),
       ),
       findsOneWidget,
     );
-    expect(find.text('Very Defensive'), findsOneWidget);
-    expect(find.text('Very Attacking'), findsOneWidget);
-    // 'Balanced' appears inside the tactics scaffold once per group at
-    // the defaults: the final-third CHIP (In Possession — categorical,
-    // stays chips, T-0064) and the tackling / counter-press /
-    // attack-on-recovery slider PILLS (Out of Possession +
-    // Transitions — their default step is Balanced). Scoped to the
-    // scaffold: a future instruction row may move this count, but it
-    // can never touch the mentality label above.
+    // 'Balanced' appears inside the tactics scaffold at the defaults on
+    // the final-third (shot selection), tackling, counter-press and
+    // on-recovery slider PILLS. Scoped to the scaffold: it can never
+    // touch the mentality pill above.
     expect(
       find.descendant(
         of: find.byType(TacticsGroupScaffold),
@@ -450,13 +444,10 @@ void main() {
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
 
-    // T-0064: the sheet holds ten sliders — the mentality one is the
-    // LAST (the scaffold's nine axes render first, sheet order:
-    // buildUp, tempo, width, defensiveLine, pressing, tackling,
-    // counterPress, attackOnRecovery, restDefence, mentality).
-    final slider = find.byType(FcmScaleSlider).at(9);
-    // The mentality slider sits below the fold of the capped sheet —
-    // reveal it before measuring and dragging.
+    // The sheet holds twelve 0-99 sliders — the mentality one is the
+    // FIRST, above the scaffold's eleven tactic sliders.
+    final slider = find.byType(FcmScaleSlider).first;
+    // Reveal it before measuring and dragging.
     await tester.ensureVisible(slider);
     await tester.pumpAndSettle();
     final track = tester.getRect(slider);
@@ -472,9 +463,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(committed, isNotEmpty);
     expect(committed.last, Mentality.veryAttacking);
-    // The floating label followed the marker: the pill rides above the
-    // track, 'Very Attacking' also captions the scale's right end.
-    expect(find.text('Very Attacking'), findsNWidgets(2));
+    // The floating label followed the marker: the pill above the thumb
+    // describes the number.
+    expect(find.text('Very attacking'), findsOneWidget);
     // No mentality pill still reads Balanced (the STYLE dropdown's
     // 'Balanced' label is unrelated and stays).
     expect(

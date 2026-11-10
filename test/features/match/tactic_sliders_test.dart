@@ -442,6 +442,100 @@ void main() {
     });
   });
 
+  group('mentality slider', () {
+    test('canonical positions of the seven steps', () {
+      expect([for (final m in Mentality.values) mentalityStepScale(m)], [
+        0,
+        17,
+        33,
+        50,
+        66,
+        83,
+        99,
+      ]);
+      for (final m in Mentality.values) {
+        expect(mentalityOfScale(mentalityStepScale(m)), m);
+      }
+      expect(mentalityOfScale(24), Mentality.defensive);
+      expect(mentalityOfScale(25), Mentality.cautious);
+      expect(mentalityOfScale(0), Mentality.veryDefensive);
+      expect(mentalityOfScale(99), Mentality.veryAttacking);
+    });
+
+    test('no scale, or a canonical one, is exactly the tuned step', () {
+      for (final m in Mentality.values) {
+        for (final fx in [
+          mentalityEffect(m),
+          mentalityEffect(m, mentalityStepScale(m)),
+        ]) {
+          expect(fx.attack, m.attackMod, reason: m.name);
+          expect(fx.defence, m.defenceMod, reason: m.name);
+          expect(fx.stamina, m.staminaMod, reason: m.name);
+        }
+      }
+    });
+
+    test('between two steps it is their geometric blend', () {
+      // 25 is halfway between Defensive (17) and Cautious (33).
+      final fx = mentalityEffect(Mentality.cautious, 25);
+      expect(fx.attack, closeTo(math.sqrt(0.90 * 0.95), 1e-12));
+      expect(fx.defence, closeTo(math.sqrt(1.06 * 1.05), 1e-12));
+      expect(fx.stamina, closeTo(math.sqrt(0.95 * 0.98), 1e-12));
+    });
+
+    test('attack rises monotonically across the whole slider', () {
+      var last = 0.0;
+      for (var v = 0; v <= 99; v++) {
+        final fx = mentalityEffect(mentalityOfScale(v), v);
+        expect(fx.attack, greaterThanOrEqualTo(last), reason: 'v=$v');
+        expect(fx.attack, inInclusiveRange(0.82, 1.18));
+        last = fx.attack;
+      }
+    });
+
+    test('a stale override (another step is now selected) is ignored', () {
+      final fx = mentalityEffect(Mentality.balanced, 25);
+      expect(fx.attack, Mentality.balanced.attackMod);
+      const t = TeamTactics(mentalityScale: 25);
+      expect(t.mentalityScaleFor(Mentality.balanced), 50);
+      expect(t.mentalityScaleFor(Mentality.cautious), 25);
+    });
+
+    test('withMentalityScale normalises and persists', () {
+      final t = const TeamTactics().withMentalityScale(25);
+      expect(t.mentalityScale, 25);
+      expect(t.mentalityScaleFor(Mentality.cautious), 25);
+      expect(const TeamTactics().withMentalityScale(33).mentalityScale, isNull);
+      expect(t.withMentalityScale(66), const TeamTactics());
+      // Group edits keep the fine position.
+      expect(
+        t
+            .copyWith(
+              inPossession: const InPossessionTactics(
+                tempo: AttackTempo.fast,
+              ),
+            )
+            .mentalityScale,
+        25,
+      );
+      final back = tacticsFromDbPayload(jsonEncode(t.toJson()));
+      expect(back, t);
+      expect(back.mentalityScale, 25);
+      expect(const TeamTactics().toJson().containsKey('mentalityScale'), false);
+    });
+
+    test('junk or canonical stored values are dropped', () {
+      expect(
+        tacticsFromDbPayload('{"mentalityScale":"x"}').mentalityScale,
+        isNull,
+      );
+      expect(tacticsFromDbPayload('{"mentalityScale":50}').mentalityScale, isNull);
+      expect(tacticsFromDbPayload('{"mentalityScale":900}').mentalityScale, isNull);
+      expect(tacticsFromDbPayload('{"mentalityScale":-5}').mentalityScale, isNull);
+      expect(tacticsFromDbPayload('{"mentalityScale":60}').mentalityScale, 60);
+    });
+  });
+
   group('slider wording (EN + AR)', () {
     test('every slider has a name and five distinct bands in both '
         'languages', () {
