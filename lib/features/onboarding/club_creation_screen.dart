@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 
 import '../../app/providers.dart';
 import '../../core/ui/fcm_logo.dart';
+import '../../core/ui/fcm_language_toggle.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../squad/formations.dart';
@@ -81,6 +82,15 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // T-0096: the language toggle above the wordmark —
+                    // a brand-new player flips EN/AR before typing
+                    // anything. End-aligned so LTR/RTL both park it at
+                    // the far corner; visible without scrolling.
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: const FcmLanguageToggle(),
+                    ),
+                    const SizedBox(height: 4),
                     FcmEntrance(
                       child: Center(
                         child: ConstrainedBox(

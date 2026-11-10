@@ -20,6 +20,7 @@ import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/onboarding/club_creation_screen.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/squad/formations.dart';
+import 'package:fcm_rivals/features/settings/user_settings_store.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
 
 const List<List<String>> _seedPositions = [
@@ -92,6 +93,53 @@ Future<CollectionStore> pumpCreation(
   await tester.pump(const Duration(milliseconds: 400));
   return store;
 }
+
+
+/// T-0096 harness: pumps the creation screen with a WORKING settings
+/// store (the default harness stubs it with a throw, which would break
+/// the toggle's persist step) and a localeProvider seeded with [tag].
+Future<CollectionStore> pumpCreationWithSettings(
+  WidgetTester tester,
+  String tag,
+) async {
+  final db = AppDatabase(NativeDatabase.memory());
+  final store = CollectionStore(db: db);
+  await store.applyDatasetUpdate(PlayerDataset.fromJson(_datasetJson()));
+  addTearDown(() => db.close());
+  final settings = UserSettingsStore(database: db);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        collectionStoreProvider.overrideWith((ref) => store),
+        userSettingsProvider.overrideWith((ref) async => settings),
+        localeProvider.overrideWith((ref) => tag),
+      ],
+      child: Consumer(
+        builder: (context, ref, _) => MaterialApp(
+          locale: localeFromTag(ref.watch(localeProvider)) ??
+              const Locale('en'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const ClubCreationScreen(),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+  return store;
+}
+
+/// 'en'/'ar'/null → the matching Locale (null keeps the default EN in
+/// this harness — the entry gate owns the system-follow case in prod).
+Locale? localeFromTag(String? tag) =>
+    tag == 'ar' ? const Locale('ar') : const Locale('en');
 
 void main() {
   testWidgets(
@@ -213,6 +261,51 @@ void main() {
       expect(club, isNotNull);
       expect(club!.name, 'FC Rivals');
       expect(club.formationCode, formations.first.code);
+    },
+  );
+
+  testWidgets(
+    'T-0096: the language toggle flips EN↔AR live and typed names '
+    'survive',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await pumpCreationWithSettings(tester, 'en');
+
+      // English first: the toggle glyph shows the ARABIC target 'ع'.
+      expect(find.text('Create your club'), findsOneWidget);
+      expect(find.text('ع'), findsOneWidget);
+
+      // Type a club name — it must survive the flip (in-screen state).
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        'Pyramid United',
+      );
+      await tester.pump();
+
+      // One tap flips the whole form to Arabic.
+      await tester.tap(find.text('ع'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('أنشئ ناديك'), findsOneWidget);
+      expect(find.text('Create your club'), findsNothing);
+      expect(find.text('EN'), findsOneWidget, reason: 'the glyph flipped');
+
+      // The typed name survived the locale change.
+      expect(
+        find.text('Pyramid United'),
+        findsOneWidget,
+        reason: 'the form state outlives the MaterialApp rebuild',
+      );
+
+      // A second tap returns to English — no duplicated toggle, no
+      // glitch: exactly ONE glyph on screen either way.
+      await tester.tap(find.text('EN'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Create your club'), findsOneWidget);
+      expect(find.text('ع'), findsOneWidget);
     },
   );
 }

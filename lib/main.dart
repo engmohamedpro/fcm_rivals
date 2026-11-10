@@ -11,6 +11,7 @@ import 'l10n/app_localizations.dart';
 import 'app/providers.dart';
 import 'core/ui/fcm_logo.dart';
 import 'core/ui/fcm_style.dart';
+import 'core/ui/fcm_language_toggle.dart';
 import 'core/ui/fcm_widgets.dart';
 import 'features/collection/collection_collection_screen.dart';
 import 'features/facilities/campus_screen.dart';
@@ -153,38 +154,6 @@ class GameShell extends ConsumerWidget {
   }
 }
 
-/// EN/AR toggle in the app bar: one tap flips the whole app's locale
-/// and persists the choice (GDD localization). The glyph stays in the
-/// TARGET language so the switch always shows where it leads.
-class _LanguageToggle extends ConsumerWidget {
-  const _LanguageToggle();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tag = ref.watch(localeProvider);
-    final next = tag == 'ar' ? 'en' : 'ar';
-    return IconButton(
-      tooltip: AppLocalizations.of(context)?.languageLabel ?? 'Language',
-      visualDensity: VisualDensity.compact,
-      onPressed: () => unawaited(
-        setLocale(
-          controller: ref.read(localeProvider.notifier),
-          settings: () => ref.read(userSettingsProvider.future),
-          tag: next,
-        ),
-      ),
-      icon: Text(
-        next == 'ar' ? 'ع' : 'EN',
-        style: const TextStyle(
-          color: FcmColors.goldSoft,
-          fontWeight: FontWeight.w900,
-          fontSize: 13,
-        ),
-      ),
-    );
-  }
-}
-
 /// Stateful body: owns the selected tab index; only the selected page is
 /// built.
 class _GameShellBody extends StatefulWidget {
@@ -271,7 +240,7 @@ class _GameShellBodyState extends State<_GameShellBody> {
           // release builds (kDebugMode is a const, so tree shaking removes
           // the widget entirely).
           actions: [
-            const _LanguageToggle(),
+            const FcmLanguageToggle(),
             if (kDebugMode) const _TestCoinButton(),
             const _CoinBalance(),
           ],

@@ -3,7 +3,7 @@ id: T-0096
 title: Add a language toggle to the club creation screen
 priority: medium
 status: todo
-attempts: 0
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -61,6 +61,23 @@ Manual: fresh install (no club) → club creation → tap the language glyph →
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — code complete, targeted gates green; FULL suite not yet run (session time cut)
+
+**Summary of changes:**
+1. `lib/core/ui/fcm_language_toggle.dart` (new) — the app bar's `_LanguageToggle` extracted verbatim into a public `FcmLanguageToggle` (gold target-language glyph, localized tooltip, one tap flips via `setLocale` and persists).
+2. `lib/main.dart` — the app bar now uses the shared widget (the private class deleted); behavior unchanged.
+3. `lib/features/onboarding/club_creation_screen.dart` — `FcmLanguageToggle` sits at the top of the scroll view above the wordmark, end-aligned via `AlignmentDirectional.centerEnd` so LTR/RTL both park it at the far corner; visible without scrolling; no field order or validation change.
+4. `test/features/onboarding/club_creation_test.dart` — new harness `pumpCreationWithSettings` (a REAL `UserSettingsStore` on the same in-memory db — the default harness stubs the settings future with a throw, which would break the toggle's persist; MaterialApp follows `localeProvider` through a Consumer like the real app) + the new test 'T-0096: the language toggle flips EN↔AR live and typed names survive': asserts the 'ع' glyph, types 'Pyramid United', taps the flip, asserts the AR heading renders / EN heading gone / glyph flipped to 'EN', the typed name SURVIVED the rebuild, then flips back to EN with exactly one glyph on screen.
+
+**Files changed:** `lib/core/ui/fcm_language_toggle.dart` (new), `lib/main.dart`, `lib/features/onboarding/club_creation_screen.dart`, `test/features/onboarding/club_creation_test.dart`, this task file.
+
+**How I tested it:** `flutter analyze` → No issues found ✓ (whole project). `flutter test test/features/onboarding/` → **15/15 green** ✓ (including the new flip test). `flutter test test/core/ui/l10n_test.dart` → 4/4 ✓. Full `flutter test` → **NOT RUN — the session's time budget cut before the ~18-minute full suite could start**; the next session must run it before this task flips to needs-review.
+
+**Concerns / assumptions:**
+- The harness's MaterialApp follows `localeProvider` with a Consumer (mirroring the real app's wiring) — without it the flip can't rebuild the tree under test.
+- The task stays in 1-todo (not needs-review) until the full suite runs green.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
