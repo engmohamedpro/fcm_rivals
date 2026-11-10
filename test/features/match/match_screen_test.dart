@@ -291,17 +291,16 @@ void main() {
     // Race to full time at 3x (267ms per match minute).
     await tester.tap(find.text('3x'));
     await tester.pump(const Duration(milliseconds: 50));
+    // T-0100: full time goes straight to the report — no recovery
+    // card to dismiss anymore.
     for (var i = 0; i < 400; i++) {
       await tester.pump(const Duration(milliseconds: 200));
       if (find.text('HALF TIME').evaluate().isNotEmpty) {
         await tester.tap(find.text('Say nothing — back to the match'));
         await tester.pump(const Duration(milliseconds: 400));
       }
-      if (find.text('Post-match recovery').evaluate().isNotEmpty) break;
+      if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
     }
-    // The full-time touchline card: skip the talk, then let the match
-    // session persist stamina/rewards and produce the report.
-    await tester.tap(find.text('No pep talk — default recovery'));
     await flush();
     for (var i = 0; i < 5; i++) {
       if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
@@ -490,7 +489,7 @@ void main() {
       expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
       // The report's own sections still render.
       expect(find.textContaining('Reward:'), findsOneWidget);
-      expect(find.text('CONTINUE'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
     },
   );
 
@@ -515,7 +514,7 @@ void main() {
       // The defeat never offered the ad-boosted recovery row.
       expect(find.text('Post-match recovery'), findsNothing);
       expect(find.textContaining('Ad-boosted recovery applied'), findsNothing);
-      expect(find.text('CONTINUE'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
     },
   );
 }

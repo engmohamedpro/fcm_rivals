@@ -93,9 +93,10 @@ void main() {
         datasetSize: 140,
       );
 
-      // Ads were watched (after non-wins) but never unbounded: the
-      // daily engine caps usage, and a season has a finite fixture list.
-      expect(withAds.adsWatched, greaterThan(0));
+      // T-0100: the boosted-recovery ad left with the post-match
+      // pep-talk step — the simulator watches no rewarded ads on the
+      // settlement path anymore, so both runs agree (bounded trivially).
+      expect(withAds.adsWatched, 0);
       expect(
         withAds.adsWatched,
         lessThanOrEqualTo(withAds.matchDraws + withAds.matchLosses),

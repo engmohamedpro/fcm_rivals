@@ -243,13 +243,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       await _playToFullTime(tester);
 
-      // Post-match recovery touchline card (GDD 15.3/19.3) over the
-      // full-time scoreboard — take the 'rest everyone' focus.
+      // T-0100: full time lands straight on the report — the
+      // post-match recovery touchline card is gone.
       await _flush(tester);
       await _flush(tester);
-      expect(find.text('Post-match recovery'), findsOneWidget);
-      await tester.tap(find.text('Rest, everyone deserves it!'));
-      await _flush(tester);
+      expect(find.text('Post-match recovery'), findsNothing);
 
       // The report screen shows the result and reward, named for the real
       // fixture (GDD 14 post-match screen). The full-match momentum graph

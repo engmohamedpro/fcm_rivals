@@ -243,13 +243,10 @@ class EconomySimulator {
               : session.engine.state.scoreHome;
           final userWon = userGoals > opponentGoals;
 
-          if (useAds && !userWon) {
-            // T-0100: the boosted-recovery ad path left with the
-            // post-match pep-talk step — default recovery everywhere.
-            await session.finish();
-          } else {
-            await session.finish();
-          }
+          // T-0100: the boosted-recovery ad path left with the
+          // post-match pep-talk step — default recovery everywhere;
+          // [useAds] no longer changes the settlement.
+          await session.finish();
           await seasonStore.commitFixtureResult(session, next);
           if (userWon) {
             wins++;
