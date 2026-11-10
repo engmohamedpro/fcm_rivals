@@ -2,11 +2,11 @@
 id: T-0101
 title: Remove the reveal hype captions and pull banners
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0101: Remove the reveal hype captions and pull banners
@@ -34,10 +34,10 @@ During the pack reveal, no text floats above the card: the legendary suspense ca
 - Any pack store / odds / economy behavior.
 
 ## Acceptance Criteria
-- [ ] None of 'A LEGEND IS COMING…', 'WHO IS IT?', 'EPIC PULL!', 'LEGENDARY PULL!' or 'PREMIUM PULL!' (nor their Arabic counterpart) ever renders during a reveal — rare, epic, legendary and premium pulls all clean above the card.
-- [ ] Reveal timings are unchanged: the legendary and premium tests' progression assertions (mystery in, flip, stats, action bar live) still pass with their current duration expectations.
-- [ ] `revealBannerPremium` is gone from both ARBs; localization regen is clean; no unused imports or dead locals remain.
-- [ ] `flutter analyze` zero warnings; packs suite green with updated tests; full `flutter test` green, no REGEN_SNAPSHOT.
+- [x] None of 'A LEGEND IS COMING…', 'WHO IS IT?', 'EPIC PULL!', 'LEGENDARY PULL!' or 'PREMIUM PULL!' (nor their Arabic counterpart) ever renders during a reveal — rare, epic, legendary and premium pulls all clean above the card.
+- [x] Reveal timings are unchanged: the legendary and premium tests' progression assertions (mystery in, flip, stats, action bar live) still pass with their current duration expectations.
+- [x] `revealBannerPremium` is gone from both ARBs; localization regen is clean; no unused imports or dead locals remain.
+- [x] `flutter analyze` zero warnings; packs suite green with updated tests; full `flutter test` green, no REGEN_SNAPSHOT.
 
 ## How to Verify
 ```bash
@@ -83,3 +83,14 @@ Manual: open a rare pack, an epic pull and (seed or luck permitting) a legendary
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9, main @ 36f8744):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/packs/` → **132/132 green** ✓ — the caption/banner assertions flipped to `findsNothing` at every checkpoint (mid-build, stats-count, name-landing, finale wave) with the timeline/progression assertions kept exactly as they were.
+- Full `flutter test`: run 1 → **1011/1012** — the only failure was the club-creation smoke test at `test/widget_test.dart:128` ('Start your first season', Found 0), a load-dependent flake OUTSIDE this task's scope: the same test passes 3/3 solo and full-suite run 2 → **1012/1012, "All tests passed!"** with `grep -c MissingPluginException` = 0. Proposed task T-0104 (harden the smoke test's bounded async waits) — same pattern the T-0103 task text named: "the full-suite gate is a coin flip depending on machine load".
+- Code read: the caption render site, `_buildCaption`, the whole pull-banner overlay block and the now-unused `bannerT` local deleted; `revealBannerPremium` gone from both ARBs with a clean regen (compilation proves the getter is gone); `RevealTimeline.bannerIn` untouched per Out of Scope; grep confirms no 'PULL!'/legend-caption string renders from lib/ — the only leftover is ONE STALE DOC COMMENT at `pack_opening_screen.dart:30` still describing the deleted 'LEGENDARY PULL! banner' (cosmetic, non-blocking; violates no AC — AC3 covers unused imports and dead locals, both clean).
+
+All four criteria met; every verify command run by the reviewer.
+
