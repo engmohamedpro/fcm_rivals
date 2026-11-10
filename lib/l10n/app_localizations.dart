@@ -284,6 +284,30 @@ abstract class AppLocalizations {
   /// **'CLUB CREST'**
   String get clubCrestSection;
 
+  /// No description provided for @crestShapeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shape'**
+  String get crestShapeLabel;
+
+  /// No description provided for @crestPrimaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary colour'**
+  String get crestPrimaryLabel;
+
+  /// No description provided for @crestSecondaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary colour'**
+  String get crestSecondaryLabel;
+
+  /// No description provided for @crestIconLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get crestIconLabel;
+
   /// No description provided for @starterFormationSection.
   ///
   /// In en, this message translates to:

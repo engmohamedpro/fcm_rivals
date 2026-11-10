@@ -11,6 +11,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fcm_rivals/core/domain/crest.dart';
+import 'package:fcm_rivals/core/ui/fcm_crest.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
@@ -261,6 +263,176 @@ void main() {
       expect(club, isNotNull);
       expect(club!.name, 'FC Rivals');
       expect(club.formationCode, formations.first.code);
+    },
+  );
+
+  testWidgets(
+    'T-0098: the crest builder renders every picker with a live preview',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await pumpCreation(tester, const Locale('en'));
+
+      // The builder: preview + the four picker sections render.
+      expect(find.text('SHAPE'), findsOneWidget);
+      expect(find.text('PRIMARY COLOUR'), findsOneWidget);
+      expect(find.text('SECONDARY COLOUR'), findsOneWidget);
+      expect(find.text('ICON'), findsOneWidget);
+      expect(find.byIcon(Icons.casino_rounded), findsOneWidget,
+          reason: 'the randomize action');
+      // The live preview is a real crest: the default shield/star.
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is FcmCrest && w.spec.shape == CrestShape.shield,
+        ),
+        findsAtLeastNWidgets(1),
+      );
+      // Every shape option carries its own mini crest.
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is FcmCrest && w.spec.shape == CrestShape.diamond,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is FcmCrest && w.spec.shape == CrestShape.pennant,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is FcmCrest && w.spec.shape == CrestShape.round,
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'T-0098: picks persist — the submitted club carries the crest last '
+    'shown',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final store = await pumpCreation(tester, const Locale('en'));
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Club name'),
+        'FC Rivals',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Manager name'),
+        'Mohamed',
+      );
+
+      // Pick the DIAMOND shape — the only diamond option in the
+      // builder (the preview is a shield until this tap).
+      await tester.ensureVisible(
+        find.byWidgetPredicate(
+          (w) => w is FcmCrest && w.spec.shape == CrestShape.diamond,
+        ),
+      );
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) => w is FcmCrest && w.spec.shape == CrestShape.diamond,
+        ),
+      );
+      await tester.pump();
+
+      // The preview took the shape: exactly one shield remains on
+      // screen (the shape row's shield swatch) — the BIG preview is
+      // now diamond.
+      final diamonds = find
+          .byWidgetPredicate(
+            (w) => w is FcmCrest && w.spec.shape == CrestShape.diamond,
+          )
+          .evaluate();
+      expect(diamonds.length, 2,
+          reason: 'the swatch + the live preview are both diamonds now');
+
+      final submit = find.text('Start managing');
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+      final club = await store.getClub();
+      expect(club, isNotNull);
+      final spec = CrestSpec.fromJsonString(club!.crest);
+      expect(spec, isNotNull, reason: 'the club carries a built spec');
+      expect(spec!.shape, CrestShape.diamond, reason: 'the pick survived');
+      expect(club.crestIndex, spec.primaryIndex,
+          reason: 'legacy index mirrors the primary');
+    },
+  );
+
+  testWidgets(
+    'T-0098: randomize lands on a valid spec and the defaults save',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final store = await pumpCreation(tester, const Locale('en'));
+
+      // Defaults ARE valid (shield/0/3/star) and save cleanly.
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Club name'),
+        'FC Rivals',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Manager name'),
+        'Mohamed',
+      );
+      await tester.tap(find.byIcon(Icons.casino_rounded));
+      await tester.pump();
+
+      // The randomized preview is a VALID spec: primary != secondary,
+      // every field well-formed — read it straight off the preview.
+      final preview = find
+          .byWidgetPredicate((w) => w is FcmCrest && w.width == 88)
+          .evaluate();
+      expect(preview, isNotEmpty, reason: 'the big preview exists');
+      final crest =
+          preview.first.widget as FcmCrest;
+      expect(crest.spec.primaryIndex, isNot(crest.spec.secondaryIndex),
+          reason: 'randomize never collides the two colours');
+      expect(crest.spec.primaryIndex, inInclusiveRange(0, 5));
+      expect(crest.spec.secondaryIndex, inInclusiveRange(0, 5));
+
+      // Submit the randomized spec — the store round-trips it exactly.
+      final submit = find.text('Start managing');
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+      final club = await store.getClub();
+      final spec = CrestSpec.fromJsonString(club!.crest);
+      expect(spec, isNotNull);
+      expect(spec!.primaryIndex, isNot(spec.secondaryIndex));
+      expect(spec.shape, crest.spec.shape);
+      expect(spec.icon, crest.spec.icon);
+      expect(spec.primaryIndex, crest.spec.primaryIndex);
+    },
+  );
+
+  testWidgets(
+    'T-0098: Arabic renders every builder label mirrored without '
+    'overflow',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await pumpCreation(tester, const Locale('ar'));
+
+      expect(find.text('الشكل'), findsOneWidget);
+      expect(find.text('اللون الأساسي'), findsOneWidget);
+      expect(find.text('اللون الثانوي'), findsOneWidget);
+      expect(find.text('الرمز'), findsOneWidget);
+      expect(find.byIcon(Icons.casino_rounded), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'no RTL overflow');
     },
   );
 

@@ -112,6 +112,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubCrestSection => 'CLUB CREST';
 
   @override
+  String get crestShapeLabel => 'Shape';
+
+  @override
+  String get crestPrimaryLabel => 'Primary colour';
+
+  @override
+  String get crestSecondaryLabel => 'Secondary colour';
+
+  @override
+  String get crestIconLabel => 'Icon';
+
+  @override
   String get starterFormationSection => 'STARTER FORMATION';
 
   @override

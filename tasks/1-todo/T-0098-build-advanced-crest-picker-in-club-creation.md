@@ -2,8 +2,8 @@
 id: T-0098
 title: Build the advanced crest picker in club creation
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0097]
 created: 2026-11-09
 completed:
@@ -64,6 +64,22 @@ Manual: fresh install → build a shield/crown crest in red+gold, randomize a fe
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** the CLUB CREST section is an advanced crest builder.
+1. `lib/features/onboarding/club_creation_screen.dart` — the bare `_crestIndex` state became the full builder state (`_crestShape/_crestPrimary/_crestSecondary/_crestIcon`, default shield/0/3/star = the legacy look); a `_crestSpec` getter feeds everything. `_submit` persists the spec through T-0097's `createClub(crest:)` with `crestIndex: spec.primaryIndex` for legacy consumers. The backdrop tint follows the primary colour live (clamped palette lookup). `_randomizeCrest` jumps to a uniformly random valid combination (collision → secondary +1 mod palette). The old colour-only `Wrap` was replaced by `_CrestBuilder`: a live 88px `FcmCrest` preview + dice action, then SHAPE (`_ShapeOption`, each option a mini crest silhouette in neutral colours), PRIMARY and SECONDARY (`_ColorRow` of the old `_CrestOption` shield swatches — restored as the colour chip), ICON (`_IconOption` glyph chips); the callbacks auto-correct collisions (picking a primary equal to the secondary nudges the other side's index). Everything mirrors via Row/Wrap directionality; no fixed height — the section scrolls with the form as before.
+2. `lib/l10n/app_en.arb` + `app_ar.arb` — four new keys (`crestShapeLabel/crestPrimaryLabel/crestSecondaryLabel/crestIconLabel`, EN + AR) with a clean `flutter gen-l10n`.
+
+**Files changed:** `lib/features/onboarding/club_creation_screen.dart`, `lib/l10n/app_en.arb`, `lib/l10n/app_ar.arb`, `lib/l10n/app_localizations*.dart` (regen), `test/features/onboarding/club_creation_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓ (whole project after regen). `flutter test test/features/onboarding/` → **19/19 green** ✓ — the four new T-0098 tests: every picker renders with the preview (all four shape silhouettes present), picks persist through the store round-trip (diamond picked → the saved club's `crest` column decodes to the same shape, `crestIndex` mirrors the primary), randomize lands valid (primary ≠ secondary, indexes in range, and the submitted spec equals the preview exactly), and the Arabic RTL pump renders every label without overflow. Full `flutter test` → (result recorded in the submit commit message) ✓, no REGEN_SNAPSHOT.
+
+**Concerns / assumptions:**
+- `_randomizeCrest` uses `math.Random()` unseeded — the PICKER is a live UI action (user-driven), not engine generation; determinism rules apply to the match/season engines, not to a button tap. Noted in case a reviewer wants it seeded anyway.
+- The shape options render as mini crests in fixed neutral colours (index 2/4) — a preview of the silhouette, not the current palette; the BIG preview alone reflects the live picks.
+- `RevealTimeline.bannerIn`-style dead code: none introduced; the old `_CrestOption` was restored deliberately (the colour rows reuse it).
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

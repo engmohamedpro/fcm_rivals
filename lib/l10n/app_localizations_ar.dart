@@ -112,6 +112,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get clubCrestSection => 'شعار النادي';
 
   @override
+  String get crestShapeLabel => 'الشكل';
+
+  @override
+  String get crestPrimaryLabel => 'اللون الأساسي';
+
+  @override
+  String get crestSecondaryLabel => 'اللون الثانوي';
+
+  @override
+  String get crestIconLabel => 'الرمز';
+
+  @override
   String get starterFormationSection => 'التشكيلة الأولى';
 
   @override
