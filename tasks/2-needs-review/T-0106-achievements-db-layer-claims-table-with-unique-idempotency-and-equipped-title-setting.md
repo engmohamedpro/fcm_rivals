@@ -2,8 +2,8 @@
 id: T-0106
 title: Achievements DB layer — claims table with UNIQUE idempotency + equipped-title setting (schema v14)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0105]
 created: 2026-11-10
 completed:
@@ -54,12 +54,74 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - `lib/core/database/app_database.dart` — schema 13 → 14: new
+    `AchievementClaims` table (clubId, achievementId, tierKey as the
+    THRESHOLD canonical string — stable identity across catalog
+    re-ordering, rewardCoins audit, titleGranted nullable, claimedAt)
+    with drift's `uniqueKeys` override: UNIQUE(clubId, achievementId,
+    tierKey) — the DB-level double-claim refusal. `UserSettings
+    .equippedTitle` nullable text. Migration step `if (from < 14)`
+    creates the table + adds the column, BOTH existence-guarded on
+    PRAGMA table_info exactly like the v13 crest precedent — a
+    discovered necessity: the season fixtures rewind SOME tables to
+    old shapes while others stay current-shape, and SQLite has no
+    ADD COLUMN IF NOT EXISTS. build_runner regenerated
+    app_database.g.dart (drift 2.31).
+  - NEW `lib/features/achievements/achievement_claims_repository.dart`
+    — the thin read/write layer: claimsForClub (newest first),
+    hasClaim (advisory — the constraint is the law), insertClaim (raw,
+    throws on duplicates: drift surfaces the SQLite UNIQUE violation;
+    T-0108 will call it INSIDE its coin transaction), and the
+    equipped-title settings upsert following the user_settings_store's
+    exact insert-then-update pattern (row id 1, surgical column write
+    — a title change never clobbers matchSpeed).
+  - Tests: NEW `claims_repository_test.dart` (6: round-trip newest-
+    first, THE IDEMPOTENCY LOCK — duplicate triple insert throws with
+    'UNIQUE constraint failed' in the message and the table holds
+    exactly one row, per-club independence, same-club different-tier,
+    equipped-title insert-path/update-path/null-clear round-trip on a
+    fresh DB, coexistence with a pre-existing settings row) + NEW
+    `schema_v14_migration_test.dart` (fresh v14 with the UNIQUE key
+    live from minute one; v13→v14 hand-crafted raw-sqlite fixture
+    with club/settings/ledger rows upgrading byte-for-byte, snapshot
+    before/after, new writes landing beside the preserved rows).
+  - Updated the older schema tests to the bump, each with the reason
+    in place: v12 test's fresh-install pin 13→14 (its own comment
+    tradition), v12's v11 fixture gained the faithful user_settings
+    table + row (v11 installs have had it since v8 — the v14 ALTER
+    found the gap), v10 test's pin 13→14.
+- **Files changed:** lib/core/database/app_database.dart,
+  lib/core/database/app_database.g.dart (generated),
+  lib/features/achievements/achievement_claims_repository.dart (new),
+  test/features/achievements/claims_repository_test.dart (new),
+  test/core/database/schema_v14_migration_test.dart (new),
+  test/core/database/schema_v12_migration_test.dart,
+  test/features/season/schema_v10_migration_test.dart.
+- **How I tested it:** `flutter analyze --no-pub` — zero new issues
+  (1 pre-existing baseline warning fcm_crest.dart:269). Task files:
+  achievements + core/database 29/29 green (catalog 15 + repository 6
+  + v14 migration 2 + v12 2 + coin_ops 4). Schema-fixture files
+  (season v10/v11) 15/15 green. DB-heavy sweep (collection+season+
+  core): 220 pass, the ONLY failure the pre-existing
+  season_live_match_flow (stash-verified on the clean tree in earlier
+  sessions — untouched by this task: no engine/match-code change).
+  match+squad sweep: 497 pass with the same pre-existing
+  tactic_slider_row (2) + squad_view T-0064 family + the same season
+  flow — all verified pre-existing before this epic started.
+- **Concerns / assumptions:** (1) Drift's UNIQUE violation surfaces
+  as a generic Exception whose toString carries 'UNIQUE constraint
+  failed' — the test pins THAT string (the stable cross-version
+  surface); T-0108's pipeline should catch broadly and let the
+  transaction semantics decide, not string-match. (2) The v14 step's
+  existence guards make a partial-shape database (fixture or future
+  bug) upgrade safely instead of crashing — deliberate defensive
+  mirroring of the v13 precedent, not fixture-pandering: a real v13
+  database never has the table, a real fresh install runs onCreate.
+  (3) claimedAt stores second precision (drift's integer DateTime
+  mode) — tests aligned to second boundaries; sub-second ordering
+  within one second falls to the id AUTOINCREMENT.
 
 
 ## Review Log

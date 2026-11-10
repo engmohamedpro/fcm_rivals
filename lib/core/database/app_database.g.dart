@@ -7066,8 +7066,19 @@ class $UserSettingsTable extends UserSettings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _equippedTitleMeta = const VerificationMeta(
+    'equippedTitle',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, matchSpeed, locale];
+  late final GeneratedColumn<String> equippedTitle = GeneratedColumn<String>(
+    'equipped_title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, matchSpeed, locale, equippedTitle];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -7097,6 +7108,15 @@ class $UserSettingsTable extends UserSettings
         locale.isAcceptableOrUnknown(data['locale']!, _localeMeta),
       );
     }
+    if (data.containsKey('equipped_title')) {
+      context.handle(
+        _equippedTitleMeta,
+        equippedTitle.isAcceptableOrUnknown(
+          data['equipped_title']!,
+          _equippedTitleMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7118,6 +7138,10 @@ class $UserSettingsTable extends UserSettings
         DriftSqlType.string,
         data['${effectivePrefix}locale'],
       ),
+      equippedTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}equipped_title'],
+      ),
     );
   }
 
@@ -7135,7 +7159,19 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
 
   /// UI language tag: 'en', 'ar' or null (follow the system locale).
   final String? locale;
-  const UserSetting({required this.id, required this.matchSpeed, this.locale});
+
+  /// The equipped title's id (T-0106): a `TitleDefinition.id` from the
+  /// achievement catalog's registry, or null (no title shown). FK-less
+  /// by design like the rest of the schema — text ids validated in the
+  /// domain layer (the profile falls back gracefully on unknown ids,
+  /// e.g. a catalog entry renamed between versions).
+  final String? equippedTitle;
+  const UserSetting({
+    required this.id,
+    required this.matchSpeed,
+    this.locale,
+    this.equippedTitle,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -7143,6 +7179,9 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     map['match_speed'] = Variable<int>(matchSpeed);
     if (!nullToAbsent || locale != null) {
       map['locale'] = Variable<String>(locale);
+    }
+    if (!nullToAbsent || equippedTitle != null) {
+      map['equipped_title'] = Variable<String>(equippedTitle);
     }
     return map;
   }
@@ -7154,6 +7193,9 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       locale: locale == null && nullToAbsent
           ? const Value.absent()
           : Value(locale),
+      equippedTitle: equippedTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(equippedTitle),
     );
   }
 
@@ -7166,6 +7208,7 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       id: serializer.fromJson<int>(json['id']),
       matchSpeed: serializer.fromJson<int>(json['matchSpeed']),
       locale: serializer.fromJson<String?>(json['locale']),
+      equippedTitle: serializer.fromJson<String?>(json['equippedTitle']),
     );
   }
   @override
@@ -7175,6 +7218,7 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       'id': serializer.toJson<int>(id),
       'matchSpeed': serializer.toJson<int>(matchSpeed),
       'locale': serializer.toJson<String?>(locale),
+      'equippedTitle': serializer.toJson<String?>(equippedTitle),
     };
   }
 
@@ -7182,10 +7226,14 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     int? id,
     int? matchSpeed,
     Value<String?> locale = const Value.absent(),
+    Value<String?> equippedTitle = const Value.absent(),
   }) => UserSetting(
     id: id ?? this.id,
     matchSpeed: matchSpeed ?? this.matchSpeed,
     locale: locale.present ? locale.value : this.locale,
+    equippedTitle: equippedTitle.present
+        ? equippedTitle.value
+        : this.equippedTitle,
   );
   UserSetting copyWithCompanion(UserSettingsCompanion data) {
     return UserSetting(
@@ -7194,6 +7242,9 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
           ? data.matchSpeed.value
           : this.matchSpeed,
       locale: data.locale.present ? data.locale.value : this.locale,
+      equippedTitle: data.equippedTitle.present
+          ? data.equippedTitle.value
+          : this.equippedTitle,
     );
   }
 
@@ -7202,49 +7253,56 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     return (StringBuffer('UserSetting(')
           ..write('id: $id, ')
           ..write('matchSpeed: $matchSpeed, ')
-          ..write('locale: $locale')
+          ..write('locale: $locale, ')
+          ..write('equippedTitle: $equippedTitle')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, matchSpeed, locale);
+  int get hashCode => Object.hash(id, matchSpeed, locale, equippedTitle);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UserSetting &&
           other.id == this.id &&
           other.matchSpeed == this.matchSpeed &&
-          other.locale == this.locale);
+          other.locale == this.locale &&
+          other.equippedTitle == this.equippedTitle);
 }
 
 class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   final Value<int> id;
   final Value<int> matchSpeed;
   final Value<String?> locale;
+  final Value<String?> equippedTitle;
   final Value<int> rowid;
   const UserSettingsCompanion({
     this.id = const Value.absent(),
     this.matchSpeed = const Value.absent(),
     this.locale = const Value.absent(),
+    this.equippedTitle = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   UserSettingsCompanion.insert({
     required int id,
     this.matchSpeed = const Value.absent(),
     this.locale = const Value.absent(),
+    this.equippedTitle = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id);
   static Insertable<UserSetting> custom({
     Expression<int>? id,
     Expression<int>? matchSpeed,
     Expression<String>? locale,
+    Expression<String>? equippedTitle,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (matchSpeed != null) 'match_speed': matchSpeed,
       if (locale != null) 'locale': locale,
+      if (equippedTitle != null) 'equipped_title': equippedTitle,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7253,12 +7311,14 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     Value<int>? id,
     Value<int>? matchSpeed,
     Value<String?>? locale,
+    Value<String?>? equippedTitle,
     Value<int>? rowid,
   }) {
     return UserSettingsCompanion(
       id: id ?? this.id,
       matchSpeed: matchSpeed ?? this.matchSpeed,
       locale: locale ?? this.locale,
+      equippedTitle: equippedTitle ?? this.equippedTitle,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7275,6 +7335,9 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     if (locale.present) {
       map['locale'] = Variable<String>(locale.value);
     }
+    if (equippedTitle.present) {
+      map['equipped_title'] = Variable<String>(equippedTitle.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7287,7 +7350,485 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
           ..write('id: $id, ')
           ..write('matchSpeed: $matchSpeed, ')
           ..write('locale: $locale, ')
+          ..write('equippedTitle: $equippedTitle, ')
           ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AchievementClaimsTable extends AchievementClaims
+    with TableInfo<$AchievementClaimsTable, AchievementClaim> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AchievementClaimsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _clubIdMeta = const VerificationMeta('clubId');
+  @override
+  late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
+    'club_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _achievementIdMeta = const VerificationMeta(
+    'achievementId',
+  );
+  @override
+  late final GeneratedColumn<String> achievementId = GeneratedColumn<String>(
+    'achievement_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tierKeyMeta = const VerificationMeta(
+    'tierKey',
+  );
+  @override
+  late final GeneratedColumn<String> tierKey = GeneratedColumn<String>(
+    'tier_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardCoinsMeta = const VerificationMeta(
+    'rewardCoins',
+  );
+  @override
+  late final GeneratedColumn<int> rewardCoins = GeneratedColumn<int>(
+    'reward_coins',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleGrantedMeta = const VerificationMeta(
+    'titleGranted',
+  );
+  @override
+  late final GeneratedColumn<String> titleGranted = GeneratedColumn<String>(
+    'title_granted',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _claimedAtMeta = const VerificationMeta(
+    'claimedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> claimedAt = GeneratedColumn<DateTime>(
+    'claimed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    clubId,
+    achievementId,
+    tierKey,
+    rewardCoins,
+    titleGranted,
+    claimedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'achievement_claims';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AchievementClaim> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('club_id')) {
+      context.handle(
+        _clubIdMeta,
+        clubId.isAcceptableOrUnknown(data['club_id']!, _clubIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clubIdMeta);
+    }
+    if (data.containsKey('achievement_id')) {
+      context.handle(
+        _achievementIdMeta,
+        achievementId.isAcceptableOrUnknown(
+          data['achievement_id']!,
+          _achievementIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_achievementIdMeta);
+    }
+    if (data.containsKey('tier_key')) {
+      context.handle(
+        _tierKeyMeta,
+        tierKey.isAcceptableOrUnknown(data['tier_key']!, _tierKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tierKeyMeta);
+    }
+    if (data.containsKey('reward_coins')) {
+      context.handle(
+        _rewardCoinsMeta,
+        rewardCoins.isAcceptableOrUnknown(
+          data['reward_coins']!,
+          _rewardCoinsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rewardCoinsMeta);
+    }
+    if (data.containsKey('title_granted')) {
+      context.handle(
+        _titleGrantedMeta,
+        titleGranted.isAcceptableOrUnknown(
+          data['title_granted']!,
+          _titleGrantedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('claimed_at')) {
+      context.handle(
+        _claimedAtMeta,
+        claimedAt.isAcceptableOrUnknown(data['claimed_at']!, _claimedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_claimedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {clubId, achievementId, tierKey},
+  ];
+  @override
+  AchievementClaim map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AchievementClaim(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      clubId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}club_id'],
+      )!,
+      achievementId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}achievement_id'],
+      )!,
+      tierKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tier_key'],
+      )!,
+      rewardCoins: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reward_coins'],
+      )!,
+      titleGranted: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title_granted'],
+      ),
+      claimedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}claimed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AchievementClaimsTable createAlias(String alias) {
+    return $AchievementClaimsTable(attachedDatabase, alias);
+  }
+}
+
+class AchievementClaim extends DataClass
+    implements Insertable<AchievementClaim> {
+  final int id;
+  final int clubId;
+  final String achievementId;
+  final String tierKey;
+
+  /// The coins actually paid at claim time (audit trail).
+  final int rewardCoins;
+
+  /// The title this claim granted, if any (TitleDefinition.id).
+  final String? titleGranted;
+  final DateTime claimedAt;
+  const AchievementClaim({
+    required this.id,
+    required this.clubId,
+    required this.achievementId,
+    required this.tierKey,
+    required this.rewardCoins,
+    this.titleGranted,
+    required this.claimedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['club_id'] = Variable<int>(clubId);
+    map['achievement_id'] = Variable<String>(achievementId);
+    map['tier_key'] = Variable<String>(tierKey);
+    map['reward_coins'] = Variable<int>(rewardCoins);
+    if (!nullToAbsent || titleGranted != null) {
+      map['title_granted'] = Variable<String>(titleGranted);
+    }
+    map['claimed_at'] = Variable<DateTime>(claimedAt);
+    return map;
+  }
+
+  AchievementClaimsCompanion toCompanion(bool nullToAbsent) {
+    return AchievementClaimsCompanion(
+      id: Value(id),
+      clubId: Value(clubId),
+      achievementId: Value(achievementId),
+      tierKey: Value(tierKey),
+      rewardCoins: Value(rewardCoins),
+      titleGranted: titleGranted == null && nullToAbsent
+          ? const Value.absent()
+          : Value(titleGranted),
+      claimedAt: Value(claimedAt),
+    );
+  }
+
+  factory AchievementClaim.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AchievementClaim(
+      id: serializer.fromJson<int>(json['id']),
+      clubId: serializer.fromJson<int>(json['clubId']),
+      achievementId: serializer.fromJson<String>(json['achievementId']),
+      tierKey: serializer.fromJson<String>(json['tierKey']),
+      rewardCoins: serializer.fromJson<int>(json['rewardCoins']),
+      titleGranted: serializer.fromJson<String?>(json['titleGranted']),
+      claimedAt: serializer.fromJson<DateTime>(json['claimedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'clubId': serializer.toJson<int>(clubId),
+      'achievementId': serializer.toJson<String>(achievementId),
+      'tierKey': serializer.toJson<String>(tierKey),
+      'rewardCoins': serializer.toJson<int>(rewardCoins),
+      'titleGranted': serializer.toJson<String?>(titleGranted),
+      'claimedAt': serializer.toJson<DateTime>(claimedAt),
+    };
+  }
+
+  AchievementClaim copyWith({
+    int? id,
+    int? clubId,
+    String? achievementId,
+    String? tierKey,
+    int? rewardCoins,
+    Value<String?> titleGranted = const Value.absent(),
+    DateTime? claimedAt,
+  }) => AchievementClaim(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    achievementId: achievementId ?? this.achievementId,
+    tierKey: tierKey ?? this.tierKey,
+    rewardCoins: rewardCoins ?? this.rewardCoins,
+    titleGranted: titleGranted.present ? titleGranted.value : this.titleGranted,
+    claimedAt: claimedAt ?? this.claimedAt,
+  );
+  AchievementClaim copyWithCompanion(AchievementClaimsCompanion data) {
+    return AchievementClaim(
+      id: data.id.present ? data.id.value : this.id,
+      clubId: data.clubId.present ? data.clubId.value : this.clubId,
+      achievementId: data.achievementId.present
+          ? data.achievementId.value
+          : this.achievementId,
+      tierKey: data.tierKey.present ? data.tierKey.value : this.tierKey,
+      rewardCoins: data.rewardCoins.present
+          ? data.rewardCoins.value
+          : this.rewardCoins,
+      titleGranted: data.titleGranted.present
+          ? data.titleGranted.value
+          : this.titleGranted,
+      claimedAt: data.claimedAt.present ? data.claimedAt.value : this.claimedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AchievementClaim(')
+          ..write('id: $id, ')
+          ..write('clubId: $clubId, ')
+          ..write('achievementId: $achievementId, ')
+          ..write('tierKey: $tierKey, ')
+          ..write('rewardCoins: $rewardCoins, ')
+          ..write('titleGranted: $titleGranted, ')
+          ..write('claimedAt: $claimedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    clubId,
+    achievementId,
+    tierKey,
+    rewardCoins,
+    titleGranted,
+    claimedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AchievementClaim &&
+          other.id == this.id &&
+          other.clubId == this.clubId &&
+          other.achievementId == this.achievementId &&
+          other.tierKey == this.tierKey &&
+          other.rewardCoins == this.rewardCoins &&
+          other.titleGranted == this.titleGranted &&
+          other.claimedAt == this.claimedAt);
+}
+
+class AchievementClaimsCompanion extends UpdateCompanion<AchievementClaim> {
+  final Value<int> id;
+  final Value<int> clubId;
+  final Value<String> achievementId;
+  final Value<String> tierKey;
+  final Value<int> rewardCoins;
+  final Value<String?> titleGranted;
+  final Value<DateTime> claimedAt;
+  const AchievementClaimsCompanion({
+    this.id = const Value.absent(),
+    this.clubId = const Value.absent(),
+    this.achievementId = const Value.absent(),
+    this.tierKey = const Value.absent(),
+    this.rewardCoins = const Value.absent(),
+    this.titleGranted = const Value.absent(),
+    this.claimedAt = const Value.absent(),
+  });
+  AchievementClaimsCompanion.insert({
+    this.id = const Value.absent(),
+    required int clubId,
+    required String achievementId,
+    required String tierKey,
+    required int rewardCoins,
+    this.titleGranted = const Value.absent(),
+    required DateTime claimedAt,
+  }) : clubId = Value(clubId),
+       achievementId = Value(achievementId),
+       tierKey = Value(tierKey),
+       rewardCoins = Value(rewardCoins),
+       claimedAt = Value(claimedAt);
+  static Insertable<AchievementClaim> custom({
+    Expression<int>? id,
+    Expression<int>? clubId,
+    Expression<String>? achievementId,
+    Expression<String>? tierKey,
+    Expression<int>? rewardCoins,
+    Expression<String>? titleGranted,
+    Expression<DateTime>? claimedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (clubId != null) 'club_id': clubId,
+      if (achievementId != null) 'achievement_id': achievementId,
+      if (tierKey != null) 'tier_key': tierKey,
+      if (rewardCoins != null) 'reward_coins': rewardCoins,
+      if (titleGranted != null) 'title_granted': titleGranted,
+      if (claimedAt != null) 'claimed_at': claimedAt,
+    });
+  }
+
+  AchievementClaimsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? clubId,
+    Value<String>? achievementId,
+    Value<String>? tierKey,
+    Value<int>? rewardCoins,
+    Value<String?>? titleGranted,
+    Value<DateTime>? claimedAt,
+  }) {
+    return AchievementClaimsCompanion(
+      id: id ?? this.id,
+      clubId: clubId ?? this.clubId,
+      achievementId: achievementId ?? this.achievementId,
+      tierKey: tierKey ?? this.tierKey,
+      rewardCoins: rewardCoins ?? this.rewardCoins,
+      titleGranted: titleGranted ?? this.titleGranted,
+      claimedAt: claimedAt ?? this.claimedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (clubId.present) {
+      map['club_id'] = Variable<int>(clubId.value);
+    }
+    if (achievementId.present) {
+      map['achievement_id'] = Variable<String>(achievementId.value);
+    }
+    if (tierKey.present) {
+      map['tier_key'] = Variable<String>(tierKey.value);
+    }
+    if (rewardCoins.present) {
+      map['reward_coins'] = Variable<int>(rewardCoins.value);
+    }
+    if (titleGranted.present) {
+      map['title_granted'] = Variable<String>(titleGranted.value);
+    }
+    if (claimedAt.present) {
+      map['claimed_at'] = Variable<DateTime>(claimedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AchievementClaimsCompanion(')
+          ..write('id: $id, ')
+          ..write('clubId: $clubId, ')
+          ..write('achievementId: $achievementId, ')
+          ..write('tierKey: $tierKey, ')
+          ..write('rewardCoins: $rewardCoins, ')
+          ..write('titleGranted: $titleGranted, ')
+          ..write('claimedAt: $claimedAt')
           ..write(')'))
         .toString();
   }
@@ -7314,6 +7855,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AdUsagesTable adUsages = $AdUsagesTable(this);
   late final $FacilityLevelsTable facilityLevels = $FacilityLevelsTable(this);
   late final $UserSettingsTable userSettings = $UserSettingsTable(this);
+  late final $AchievementClaimsTable achievementClaims =
+      $AchievementClaimsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7333,6 +7876,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     adUsages,
     facilityLevels,
     userSettings,
+    achievementClaims,
   ];
 }
 
@@ -10802,6 +11346,7 @@ typedef $$UserSettingsTableCreateCompanionBuilder =
       required int id,
       Value<int> matchSpeed,
       Value<String?> locale,
+      Value<String?> equippedTitle,
       Value<int> rowid,
     });
 typedef $$UserSettingsTableUpdateCompanionBuilder =
@@ -10809,6 +11354,7 @@ typedef $$UserSettingsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> matchSpeed,
       Value<String?> locale,
+      Value<String?> equippedTitle,
       Value<int> rowid,
     });
 
@@ -10833,6 +11379,11 @@ class $$UserSettingsTableFilterComposer
 
   ColumnFilters<String> get locale => $composableBuilder(
     column: $table.locale,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get equippedTitle => $composableBuilder(
+    column: $table.equippedTitle,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10860,6 +11411,11 @@ class $$UserSettingsTableOrderingComposer
     column: $table.locale,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get equippedTitle => $composableBuilder(
+    column: $table.equippedTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$UserSettingsTableAnnotationComposer
@@ -10881,6 +11437,11 @@ class $$UserSettingsTableAnnotationComposer
 
   GeneratedColumn<String> get locale =>
       $composableBuilder(column: $table.locale, builder: (column) => column);
+
+  GeneratedColumn<String> get equippedTitle => $composableBuilder(
+    column: $table.equippedTitle,
+    builder: (column) => column,
+  );
 }
 
 class $$UserSettingsTableTableManager
@@ -10917,11 +11478,13 @@ class $$UserSettingsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> matchSpeed = const Value.absent(),
                 Value<String?> locale = const Value.absent(),
+                Value<String?> equippedTitle = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UserSettingsCompanion(
                 id: id,
                 matchSpeed: matchSpeed,
                 locale: locale,
+                equippedTitle: equippedTitle,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -10929,11 +11492,13 @@ class $$UserSettingsTableTableManager
                 required int id,
                 Value<int> matchSpeed = const Value.absent(),
                 Value<String?> locale = const Value.absent(),
+                Value<String?> equippedTitle = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UserSettingsCompanion.insert(
                 id: id,
                 matchSpeed: matchSpeed,
                 locale: locale,
+                equippedTitle: equippedTitle,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -10959,6 +11524,257 @@ typedef $$UserSettingsTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $UserSettingsTable, UserSetting>,
       ),
       UserSetting,
+      PrefetchHooks Function()
+    >;
+typedef $$AchievementClaimsTableCreateCompanionBuilder =
+    AchievementClaimsCompanion Function({
+      Value<int> id,
+      required int clubId,
+      required String achievementId,
+      required String tierKey,
+      required int rewardCoins,
+      Value<String?> titleGranted,
+      required DateTime claimedAt,
+    });
+typedef $$AchievementClaimsTableUpdateCompanionBuilder =
+    AchievementClaimsCompanion Function({
+      Value<int> id,
+      Value<int> clubId,
+      Value<String> achievementId,
+      Value<String> tierKey,
+      Value<int> rewardCoins,
+      Value<String?> titleGranted,
+      Value<DateTime> claimedAt,
+    });
+
+class $$AchievementClaimsTableFilterComposer
+    extends Composer<_$AppDatabase, $AchievementClaimsTable> {
+  $$AchievementClaimsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get achievementId => $composableBuilder(
+    column: $table.achievementId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tierKey => $composableBuilder(
+    column: $table.tierKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rewardCoins => $composableBuilder(
+    column: $table.rewardCoins,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get titleGranted => $composableBuilder(
+    column: $table.titleGranted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get claimedAt => $composableBuilder(
+    column: $table.claimedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AchievementClaimsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AchievementClaimsTable> {
+  $$AchievementClaimsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get achievementId => $composableBuilder(
+    column: $table.achievementId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tierKey => $composableBuilder(
+    column: $table.tierKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rewardCoins => $composableBuilder(
+    column: $table.rewardCoins,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get titleGranted => $composableBuilder(
+    column: $table.titleGranted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get claimedAt => $composableBuilder(
+    column: $table.claimedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AchievementClaimsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AchievementClaimsTable> {
+  $$AchievementClaimsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get clubId =>
+      $composableBuilder(column: $table.clubId, builder: (column) => column);
+
+  GeneratedColumn<String> get achievementId => $composableBuilder(
+    column: $table.achievementId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tierKey =>
+      $composableBuilder(column: $table.tierKey, builder: (column) => column);
+
+  GeneratedColumn<int> get rewardCoins => $composableBuilder(
+    column: $table.rewardCoins,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get titleGranted => $composableBuilder(
+    column: $table.titleGranted,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get claimedAt =>
+      $composableBuilder(column: $table.claimedAt, builder: (column) => column);
+}
+
+class $$AchievementClaimsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AchievementClaimsTable,
+          AchievementClaim,
+          $$AchievementClaimsTableFilterComposer,
+          $$AchievementClaimsTableOrderingComposer,
+          $$AchievementClaimsTableAnnotationComposer,
+          $$AchievementClaimsTableCreateCompanionBuilder,
+          $$AchievementClaimsTableUpdateCompanionBuilder,
+          (
+            AchievementClaim,
+            BaseReferences<
+              _$AppDatabase,
+              $AchievementClaimsTable,
+              AchievementClaim
+            >,
+          ),
+          AchievementClaim,
+          PrefetchHooks Function()
+        > {
+  $$AchievementClaimsTableTableManager(
+    _$AppDatabase db,
+    $AchievementClaimsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AchievementClaimsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AchievementClaimsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AchievementClaimsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> clubId = const Value.absent(),
+                Value<String> achievementId = const Value.absent(),
+                Value<String> tierKey = const Value.absent(),
+                Value<int> rewardCoins = const Value.absent(),
+                Value<String?> titleGranted = const Value.absent(),
+                Value<DateTime> claimedAt = const Value.absent(),
+              }) => AchievementClaimsCompanion(
+                id: id,
+                clubId: clubId,
+                achievementId: achievementId,
+                tierKey: tierKey,
+                rewardCoins: rewardCoins,
+                titleGranted: titleGranted,
+                claimedAt: claimedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int clubId,
+                required String achievementId,
+                required String tierKey,
+                required int rewardCoins,
+                Value<String?> titleGranted = const Value.absent(),
+                required DateTime claimedAt,
+              }) => AchievementClaimsCompanion.insert(
+                id: id,
+                clubId: clubId,
+                achievementId: achievementId,
+                tierKey: tierKey,
+                rewardCoins: rewardCoins,
+                titleGranted: titleGranted,
+                claimedAt: claimedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AchievementClaimsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AchievementClaimsTable,
+      AchievementClaim,
+      $$AchievementClaimsTableFilterComposer,
+      $$AchievementClaimsTableOrderingComposer,
+      $$AchievementClaimsTableAnnotationComposer,
+      $$AchievementClaimsTableCreateCompanionBuilder,
+      $$AchievementClaimsTableUpdateCompanionBuilder,
+      (
+        AchievementClaim,
+        BaseReferences<
+          _$AppDatabase,
+          $AchievementClaimsTable,
+          AchievementClaim
+        >,
+      ),
+      AchievementClaim,
       PrefetchHooks Function()
     >;
 
@@ -10993,4 +11809,6 @@ class $AppDatabaseManager {
       $$FacilityLevelsTableTableManager(_db, _db.facilityLevels);
   $$UserSettingsTableTableManager get userSettings =>
       $$UserSettingsTableTableManager(_db, _db.userSettings);
+  $$AchievementClaimsTableTableManager get achievementClaims =>
+      $$AchievementClaimsTableTableManager(_db, _db.achievementClaims);
 }

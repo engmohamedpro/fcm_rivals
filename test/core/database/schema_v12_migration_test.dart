@@ -84,8 +84,10 @@ void main() {
         .getSingle();
     expect(healthy.injuryMatchesRemaining, 0);
     expect(healthy.injuryKind, isNull);
-    // T-0097 bumped the schema to 13 (the clubs.crest column).
-    expect(database.schemaVersion, 13);
+    // T-0097 bumped the schema to 13 (clubs.crest); T-0106 bumps to
+    // 14 (achievement_claims + equipped_title) — the injury columns
+    // this fixture exercises are untouched by both.
+    expect(database.schemaVersion, 14);
     await database.close();
   });
 
@@ -112,6 +114,18 @@ void main() {
     );
     raw.execute(_ownedPlayersV11Ddl);
     raw.execute(_aiPlayersV11Ddl);
+    // A real v11 database also carries the v8 settings table and the
+    // coin ledger — the v14 step ALTERs user_settings, so the fixture
+    // must be a faithful v11 (T-0106 found this gap when v14's ALTER
+    // hit a settings table the old fixture never created).
+    raw.execute(
+      'CREATE TABLE IF NOT EXISTS "user_settings" ('
+      '"id" INTEGER NOT NULL, '
+      '"match_speed" INTEGER NOT NULL DEFAULT 1, '
+      '"locale" TEXT NULL, '
+      'PRIMARY KEY ("id"))',
+    );
+    raw.execute("INSERT INTO user_settings VALUES (1, 2, NULL)");
     raw.execute(
       "INSERT INTO owned_players VALUES (1, 1, 42, 2, 1, 0, 3, 0, 73, 5, "
       "'owned', 'pack', 1700000000)",
@@ -182,7 +196,7 @@ void main() {
           .first['injury_matches_remaining'],
       2,
     );
-    expect(reopened.select('PRAGMA user_version').first['user_version'], 13);
+    expect(reopened.select('PRAGMA user_version').first['user_version'], 14);
     reopened.dispose();
   });
 }

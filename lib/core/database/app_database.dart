@@ -284,6 +284,40 @@ class UserSettings extends Table {
 
   /// UI language tag: 'en', 'ar' or null (follow the system locale).
   TextColumn get locale => text().nullable()();
+
+  /// The equipped title's id (T-0106): a `TitleDefinition.id` from the
+  /// achievement catalog's registry, or null (no title shown). FK-less
+  /// by design like the rest of the schema — text ids validated in the
+  /// domain layer (the profile falls back gracefully on unknown ids,
+  /// e.g. a catalog entry renamed between versions).
+  TextColumn get equippedTitle => text().nullable()();
+}
+
+/// One claimed achievement tier (T-0106, GDD 26): the DB-level
+/// idempotency owner — the UNIQUE key below makes a double claim
+/// (double tap, back-navigation replay, process kill + retry)
+/// STRUCTURALLY impossible, the same guarantee pack opening already
+/// carries. `tierKey` is the tier's THRESHOLD as a canonical string
+/// (e.g. '16'): thresholds are the stable identity across catalog
+/// re-ordering — indexes shift when a tier is inserted, thresholds do
+/// not. `rewardCoins` records the amount actually paid for audit.
+class AchievementClaims extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get clubId => integer()();
+  TextColumn get achievementId => text()();
+  TextColumn get tierKey => text()();
+
+  /// The coins actually paid at claim time (audit trail).
+  IntColumn get rewardCoins => integer()();
+
+  /// The title this claim granted, if any (TitleDefinition.id).
+  TextColumn get titleGranted => text().nullable()();
+  DateTimeColumn get claimedAt => dateTime()();
+
+  @override
+  List<Set<Column>>? get uniqueKeys => [
+    {clubId, achievementId, tierKey},
+  ];
 }
 
 @DriftDatabase(
@@ -302,13 +336,14 @@ class UserSettings extends Table {
     AdUsages,
     FacilityLevels,
     UserSettings,
+    AchievementClaims,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -413,6 +448,29 @@ class AppDatabase extends _$AppDatabase {
                 .any((row) => row.read<String>('name') == 'crest');
         if (!hasCrest) {
           await m.addColumn(clubs, clubs.crest);
+        }
+      }
+      if (from < 14) {
+        // Achievements (T-0106, GDD 26): the claims table + the
+        // equipped-title column — both pure additions, no rebuild.
+        // Every existing row keeps its values byte-for-byte. The
+        // existence guards mirror the v13 crest step: test fixtures
+        // that rewind tables to an older shape (but keep others at
+        // current shape) must not hit duplicate DDL — SQLite has no
+        // IF NOT EXISTS on ADD COLUMN.
+        final hasClaims =
+            (await customSelect('PRAGMA table_info(achievement_claims)')
+                .get())
+                .isNotEmpty;
+        if (!hasClaims) {
+          await m.createTable(achievementClaims);
+        }
+        final hasEquippedTitle = (await customSelect(
+          'PRAGMA table_info(user_settings)',
+        ).get())
+            .any((row) => row.read<String>('name') == 'equipped_title');
+        if (!hasEquippedTitle) {
+          await m.addColumn(userSettings, userSettings.equippedTitle);
         }
       }
     },

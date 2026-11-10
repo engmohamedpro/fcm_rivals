@@ -199,7 +199,7 @@ void main() {
     addTearDown(() => db.close());
 
     // T-0097 bumped the schema to 13 (the clubs.crest column).
-    expect(db.schemaVersion, 13);
+    expect(db.schemaVersion, 14);
     expect((await columnsOf(db, 'ai_players')).contains('real_player_id'),
         isTrue);
     expect((await columnsOf(db, 'user_settings')).contains('locale'), isTrue);
