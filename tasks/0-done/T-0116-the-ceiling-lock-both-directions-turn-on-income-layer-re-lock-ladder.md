@@ -2,11 +2,11 @@
 id: T-0116
 title: The ceiling lock, both directions — turn on the income layer and re-lock the ladder (closes T-0082)
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0114, T-0115]
 created: 2026-11-10
-completed:
+completed: 2026-11-10
 ---
 
 # T-0116: The ceiling lock, both directions — turn on the income layer and re-lock the ladder
