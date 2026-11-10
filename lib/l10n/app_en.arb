@@ -346,5 +346,13 @@
   "@profileFinalPosition": {"placeholders": {"position": {"type": "int"}}},
   "profileOutcomePromoted": "Promoted",
   "profileOutcomeRelegated": "Relegated",
-  "profileOutcomeStayed": "Stayed"
+  "profileOutcomeStayed": "Stayed",
+  "badgeCabinetTitle": "The Badge Cabinet",
+  "titlesGalleryTitle": "Titles",
+  "titleEquipAction": "Wear",
+  "titleUnequipAction": "Worn",
+  "titleSourceAchievement": "Earned at {achievement} tier {threshold}",
+  "@titleSourceAchievement": {"placeholders": {"achievement": {"type": "String"}, "threshold": {"type": "int"}}},
+  "titleSourceDivision": "Finish 1st in Division {division}",
+  "@titleSourceDivision": {"placeholders": {"division": {"type": "int"}}}
 }

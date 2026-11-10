@@ -32,6 +32,8 @@ import 'achievement_catalog_data.dart';
 import 'achievement_progress.dart' show CareerMetrics;
 import 'achievements_badge_painter.dart';
 import 'achievements_providers.dart';
+import '../profile/title_badge_showcase.dart'
+    show EquippedTitleChip;
 
 /// The Achievements tab screen.
 class AchievementsScreen extends ConsumerWidget {
@@ -41,7 +43,6 @@ class AchievementsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final metrics = ref.watch(careerMetricsProvider);
     final claims = ref.watch(claimsProvider);
-    final equipped = ref.watch(equippedTitleProvider);
 
     return metrics.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -57,7 +58,6 @@ class AchievementsScreen extends ConsumerWidget {
                 child: _Header(
                   metrics: m,
                   claimedKeys: claimed,
-                  equippedTitleId: equipped.valueOrNull,
                 ),
               ),
             ),
@@ -97,13 +97,6 @@ String _categoryText(AppLocalizations l10n, String prefix, String suffix) =>
     _call(l10n, '$prefix$suffix') ?? prefix;
 
 String _defText(AppLocalizations l10n, String key) => _call(l10n, key) ?? key;
-
-String _titleText(AppLocalizations l10n, String titleId) {
-  final t = AchievementCatalog.achievementTitles
-      .where((t) => t.id == titleId)
-      .firstOrNull;
-  return t == null ? titleId : (_call(l10n, t.l10nKey) ?? titleId);
-}
 
 final Map<String, String Function(AppLocalizations)> _noArgGetters = () {
   final table = <String, String Function(AppLocalizations)>{};
@@ -241,20 +234,14 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.metrics,
     required this.claimedKeys,
-    required this.equippedTitleId,
   });
 
   final CareerMetrics metrics;
   final Set<String> claimedKeys;
-  final String? equippedTitleId;
 
   @override
   Widget build(BuildContext context) {
     final l10n = l10nOf(context);
-    final title = equippedTitleId == null
-        ? null
-        : _titleText(l10n, equippedTitleId!);
-
     return FcmPanel(
       child: Row(
         children: [
@@ -272,17 +259,9 @@ class _Header extends StatelessWidget {
                     fontSize: 18,
                   ),
                 ),
-                if (title != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: FcmColors.gold,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+                // T-0112: the shared equipped-title chip — live on
+                // equip, domain-resolved (unknown ids never render).
+                const EquippedTitleChip(compact: true),
                 const SizedBox(height: 2),
                 Text(
                   l10n.achHubSubtitle(_claimedCount(), _visibleTierCount()),

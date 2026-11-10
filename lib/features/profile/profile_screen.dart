@@ -23,11 +23,11 @@ import '../../core/domain/crest.dart';
 import '../../core/ui/fcm_crest.dart';
 import '../../core/ui/fcm_panel.dart';
 import '../../core/ui/fcm_style.dart';
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_context.dart';
 import '../achievements/achievements_providers.dart'
-    show careerMetricsProvider, equippedTitleProvider;
+    show careerMetricsProvider;
 import 'profile_providers.dart';
+import 'title_badge_showcase.dart';
 
 /// The Profile tab screen.
 class ProfileScreen extends ConsumerWidget {
@@ -37,7 +37,6 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final club = ref.watch(profileClubProvider);
     final metrics = ref.watch(careerMetricsProvider);
-    final equipped = ref.watch(equippedTitleProvider);
 
     return metrics.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -58,7 +57,6 @@ class ProfileScreen extends ConsumerWidget {
                     crestEncoded: clubRow?.crest,
                     crestIndex: clubRow?.crestIndex ?? 0,
                     joinedAt: m.joinedAt,
-                    equippedTitleId: equipped.valueOrNull,
                   ),
                 ),
               ),
@@ -80,6 +78,9 @@ class ProfileScreen extends ConsumerWidget {
             // The history: grows forever — sliver list, 60fps at any
             // career depth.
             const _SeasonHistory(),
+            // T-0112: the prestige layer — the badge cabinet + the
+            // titles gallery with the equip flow.
+            const TitleBadgeShowcase(),
             // Bottom breathing room above the nav bar.
             const SliverPadding(
               padding: EdgeInsets.only(bottom: 24),
@@ -100,7 +101,6 @@ class _IdentityHeader extends StatelessWidget {
     required this.crestEncoded,
     required this.crestIndex,
     required this.joinedAt,
-    required this.equippedTitleId,
   });
 
   final String? clubName;
@@ -108,7 +108,6 @@ class _IdentityHeader extends StatelessWidget {
   final String? crestEncoded;
   final int crestIndex;
   final DateTime? joinedAt;
-  final String? equippedTitleId;
 
   @override
   Widget build(BuildContext context) {
@@ -146,17 +145,16 @@ class _IdentityHeader extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    if (equippedTitleId != null) ...[
-                      _TitleChip(l10n: l10n, titleId: equippedTitleId!),
+                    // The shared chip: domain-resolved (unknown ids
+                    // vanish instead of rendering raw), live on equip.
+                    const EquippedTitleChip(compact: true),
+                    if (joined != null) ...[
                       const SizedBox(width: 8),
-                    ],
-                    if (joined != null)
                       Icon(
                         Icons.cake_rounded,
                         color: FcmColors.textDim.withValues(alpha: 0.7),
                         size: 14,
                       ),
-                    if (joined != null) ...[
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
@@ -182,64 +180,6 @@ class _IdentityHeader extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The equipped-title chip (T-0112 owns the equip flow; this renders
-/// whatever is equipped — empty-safe by never building).
-class _TitleChip extends StatelessWidget {
-  const _TitleChip({required this.l10n, required this.titleId});
-
-  final AppLocalizations l10n;
-  final String titleId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: FcmColors.gold.withValues(alpha: 0.6)),
-        gradient: FcmColors.goldGradient,
-      ),
-      child: Text(
-        _resolveTitle(l10n, titleId),
-        style: const TextStyle(
-          color: FcmColors.ink,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
-String _resolveTitle(AppLocalizations l10n, String titleId) {
-  // Same registry the achievements screen reads (T-0112 hardens the
-  // unknown-id fallback for the showcase; here the chip renders the
-  // localized string or the raw id — never a crash).
-  return switch (titleId) {
-    'career_wins-title1' => l10n.achTitleCareerWins1,
-    'career_wins-title2' => l10n.achTitleCareerWins2,
-    'career_unbeaten_streak-title1' => l10n.achTitleUnbeaten1,
-    'career_unbeaten_streak-title2' => l10n.achTitleUnbeaten2,
-    'attack_goals-title1' => l10n.achTitleGoals1,
-    'attack_goals-title2' => l10n.achTitleGoals2,
-    'defence_clean_sheets-title1' => l10n.achTitleCleanSheets1,
-    'defence_clean_sheets-title2' => l10n.achTitleCleanSheets2,
-    'silverware_titles-title1' => l10n.achTitleTitles1,
-    'silverware_titles-title2' => l10n.achTitleTitles2,
-    'squad_legendaries-title1' => l10n.achTitleLegendaries1,
-    'squad_legendaries-title2' => l10n.achTitleLegendaries2,
-    'packs_opened-title1' => l10n.achTitlePacks1,
-    'packs_opened-title2' => l10n.achTitlePacks2,
-    'economy_lifetime_earned-title1' => l10n.achTitleCoins1,
-    'economy_lifetime_earned-title2' => l10n.achTitleCoins2,
-    'loyalty_seasons-title1' => l10n.achTitleSeasons1,
-    'loyalty_seasons-title2' => l10n.achTitleSeasons2,
-    'mastermind_tactics_changed-title1' => l10n.achTitleMastermind1,
-    'mastermind_tactics_changed-title2' => l10n.achTitleMastermind2,
-    _ => titleId,
-  };
 }
 
 /// The career stat panel: the numbers the owner listed.

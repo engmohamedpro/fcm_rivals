@@ -1807,6 +1807,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stayed'**
   String get profileOutcomeStayed;
+
+  /// No description provided for @badgeCabinetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The Badge Cabinet'**
+  String get badgeCabinetTitle;
+
+  /// No description provided for @titlesGalleryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Titles'**
+  String get titlesGalleryTitle;
+
+  /// No description provided for @titleEquipAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Wear'**
+  String get titleEquipAction;
+
+  /// No description provided for @titleUnequipAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Worn'**
+  String get titleUnequipAction;
+
+  /// No description provided for @titleSourceAchievement.
+  ///
+  /// In en, this message translates to:
+  /// **'Earned at {achievement} tier {threshold}'**
+  String titleSourceAchievement(String achievement, int threshold);
+
+  /// No description provided for @titleSourceDivision.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish 1st in Division {division}'**
+  String titleSourceDivision(int division);
 }
 
 class _AppLocalizationsDelegate

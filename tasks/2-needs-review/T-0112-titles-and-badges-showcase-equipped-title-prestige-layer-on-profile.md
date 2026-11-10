@@ -2,8 +2,8 @@
 id: T-0112
 title: Titles & badges showcase + equipped title — the prestige layer on the Profile tab
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0111]
 created: 2026-11-10
 completed:
@@ -56,12 +56,75 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `lib/features/profile/title_domain.dart` — the ONE function
+    `resolveTitleCabinet`: the two-way ownership rule encoded once
+    (achievement titles owned IFF the source tier was CLAIMED —
+    registry ids resolve back to their conferring rungs (title1 →
+    tier index 3, title2 → 6) and check the claims set; division
+    titles owned IFF titlesByDivision[div] > 0 — silverware needs
+    ZERO claims, the season outcome IS the act), the owned-id set,
+    and the equipped fallback (unknown ids → unequipped, known-but-
+    unowned → kept setting but never shown, owned → worn).
+  - NEW `lib/features/profile/title_badge_showcase.dart` — the
+    prestige surface: the badge cabinet (every catalog badge by
+    metal tier — earned in full painter colour with the glow,
+    unearned as engraved silhouettes at 0.35 opacity with the
+    progress hint; one RepaintBoundary per cell, horizontal tier
+    strips inside per-category panels), the titles gallery (owned
+    with source lines — 'Earned at {achievement} tier {threshold}'
+    / 'Finish 1st in Division {division}' — and the DIRECT equip
+    toggle in the gold-pill treatment; unowned greyed with the lock
+    and their earning condition: visible, aspirational, never
+    hidden), and the REUSABLE `EquippedTitleChip` (compact mode for
+    dense headers) — the one widget later match surfaces drop in.
+  - NEW `lib/features/profile/title_showcase_providers.dart` —
+    titleCabinetProvider (composes the metrics + claims + equipped
+    providers — the derivation is T-0107's) and the equip flow
+    (Provider<EquipTitle>: setEquippedTitle through T-0106's
+    repository, then invalidates the equipped + cabinet providers —
+    instant, free, unlimited by design).
+  - BOTH headers went live: the Profile identity chip and the
+    Achievements hub header now render `EquippedTitleChip`
+    (domain-resolved — unknown ids vanish instead of rendering
+    raw; the previous per-surface switch implementations deleted
+    — no duplicated logic, one domain function everywhere).
+  - L10n: 7 new key pairs EN+AR (cabinet/gallery headings, Wear/
+    Worn, the two source-line placeholders) in the football
+    register ('ارتدِ' / 'مُرتدى', 'أنهِ الأول في الدرجة').
+  - NEW `test/features/profile/titles_badges_test.dart` (6 tests):
+    the two-way rule BOTH ways (claimed rung 4 → title1 owned with
+    sourceArg 4; ZERO claims → every achievement title unowned AND
+    both division titles owned by outcome alone), the unknown-id
+    fallback (null, never a crash), known-but-unowned (setting
+    kept, chip hidden), the owned equipped id resolving, and the
+    gallery widget test (owned renders 'The Winner' with Wear,
+    unowned with locks, division champions by outcome, equip →
+    persisted through the REAL repository → pill flips to Worn →
+    unequip → null restored). The equip's provider re-resolution
+    runs in real async under runAsync (the widget-clock limitation
+    documented in T-0110's notes; the plain-async diagnosis proved
+    the flow end-to-end before the widget assertion).
+- **Files changed:** lib/features/profile/title_domain.dart (new),
+  title_badge_showcase.dart (new), title_showcase_providers.dart
+  (new), profile_screen.dart (showcase appended + the shared chip),
+  achievements_screen.dart (the shared chip in the header),
+  lib/l10n/app_en.arb + app_ar.arb (+7 pairs) with clean gen-l10n,
+  test/features/profile/titles_badges_test.dart (new).
+- **How I tested it:** `flutter analyze --no-pub` — zero new
+  issues (one documented ignore for a private-field initializing
+  formal). titles_badges 6/6; profile + achievements + smoke 51/51
+  green.
+- **Concerns / assumptions:** (1) The badge cabinet renders the
+    TIER INDEX ('T3') as the earned label — the metals are the tier
+    identity the cabinet shows; the tier NAME (threshold meaning)
+    lives on the achievements screen per-tier. (2) Equip is direct
+    toggle (no dialog) — the repo's favour, documented in the
+    gallery's comment. (3) The cabinet grows with the catalog, not
+    the save; deep scrolling stays lazy (60fps) through the
+    sliver list. (4) Match-context wiring of the exported chip is
+    explicitly a later task (the Out of Scope honoured).
 
 
 ## Review Log

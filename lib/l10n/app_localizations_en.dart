@@ -935,4 +935,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileOutcomeStayed => 'Stayed';
+
+  @override
+  String get badgeCabinetTitle => 'The Badge Cabinet';
+
+  @override
+  String get titlesGalleryTitle => 'Titles';
+
+  @override
+  String get titleEquipAction => 'Wear';
+
+  @override
+  String get titleUnequipAction => 'Worn';
+
+  @override
+  String titleSourceAchievement(String achievement, int threshold) {
+    return 'Earned at $achievement tier $threshold';
+  }
+
+  @override
+  String titleSourceDivision(int division) {
+    return 'Finish 1st in Division $division';
+  }
 }

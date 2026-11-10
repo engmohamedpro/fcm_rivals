@@ -928,4 +928,26 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileOutcomeStayed => 'بقي';
+
+  @override
+  String get badgeCabinetTitle => 'خزانة الشارات';
+
+  @override
+  String get titlesGalleryTitle => 'الألقاب';
+
+  @override
+  String get titleEquipAction => 'ارتدِ';
+
+  @override
+  String get titleUnequipAction => 'مُرتدى';
+
+  @override
+  String titleSourceAchievement(String achievement, int threshold) {
+    return 'يُكتسب عند $achievement بدرجة $threshold';
+  }
+
+  @override
+  String titleSourceDivision(int division) {
+    return 'أنهِ الأول في الدرجة $division';
+  }
 }

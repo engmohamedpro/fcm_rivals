@@ -301,5 +301,13 @@
   "@profileFinalPosition": {"placeholders": {"position": {"type": "int"}}},
   "profileOutcomePromoted": "صعد",
   "profileOutcomeRelegated": "هبط",
-  "profileOutcomeStayed": "بقي"
+  "profileOutcomeStayed": "بقي",
+  "badgeCabinetTitle": "خزانة الشارات",
+  "titlesGalleryTitle": "الألقاب",
+  "titleEquipAction": "ارتدِ",
+  "titleUnequipAction": "مُرتدى",
+  "titleSourceAchievement": "يُكتسب عند {achievement} بدرجة {threshold}",
+  "@titleSourceAchievement": {"placeholders": {"achievement": {"type": "String"}, "threshold": {"type": "int"}}},
+  "titleSourceDivision": "أنهِ الأول في الدرجة {division}",
+  "@titleSourceDivision": {"placeholders": {"division": {"type": "int"}}}
 }
