@@ -210,6 +210,18 @@ class MatchEngineConfig {
     this.shotFromChance = 0.82,
     this.speculativeShotChance = 0.14,
     this.blockChance = 0.28,
+    // Underdog set-piece income (T-0114, 2026-11-10 — the T-0082
+    // unblocking mechanism): an EDGE-INDEPENDENT chance stream for
+    // the side out of possession, coupled to TERRITORY (the support
+    // pocket share), never to attack-minus-defence — a corner is a
+    // corner at OVR 70 or 105, which is exactly the stability the
+    // chance layer's strength response lacks at big upgrade gaps
+    // (measured: the underdog at +50% is pinned at the chanceP clamp
+    // floor on ~30% of pockets, scoring 0.33 goals/match). OFF by
+    // default (0.0): no draw, bit-identical output, every band and
+    // the seeded snapshot untouched. T-0116 turns it on at the
+    // probe-validated value with the two-direction ceiling locked.
+    this.setPieceIncome = 0.0,
     // Fatigue-decoupling re-anchor (T-0052, 2026-11-07): attributes now
     // apply at FULL VALUE, so the shooter term in onTargetP sits at its
     // full-value level — the old base was calibrated against the removed
@@ -285,6 +297,12 @@ class MatchEngineConfig {
   /// (0.075): a full 20-point edge saturates near ~80% of the cap, it
   /// never reaches certainty.
   final double chanceSigmoidSteepness;
+
+  /// The underdog set-piece income rate (T-0114) — see the
+  /// constructor comment. 0.0 = the layer is fully inert (the random
+  /// stream draw is SKIPPED, not drawn-and-ignored, so seeded output
+  /// is bit-identical).
+  final double setPieceIncome;
 
   /// Goal-rate sensitivity per point of shooter-minus-keeper edge —
   /// bounded linear, so a superstar facing a weak keeper converts maybe

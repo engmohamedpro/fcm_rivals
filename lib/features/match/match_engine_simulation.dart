@@ -44,6 +44,52 @@ extension _MatchEngineSim on MatchEngine {
     final attTotals = attackerSide == MatchSide.home ? homeTotals : awayTotals;
     final defTotals = attackerSide == MatchSide.home ? awayTotals : homeTotals;
 
+    // Underdog set-piece income (T-0114): the side OUT of possession
+    // earns one set-piece chance with probability
+    // setPieceIncome x (its territory share — the SAME support-power
+    // share that picked the attacker above). Territory-coupled and
+    // edge-independent BY CONSTRUCTION: a +50% favourite compresses
+    // the underdog's attack-minus-defence edge (the logistic) but
+    // cannot zero its support share (the 1.4-exponent floor — the
+    // minnow-touches-ball design), so the underdog's set-piece
+    // income survives exactly where its open-play income collapses.
+    // OFF (0.0): the draw is skipped entirely — the random stream
+    // and every calibrated distribution stay byte-identical.
+    if (config.setPieceIncome > 0) {
+      final defendingSide = _opposite(attackerSide);
+      final defendingPoss = defendingSide == MatchSide.home
+          ? homePoss
+          : awayPoss;
+      final territoryShare =
+          defendingPoss / (homePoss + awayPoss);
+      if (_random.chance(config.setPieceIncome * territoryShare)) {
+        // The defending side wins a set piece deep in the attacker's
+        // half — one DIRECT low-quality chance for the OUT side
+        // through the normal conversion pipeline (measured course
+        // correction within T-0114's own spec: the corner-flow
+        // carrier's header conversion + claimed rotation delivered
+        // only ~+0.05 underdog goals at a neutrality-breaking income
+        // level, while a direct normal-quality chance converts ~3x
+        // per event, so the same lift needs ~1/3 the income rate and
+        // even-strength neutrality holds).
+        final out = _runtimeOf(defendingSide);
+        final shooter = _pickAttacker(out)!;
+        _involvedThisMinute.add(shooter.playerId);
+        produced.addAll(
+          _shoot(
+            minute,
+            defendingSide,
+            out,
+            _runtimeOf(attackerSide),
+            ChanceQuality.normal,
+          ),
+        );
+        // The minute's possession pocket is consumed by the set
+        // piece — no open-play pocket for the attacker this minute.
+        return produced;
+      }
+    }
+
     // Possession event carries pass volume for the statistics module.
     // The pocket's fate is decided by the build-up draw below; on a
     // turnover only the ball-playing before the loss counts, at the

@@ -2,8 +2,8 @@
 id: T-0114
 title: Underdog set-piece income layer — edge-independent chance source (the T-0082 unblocking mechanism)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0073]
 created: 2026-11-10
 completed:
@@ -50,5 +50,80 @@ flutter test test/features/match/     # snapshot green, unset REGEN_SNAPSHOT
 ---
 
 ## Developer Notes
+
+- **Summary of changes:**
+  - `lib/features/match/match_event.dart` — the `setPieceIncome`
+    config (default **0.0**, OFF): the constructor comment documents
+    what it is, why it is off, and what turning it on is for
+    (T-0116's ceiling lock). At 0.0 the random-stream draw is
+    SKIPPED, not drawn-and-ignored — seeded output is
+    bit-identical.
+  - `lib/features/match/match_engine_simulation.dart` — the layer:
+    right after the minute's attacker selection, the side OUT of
+    possession earns one set-piece chance with probability
+    `setPieceIncome × (its support-power territory share)` — the
+    SAME 1.4-exponent share that picked the attacker. Territory-
+    coupled and edge-independent BY CONSTRUCTION. The chance is a
+    DIRECT normal-quality shot through the existing `_shoot`
+    pipeline for the out side; the minute's open-play pocket is
+    consumed by it (one chance per minute, no stacking).
+  - **Measured course-correction within the spec's own latitude**
+    ("pick what the conversion layer reads most honestly"): the
+    first carrier — the corner flow (`_corner(headerChance: true)`)
+    — delivered only +0.05 underdog goals at neutrality-breaking
+    income levels (the header conversion + the claimed ~1-in-3
+    rotation suppress conversion), while the direct normal-quality
+    chance converts ~3× per event, so the same lift needs ~1/3 the
+    rate and even-strength neutrality holds. The sweep table that
+    forced the switch is below.
+  - `test/balance/set_piece_income_test.dart` (NEW, 4 tests, its
+    OWN bands — zero edits to any existing test): the bit-identical
+    guard (3 seeds' full scorelines + shot counts locked to the
+    pre-layer battery), even-strength neutrality (win/draw/goals
+    bands + the home-away goal gap staying in home advantage's own
+    neighbourhood — the DELTA formulation, not the raw gap, which
+    is home advantage itself), the underdog lift (matched seeds
+    on/off at B+50%: goals 0.43 → 0.63, favourite move ≤0.3, win
+    rate drops, combined <5.2), and the +25% no-overshoot guard.
+- **Files changed:** lib/features/match/match_event.dart (+knob),
+  lib/features/match/match_engine_simulation.dart (+layer),
+  test/balance/set_piece_income_test.dart (new).
+- **How I tested it:** `flutter analyze --no-pub` — zero new
+  issues. The new gate 4/4. **The FULL balance suite 106/106 green
+  with ZERO edits to any existing test** (the T-0073 violation lock
+  included — untouched and green, as required). The match suite:
+  252 passing with ONLY the 2 pre-existing tactic_slider_row
+  failures (documented in earlier sessions' notes; unrelated to the
+  engine — a UI slider test); the engine snapshot test GREEN with
+  REGEN_SNAPSHOT unset (the default-off path is bit-identical, as
+  designed).
+- **The value sweep table (n=300/cell, matched seeds, the
+  direct-chance carrier):**
+  - spi 0.00: even g 2.54 | B+50: uW 0.957, uG 0.433, fG 4.357,
+    comb 4.79
+  - spi 0.04: even g 2.97 | B+50: uW 0.920, uG 0.523, fG 4.170,
+    comb 4.69
+  - spi 0.05: even g 2.91 | B+50: uW 0.927, uG 0.533, fG 4.273,
+    comb 4.81
+  - spi 0.075: even g 2.91 | B+50: uW 0.937, uG 0.567, fG 4.330,
+    comb 4.90
+  - spi 0.10: even g 3.02 | B+50: uW 0.933, uG 0.633, fG 4.443,
+    comb 5.08 ← **the shipped probe value**
+  - spi 0.13: even g 3.13 | B+50: uW 0.940, uG 0.703, fG 4.553,
+    comb 5.26 (ceiling broken — rejected)
+- **Concerns / assumptions:** (1) The direct carrier pays BOTH
+  sides' defending shares (direction-symmetric income): the
+  favourite gains some goals too (4.36 → 4.44 at 0.10) — the
+  underdog's RELATIVE position improves (uG/fG 0.10 → 0.14) and the
+  favourite's win rate drops 0.957 → 0.933, but the layer alone
+  does NOT reach the 0.88 ceiling (0.933 at +50%). That was NEVER
+  this slice's job: T-0115's de-saturated edge is the other half
+  (the attempt's table: ~0.05–0.07 underdog goals of additional
+  lift) and T-0116 owns the lock. (2) The underdog-lift assertion
+  (>0.6, measured 0.63) is deliberately the honest number — 0.70
+  required the 0.13 rate that breaks the combined-goals ceiling.
+  (3) kProbeIncome (0.10) is a TEST constant; the production
+  default stays 0.0 until T-0116 turns it on — the snapshot proves
+  the inert path every run.
 
 ## Review Log
