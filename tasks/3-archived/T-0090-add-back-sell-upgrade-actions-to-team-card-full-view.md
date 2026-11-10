@@ -2,11 +2,11 @@
 id: T-0090
 title: Add back, sell and upgrade actions to the team card full view
 priority: high
-status: needs-review
+status: done
 attempts: 2
 depends_on: [T-0089]
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0090: Add back, sell and upgrade actions to the team card full view
@@ -39,7 +39,7 @@ Tapping a card on the team screen opens the full-card view with three actions at
 
 ## Acceptance Criteria
 - [x] The full view shows BACK / SELL / UPGRADE in that order, localized EN + AR, RTL-safe.
-- [ ] SELL on an XI card: the slot is auto re-picked (11 valid slots), the price is credited, the view pops, the team screen reflects the change.
+- [x] SELL on an XI card: the slot is auto re-picked (11 valid slots), the price is credited, the view pops, the team screen reflects the change.
 - [x] SELL on a bench/reserve card sells and pops the same way.
 - [x] UPGRADE with a duplicate: merge animation plays, the card shows +1 level in place, the view stays open; the button disables when no copy remains.
 - [x] No duplicate → UPGRADE disabled; BACK and tap-anywhere dismiss unchanged.
@@ -128,4 +128,12 @@ Manual: tap an XI card with a duplicate — UPGRADE (gold) merges and the card l
 **Concerns / assumptions:**
 - The reviewer's non-blocking note (a defense-in-depth XI backstop inside `saveSquad` itself) is deliberately NOT done here — it is the owner's call as a separate task, per the review's own wording.
 - The guard counts assignment length, not slot keys: safe because autoPick only ever assigns contiguous ascending slots (verified in the engine's doc comment and the test's full-XI sanity check).
+
+### Review 2 — 2026-11-10 — PASS (resubmission)
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7):**
+- `flutter analyze` (current main) → No issues found! ✓
+- `flutter test test/features/squad/ test/features/collection/` (current main) → **292/292 green** ✓
+- Full `flutter test` at commit 2911fec (the submission-era tree, clean worktree) → **1007/1007, "All tests passed!"** ✓ — the run's log confirms the new boundary test actually executed and passed: "T-0090 (review 1): an exactly-11 club cannot sell an XI player — the XI is never left short". (Current main additionally carries T-0100's WIP whose own gates were never run by its developer — unrelated to this task; see T-0100's log.)
+- Fix verification (commit 2fd7462): every point of review 1's "what to do" is done — the re-pick assignment is computed FIRST inside the sale's own transaction and refused with `CollectionException('Selling would leave the starting XI short')` when `assignment.length < Formation.startingXiSize`, BEFORE `saveSquad`, so nothing is sold, coins are untouched and drift rolls the whole transaction back. Review 1's repro is now a permanent test asserting the refusal message and the full rollback (XI still 11, row still owned, coins unchanged). The guard's length-based check is sound: `autoPick` fills the XI before the bench and never leaves an XI slot empty while a healthy body remains, so `length < 11` is exactly "some XI slot is uncovered" (the exactly-11 club and the all-injured remainder both hit it). The deferred `saveSquad` backstop is correctly left to the owner as a separate task, per review 1's own wording. Diff stays inside scope (store + test + this file). All six criteria met.
 
