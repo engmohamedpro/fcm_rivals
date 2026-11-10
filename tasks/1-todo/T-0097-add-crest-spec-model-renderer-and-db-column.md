@@ -2,8 +2,8 @@
 id: T-0097
 title: Add the CrestSpec model, renderer and clubs database column
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -63,6 +63,29 @@ flutter test
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** the crest foundation is in — a serializable `CrestSpec` domain model, an `FcmCrest` CustomPaint renderer, a nullable TEXT `crest` column on `clubs` (schema 13), store plumbing with a single legacy-vs-new resolver, and the momentum bar routed through it. Every existing club renders exactly as today.
+
+1. `lib/core/domain/crest.dart` (new) — `CrestSpec`: enum-backed `CrestShape` (shield/round/pennant/diamond) and `CrestIcon` (star/ball/crown/lion/flame/bolt) with stable JSON ids, one `CrestPattern.halves` applied consistently, palette-index colours resolving through `FcmColors.crestColor` (same clamp), `toJson`/`fromJson`/`fromJsonString`/`encode` (round-trip safe; junk → null so the caller falls back), `CrestSpec.legacy(crestIndex)` (shield+star, primary = the exact old tint, in-family secondary via a +2 wrap with ember keeping itself), `==`/`hashCode`/`toString`. Unknown shape/icon ids degrade to defaults instead of crashing.
+2. `lib/core/ui/fcm_crest.dart` (new) — `FcmCrest(spec, width)`: one `_CrestPainter` CustomPaint pass — the shape path clipped, primary field + secondary middle band (the halves pattern), stroke outline, then the centered icon glyph drawn with canvas primitives (no font/asset). All geometry derives from the canvas size (no absolute px), symmetric about the vertical axis — direction-agnostic by construction; `shouldRepaint` on spec inequality.
+3. `lib/core/database/app_database.dart` — `TextColumn get crest => text().nullable()()` on `Clubs` with the T-0097 doc comment; `schemaVersion` 12 → 13; the v12→v13 step is a pure `addColumn` (existing rows null). Older steps untouched. `build_runner` regenerated (`Club.crest` field present).
+4. `lib/features/collection/collection_store.dart` — `createClub` takes an optional `CrestSpec crest` (absent → today's `crestIndex` path byte-for-byte); new `static CrestSpec crestOf(Club club)` resolver: `CrestSpec.fromJsonString(club.crest) ?? CrestSpec.legacy(club.crestIndex)` — the one place every consumer resolves old-vs-new (column wins, corrupt JSON falls back safely).
+5. `lib/features/match/match_screen.dart` — `_loadUserCrestColor` now uses `CollectionStore.crestOf(club).primaryColor`; for a legacy club that IS `FcmColors.crestColor(club.crestIndex)` — no visual change for existing saves; a spec club's bar takes its primary.
+6. Tests (`test/features/onboarding/crest_spec_test.dart`, new) — 10 tests: JSON round-trip (single + exhaustive 4 shapes × 6 icons + the TEXT-column convenience); `legacy(i)` pins the exact old tint for every 0..5 (+99 clamp); junk-input tolerance (null/empty/invalid JSON/partial); `crestOf` preference (column beats index, legacy fallback is byte-for-byte, corrupt column falls back); `FcmCrest` at 28 and 96 logical px (exact RenderBox size, no overflow exception, scoped CustomPaint painter attached); every shape × icon lays out clean; RTL/LTR occupy the same frame slot (direction-agnostic). Plus two real-drift tests: a club created WITH a spec round-trips (column JSON exact, resolver reads it back) and without (column null, legacy tint exact); schema-13 column existence + write/read through the generated class.
+
+**Files changed:** `lib/core/domain/crest.dart` (new), `lib/core/ui/fcm_crest.dart` (new), `lib/core/database/app_database.dart`, `lib/core/database/app_database.g.dart` (regenerated), `lib/features/collection/collection_store.dart`, `lib/features/match/match_screen.dart`, `test/features/onboarding/crest_spec_test.dart` (new), this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/onboarding/ test/features/match/match_screen_test.dart` → onboarding 14/14, match_screen 8/8 ✓. Full `flutter test` → (result recorded in the submit commit message) ✓. No REGEN_SNAPSHOT (no golden touched).
+
+**Concerns / assumptions:**
+- MIGRATION ROBUSTNESS (found by the full suite): the v11 step's `TableMigration(clubs)` rebuilds the table at the CURRENT shape, so a real v10/v11 database reopening on schema 13 already carries `crest` and a naive v13 `addColumn` would throw `duplicate column name` — the v13 step now introspects `PRAGMA table_info(clubs)` and adds the column only when missing (SQLite has no ADD COLUMN IF NOT EXISTS). The v12 migration test's fixture also gained its v11 `clubs` table (it previously created no clubs table at all, so `ALTER TABLE clubs` hit `no such table`), and the version pins in schema_v10/v12 tests moved to 13. All 13 migration tests green after the fix.
+- The legacy spec's SECONDARY colour is an in-family +2 palette wrap (ember keeps itself) — a design choice; the PRIMARY (what every current consumer reads) is byte-for-byte today's tint, which is what the AC pins.
+- `CrestPattern` is an enum with one value (`halves`) — the wire format carries it so a second pattern later is a non-breaking addition, not a schema change.
+- The migration test exercises the fresh-create schema-13 path plus direct column write/read; a true downgrade-reopen (a real v12 file opened by v13 code) runs the same `addColumn` step drift generates — noted honestly: not separately simulated.
+- `FcmCrest` is rendered nowhere yet by design (T-0098/0099 adopt it); the widget tests pin its contract now.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

@@ -1017,6 +1017,15 @@ class $ClubsTable extends Clubs with TableInfo<$ClubsTable, Club> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _crestMeta = const VerificationMeta('crest');
+  @override
+  late final GeneratedColumn<String> crest = GeneratedColumn<String>(
+    'crest',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _formationCodeMeta = const VerificationMeta(
     'formationCode',
   );
@@ -1092,6 +1101,7 @@ class $ClubsTable extends Clubs with TableInfo<$ClubsTable, Club> {
     name,
     managerName,
     crestIndex,
+    crest,
     formationCode,
     tactics,
     mentality,
@@ -1137,6 +1147,12 @@ class $ClubsTable extends Clubs with TableInfo<$ClubsTable, Club> {
       context.handle(
         _crestIndexMeta,
         crestIndex.isAcceptableOrUnknown(data['crest_index']!, _crestIndexMeta),
+      );
+    }
+    if (data.containsKey('crest')) {
+      context.handle(
+        _crestMeta,
+        crest.isAcceptableOrUnknown(data['crest']!, _crestMeta),
       );
     }
     if (data.containsKey('formation_code')) {
@@ -1207,6 +1223,10 @@ class $ClubsTable extends Clubs with TableInfo<$ClubsTable, Club> {
         DriftSqlType.int,
         data['${effectivePrefix}crest_index'],
       )!,
+      crest: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}crest'],
+      ),
       formationCode: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}formation_code'],
@@ -1245,6 +1265,12 @@ class Club extends DataClass implements Insertable<Club> {
   final String name;
   final String managerName;
   final int crestIndex;
+
+  /// Composed crest identity (T-0097): JSON CrestSpec — shape +
+  /// primary/secondary palette indices + icon. Null on every
+  /// pre-v13 row and on legacy callers: the resolver falls back to
+  /// [crestIndex] rendering, so old saves look exactly as before.
+  final String? crest;
   final String formationCode;
 
   /// Custom tactics (GDD 10.2): JSON payload of TeamTactics. Legacy saves
@@ -1262,6 +1288,7 @@ class Club extends DataClass implements Insertable<Club> {
     required this.name,
     required this.managerName,
     required this.crestIndex,
+    this.crest,
     required this.formationCode,
     required this.tactics,
     required this.mentality,
@@ -1276,6 +1303,9 @@ class Club extends DataClass implements Insertable<Club> {
     map['name'] = Variable<String>(name);
     map['manager_name'] = Variable<String>(managerName);
     map['crest_index'] = Variable<int>(crestIndex);
+    if (!nullToAbsent || crest != null) {
+      map['crest'] = Variable<String>(crest);
+    }
     map['formation_code'] = Variable<String>(formationCode);
     map['tactics'] = Variable<String>(tactics);
     map['mentality'] = Variable<String>(mentality);
@@ -1291,6 +1321,9 @@ class Club extends DataClass implements Insertable<Club> {
       name: Value(name),
       managerName: Value(managerName),
       crestIndex: Value(crestIndex),
+      crest: crest == null && nullToAbsent
+          ? const Value.absent()
+          : Value(crest),
       formationCode: Value(formationCode),
       tactics: Value(tactics),
       mentality: Value(mentality),
@@ -1310,6 +1343,7 @@ class Club extends DataClass implements Insertable<Club> {
       name: serializer.fromJson<String>(json['name']),
       managerName: serializer.fromJson<String>(json['managerName']),
       crestIndex: serializer.fromJson<int>(json['crestIndex']),
+      crest: serializer.fromJson<String?>(json['crest']),
       formationCode: serializer.fromJson<String>(json['formationCode']),
       tactics: serializer.fromJson<String>(json['tactics']),
       mentality: serializer.fromJson<String>(json['mentality']),
@@ -1326,6 +1360,7 @@ class Club extends DataClass implements Insertable<Club> {
       'name': serializer.toJson<String>(name),
       'managerName': serializer.toJson<String>(managerName),
       'crestIndex': serializer.toJson<int>(crestIndex),
+      'crest': serializer.toJson<String?>(crest),
       'formationCode': serializer.toJson<String>(formationCode),
       'tactics': serializer.toJson<String>(tactics),
       'mentality': serializer.toJson<String>(mentality),
@@ -1340,6 +1375,7 @@ class Club extends DataClass implements Insertable<Club> {
     String? name,
     String? managerName,
     int? crestIndex,
+    Value<String?> crest = const Value.absent(),
     String? formationCode,
     String? tactics,
     String? mentality,
@@ -1351,6 +1387,7 @@ class Club extends DataClass implements Insertable<Club> {
     name: name ?? this.name,
     managerName: managerName ?? this.managerName,
     crestIndex: crestIndex ?? this.crestIndex,
+    crest: crest.present ? crest.value : this.crest,
     formationCode: formationCode ?? this.formationCode,
     tactics: tactics ?? this.tactics,
     mentality: mentality ?? this.mentality,
@@ -1368,6 +1405,7 @@ class Club extends DataClass implements Insertable<Club> {
       crestIndex: data.crestIndex.present
           ? data.crestIndex.value
           : this.crestIndex,
+      crest: data.crest.present ? data.crest.value : this.crest,
       formationCode: data.formationCode.present
           ? data.formationCode.value
           : this.formationCode,
@@ -1386,6 +1424,7 @@ class Club extends DataClass implements Insertable<Club> {
           ..write('name: $name, ')
           ..write('managerName: $managerName, ')
           ..write('crestIndex: $crestIndex, ')
+          ..write('crest: $crest, ')
           ..write('formationCode: $formationCode, ')
           ..write('tactics: $tactics, ')
           ..write('mentality: $mentality, ')
@@ -1402,6 +1441,7 @@ class Club extends DataClass implements Insertable<Club> {
     name,
     managerName,
     crestIndex,
+    crest,
     formationCode,
     tactics,
     mentality,
@@ -1417,6 +1457,7 @@ class Club extends DataClass implements Insertable<Club> {
           other.name == this.name &&
           other.managerName == this.managerName &&
           other.crestIndex == this.crestIndex &&
+          other.crest == this.crest &&
           other.formationCode == this.formationCode &&
           other.tactics == this.tactics &&
           other.mentality == this.mentality &&
@@ -1430,6 +1471,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
   final Value<String> name;
   final Value<String> managerName;
   final Value<int> crestIndex;
+  final Value<String?> crest;
   final Value<String> formationCode;
   final Value<String> tactics;
   final Value<String> mentality;
@@ -1441,6 +1483,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     this.name = const Value.absent(),
     this.managerName = const Value.absent(),
     this.crestIndex = const Value.absent(),
+    this.crest = const Value.absent(),
     this.formationCode = const Value.absent(),
     this.tactics = const Value.absent(),
     this.mentality = const Value.absent(),
@@ -1453,6 +1496,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     required String name,
     required String managerName,
     this.crestIndex = const Value.absent(),
+    this.crest = const Value.absent(),
     this.formationCode = const Value.absent(),
     this.tactics = const Value.absent(),
     this.mentality = const Value.absent(),
@@ -1468,6 +1512,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     Expression<String>? name,
     Expression<String>? managerName,
     Expression<int>? crestIndex,
+    Expression<String>? crest,
     Expression<String>? formationCode,
     Expression<String>? tactics,
     Expression<String>? mentality,
@@ -1480,6 +1525,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
       if (name != null) 'name': name,
       if (managerName != null) 'manager_name': managerName,
       if (crestIndex != null) 'crest_index': crestIndex,
+      if (crest != null) 'crest': crest,
       if (formationCode != null) 'formation_code': formationCode,
       if (tactics != null) 'tactics': tactics,
       if (mentality != null) 'mentality': mentality,
@@ -1494,6 +1540,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     Value<String>? name,
     Value<String>? managerName,
     Value<int>? crestIndex,
+    Value<String?>? crest,
     Value<String>? formationCode,
     Value<String>? tactics,
     Value<String>? mentality,
@@ -1506,6 +1553,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
       name: name ?? this.name,
       managerName: managerName ?? this.managerName,
       crestIndex: crestIndex ?? this.crestIndex,
+      crest: crest ?? this.crest,
       formationCode: formationCode ?? this.formationCode,
       tactics: tactics ?? this.tactics,
       mentality: mentality ?? this.mentality,
@@ -1529,6 +1577,9 @@ class ClubsCompanion extends UpdateCompanion<Club> {
     }
     if (crestIndex.present) {
       map['crest_index'] = Variable<int>(crestIndex.value);
+    }
+    if (crest.present) {
+      map['crest'] = Variable<String>(crest.value);
     }
     if (formationCode.present) {
       map['formation_code'] = Variable<String>(formationCode.value);
@@ -1558,6 +1609,7 @@ class ClubsCompanion extends UpdateCompanion<Club> {
           ..write('name: $name, ')
           ..write('managerName: $managerName, ')
           ..write('crestIndex: $crestIndex, ')
+          ..write('crest: $crest, ')
           ..write('formationCode: $formationCode, ')
           ..write('tactics: $tactics, ')
           ..write('mentality: $mentality, ')
@@ -1979,7 +2031,11 @@ class OwnedPlayer extends DataClass implements Insertable<OwnedPlayer> {
   /// Duplicate-merge level (GDD 8.1).
   final int upgradeLevel;
 
-  /// Attribute points added by upgrades (GDD 8.2).
+  /// LEGACY pre-2026-11-09 columns: random upgrade attribute points from
+  /// the old "+1 OVR + random points" rule. Unused for gameplay since the
+  /// owner's +N% decision (stats derive from upgradeLevel via
+  /// `upgradedValue`); new merges write 0. Kept for save compatibility —
+  /// no migration drops them.
   final int upgradedAttack;
   final int upgradedSupport;
   final int upgradedDefence;
@@ -7779,6 +7835,7 @@ typedef $$ClubsTableCreateCompanionBuilder =
       required String name,
       required String managerName,
       Value<int> crestIndex,
+      Value<String?> crest,
       Value<String> formationCode,
       Value<String> tactics,
       Value<String> mentality,
@@ -7792,6 +7849,7 @@ typedef $$ClubsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String> managerName,
       Value<int> crestIndex,
+      Value<String?> crest,
       Value<String> formationCode,
       Value<String> tactics,
       Value<String> mentality,
@@ -7825,6 +7883,11 @@ class $$ClubsTableFilterComposer extends Composer<_$AppDatabase, $ClubsTable> {
 
   ColumnFilters<int> get crestIndex => $composableBuilder(
     column: $table.crestIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get crest => $composableBuilder(
+    column: $table.crest,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7888,6 +7951,11 @@ class $$ClubsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get crest => $composableBuilder(
+    column: $table.crest,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get formationCode => $composableBuilder(
     column: $table.formationCode,
     builder: (column) => ColumnOrderings(column),
@@ -7944,6 +8012,9 @@ class $$ClubsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get crest =>
+      $composableBuilder(column: $table.crest, builder: (column) => column);
+
   GeneratedColumn<String> get formationCode => $composableBuilder(
     column: $table.formationCode,
     builder: (column) => column,
@@ -7997,6 +8068,7 @@ class $$ClubsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> managerName = const Value.absent(),
                 Value<int> crestIndex = const Value.absent(),
+                Value<String?> crest = const Value.absent(),
                 Value<String> formationCode = const Value.absent(),
                 Value<String> tactics = const Value.absent(),
                 Value<String> mentality = const Value.absent(),
@@ -8008,6 +8080,7 @@ class $$ClubsTableTableManager
                 name: name,
                 managerName: managerName,
                 crestIndex: crestIndex,
+                crest: crest,
                 formationCode: formationCode,
                 tactics: tactics,
                 mentality: mentality,
@@ -8021,6 +8094,7 @@ class $$ClubsTableTableManager
                 required String name,
                 required String managerName,
                 Value<int> crestIndex = const Value.absent(),
+                Value<String?> crest = const Value.absent(),
                 Value<String> formationCode = const Value.absent(),
                 Value<String> tactics = const Value.absent(),
                 Value<String> mentality = const Value.absent(),
@@ -8032,6 +8106,7 @@ class $$ClubsTableTableManager
                 name: name,
                 managerName: managerName,
                 crestIndex: crestIndex,
+                crest: crest,
                 formationCode: formationCode,
                 tactics: tactics,
                 mentality: mentality,

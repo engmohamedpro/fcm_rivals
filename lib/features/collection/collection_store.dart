@@ -13,6 +13,8 @@ library;
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
+
+import '../../core/domain/crest.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../core/database/app_database.dart';
@@ -130,6 +132,7 @@ class CollectionStore {
     required String managerName,
     required int crestIndex,
     String formationCode = '4-3-3',
+    CrestSpec? crest,
   }) async {
     if (clubName.trim().isEmpty) {
       throw const CollectionException('Club name is required');
@@ -154,6 +157,9 @@ class CollectionStore {
               name: clubName.trim(),
               managerName: managerName.trim(),
               crestIndex: Value(crestIndex),
+              // T-0097: the composed identity serializes into the new
+              // column; null keeps today's bare crestIndex path.
+              crest: crest == null ? const Value.absent() : Value(crest.encode()),
               formationCode: Value(formation.code),
               coins: economy.config.startingCoins,
               createdAt: now,
@@ -689,6 +695,12 @@ class CollectionStore {
 
   /// Current facility levels of the user's club (missing rows = 0).
   /// not come on keep their stamina untouched.
+
+  /// Resolves a club row's crest spec (T-0097): the new `crest`
+  /// column when it parses, else the legacy `crestIndex` mapping —
+  /// every consumer resolves old-vs-new in this one place.
+  static CrestSpec crestOf(Club club) =>
+      CrestSpec.fromJsonString(club.crest) ?? CrestSpec.legacy(club.crestIndex);
 
   // --- Club / squad / campus: delegated to the focused stores ----------
   // (the bodies live in club_store.dart, squad_store.dart and

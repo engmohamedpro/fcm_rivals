@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../collection/collection_store.dart' show CollectionStore;
 import '../../app/routes.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
@@ -167,7 +168,12 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       final store = await ref.read(collectionStoreProvider.future);
       final club = await store.getClub();
       if (mounted && club != null) {
-        setState(() => _userTeamColor = FcmColors.crestColor(club.crestIndex));
+        // T-0097 resolver: a spec club's bar uses spec.primaryColor —
+        // which for a legacy club IS crestColor(crestIndex), so every
+        // existing save keeps its exact tint.
+        setState(
+          () => _userTeamColor = CollectionStore.crestOf(club).primaryColor,
+        );
       }
     } catch (_) {
       // A storage hiccup leaves the bar's user half at brand gold.

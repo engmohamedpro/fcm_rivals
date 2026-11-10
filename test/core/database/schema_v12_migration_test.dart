@@ -84,7 +84,8 @@ void main() {
         .getSingle();
     expect(healthy.injuryMatchesRemaining, 0);
     expect(healthy.injuryKind, isNull);
-    expect(database.schemaVersion, 12);
+    // T-0097 bumped the schema to 13 (the clubs.crest column).
+    expect(database.schemaVersion, 13);
     await database.close();
   });
 
@@ -96,6 +97,19 @@ void main() {
     // 1. Hand-craft a v11 database with one row per table.
     final raw = sqlite3.sqlite3.open(file.path);
     raw.execute('PRAGMA user_version = 11');
+    // The v11 fixture's clubs table (T-0097): pre-crest shape — the
+    // v13 step ALTERs it, so it must exist like a real v11 install's.
+    raw.execute(
+      "CREATE TABLE IF NOT EXISTS \"clubs\" ("
+      "\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, "
+      "\"name\" TEXT NOT NULL, \"manager_name\" TEXT NOT NULL, "
+      "\"crest_index\" INTEGER NOT NULL DEFAULT 0, "
+      "\"formation_code\" TEXT NOT NULL DEFAULT '4-3-3', "
+      "\"tactics\" TEXT NOT NULL DEFAULT '{}', "
+      "\"mentality\" TEXT NOT NULL DEFAULT 'balanced', "
+      "\"coins\" INTEGER NOT NULL, \"is_user\" INTEGER NOT NULL DEFAULT 1, "
+      "\"created_at\" INTEGER NOT NULL)",
+    );
     raw.execute(_ownedPlayersV11Ddl);
     raw.execute(_aiPlayersV11Ddl);
     raw.execute(
@@ -168,7 +182,7 @@ void main() {
           .first['injury_matches_remaining'],
       2,
     );
-    expect(reopened.select('PRAGMA user_version').first['user_version'], 12);
+    expect(reopened.select('PRAGMA user_version').first['user_version'], 13);
     reopened.dispose();
   });
 }

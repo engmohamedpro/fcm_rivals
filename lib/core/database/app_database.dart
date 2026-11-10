@@ -60,6 +60,12 @@ class Clubs extends Table {
   TextColumn get name => text()();
   TextColumn get managerName => text()();
   IntColumn get crestIndex => integer().withDefault(const Constant(0))();
+
+  /// Composed crest identity (T-0097): JSON CrestSpec — shape +
+  /// primary/secondary palette indices + icon. Null on every
+  /// pre-v13 row and on legacy callers: the resolver falls back to
+  /// [crestIndex] rendering, so old saves look exactly as before.
+  TextColumn get crest => text().nullable()();
   TextColumn get formationCode => text().withDefault(const Constant('4-3-3'))();
 
   /// Custom tactics (GDD 10.2): JSON payload of TeamTactics. Legacy saves
@@ -302,7 +308,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -393,6 +399,21 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(ownedPlayers, ownedPlayers.injuryKind);
         await m.addColumn(aiPlayers, aiPlayers.injuryMatchesRemaining);
         await m.addColumn(aiPlayers, aiPlayers.injuryKind);
+      }
+      if (from < 13) {
+        // Composed crest identities (T-0097): the nullable TEXT column
+        // carries a JSON CrestSpec; pure addition — every existing row
+        // stays null and renders through the legacy crestIndex path.
+        // The v11 TableMigration rebuilds clubs at the CURRENT shape,
+        // so a v10/11 database reopening here may already carry the
+        // column — add it only when missing (SQLite has no ADD COLUMN
+        // IF NOT EXISTS; introspect PRAGMA table_info instead).
+        final hasCrest =
+            (await customSelect('PRAGMA table_info(clubs)').get())
+                .any((row) => row.read<String>('name') == 'crest');
+        if (!hasCrest) {
+          await m.addColumn(clubs, clubs.crest);
+        }
       }
     },
   );
