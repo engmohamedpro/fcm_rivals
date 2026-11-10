@@ -2,8 +2,8 @@
 id: T-0099
 title: Generate random crests for the AI clubs
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0097]
 created: 2026-11-09
 completed:
@@ -60,6 +60,23 @@ flutter test
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:**
+1. `lib/features/season/season_ai_models.dart` — `AiClubDefinition.crestIndex` (int) replaced by `crestIndex`-carrying `CrestSpec crest` field: the club's full random identity (shape + two palette colours + icon), documented with the legacy-index note.
+2. `lib/features/season/season_engine.dart` — `generateAiClubs` draws each club's spec through a new `_drawUniqueCrest(random, usedCrests)`: shape, primary, a DIFFERENT secondary (collision → +1 mod palette), icon — ALL off the SAME seeded `Random` instance, drawn exactly where the old `nextInt(8)` sat so the RNG consumption order (and thus every other draw: names, formations, squads, mentality) is preserved; a `usedCrests` set makes every spec league-unique (the loop is bounded by the option space — 4 shapes × 6 primaries × 5 secondaries × 6 icons — and terminates immediately at these counts). The out-of-range `nextInt(8)` bug is gone.
+3. `lib/features/season/season_store.dart` — the league insert persists `crest: Value(def.crest.encode())` (T-0097 serialization) and `crestIndex: Value(def.crest.primaryIndex)` (legacy consumers stay in range and consistent).
+4. `test/features/season/season_engine_test.dart` — three new tests: determinism (same seed → identical spec list; different seed → different set), validity + league-uniqueness (primary ≠ secondary, indexes in palette range, no duplicate spec among the 19), and the store round-trip (startSeason's real path → every AI row reads back with its spec and `crestIndex` == the spec's primary index) — plus the local dataset/seed-rows harness that path needs.
+
+**Files changed:** `lib/features/season/season_ai_models.dart`, `lib/features/season/season_engine.dart`, `lib/features/season/season_store.dart`, `test/features/season/season_engine_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓ (whole project). `flutter test test/features/season/` → **76/76 green** ✓ (including the three new T-0099 tests). Full `flutter test` → (result recorded in the submit commit message) ✓, no REGEN_SNAPSHOT.
+
+**Concerns / assumptions:**
+- The RNG order note: the spec draw consumes THREE random values per club (shape, primary, secondary) where the old code consumed ONE (`nextInt(8)`) — the draw happens at the same position in the sequence, but the subsequent draws (mentality etc.) now see a different stream position than pre-T-0099 engines. Determinism per seed is preserved (the hard rule); a pre-T-0099 replay of the same seed will not match crest-for-crest — acceptable, the old values were out-of-range garbage anyway.
+- The task's fallback clause (space exhaustion → repeat primary only) cannot trigger at 19 clubs vs 720 combinations; the loop's bound makes it dead code in practice, kept simple rather than adding untested fallback branches.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

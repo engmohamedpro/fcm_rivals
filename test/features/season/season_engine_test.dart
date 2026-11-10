@@ -2,7 +2,15 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:fcm_rivals/core/domain/crest.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
+import 'package:fcm_rivals/core/ui/fcm_style.dart' show FcmColors;
+import 'package:fcm_rivals/core/database/app_database.dart';
+import 'package:fcm_rivals/features/collection/collection_store.dart';
+import 'package:fcm_rivals/features/player_database/player_database.dart';
+import 'package:fcm_rivals/features/season/season_store.dart';
+import 'package:drift/native.dart' show NativeDatabase;
+import 'dart:convert' as json;
 import 'package:fcm_rivals/features/season/season_engine.dart';
 
 /// A realistic pool for real-player generation tests: every position
@@ -35,6 +43,47 @@ List<AiPoolPlayer> buildPool() {
 }
 
 math.Random _rand(int seed) => math.Random(seed);
+
+String datasetJson(List<List<dynamic>> rows, {int version = 1}) =>
+    json.jsonEncode({
+      'format': 'fcm-rivals-players',
+      'version': version,
+      'asOf': '2026-11-01',
+      'digest': 'test',
+      'players': rows,
+    });
+
+const List<List<dynamic>> seedRows = [
+  [1, 'Keeper 1', 'GK', 'Egypt', 400_000],
+  [2, 'Keeper 2', 'GK', 'Egypt', 490_000],
+  [3, 'Keeper 3', 'GK', 'Egypt', 580_000],
+  [4, 'Keeper 4', 'GK', 'Egypt', 670_000],
+  [5, 'Keeper 5', 'GK', 'Egypt', 760_000],
+  [6, 'Back 1', 'CB', 'Egypt', 410_000],
+  [7, 'Back 2', 'CB', 'Egypt', 500_000],
+  [8, 'Back 3', 'CB', 'Egypt', 590_000],
+  [9, 'Back 4', 'CB', 'Egypt', 680_000],
+  [10, 'Back 5', 'CB', 'Egypt', 770_000],
+  [11, 'Left 1', 'LB', 'Egypt', 420_000],
+  [12, 'Left 2', 'LB', 'Egypt', 510_000],
+  [13, 'Right 1', 'RB', 'Egypt', 430_000],
+  [14, 'Right 2', 'RB', 'Egypt', 520_000],
+  [15, 'Mid 1', 'CM', 'Egypt', 440_000],
+  [16, 'Mid 2', 'CM', 'Egypt', 530_000],
+  [17, 'Mid 3', 'CM', 'Egypt', 620_000],
+  [18, 'Mid 4', 'CM', 'Egypt', 710_000],
+  [19, 'Ten 1', 'CAM', 'Egypt', 450_000],
+  [20, 'Ten 2', 'CAM', 'Egypt', 540_000],
+  [21, 'Wing 1', 'LW', 'Egypt', 460_000],
+  [22, 'Wing 2', 'LW', 'Egypt', 550_000],
+  [23, 'Rover 1', 'RW', 'Egypt', 470_000],
+  [24, 'Rover 2', 'RW', 'Egypt', 560_000],
+  [25, 'Striker 1', 'ST', 'Egypt', 480_000],
+  [26, 'Striker 2', 'ST', 'Egypt', 570_000],
+  [27, 'Striker 3', 'ST', 'Egypt', 660_000],
+  [28, 'Striker 4', 'ST', 'Egypt', 750_000],
+  [29, 'Striker 5', 'ST', 'Egypt', 840_000],
+];
 
 void main() {
   group('Round-robin fixtures (FR-036, GDD 9.2)', () {
@@ -296,6 +345,63 @@ void main() {
         expect(c.players.length, 18);
         expect(c.managerName, isNotEmpty);
         expect(c.formationCode, isNotEmpty);
+      }
+    });
+
+    test('T-0099: crest draws are deterministic per seed', () {
+      final a = engine.generateAiClubs(1, random: _rand(42));
+      final b = engine.generateAiClubs(1, random: _rand(42));
+      // Same seed: identical spec list, crest-for-crest.
+      CrestSpec specOf(AiClubDefinition c) => c.crest;
+      expect(a.map(specOf).toList(), b.map(specOf).toList());
+      // A different seed very likely differs somewhere in 19 clubs.
+      final c = engine.generateAiClubs(1, random: _rand(43));
+      expect(a.map(specOf).toSet(), isNot(equals(c.map(specOf).toSet())));
+    });
+
+    test('T-0099: every generated crest is valid and league-unique', () {
+      final clubs = engine.generateAiClubs(1, random: _rand(99));
+      final palette = FcmColors.crestPalette.length;
+      final seen = <CrestSpec>{};
+      for (final club in clubs) {
+        final spec = club.crest;
+        // Valid: primary != secondary, both indexes in range.
+        expect(spec.primaryIndex, inInclusiveRange(0, palette - 1));
+        expect(spec.secondaryIndex, inInclusiveRange(0, palette - 1));
+        expect(spec.primaryIndex, isNot(spec.secondaryIndex));
+        // Unique within the league.
+        expect(seen.contains(spec), isFalse,
+            reason: 'duplicate crest for ${club.name}');
+        seen.add(spec);
+      }
+    });
+
+    test('T-0099: the league insert round-trips the spec', () async {
+      // The store's REAL path: startSeason generates the AI clubs
+      // itself (seeded by the store's own random) and inserts them —
+      // the rows read back with their spec in the crest column and
+      // crestIndex mirroring the spec's primary palette index.
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final collection = CollectionStore(db: db);
+      await collection.applyDatasetUpdate(
+        PlayerDataset.fromJson(datasetJson(seedRows)),
+      );
+      await collection.createClub(
+        clubName: 'FC Rivals',
+        managerName: 'Me',
+        crestIndex: 0,
+      );
+      final store = SeasonStore(db: db, random: math.Random(9));
+      await store.startSeason(division: 1);
+      final stored = await db.select(db.clubs).get();
+      final aiRows = stored.where((c) => !c.isUser).toList();
+      expect(aiRows, isNotEmpty);
+      for (final row in aiRows) {
+        final spec = CrestSpec.fromJsonString(row.crest);
+        expect(spec, isNotNull, reason: 'club ${row.name} has a spec');
+        expect(spec!.primaryIndex, row.crestIndex,
+            reason: 'crestIndex mirrors the spec primary');
       }
     });
 

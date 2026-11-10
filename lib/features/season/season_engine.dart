@@ -14,6 +14,9 @@ import '../match/tactics.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import 'season_ai_models.dart';
+import '../../core/domain/crest.dart'
+    show CrestIcon, CrestShape, CrestSpec;
+import '../../core/ui/fcm_style.dart' show FcmColors;
 
 export 'season_ai_models.dart';
 
@@ -222,6 +225,9 @@ class SeasonEngine {
     final target = config.targetAverageOverall(division);
     final names = <String>{...(excludeNames ?? const {})};
     final clubs = <AiClubDefinition>[];
+    /// Specs already drawn in this league (T-0099): no two AI clubs
+    /// share an identical crest.
+    final usedCrests = <CrestSpec>{};
     var prefixCursor = random.nextInt(config.aiNamePrefixes.length);
     var suffixCursor = random.nextInt(config.aiNameSuffixes.length);
     var managerCursor = random.nextInt(config.aiManagerNames.length);
@@ -254,12 +260,19 @@ class SeasonEngine {
       final realSquad = tracker == null
           ? null
           : _generateRealSquad(formation, target, tracker);
+      // T-0099: each club's full crest drawn from the SAME seeded
+      // random — shape, primary, secondary (primary != secondary),
+      // icon — never repeating a spec already used in this league
+      // (the space is far larger than a league's club count; the
+      // guard is a cheap belt-and-braces loop, not an expectation).
+      final crest = _drawUniqueCrest(random, usedCrests);
+      usedCrests.add(crest);
       clubs.add(
         AiClubDefinition(
           name: name,
           managerName: config
               .aiManagerNames[managerCursor++ % config.aiManagerNames.length],
-          crestIndex: random.nextInt(8),
+          crest: crest,
           formationCode: formation.code,
           tactics: const TeamTactics(),
           mentality: _pickMentality(random),
@@ -558,6 +571,34 @@ class SeasonEngine {
       for (var i = 0; i < 2; i++) syllables[random.nextInt(syllables.length)],
     ];
     return parts.join();
+  }
+
+  /// T-0099: draws one full crest spec off the engine's seeded
+  /// [random] — shape, primary, a DIFFERENT secondary, icon —
+  /// re-drawing while the combination is already used in this league.
+  /// The palette has six colours and the shape/secondary/icon space is
+  /// far larger than a league's club count, so the loop virtually
+  /// never spins; it is bounded by the option space itself and always
+  /// terminates.
+  CrestSpec _drawUniqueCrest(math.Random random, Set<CrestSpec> used) {
+    final shapes = CrestShape.values;
+    final icons = CrestIcon.values;
+    final colourCount = FcmColors.crestPalette.length;
+    for (;;) {
+      final primary = random.nextInt(colourCount);
+      var secondary = random.nextInt(colourCount);
+      if (secondary == primary) {
+        secondary = (secondary + 1) % colourCount;
+      }
+      final spec = CrestSpec(
+        shape: shapes[random.nextInt(shapes.length)],
+        primaryIndex: primary,
+        secondaryIndex: secondary,
+        icon: icons[random.nextInt(icons.length)],
+      );
+      if (used.contains(spec)) continue;
+      return spec;
+    }
   }
 
   Formation _pickFormation(math.Random random) {

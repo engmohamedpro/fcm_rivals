@@ -137,7 +137,12 @@ class SeasonStore {
               ClubsCompanion.insert(
                 name: def.name,
                 managerName: def.managerName,
-                crestIndex: Value(def.crestIndex),
+                // T-0099: the full spec persists into the `crest`
+                // column; crestIndex keeps the spec's PRIMARY palette
+                // index so legacy consumers (pre-T-0097 reads) stay in
+                // range and consistent.
+                crestIndex: Value(def.crest.primaryIndex),
+                crest: Value(def.crest.encode()),
                 formationCode: Value(def.formationCode),
                 tactics: Value(jsonEncode(def.tactics.toJson())),
                 mentality: Value(def.mentality.name),

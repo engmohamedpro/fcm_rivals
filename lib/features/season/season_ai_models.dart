@@ -10,6 +10,8 @@ library;
 import '../../core/domain/players.dart' show Position;
 import '../match/tactics.dart';
 
+import '../../core/domain/crest.dart' show CrestSpec;
+
 /// A real player from the imported dataset, offered to the AI-club
 /// generator as a squad candidate (GDD 9.4: AI squads are built from the
 /// same player database the user collects — real names, real positions,
@@ -45,7 +47,7 @@ class AiClubDefinition {
   const AiClubDefinition({
     required this.name,
     required this.managerName,
-    required this.crestIndex,
+    required this.crest,
     required this.formationCode,
     required this.tactics,
     required this.mentality,
@@ -55,7 +57,12 @@ class AiClubDefinition {
 
   final String name;
   final String managerName;
-  final int crestIndex;
+
+  /// The club's full random crest (T-0099): shape + two palette colours
+  /// + icon, drawn from the same seeded engine random so the league is
+  /// reproducible crest-for-crest. [crestIndex] lives on as the spec's
+  /// primary palette index for legacy consumers.
+  final CrestSpec crest;
   final String formationCode;
   final TeamTactics tactics;
   final Mentality mentality;
