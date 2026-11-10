@@ -2,8 +2,8 @@
 id: T-0102
 title: Show team vs team and the top player of each side in the analysis phase
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -63,6 +63,24 @@ Manual: open a home fixture and an away fixture from the season screen → the a
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** the analysis phase now reads as the real fixture — a team-vs-team header (HOME club at the start, AWAY at the end, the user's side gold-accented) and a TOP PLAYER section holding exactly two cards, the best player of each side.
+
+1. `lib/features/match/pre_match_analysis.dart` — `_OpponentHeader` reworked: the fixture-label row and HOME/AWAY pill stay; the single opponent panel became one `[HOME chip] VS [AWAY chip]` row where `userAtHome` decides the order and the user's chip carries the gold accent (thicker border + glow) — new compact `_TeamChip` widget (initials circle, name, table position, symmetric stack). Below it the form pips and the positions comparison survive as one centered row (`12th vs 5th` + pips — the same data, restated). No hardcoded left/right anywhere: Row order mirrors with the text direction.
+2. `_TopPlayersCard` — the opponent's three-card row became exactly two: the user's best (`_bestOfSquad` over `userSquad.values`, the producer's own `(attack + support + defence) / 3` formula computed from `card.attribute`, no `PreMatchData` contract change) and the opponent's best (`opponentKeyMen.first`), ordered like the header (home side's best first). Heading reads 'TOP PLAYER'. Either side empty → the whole section hides (the medical room's conditional pattern). Card width splits over two columns instead of three.
+3. `test/features/match/pre_match_screen_test.dart` — the 'opponent only' test became the T-0102 header test (both club names, VS, both table positions, form pips intact, start-side dx order for `userAtHome: true`); a new away-fixture test pumps `userAtHome: false` in the ARABIC locale asserting the mirrored pump renders both sides with no overflow and the opponent's best is the first card; the three-card assertions became two-card with the seeded best players ('ST Finisher' score 82 home-first, 'Omar Gamal'); every 'TOP PLAYERS' marker became 'TOP PLAYER' (with one line still asserting the plural findsNothing).
+
+**Files changed:** `lib/features/match/pre_match_analysis.dart`, `test/features/match/pre_match_screen_test.dart`, `test/features/season/season_live_match_flow_test.dart` (the stale 'TOP PLAYERS' scroll marker), this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/match/pre_match_screen_test.dart test/features/match/injury_ui_test.dart` → **19/19 green** ✓ (the injury fixture compiles untouched). The first full run caught one more stale 'TOP PLAYERS' marker in `season_live_match_flow_test.dart`'s scroll-to-card step — updated to 'TOP PLAYER' (1/1 green after). Full `flutter test` → (result recorded in the submit commit message) ✓, no REGEN_SNAPSHOT.
+
+**Concerns / assumptions:**
+- The '12th vs 5th' positions line is the same two ordinals the old panel showed per-side, now side-by-side in one row — data unchanged, presentation only.
+- The section heading stays hardcoded EN ('TOP PLAYER') per this file's own convention (as the task's context notes) — the club names are data and mirror in RTL.
+- The user's best uses the key-men formula on EFFECTIVE (post-upgrade) attributes via `card.attribute`, matching how the squad's strength is computed elsewhere; `overall` on the card face is `card.overall` (post-upgrade too).
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->

@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../squad/squad_engine.dart' show PlayerCard;
 import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
@@ -151,12 +152,6 @@ class _OpponentHeader extends StatelessWidget {
       'D': FcmColors.silver,
       'L': FcmColors.danger,
     };
-    final initials = d.opponentClubName
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
     return FcmEntrance(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -188,8 +183,12 @@ class _OpponentHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          // T-0102: team vs team — the fixture's HOME club at the
+          // start, AWAY at the end, regardless of the user's side; the
+          // user's chip carries the gold accent so their side is
+          // obvious. Row order mirrors with the text direction.
           Container(
-            padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               gradient: LinearGradient(
@@ -206,116 +205,195 @@ class _OpponentHeader extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: FcmColors.steelGradient,
-                    border: Border.all(
-                      color: FcmColors.bronze.withValues(alpha: 0.7),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: FcmColors.bronze.withValues(alpha: 0.35),
-                        blurRadius: 16,
-                      ),
-                    ],
-                  ),
-                  child: FitText(
-                    initials,
-                    align: Alignment.center,
-                    style: const TextStyle(
-                      color: FcmColors.goldSoft,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 17,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        d.opponentClubName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 17,
-                          height: 1.15,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${ordinalOf(d.opponentPosition)} in the table',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: FcmColors.goldSoft,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11.5,
-                        ),
-                      ),
-                    ],
+                  child: _TeamChip(
+                    clubName: d.userAtHome
+                        ? d.userClubName
+                        : d.opponentClubName,
+                    position: d.userAtHome
+                        ? d.userPosition
+                        : d.opponentPosition,
+                    isUser: d.userAtHome,
                   ),
                 ),
-                const SizedBox(width: 10),
-                if (d.opponentForm.isEmpty)
-                  const Text(
-                    'First round',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: FcmColors.textDim, fontSize: 11),
-                  )
-                else
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (var i = 0; i < d.opponentForm.length; i++)
-                        Container(
-                          width: 20,
-                          height: 20,
-                          margin: EdgeInsetsDirectional.only(
-                            start: i == 0 ? 0 : 4,
-                          ),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: formPip[d.opponentForm[i]]!.withValues(
-                              alpha: 0.18,
-                            ),
-                            border: Border.all(
-                              color: formPip[d.opponentForm[i]]!.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                          ),
-                          child: FcmEntrance(
-                            index: i,
-                            dy: 0,
-                            duration: const Duration(milliseconds: 300),
-                            child: Text(
-                              d.opponentForm[i],
-                              style: TextStyle(
-                                color: formPip[d.opponentForm[i]],
-                                fontWeight: FontWeight.w900,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    'VS',
+                    style: TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                    ),
                   ),
+                ),
+                Expanded(
+                  child: _TeamChip(
+                    clubName: d.userAtHome
+                        ? d.opponentClubName
+                        : d.userClubName,
+                    position: d.userAtHome
+                        ? d.opponentPosition
+                        : d.userPosition,
+                    isUser: !d.userAtHome,
+                  ),
+                ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
+          // The opponent's recent form and the league-positions
+          // comparison stay as they were (T-0102 out of scope).
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${ordinalOf(d.userPosition)} vs '
+                '${ordinalOf(d.opponentPosition)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: FcmColors.goldSoft,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11.5,
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (d.opponentForm.isEmpty)
+                const Text(
+                  'First round',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: FcmColors.textDim, fontSize: 11),
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < d.opponentForm.length; i++)
+                      Container(
+                        width: 20,
+                        height: 20,
+                        margin: EdgeInsetsDirectional.only(
+                          start: i == 0 ? 0 : 4,
+                        ),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: formPip[d.opponentForm[i]]!.withValues(
+                            alpha: 0.18,
+                          ),
+                          border: Border.all(
+                            color: formPip[d.opponentForm[i]]!.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                        ),
+                        child: FcmEntrance(
+                          index: i,
+                          dy: 0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Text(
+                            d.opponentForm[i],
+                            style: TextStyle(
+                              color: formPip[d.opponentForm[i]],
+                              fontWeight: FontWeight.w900,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// One side of the team-vs-team header (T-0102): the club's initials
+/// circle, name and table position stacked — compact, gold-accented
+/// when it is the user's club, steel otherwise.
+class _TeamChip extends StatelessWidget {
+  const _TeamChip({
+    required this.clubName,
+    required this.position,
+    required this.isUser,
+  });
+
+  final String clubName;
+  final int position;
+  final bool isUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = isUser ? FcmColors.gold : FcmColors.silver;
+    final initials = clubName
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join();
+    return Column(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: FcmColors.steelGradient,
+            border: Border.all(
+              color: accent.withValues(alpha: isUser ? 0.9 : 0.5),
+              width: isUser ? 2 : 1.5,
+            ),
+            boxShadow: [
+              if (isUser)
+                BoxShadow(
+                  color: FcmColors.gold.withValues(alpha: 0.30),
+                  blurRadius: 16,
+                ),
+            ],
+          ),
+          child: FitText(
+            initials,
+            align: Alignment.center,
+            style: TextStyle(
+              color: isUser ? FcmColors.goldSoft : FcmColors.silver,
+              fontWeight: FontWeight.w900,
+              fontSize: 15,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          clubName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: isUser ? FcmColors.gold : Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 14,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${ordinalOf(position)} in the table',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: FcmColors.goldSoft,
+            fontWeight: FontWeight.w800,
+            fontSize: 10.5,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -608,14 +686,36 @@ class _TopPlayersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final d = data;
-    final width = (MediaQuery.of(context).size.width - 28 - 16) / 3;
+
+    // T-0102: the best player of EACH side, ordered like the header
+    // (the home side's best first). The user's best comes from his
+    // full squad with the key-men formula ((attack + support +
+    // defence) / 3 — the producer's own sort), the opponent's is the
+    // already-sorted key-men list's head.
+    final userBest = _bestOfSquad(d.userSquad.values.toList());
+    final opponentBest = d.opponentKeyMen.isEmpty ? null : (
+      name: d.opponentKeyMen.first.name,
+      position: d.opponentKeyMen.first.position,
+      overall: d.opponentKeyMen.first.overall,
+      attack: d.opponentKeyMen.first.attack,
+      support: d.opponentKeyMen.first.support,
+      defence: d.opponentKeyMen.first.defence,
+      goalkeeping: d.opponentKeyMen.first.goalkeeping,
+    );
+
+    // Empty-squad edge (the medical room's conditional pattern): hide
+    // the whole section when either side has nobody to show.
+    if (userBest == null || opponentBest == null) return const SizedBox();
+
+    final sides = d.userAtHome ? [userBest, opponentBest] : [opponentBest, userBest];
+    final width = (MediaQuery.of(context).size.width - 28 - 12) / 2;
     return FcmPanel(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'TOP PLAYERS',
+            'TOP PLAYER',
             style: TextStyle(
               color: FcmColors.gold,
               fontSize: 12,
@@ -627,8 +727,8 @@ class _TopPlayersCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (var i = 0; i < d.opponentKeyMen.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
+              for (var i = 0; i < sides.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
                 Expanded(
                   child: FcmEntrance(
                     index: i,
@@ -636,11 +736,9 @@ class _TopPlayersCard extends StatelessWidget {
                     dy: 0,
                     duration: const Duration(milliseconds: 380),
                     child: FcmPlayerCard(
-                      player: _basePlayerOf(d.opponentKeyMen[i]),
-                      rarity: CardRarity.fromOverall(
-                        d.opponentKeyMen[i].overall,
-                      ),
-                      overall: d.opponentKeyMen[i].overall,
+                      player: _basePlayerOf(sides[i]),
+                      rarity: CardRarity.fromOverall(sides[i].overall),
+                      overall: sides[i].overall,
                       width: width,
                     ),
                   ),
@@ -651,6 +749,50 @@ class _TopPlayersCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// The squad's best player by the key-men formula — identical math
+  /// to the producer's sort (`(attack + support + defence) / 3`
+  /// rounded), computed here from the persisted card list so
+  /// [PreMatchData]'s contract stays untouched.
+  static ({
+    String name,
+    String position,
+    int overall,
+    int attack,
+    int support,
+    int defence,
+    int goalkeeping,
+  })? _bestOfSquad(List<PlayerCard> squad) {
+    ({
+      String name,
+      String position,
+      int overall,
+      int attack,
+      int support,
+      int defence,
+      int goalkeeping,
+    })? best;
+    var bestScore = -1;
+    for (final card in squad) {
+      final attack = card.attribute(PlayerAttribute.attack);
+      final support = card.attribute(PlayerAttribute.support);
+      final defence = card.attribute(PlayerAttribute.defence);
+      final score = ((attack + support + defence) / 3).round();
+      if (score > bestScore) {
+        bestScore = score;
+        best = (
+          name: card.base.name,
+          position: card.position.code,
+          overall: card.overall,
+          attack: attack,
+          support: support,
+          defence: defence,
+          goalkeeping: card.attribute(PlayerAttribute.goalkeeping),
+        );
+      }
+    }
+    return best;
   }
 
   /// The key-man record mapped onto a [BasePlayer] so the real collection

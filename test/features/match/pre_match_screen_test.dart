@@ -165,21 +165,29 @@ Future<void> _openPreMatch(
 }
 
 void main() {
-  testWidgets('analysis is about the opponent only', (
-    WidgetTester tester,
-  ) async {
-    await _openPreMatch(tester);
+  testWidgets(
+    'T-0102: the header is team vs team — HOME club first, both '
+    'orientations',
+    (WidgetTester tester) async {
+      await _openPreMatch(tester);
 
-    // The opponent header: club name, table position and form pips.
-    expect(find.text('Al Ahly'), findsOneWidget);
-    expect(find.text('5th in the table'), findsOneWidget);
-    expect(find.text('W'), findsNWidgets(2));
-    expect(find.text('D'), findsNWidgets(2));
-    expect(find.text('L'), findsNWidgets(1));
+      // Both club names show, the user home: FC Rivals at the start.
+      expect(find.text('Al Ahly'), findsOneWidget);
+      expect(find.text('FC Rivals'), findsOneWidget);
+      expect(find.text('VS'), findsOneWidget);
+      // The table positions survive per side.
+      expect(find.text('5th in the table'), findsOneWidget);
+      expect(find.text('12th in the table'), findsOneWidget);
+      // The form pips row stays.
+      expect(find.text('W'), findsNWidgets(2));
+      expect(find.text('D'), findsNWidgets(2));
+      expect(find.text('L'), findsNWidgets(1));
 
-    // The user's club is out of the analysis; no VS header remains.
-    expect(find.text('FC Rivals'), findsNothing);
-    expect(find.text('VS'), findsNothing);
+      // Start-side order: the home club's name sits to the LEFT in LTR.
+      final userDx = tester.getTopLeft(find.text('FC Rivals')).dx;
+      final oppDx = tester.getTopLeft(find.text('Al Ahly')).dx;
+      expect(userDx, lessThan(oppDx),
+          reason: 'userAtHome: the user club is the HOME side, first');
 
     // Forecast: loss/draw/win in ONE row, no heading or sample count.
     expect(find.text('LOSS'), findsOneWidget);
@@ -198,15 +206,19 @@ void main() {
     expect(find.text('DEFENCE'), findsOneWidget);
     expect(find.text('GOALKEEPING'), findsOneWidget);
 
-    // The old THEIR SEASON card is gone; three collection-style player
-    // cards side by side replace it (same card face as the Collection
-    // tab, one row, each carrying rating, position and stat columns).
+    // T-0102: the top section is the BEST PLAYER of each side — two
+    // cards, home side's best first. The user's best from the squad
+    // fixture is 'ST Finisher' (rating 85 → score (81+85+79)/3 = 82),
+    // the opponent's best is the key-men head 'Omar Gamal'.
     expect(find.text('THEIR SEASON'), findsNothing);
-    expect(find.text('TOP PLAYERS'), findsOneWidget);
-    expect(find.byType(FcmPlayerCard), findsNWidgets(3));
+    expect(find.text('TOP PLAYERS'), findsNothing);
+    expect(find.text('TOP PLAYER'), findsOneWidget);
+    expect(find.byType(FcmPlayerCard), findsNWidgets(2));
     final cards = tester.widgetList<FcmPlayerCard>(find.byType(FcmPlayerCard));
     final names = [for (final c in cards) c.player.name];
-    expect(names, containsAll(['Omar Gamal', 'Karim Fouad', 'Ali Soliman']));
+    expect(names, containsAll(['Omar Gamal', 'ST Finisher']));
+    // Home order: the user's best sits first (left in LTR).
+    expect(names.first, 'ST Finisher');
     final cardFinders = find
         .byType(FcmPlayerCard)
         .evaluate()
@@ -216,24 +228,77 @@ void main() {
       expect(
         tester.getTopLeft(f).dy,
         closeTo(dyTop, 1),
-        reason: 'the three cards sit side by side in one row',
+        reason: 'the two cards sit side by side in one row',
       );
     }
   });
+
+  testWidgets(
+    'T-0102: an AWAY fixture flips the header and card order, and the '
+    'Arabic RTL pump mirrors without overflow',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // userAtHome flipped: the opponent (home side) leads.
+      final awayData = PreMatchData(
+        fixtureLabel: _data.fixtureLabel,
+        userClubName: _data.userClubName,
+        opponentClubName: _data.opponentClubName,
+        userAtHome: false,
+        forecast: _data.forecast,
+        opponentForm: _data.opponentForm,
+        opponentPosition: _data.opponentPosition,
+        userPosition: _data.userPosition,
+        opponentKeyMen: _data.opponentKeyMen,
+        userSquad: _data.userSquad,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('ar'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            backgroundColor: Colors.black,
+            body: AnalysisPhase(data: awayData),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Both sides render in AR; no overflow exception.
+      expect(find.text('Al Ahly'), findsOneWidget);
+      expect(find.text('FC Rivals'), findsOneWidget);
+      expect(find.text('VS'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(find.text('TOP PLAYER'), findsOneWidget);
+      expect(find.byType(FcmPlayerCard), findsNWidgets(2));
+      // Away fixture: the opponent's best is the FIRST card.
+      final names = [
+        for (final c in tester.widgetList<FcmPlayerCard>(
+          find.byType(FcmPlayerCard),
+        ))
+          c.player.name,
+      ];
+      expect(names.first, 'Omar Gamal');
+    },
+  );
 
   testWidgets('analysis phase shows a BACK that exits the matchday', (
     WidgetTester tester,
   ) async {
     await _openPreMatch(tester);
 
-    expect(find.text('TOP PLAYERS'), findsOneWidget);
+    expect(find.text('TOP PLAYER'), findsOneWidget);
     expect(find.text('BACK'), findsOneWidget);
 
     // BACK pops the route: back on the season tab, nothing kicked off.
     await tester.tap(find.text('BACK'));
     await _settle(tester, frames: 10);
     expect(find.text('SEASON TAB'), findsOneWidget);
-    expect(find.text('TOP PLAYERS'), findsNothing);
+    expect(find.text('TOP PLAYER'), findsNothing);
   });
 
   testWidgets('onExit replaces the default pop', (WidgetTester tester) async {
@@ -245,7 +310,7 @@ void main() {
 
     expect(exited, isTrue, reason: 'host exit callback ran');
     // The screen itself is still on stage — the host decides what pops.
-    expect(find.text('TOP PLAYERS'), findsOneWidget);
+    expect(find.text('TOP PLAYER'), findsOneWidget);
   });
 
   testWidgets('BACK from the tactics phase steps back to the analysis', (
@@ -260,7 +325,7 @@ void main() {
     await tester.tap(find.text('BACK'));
     await _settle(tester, frames: 10);
     expect(
-      find.text('TOP PLAYERS'),
+      find.text('TOP PLAYER'),
       findsOneWidget,
       reason: 'BACK steps back one phase, not out of the matchday',
     );

@@ -152,14 +152,15 @@ void main() {
       expect(find.text('LOSS'), findsOneWidget);
       expect(find.text('WIN'), findsOneWidget);
       expect(find.text('STRENGTH'), findsOneWidget);
-      // The top-players card sits below the fold: scroll the analysis.
+      // T-0102: the top-player card (one per side) sits below the
+      // fold: scroll the analysis.
       await tester.dragUntilVisible(
-        find.text('TOP PLAYERS'),
+        find.text('TOP PLAYER'),
         find.byType(Scrollable).first,
         const Offset(0, -120),
       );
       await _flush(tester, wait: const Duration(milliseconds: 200));
-      expect(find.text('TOP PLAYERS'), findsOneWidget);
+      expect(find.text('TOP PLAYER'), findsOneWidget);
 
       // Continue into the tactics phase (GDD 10.4): the SAME screen as the
       // Tactics tab — a compact control card (team rating + TACTICS button)
