@@ -2,11 +2,11 @@
 id: T-0097
 title: Add the CrestSpec model, renderer and clubs database column
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0097: Add the CrestSpec model, renderer and clubs database column
@@ -35,11 +35,11 @@ A club's crest becomes a composed visual identity — shape + primary/secondary 
 - Rendering crests anywhere new (consumers adopt `FcmCrest` in their own tasks).
 
 ## Acceptance Criteria
-- [ ] `CrestSpec` serializes and round-trips through JSON; `legacy(i)` reproduces today's palette colour for every i in 0..5; the resolver prefers the `crest` column and falls back to `crestIndex`.
-- [ ] `FcmCrest` renders any valid spec at 28px and 96px without overflow or clipped icon, direction-agnostic (no visual difference LTR vs RTL).
-- [ ] Schema 13 migrates from 12 without data loss (existing club rows keep working); a club created with a spec round-trips through the DB.
-- [ ] A legacy club's momentum bar tint is byte-for-byte the colour it uses today; a spec club's bar uses `spec.primaryColor`.
-- [ ] `flutter analyze` zero warnings; new tests green; full `flutter test` green, no REGEN_SNAPSHOT.
+- [x] `CrestSpec` serializes and round-trips through JSON; `legacy(i)` reproduces today's palette colour for every i in 0..5; the resolver prefers the `crest` column and falls back to `crestIndex`.
+- [x] `FcmCrest` renders any valid spec at 28px and 96px without overflow or clipped icon, direction-agnostic (no visual difference LTR vs RTL).
+- [x] Schema 13 migrates from 12 without data loss (existing club rows keep working); a club created with a spec round-trips through the DB.
+- [x] A legacy club's momentum bar tint is byte-for-byte the colour it uses today; a spec club's bar uses `spec.primaryColor`.
+- [x] `flutter analyze` zero warnings; new tests green; full `flutter test` green, no REGEN_SNAPSHOT.
 
 ## How to Verify
 ```bash
@@ -89,3 +89,14 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7):**
+- `flutter analyze` (current main) → No issues found! ✓
+- `flutter test test/features/onboarding/ test/features/match/match_screen_test.dart` → at commit 2911fec (this task's submission tree, clean worktree): **22/22 green** ✓. On CURRENT main the same run fails 3 tests — all T-0100's WIP (55b7cdb: pep-talk/CONTINUE flows, whose own developer recorded "TEST SUITES NOT YET RUN — task stays in 1-todo"); attribution verified by running the identical suites on both trees: green pre-T-0100, red only on T-0100's tests after it. Nothing crest-related fails anywhere.
+- Full `flutter test` at 2911fec → **1007/1007, "All tests passed!"** ✓ (includes all 13 migration tests and the new crest_spec_test.dart suite).
+- Diff scope check (commit fd0f585): all 10 files inside the declared scope. Verified against the code: `CrestSpec` const-constructible with enum-backed shape/icon (stable JSON ids, unknown ids degrade to defaults), round-trip-safe JSON, junk → null; `legacy(i).primaryColor == FcmColors.crestColor(i)` byte-for-byte (same palette + clamp); `crestOf` resolver = column-wins-else-legacy in one place; the momentum tint routes through `crestOf(club).primaryColor` (import-order warning aside, analyze is clean); the v12→v13 step introspects `PRAGMA table_info` and adds `crest` only when missing — the duplicate-column trap of the v11 `TableMigration(clubs)` rebuild is handled in the migration itself, and the migration-test fixture changes (v11 clubs table added, version pins 12→13) strengthen the tests rather than weaken them ✓. No golden touched, so the REGEN_SNAPSHOT clause is moot ✓.
+- Developer-notes claims spot-checked and confirmed honest (including the "true downgrade-reopen not separately simulated" caveat — the PRAGMA-guarded step runs the same addColumn path the fresh-create schema test exercises).
+
+All five criteria met; every verify command run by the reviewer on this task's own tree. PASS.
