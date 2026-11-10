@@ -2,11 +2,11 @@
 id: T-0093
 title: Remove the drag-to-swap hint from the team screen
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0093: Remove the drag-to-swap hint from the team screen
@@ -32,10 +32,10 @@ The team screen no longer shows the "Hold a player and drop him on another to sw
 - Localizing or restyling the hint instead of removing it — the owner asked for removal.
 
 ## Acceptance Criteria
-- [ ] The "Hold a player and drop him on another to swap" sentence never renders anywhere (Team tab with swapping active included).
-- [ ] `SquadSwapHint` class is gone from `lib/` with zero dangling references; hold-and-drag swapping still works (existing drag/swap tests green).
-- [ ] Updated + new tests green.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
+- [x] The "Hold a player and drop him on another to swap" sentence never renders anywhere (Team tab with swapping active included).
+- [x] `SquadSwapHint` class is gone from `lib/` with zero dangling references; hold-and-drag swapping still works (existing drag/swap tests green).
+- [x] Updated + new tests green.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/squad/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -75,3 +75,9 @@ flutter test
 **Concerns / assumptions:**
 - The grep requirement's spirit is "nothing renders the sentence": the two textual matches left are a code comment and the tests that ASSERT its absence — zero render paths remain.
 - Discoverability trade-off accepted by the owner: with the hint gone, hold-to-drag is undiscoverable for first-time users; flagged honestly, not changed (the task says removal, not restyling).
+
+## Review Log
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7):** `flutter analyze` → No issues found! ✓. `grep -rn "SquadSwapHint" lib/` → zero matches (class gone, no dangling references) ✓; the sentence's only lib/ match is the pre-existing code comment in `squad_screen.dart` — not a render path (the task's own Requirement 4 forces the string inside the absence tests, so the literal "no matches" grep expectation was self-contradictory; the substance — nothing renders it — holds and is pinned by tests). `flutter test test/features/squad/` → 246/246 green ✓ (drag/swap machinery + the new Team-tab regression test). Full `flutter test` → 995/995, All tests passed! ✓. Diff scope check (commit 4a08ed3): the single hint line removed with nothing replacing it, the dead `SquadSwapHint` class deleted, no other behavior change ✓. All four criteria met; every verify command run by the reviewer.
