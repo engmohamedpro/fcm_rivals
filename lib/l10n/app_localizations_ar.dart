@@ -813,4 +813,29 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get achTitleMastermind2 => 'البروفيسور';
+
+  @override
+  String get navAchievements => 'الإنجازات';
+
+  @override
+  String get achHubTitle => 'غرفة الكؤوس';
+
+  @override
+  String achHubSubtitle(int claimed, int total) {
+    return '$claimed من $total درجات مُستحقة';
+  }
+
+  @override
+  String get achClaimedLabel => 'مُستحق';
+
+  @override
+  String get achClaimAction => 'استحق';
+
+  @override
+  String get teamOpenCollection => 'المجموعة كاملة';
+
+  @override
+  String achClaimedRungs(int count) {
+    return '$count مُستحقة';
+  }
 }

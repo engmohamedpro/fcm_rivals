@@ -260,5 +260,14 @@
   "achTitlePacks2": "أمير الأسواق",
   "achTitleCoins2": "التاجر الكبير",
   "achTitleSeasons2": "أسطول النادي",
-  "achTitleMastermind2": "البروفيسور"
+  "achTitleMastermind2": "البروفيسور",
+  "navAchievements": "الإنجازات",
+  "achHubTitle": "غرفة الكؤوس",
+  "achHubSubtitle": "{claimed} من {total} درجات مُستحقة",
+  "@achHubSubtitle": {"placeholders": {"claimed": {"type": "int"}, "total": {"type": "int"}}},
+  "achClaimedLabel": "مُستحق",
+  "achClaimAction": "استحق",
+  "teamOpenCollection": "المجموعة كاملة",
+  "achClaimedRungs": "{count} مُستحقة",
+  "@achClaimedRungs": {"placeholders": {"count": {"type": "int"}}}
 }

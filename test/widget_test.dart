@@ -124,7 +124,7 @@ void main() {
       // from the Season tab; the squad lives on the Team tab).
       expect(find.text('Season'), findsWidgets);
       expect(find.text('Team'), findsWidgets);
-      expect(find.text('Collection'), findsWidgets);
+      expect(find.text('Achievements'), findsWidgets);
       expect(find.text('Store'), findsWidgets);
       expect(find.text('Match'), findsNothing);
 

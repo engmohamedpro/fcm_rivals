@@ -1609,6 +1609,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The Professor'**
   String get achTitleMastermind2;
+
+  /// No description provided for @navAchievements.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get navAchievements;
+
+  /// No description provided for @achHubTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The Trophy Room'**
+  String get achHubTitle;
+
+  /// No description provided for @achHubSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{claimed} of {total} tiers claimed'**
+  String achHubSubtitle(int claimed, int total);
+
+  /// No description provided for @achClaimedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed'**
+  String get achClaimedLabel;
+
+  /// No description provided for @achClaimAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim'**
+  String get achClaimAction;
+
+  /// No description provided for @teamOpenCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'Full collection'**
+  String get teamOpenCollection;
+
+  /// No description provided for @achClaimedRungs.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} claimed'**
+  String achClaimedRungs(int count);
 }
 
 class _AppLocalizationsDelegate

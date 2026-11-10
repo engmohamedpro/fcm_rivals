@@ -305,5 +305,14 @@
   "achTitlePacks2": "Market Mogul",
   "achTitleCoins2": "The Magnate",
   "achTitleSeasons2": "Club Legend",
-  "achTitleMastermind2": "The Professor"
+  "achTitleMastermind2": "The Professor",
+  "navAchievements": "Achievements",
+  "achHubTitle": "The Trophy Room",
+  "achHubSubtitle": "{claimed} of {total} tiers claimed",
+  "@achHubSubtitle": {"placeholders": {"claimed": {"type": "int"}, "total": {"type": "int"}}},
+  "achClaimedLabel": "Claimed",
+  "achClaimAction": "Claim",
+  "teamOpenCollection": "Full collection",
+  "achClaimedRungs": "{count} claimed",
+  "@achClaimedRungs": {"placeholders": {"count": {"type": "int"}}}
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n_context.dart';
 
 import '../../app/providers.dart';
+import '../../app/routes.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../ads/ad_engine.dart' show AdEngine, AdRewardKind;
@@ -108,6 +109,23 @@ class SquadScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+            // T-0110: the full collection grid lives HERE now — the
+            // third tab became the Achievements hub. The bench and
+            // reserves render on the pitch view; this pushes the
+            // every-owned-card browsing surface (the old tab, moved).
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: FcmButton(
+                  label: l10nOf(context).teamOpenCollection,
+                  icon: Icons.grid_view_rounded,
+                  compact: true,
+                  style: FcmButtonStyle.steel,
+                  onPressed: () => AppRoutes.collectionBrowse(context),
+                ),
+              ),
+            ),
             TacticsSetupView(
               formationCode: club?.formationCode ?? '4-3-3',
               tactics: tactics,

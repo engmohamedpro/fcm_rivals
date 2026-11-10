@@ -13,7 +13,7 @@ import 'core/ui/fcm_logo.dart';
 import 'core/ui/fcm_style.dart';
 import 'core/ui/fcm_language_toggle.dart';
 import 'core/ui/fcm_widgets.dart';
-import 'features/collection/collection_collection_screen.dart';
+import 'features/achievements/achievements_screen.dart';
 import 'features/facilities/campus_screen.dart';
 import 'features/onboarding/club_creation_screen.dart';
 import 'features/packs/pack_effects.dart' show precachePackLogo;
@@ -145,7 +145,7 @@ class GameShell extends ConsumerWidget {
     final items = [
       FcmNavItem(l10n.navSeason, Icons.emoji_events_rounded),
       FcmNavItem(l10n.navTeam, Icons.shield_rounded),
-      FcmNavItem(l10n.navCollection, Icons.collections_bookmark_rounded),
+      FcmNavItem(l10n.navAchievements, Icons.military_tech_rounded),
       FcmNavItem(l10n.navCampus, Icons.apartment_rounded),
       FcmNavItem(l10n.navStore, Icons.storefront_rounded, badge: packs),
     ];
@@ -201,7 +201,7 @@ class _GameShellBodyState extends State<_GameShellBody> {
   Widget _page(int i) => switch (i) {
     0 => const SeasonScreen(),
     1 => const SquadScreen(),
-    2 => const CollectionScreen(),
+    2 => const AchievementsScreen(),
     3 => const CampusScreen(),
     _ => const PacksScreen(),
   };

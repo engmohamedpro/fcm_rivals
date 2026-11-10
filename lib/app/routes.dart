@@ -26,6 +26,7 @@ import '../features/match/tactics.dart' show MatchPepTalk;
 import '../features/packs/pack_contents_screen.dart';
 import '../features/packs/pack_opening_screen.dart';
 import '../features/packs/pack_engine.dart';
+import '../features/collection/collection_collection_screen.dart';
 import '../features/season/season_screen.dart' show PreMatchRoute;
 import '../core/domain/players.dart' show BasePlayer;
 import '../features/match/match_forecast.dart' show PreMatchData;
@@ -143,6 +144,17 @@ class AppRoutes {
           tier: tier,
           loadPlayers: loadPlayers,
         ),
+      ),
+    );
+  }
+
+  /// The full player-collection grid (the old third tab's browsing
+  /// surface, T-0110): pushed from the Team tab's entry point — the
+  /// squad pitch shows the XI and bench; THIS is every owned card.
+  static Future<void> collectionBrowse(BuildContext context) {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const CollectionScreen(),
       ),
     );
   }

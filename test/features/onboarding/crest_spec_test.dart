@@ -322,13 +322,16 @@ void main() {
       );
     });
 
-    test('schema 13: the crest column exists after the v12→v13 step',
+    test('schema 13/14: the crest column exists after the v12→v13 step',
         () async {
       // A v12 database (pre-column) migrated to 13 keeps its rows and
       // gains the nullable column — every existing value reads null.
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(db.close);
-      expect(db.schemaVersion, 13);
+      // T-0106 bumped the schema to 14 (achievement claims + equipped
+      // title); the crest column this test locks landed in v13 and
+      // survives the bump untouched.
+      expect(db.schemaVersion, 14);
 
       // The fresh-create path is the same schema the migration lands
       // on; write a row directly and read the column back through the

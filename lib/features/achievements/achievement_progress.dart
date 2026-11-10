@@ -158,6 +158,23 @@ class CareerMetrics {
   /// This is the honest alternative to a fake counter.
   final int tacticsInstructionsChanged;
 
+  /// The zero snapshot: a fresh save (or no club yet). Every metric
+  /// reads 0 — the screen's honest empty state, never fake progress.
+  static const CareerMetrics empty = CareerMetrics(
+    matchesManaged: 0, homeMatches: 0, awayMatches: 0, wins: 0,
+    draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, cleanSheets: 0,
+    longestWinStreak: 0, longestUnbeatenStreak: 0,
+    longestCleanSheetStreak: 0, mostGoalsInOneMatch: 0,
+    matchesScoredFirst: 0, titlesByDivision: {}, titlesByDivisionTotal: 0,
+    promotions: 0, relegations: 0, seasonsCompleted: 0, packsOpened: 0,
+    packsPurchased: 0, packsRewarded: 0, startingPacksOpened: 0,
+    cardsOwned: 0, legendaryCardsOwned: 0, epicCardsOwned: 0,
+    highestUpgradeLevel: 0, upgradesCompleted: 0, legendaryPulls: 0,
+    playerSalesCompleted: 0, lifetimeCoinsEarned: 0, coinsSpentOnPacks: 0,
+    coinsSpentOnUpgrades: 0, facilityLevelTotal: 0, recoveryCentreLevel: 0,
+    joinedAt: null, tacticsInstructionsChanged: 0,
+  );
+
   /// The metric id → value map the catalog's definitions read. Pure
   /// in-memory lookup after the one derivation — never a DB hit.
   int? progressFor(String metricId) => switch (metricId) {

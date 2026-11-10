@@ -820,4 +820,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get achTitleMastermind2 => 'The Professor';
+
+  @override
+  String get navAchievements => 'Achievements';
+
+  @override
+  String get achHubTitle => 'The Trophy Room';
+
+  @override
+  String achHubSubtitle(int claimed, int total) {
+    return '$claimed of $total tiers claimed';
+  }
+
+  @override
+  String get achClaimedLabel => 'Claimed';
+
+  @override
+  String get achClaimAction => 'Claim';
+
+  @override
+  String get teamOpenCollection => 'Full collection';
+
+  @override
+  String achClaimedRungs(int count) {
+    return '$count claimed';
+  }
 }

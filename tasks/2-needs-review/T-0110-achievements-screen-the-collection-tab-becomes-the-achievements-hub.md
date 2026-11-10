@@ -2,8 +2,8 @@
 id: T-0110
 title: Achievements screen — the Collection tab becomes the Achievements hub (categories, badges, progress, claims)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0108]
 created: 2026-11-10
 completed:
@@ -57,12 +57,78 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `lib/features/achievements/achievements_screen.dart` — the
+    hub: club header (emblem + The Trophy Room + equipped title
+    empty-safe + claimed-of-total), the overall completion ring, then
+    category slivers — every tier row inside its own
+    RepaintBoundary (the ambient-animation isolation the store's
+    foil cells taught). Per card: painter-drawn badge (NEW
+    `achievements_badge_painter.dart` — laurel shield per tier metal
+    in the card_rarity_art craft: strokes/fills only, legend gets the
+    turning sunburst + drifting sparkles), name + localized
+    description, the HONEST geometric bar (value/threshold capped,
+    "4 / 1" readouts), coin chip, and the claim column: eligible →
+    claim button; locked → chip only (no action — the contract);
+    claimed history → the card's claimed-rungs chip + the rung keeps
+    climbing. The l10n bridge is a static key→getter table (104 keys,
+    no mirrors) — the catalog test's completeness lock guarantees
+    every entry exists in BOTH arbs.
+  - NEW `lib/features/achievements/achievements_providers.dart` — the
+    thin state layer: careerMetricsProvider (T-0107 derivation),
+    claimsProvider (LIVE drift watch of the claims table — claimed
+    state renders from data, no local flags), equippedTitleProvider
+    (empty-safe), claimTierProvider (T-0108's atomic service) +
+    refreshAchievements (post-claim re-derivation: claimed coins move
+    lifetimeCoinsEarned).
+  - Nav swap in `lib/main.dart`: third slot = Achievements
+    (military_tech icon, navAchievements l10n EN/AR); the 5-tab
+    mechanics untouched. Collection browsing moved: NEW
+    `AppRoutes.collectionBrowse` (typed-route pattern) pushed from
+    the Team tab's compact steel button (`teamOpenCollection`
+    l10n) — the grid screen itself untouched (its tests pass
+    unmodified, including injury_surfaces).
+  - NEW `test/features/achievements/achievements_screen_test.dart`
+    (6 tests): honest-progress render + lazy-section drag (4/1
+    readout, Claim affordance), the REAL claim pipeline (plain async
+    test — 3 Granted, ledger rows, moved balance, idempotent re-run),
+    claimed-state render from the live watch (pre-seeded real claim →
+    '1 claimed' chip), locked tiers show no action (0/1 honest zero),
+    empty save zero-state (header + ring + full catalog, no crash),
+    Arabic RTL pass (المسيرة/الهجوم/غرفة الكؤوس/استحق +
+    Directionality.rtl — direction captured before the fling).
+  - Smoke test label 'Collection' → 'Achievements'.
+- **Files changed:** lib/features/achievements/achievements_screen.dart
+  (new), achievements_badge_painter.dart (new),
+  achievements_providers.dart (new), lib/main.dart,
+  lib/app/routes.dart, lib/features/squad/squad_screen.dart (entry
+  point), lib/l10n/app_en.arb + app_ar.arb (+9 keys) with clean
+  gen-l10n, test/widget_test.dart,
+  test/features/achievements/achievements_screen_test.dart (new),
+  test/features/onboarding/crest_spec_test.dart (schema pin 13→14 —
+  the T-0106 bump's last stale pin, found by this task's sweep).
+- **How I tested it:** `flutter analyze --no-pub` — zero new issues
+  (only the 2 pre-existing baseline entries). Achievements suite +
+  smoke: 39/39 green. Collection suite green (injury_surfaces 4/4 —
+  the moved grid untouched). Match/onboarding sweep: only the 2
+  pre-existing tactic_slider failures + the crest pin (fixed). The
+  squad suite's T-0064 slider family remains the pre-existing
+  stash-verified set — untouched by this task.
+- **Concerns / assumptions:** (1) The claim BUTTON's async closure
+  cannot execute drift I/O under the widget test's fake clock — the
+  pipeline is exercised through the same service call in a plain
+  async test, and the widget test proves the UI flip from the LIVE
+  watch with a pre-seeded real claim (documented in the test).
+  (2) The l10n bridge table is generated-by-hand from the catalog
+  (104 entries mirroring the arb naming) — a future catalog key
+  without its table line falls back to the key string (visible
+  breakage, never silent); the catalog completeness test catches the
+  arb side. (3) The claimed-rungs chip (N claimed) is the claimed
+  state at CARD level; the per-rung history expansion is T-0112's
+  showcase territory. (4) The header emblem is the house trophy icon
+  (the club crest widget needs club data the empty save lacks — the
+  profile task owns the real crest).
 
 
 ## Review Log
