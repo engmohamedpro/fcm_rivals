@@ -449,7 +449,9 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+          // T-0095: a compact sheet — 62% of the screen leaves the
+          // pitch context visible behind it instead of a takeover.
+          maxHeight: MediaQuery.sizeOf(context).height * 0.62,
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),

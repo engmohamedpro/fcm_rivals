@@ -2,8 +2,8 @@
 id: T-0095
 title: Stop the tactic options sheet from covering the screen
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:

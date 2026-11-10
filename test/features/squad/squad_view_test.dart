@@ -352,6 +352,66 @@ void main() {
     expect(find.text('TACTIC OPTIONS'), findsNothing);
   });
 
+  testWidgets(
+    'T-0095: the tactic options sheet opens compact — at most ~62% of '
+    'the screen, DONE still reachable',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: Colors.black,
+            body: Builder(
+              builder: (context) {
+                return Center(
+                  child: FcmButton(
+                    compact: true,
+                    label: 'TACTICS',
+                    onPressed: () => showTacticsOptionsSheet(
+                      context,
+                      tactics: const TeamTactics(),
+                      mentality: Mentality.balanced,
+                      onTactics: (_) {},
+                      onMentality: (_) {},
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('TACTICS'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TACTIC OPTIONS'), findsOneWidget);
+
+      // The sheet's rendered surface respects the compact cap: its
+      // height stays at most ~63% of the screen (the 0.62 cap plus
+      // the usual sub-pixel tolerance), leaving the pitch visible.
+      final sheetRect = tester.getRect(find.byType(BottomSheet));
+      final screenHeight =
+          tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      expect(
+        sheetRect.height,
+        lessThanOrEqualTo(screenHeight * 0.63),
+        reason: 'the sheet is a compact panel, not a takeover',
+      );
+
+      // DONE stays reachable inside the scrollable sheet and pops it.
+      await tester.ensureVisible(find.text('DONE'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('DONE'));
+      await tester.pumpAndSettle();
+      expect(find.text('TACTIC OPTIONS'), findsNothing);
+    },
+  );
+
   testWidgets('sliding the mentality scale commits the landed-on step '
       'once per gesture', (WidgetTester tester) async {
     // The sheet now carries the In Possession controls too, so it is
