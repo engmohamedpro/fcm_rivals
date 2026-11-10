@@ -2,11 +2,11 @@
 id: T-0087
 title: Move the pack odds strip from the store cells into the pack contents screen
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0087: Move the pack odds strip from the store cells into the pack contents screen
@@ -35,10 +35,10 @@ The store grid cells stop showing the four-band rarity odds; that information mo
 - Any other store layout change (that is the whole point: only the strip moves).
 
 ## Acceptance Criteria
-- [ ] The store grid cells render no odds/percentage text.
-- [ ] The pack contents screen shows the tier's non-zero bands with percentages above the players list, in EN and AR, RTL-safe.
-- [ ] Both new widget assertions exist and pass.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green (regenerate goldens via the documented `REGEN_SNAPSHOT` flow only if a packs visual golden exists and the cell height change is intentional — say so in the notes).
+- [x] The store grid cells render no odds/percentage text.
+- [x] The pack contents screen shows the tier's non-zero bands with percentages above the players list, in EN and AR, RTL-safe.
+- [x] Both new widget assertions exist and pass.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green (regenerate goldens via the documented `REGEN_SNAPSHOT` flow only if a packs visual golden exists and the cell height change is intentional — say so in the notes).
 
 ## How to Verify
 ```bash
@@ -84,3 +84,15 @@ Manual: open the store — cells show pack art + price plate only; tap a cell's 
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7, commit af5516c):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/packs/` → 132/132 green ✓ (both new assertions + the rewritten T-0059 EN/AR RTL pair included)
+- `flutter test` (full) → run 1 failed ONE test ("regression: after a BUY reveal closes, the store still opens packs", `MissingPluginException` on `xyz.luan/audioplayers.global/events`); run 2 → **991/991, All tests passed!** ✓
+- Diff scope check (commit 475a1ed): exactly the strip move — the cell strip and helpers out of `packs_store_widgets.dart` (price plate slot kept, 3 dead imports dropped), `_OddsStrip` above `_FiltersBar` in `pack_contents_screen.dart` (same atomic-Text chips, `PackRarity` order, zero-weight bands dropped, font 9→11, dim look), no other layout/behavior change ✓. No packs visual golden exists, so the REGEN_SNAPSHOT clause is moot ✓ (only `engine_snapshot_test` and `campus_visual_golden_test` use goldens; neither covers packs).
+
+**Attribution note (why the full-suite flake is NOT this task's):** the audio exception comes from the pack-reveal soundtrack introduced by the sound-effects commits (443a48e/c7b1125/83bce66), which predate T-0087. Evidence: the same single test fails identically when run alone on commit 182d9e1 (the tree BEFORE T-0087's implementation) — reproduced 2/2 in a separate worktree — while the packs file suite passes on both trees. The error is timing-dependent (it failed one full-suite run and passed the next, same code). A follow-up task (T-0103) is proposed to stub the audioplayers channels in the test harness.
+
+All four criteria met; every verify command run by the reviewer. PASS.
