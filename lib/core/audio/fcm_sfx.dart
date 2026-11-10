@@ -20,22 +20,22 @@ import 'package:flutter/services.dart' show MissingPluginException;
 
 /// A sound effect: its asset, its natural length, and its mix level.
 enum SfxCue {
-  tick('audio/sfx_tick.mp3', 0.14, 0.55),
+  tick('audio/sfx_tick.mp3', 0.16, 0.55),
   thud('audio/sfx_thud.mp3', 0.75, 0.85),
   whoosh('audio/sfx_whoosh.mp3', 0.85, 0.7),
   packRiserNormal('audio/sfx_pack_riser_normal.mp3', 1.6, 0.8),
   packRiserLegend('audio/sfx_pack_riser_legend.mp3', 2.2, 0.85),
   packRiserPremium('audio/sfx_pack_riser_premium.mp3', 3.2, 0.9),
-  packBurstNormal('audio/sfx_pack_burst_normal.mp3', 3.8, 0.9),
-  packBurstLegend('audio/sfx_pack_burst_legend.mp3', 4.6, 0.95),
-  packBurstPremium('audio/sfx_pack_burst_premium.mp3', 5.6, 1.0),
-  packNameNormal('audio/sfx_pack_name_normal.mp3', 2.0, 0.8),
-  packNameLegend('audio/sfx_pack_name_legend.mp3', 3.4, 0.85),
-  packNamePremium('audio/sfx_pack_name_premium.mp3', 4.8, 0.9),
-  packFinale('audio/sfx_pack_finale.mp3', 4.8, 0.9),
+  packBurstNormal('audio/sfx_pack_burst_normal.mp3', 2.51, 0.9),
+  packBurstLegend('audio/sfx_pack_burst_legend.mp3', 3.04, 0.95),
+  packBurstPremium('audio/sfx_pack_burst_premium.mp3', 3.83, 1.0),
+  packNameNormal('audio/sfx_pack_name_normal.mp3', 1.56, 0.8),
+  packNameLegend('audio/sfx_pack_name_legend.mp3', 2.42, 0.85),
+  packNamePremium('audio/sfx_pack_name_premium.mp3', 3.32, 0.9),
+  packFinale('audio/sfx_pack_finale.mp3', 4.32, 0.9),
   mergeCharge('audio/sfx_merge_charge.mp3', 1.5, 0.85),
-  mergeImpact('audio/sfx_merge_impact.mp3', 4.4, 1.0),
-  mergeLevelUp('audio/sfx_merge_levelup.mp3', 3.2, 0.85);
+  mergeImpact('audio/sfx_merge_impact.mp3', 2.82, 1.0),
+  mergeLevelUp('audio/sfx_merge_levelup.mp3', 3.37, 0.85);
 
   const SfxCue(this.asset, this.seconds, this.volume);
 

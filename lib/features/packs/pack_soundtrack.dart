@@ -3,17 +3,20 @@
 /// Pure data: given a [RevealTimeline] this lists every sound cue and the
 /// fraction of the timeline it fires at, so the audio is locked to the
 /// same marks the haptics and visuals use and each of the three reveals
-/// (ordinary, legendary, premium) gets its own escalating track:
+/// (ordinary, legendary, premium) gets its own escalating track. All of
+/// it is drums, glass and crowd:
 ///
-///  - a charge riser timed to END exactly on the burst,
-///  - thuds on the charge pulses (the legendary/premium heartbeat),
-///  - the burst boom, bigger per tier,
+///  - a drum-roll charge (snare, kick pulse, toms, cracking glass) timed
+///    to END exactly on the burst,
+///  - the burst: kick, taiko, cymbal crash and the pack shattering,
 ///  - soft whooshes on the flag and position walkout and a full one on
 ///    the card flip,
-///  - rising ticks under the stat count,
-///  - the name sting when the identity lands,
-///  - the fanfare finale (legendary once, premium twice — the second
-///    pitched down and slower, for more weight).
+///  - low tom taps under the stat count, climbing slightly in pitch,
+///  - a drum phrase when the name lands (two hits, three, or four),
+///  - the win finale: a drum fill into a huge hit and the stadium roar
+///    (legendary once, premium twice — the second pitched down and
+///    slower, for more weight),
+///  - a deep kick on every remaining heavy mark.
 library;
 
 import '../../core/audio/fcm_sfx.dart';
@@ -79,7 +82,7 @@ List<SfxEvent> packSoundtrackFor(RevealTimeline tl) {
     }),
   );
 
-  // The name sting: the last thing the user learns is who the player is.
+  // The name phrase: the last thing the user learns is who the player is.
   events.add(
     SfxEvent(tl.nameIn.begin, switch (tier) {
       PackSoundTier.normal => SfxCue.packNameNormal,
@@ -88,7 +91,7 @@ List<SfxEvent> packSoundtrackFor(RevealTimeline tl) {
     }),
   );
 
-  // Legendary and premium close on the fanfare; premium fires it twice,
+  // Legendary and premium close on the win finale; premium fires it twice,
   // the second wave lower and slower: heavier, not brighter.
   final finale = tl.finale;
   if (finale != null) {
