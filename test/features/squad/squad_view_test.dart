@@ -303,8 +303,8 @@ void main() {
     // control card).
     expect(find.text('TACTIC OPTIONS'), findsOneWidget);
     expect(find.text('MENTALITY'), findsOneWidget);
-    // T-0064: the nine ordered axes plus the mentality scale.
-    expect(find.byType(FcmScaleSlider), findsNWidgets(10));
+    // The eleven 0-99 tactic sliders plus the mentality scale.
+    expect(find.byType(FcmScaleSlider), findsNWidgets(12));
     expect(find.byType(TacticsGroupScaffold), findsOneWidget);
     expect(find.text('In Possession'), findsOneWidget);
     expect(find.text('Out of Possession'), findsOneWidget);
@@ -527,10 +527,10 @@ void main() {
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
 
-    // The nine axes + mentality = ten stepped sliders; the sheet lives
+    // The eleven axes + mentality = twelve sliders; the sheet lives
     // inside its 0.85-height cap with every row expanded (no overflow
     // exception escapes the pump).
-    expect(find.byType(FcmScaleSlider), findsNWidgets(10));
+    expect(find.byType(FcmScaleSlider), findsNWidgets(12));
     expect(tester.takeException(), isNull);
 
     // The final third stays a categorical CHIP row: all four styles

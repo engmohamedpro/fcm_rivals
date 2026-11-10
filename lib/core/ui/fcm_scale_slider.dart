@@ -40,10 +40,21 @@ class FcmScaleSlider extends StatefulWidget {
     this.maxLabel,
     this.semanticsLabel = 'Scale',
     this.steps,
-  }) : assert(steps == null || steps >= 2, 'a scale needs >= 2 steps');
+    this.max = 100,
+  }) : assert(steps == null || steps >= 2, 'a scale needs >= 2 steps'),
+       assert(max >= 2, 'a scale needs a range'),
+       assert(
+         steps == null || max == 100,
+         'stepped mode is defined on the 0–100 scale',
+       );
 
-  /// Current position, 0–100; the centre (50) is the default.
+  /// Current position, 0–[max]; 50 is the default (its tick is drawn
+  /// there).
   final int value;
+
+  /// The top of the free scale: 100 by default, 99 for the 0–99 tactic
+  /// sliders. Stepped mode always runs on 0–100.
+  final int max;
 
   /// Named-step count for stepped mode (3 → 0/50/100, 7 → the mentality
   /// positions); null keeps the free continuous mode.
@@ -193,8 +204,8 @@ class _FcmScaleSliderState extends State<FcmScaleSlider>
     // RTL mirrors the gesture axis: x measured from the RIGHT edge, so
     // dragging towards the left INCREASES the value.
     final effective = _isRtl ? width - dx : dx;
-    final raw = (((effective - _thumbRadius) / span) * 100)
-        .clamp(0.0, 100.0);
+    final raw = (((effective - _thumbRadius) / span) * widget.max)
+        .clamp(0.0, widget.max.toDouble());
 
     // Free continuous mode — today's behaviour, byte-identical.
     if (widget.steps == null) {
@@ -266,14 +277,14 @@ class _FcmScaleSliderState extends State<FcmScaleSlider>
     return Semantics(
       container: true,
       label: widget.semanticsLabel,
-      value: '$_value of 100',
+      value: '$_value of ${widget.max}',
       child: LayoutBuilder(
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           // The marker's live position — the finger's raw position while
           // dragging, the settle animation in flight, the snapped value
           // at rest (stepped mode); the raw value at rest (free mode).
-          final f = _display / 100;
+          final f = _display / widget.max;
           // LTR geometry, computed once; the RTL positions below mirror
           // it around the track's centre (T-0061): min at the right,
           // fill growing right-to-left, pill clamped the same way.
@@ -425,9 +436,11 @@ class _FcmScaleSliderState extends State<FcmScaleSlider>
                             ),
                           ),
                       ] else
-                        // Centre tick: the free scale's default mark.
+                        // Default tick: the free scale's default mark,
+                        // at 50 (dead centre on the 0–100 scale, a hair
+                        // right of it on 0–99).
                         Positioned(
-                          left: w / 2 - 1,
+                          left: _xFor(50 / widget.max, w) - 1,
                           width: 2,
                           top: (_bandHeight - 12) / 2,
                           height: 12,

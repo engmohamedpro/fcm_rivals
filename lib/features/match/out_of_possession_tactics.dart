@@ -7,6 +7,7 @@ library;
 
 import 'in_possession_tactics.dart';
 import 'tactic_modifiers.dart';
+import 'tactic_sliders.dart';
 
 /// Out of Possession instructions (GDD 10.2): line height, pressing,
 /// tackling and the offside trap. Phase 0 scaffold — the fields arrive
@@ -131,12 +132,20 @@ class OffsideTrapToggles {
 /// tackling aggression and the offside trap. Defaults (Standard / Mid /
 /// Balanced / Off) are the identity; combinations rebuild the removed
 /// High Press, Gegenpressing (with phase 3) and Low Block styles.
+///
+/// Line height, pressing and tackling are also continuous 0–99 sliders
+/// ([scales], see `tactic_sliders.dart`): the enum fields always hold
+/// the nearest step (what the set-piece logic and summaries read), a
+/// stored override carries the exact position the engine blends between
+/// the tuned anchors. No override → the legacy enum math, bit-identical.
+/// The offside trap is a switch, not a scale.
 class OutOfPossessionTactics {
   const OutOfPossessionTactics({
     this.defensiveLine = DefensiveLine.standard,
     this.pressing = PressingIntensity.mid,
     this.tackling = TacklingAggression.balanced,
     this.offsideTrap = false,
+    this.scales = const {},
   });
 
   final DefensiveLine defensiveLine;
@@ -146,16 +155,123 @@ class OutOfPossessionTactics {
   /// Whether the offside trap is on.
   final bool offsideTrap;
 
+  /// Slider overrides by [TacticAxisId.key]; empty = every instruction
+  /// sits exactly on its enum step.
+  final Map<String, int> scales;
+
+  static const _lineAxis = ScaleAxisSpec(
+    TacticAxisId.defensiveLine,
+    DefensiveLine.values,
+  );
+  static const _pressAxis = ScaleAxisSpec(
+    TacticAxisId.pressing,
+    PressingIntensity.values,
+  );
+  static const _tackleAxis = ScaleAxisSpec(
+    TacticAxisId.tackling,
+    TacklingAggression.values,
+  );
+
+  /// The axes this group owns, in display order.
+  static const List<TacticAxisId> axes = [
+    TacticAxisId.defensiveLine,
+    TacticAxisId.pressing,
+    TacticAxisId.tackling,
+  ];
+
+  /// Current 0–99 slider position of [axis] (default 50).
+  int scaleOf(TacticAxisId axis) => switch (axis) {
+    TacticAxisId.defensiveLine => _lineAxis.valueOf(scales, defensiveLine),
+    TacticAxisId.pressing => _pressAxis.valueOf(scales, pressing),
+    TacticAxisId.tackling => _tackleAxis.valueOf(scales, tackling),
+    _ => kScaleMid,
+  };
+
+  /// This group with [axis] slid to [value] (0–99). The matching enum
+  /// field follows to the nearest step; an override equal to a step's
+  /// canonical position is dropped (the enum already says it).
+  OutOfPossessionTactics withScale(TacticAxisId axis, int value) {
+    final v = clampScale(value);
+    switch (axis) {
+      case TacticAxisId.defensiveLine:
+        return _copy(
+          defensiveLine: _lineAxis.stepOf(v) as DefensiveLine,
+          scales: _lineAxis.apply(scales, v),
+        );
+      case TacticAxisId.pressing:
+        return _copy(
+          pressing: _pressAxis.stepOf(v) as PressingIntensity,
+          scales: _pressAxis.apply(scales, v),
+        );
+      case TacticAxisId.tackling:
+        return _copy(
+          tackling: _tackleAxis.stepOf(v) as TacklingAggression,
+          scales: _tackleAxis.apply(scales, v),
+        );
+      default:
+        return this;
+    }
+  }
+
+  OutOfPossessionTactics _copy({
+    DefensiveLine? defensiveLine,
+    PressingIntensity? pressing,
+    TacklingAggression? tackling,
+    bool? offsideTrap,
+    required Map<String, int> scales,
+  }) => OutOfPossessionTactics(
+    defensiveLine: defensiveLine ?? this.defensiveLine,
+    pressing: pressing ?? this.pressing,
+    tackling: tackling ?? this.tackling,
+    offsideTrap: offsideTrap ?? this.offsideTrap,
+    scales: scales,
+  );
+
   bool get isDefault =>
       defensiveLine == DefensiveLine.standard &&
       pressing == PressingIntensity.mid &&
       tackling == TacklingAggression.balanced &&
-      !offsideTrap;
+      !offsideTrap &&
+      scales.isEmpty;
+
+  /// Multiplier on this side's foul-emission probability — the tackling
+  /// slider blended between the tuned Clean / Balanced / Aggressive
+  /// scales (exactly the enum's own at the three anchors).
+  double get foulScale {
+    final v = scales[TacticAxisId.tackling.key];
+    if (v == null) return tackling.foulScale;
+    return axisScalar(
+      low: TacklingAggression.clean.foulScale,
+      mid: TacklingAggression.balanced.foulScale,
+      high: TacklingAggression.aggressive.foulScale,
+      value: v,
+    );
+  }
+
+  /// Multiplier on this side's yellow-card probability, blended the
+  /// same way as [foulScale].
+  double get yellowScale {
+    final v = scales[TacticAxisId.tackling.key];
+    if (v == null) return tackling.yellowScale;
+    return axisScalar(
+      low: TacklingAggression.clean.yellowScale,
+      mid: TacklingAggression.balanced.yellowScale,
+      high: TacklingAggression.aggressive.yellowScale,
+      value: v,
+    );
+  }
 
   /// Composed through the tuning seam (`.tuned`): the shipped
-  /// constants when no sweep override is installed.
-  TacticModifiers get modifiers =>
-      defensiveLine.tuned * pressing.tuned * tackling.tuned;
+  /// constants when no sweep override is installed. With no slider
+  /// override this is exactly the legacy enum product.
+  TacticModifiers get modifiers {
+    if (scales.isEmpty) {
+      return defensiveLine.tuned * pressing.tuned * tackling.tuned;
+    }
+    return _lineAxis.modifiersOf(scales, defensiveLine) *
+        _pressAxis.modifiersOf(scales, pressing) *
+        _tackleAxis.modifiersOf(scales, tackling);
+  }
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible).
   String get effectSummary {
@@ -171,39 +287,58 @@ class OutOfPossessionTactics {
     if (pressing != PressingIntensity.mid) 'pressing': pressing.name,
     if (tackling != TacklingAggression.balanced) 'tackling': tackling.name,
     if (offsideTrap) 'offsideTrap': true,
+    if (scales.isNotEmpty) 'scales': Map<String, int>.of(scales),
   };
 
-  factory OutOfPossessionTactics.fromJson(Map<String, dynamic> json) =>
-      OutOfPossessionTactics(
-        defensiveLine: InPossessionTactics.enumOr(
-          DefensiveLine.values,
-          json['defensiveLine'],
-          DefensiveLine.standard,
-        ),
-        pressing: InPossessionTactics.enumOr(
-          PressingIntensity.values,
-          json['pressing'],
-          PressingIntensity.mid,
-        ),
-        tackling: InPossessionTactics.enumOr(
-          TacklingAggression.values,
-          json['tackling'],
-          TacklingAggression.balanced,
-        ),
-        offsideTrap: json['offsideTrap'] == true,
-      );
+  factory OutOfPossessionTactics.fromJson(Map<String, dynamic> json) {
+    var t = OutOfPossessionTactics(
+      defensiveLine: InPossessionTactics.enumOr(
+        DefensiveLine.values,
+        json['defensiveLine'],
+        DefensiveLine.standard,
+      ),
+      pressing: InPossessionTactics.enumOr(
+        PressingIntensity.values,
+        json['pressing'],
+        PressingIntensity.mid,
+      ),
+      tackling: InPossessionTactics.enumOr(
+        TacklingAggression.values,
+        json['tackling'],
+        TacklingAggression.balanced,
+      ),
+      offsideTrap: json['offsideTrap'] == true,
+    );
+    // Fold stored slider positions in through the normalising setter so
+    // enum fields and overrides always agree.
+    final stored = parseScales(json['scales'], axes);
+    for (final axis in axes) {
+      final v = stored[axis.key];
+      if (v != null) t = t.withScale(axis, v);
+    }
+    return t;
+  }
 
+  /// Sets an instruction to an exact enum step. Choosing a step drops
+  /// the slider override of that instruction (the step IS its position).
   OutOfPossessionTactics copyWith({
     DefensiveLine? defensiveLine,
     PressingIntensity? pressing,
     TacklingAggression? tackling,
     bool? offsideTrap,
-  }) => OutOfPossessionTactics(
-    defensiveLine: defensiveLine ?? this.defensiveLine,
-    pressing: pressing ?? this.pressing,
-    tackling: tackling ?? this.tackling,
-    offsideTrap: offsideTrap ?? this.offsideTrap,
-  );
+  }) {
+    final next = Map<String, int>.of(scales);
+    if (defensiveLine != null) next.remove(TacticAxisId.defensiveLine.key);
+    if (pressing != null) next.remove(TacticAxisId.pressing.key);
+    if (tackling != null) next.remove(TacticAxisId.tackling.key);
+    return _copy(
+      defensiveLine: defensiveLine,
+      pressing: pressing,
+      tackling: tackling,
+      offsideTrap: offsideTrap,
+      scales: next,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -211,9 +346,15 @@ class OutOfPossessionTactics {
       other.defensiveLine == defensiveLine &&
       other.pressing == pressing &&
       other.tackling == tackling &&
-      other.offsideTrap == offsideTrap;
+      other.offsideTrap == offsideTrap &&
+      scalesEqual(other.scales, scales);
 
   @override
-  int get hashCode =>
-      Object.hash(defensiveLine, pressing, tackling, offsideTrap);
+  int get hashCode => Object.hash(
+    defensiveLine,
+    pressing,
+    tackling,
+    offsideTrap,
+    scalesHash(scales),
+  );
 }

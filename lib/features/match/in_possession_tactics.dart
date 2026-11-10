@@ -7,6 +7,7 @@ library;
 import 'dart:math' as math;
 
 import 'tactic_modifiers.dart';
+import 'tactic_sliders.dart';
 
 /// In Possession instructions (GDD 10.2): build-up, tempo, width and
 /// final-third approach. Phase 0 scaffold — the fields arrive in
@@ -119,6 +120,12 @@ enum FinalThirdApproach implements InstructionOption {
 /// nothing — combinations rebuild the removed possession/direct/long-
 /// ball/wing styles (Play Out + Slow + Narrow ≈ old Tiki-Taka).
 ///
+/// Each instruction is also a continuous 0–99 slider ([scales], see
+/// `tactic_sliders.dart`): the enum fields always hold the NEAREST step
+/// (what the set-piece logic, summaries and the AI read), while a stored
+/// override carries the exact slider position the engine blends between
+/// the tuned anchors. No override → the legacy enum math, bit-identical.
+///
 /// "Attacking freedom / fluidity" is deliberately NOT here: the engine
 /// has no off-ball-movement axis to express it honestly, and fake depth
 /// is worse than absent depth.
@@ -128,6 +135,7 @@ class InPossessionTactics {
     this.tempo = AttackTempo.standard,
     this.width = AttackWidth.standard,
     this.finalThird = FinalThirdApproach.balanced,
+    this.scales = const {},
   });
 
   /// How the team plays out from the back.
@@ -142,18 +150,177 @@ class InPossessionTactics {
   /// How chances are hunted near goal.
   final FinalThirdApproach finalThird;
 
+  /// Slider overrides by [TacticAxisId.key]; empty = every instruction
+  /// sits exactly on its enum step.
+  final Map<String, int> scales;
+
+  static const _buildUpAxis = ScaleAxisSpec(
+    TacticAxisId.buildUp,
+    BuildUpStyle.values,
+  );
+  static const _tempoAxis = ScaleAxisSpec(
+    TacticAxisId.tempo,
+    AttackTempo.values,
+  );
+  static const _widthAxis = ScaleAxisSpec(
+    TacticAxisId.width,
+    AttackWidth.values,
+  );
+
+  /// The axes this group owns, in display order.
+  static const List<TacticAxisId> axes = [
+    TacticAxisId.buildUp,
+    TacticAxisId.tempo,
+    TacticAxisId.width,
+    TacticAxisId.shotSelection,
+    TacticAxisId.crossing,
+  ];
+
+  /// Current 0–99 slider position of [axis] (default 50).
+  int scaleOf(TacticAxisId axis) => switch (axis) {
+    TacticAxisId.buildUp => _buildUpAxis.valueOf(scales, buildUp),
+    TacticAxisId.tempo => _tempoAxis.valueOf(scales, tempo),
+    TacticAxisId.width => _widthAxis.valueOf(scales, width),
+    TacticAxisId.shotSelection =>
+      scales['shotSelection'] ??
+          switch (finalThird) {
+            FinalThirdApproach.workBallIntoBox => 0,
+            FinalThirdApproach.shootOnSight => kScaleMax,
+            _ => kScaleMid,
+          },
+    TacticAxisId.crossing =>
+      scales['crossing'] ??
+          (finalThird == FinalThirdApproach.earlyCrosses
+              ? kScaleMax
+              : kScaleMid),
+    _ => kScaleMid,
+  };
+
+  /// This group with [axis] slid to [value] (0–99). The matching enum
+  /// field follows to the nearest step; an override equal to a step's
+  /// canonical position is dropped (the enum already says it).
+  InPossessionTactics withScale(TacticAxisId axis, int value) {
+    final v = clampScale(value);
+    switch (axis) {
+      case TacticAxisId.buildUp:
+        return _copy(
+          buildUp: _buildUpAxis.stepOf(v) as BuildUpStyle,
+          scales: _buildUpAxis.apply(scales, v),
+        );
+      case TacticAxisId.tempo:
+        return _copy(
+          tempo: _tempoAxis.stepOf(v) as AttackTempo,
+          scales: _tempoAxis.apply(scales, v),
+        );
+      case TacticAxisId.width:
+        return _copy(
+          width: _widthAxis.stepOf(v) as AttackWidth,
+          scales: _widthAxis.apply(scales, v),
+        );
+      case TacticAxisId.shotSelection:
+        return _withFinalThird(shot: v, cross: scaleOf(TacticAxisId.crossing));
+      case TacticAxisId.crossing:
+        return _withFinalThird(
+          shot: scaleOf(TacticAxisId.shotSelection),
+          cross: v,
+        );
+      default:
+        return this;
+    }
+  }
+
+  /// The final third is two sliders (shot selection and crossing) over a
+  /// four-option enum. A pair that is exactly an old option collapses
+  /// back to it; any other pair is stored and the enum follows the
+  /// nearest option.
+  InPossessionTactics _withFinalThird({required int shot, required int cross}) {
+    final next = Map<String, int>.of(scales)
+      ..remove(TacticAxisId.shotSelection.key)
+      ..remove(TacticAxisId.crossing.key);
+    FinalThirdApproach? exact;
+    if (cross == kScaleMid) {
+      exact = switch (shot) {
+        0 => FinalThirdApproach.workBallIntoBox,
+        kScaleMid => FinalThirdApproach.balanced,
+        kScaleMax => FinalThirdApproach.shootOnSight,
+        _ => null,
+      };
+    } else if (cross == kScaleMax && shot == kScaleMid) {
+      exact = FinalThirdApproach.earlyCrosses;
+    }
+    if (exact != null) return _copy(finalThird: exact, scales: next);
+    next[TacticAxisId.shotSelection.key] = shot;
+    next[TacticAxisId.crossing.key] = cross;
+    return _copy(finalThird: _nearestFinalThird(shot, cross), scales: next);
+  }
+
+  static FinalThirdApproach _nearestFinalThird(int shot, int cross) {
+    if (cross >= 75) return FinalThirdApproach.earlyCrosses;
+    if (shot <= 24) return FinalThirdApproach.workBallIntoBox;
+    if (shot >= 75) return FinalThirdApproach.shootOnSight;
+    return FinalThirdApproach.balanced;
+  }
+
+  InPossessionTactics _copy({
+    BuildUpStyle? buildUp,
+    AttackTempo? tempo,
+    AttackWidth? width,
+    FinalThirdApproach? finalThird,
+    required Map<String, int> scales,
+  }) => InPossessionTactics(
+    buildUp: buildUp ?? this.buildUp,
+    tempo: tempo ?? this.tempo,
+    width: width ?? this.width,
+    finalThird: finalThird ?? this.finalThird,
+    scales: scales,
+  );
+
   /// Whether every instruction sits at its default.
   bool get isDefault =>
       buildUp == BuildUpStyle.mixed &&
       tempo == AttackTempo.standard &&
       width == AttackWidth.standard &&
-      finalThird == FinalThirdApproach.balanced;
+      finalThird == FinalThirdApproach.balanced &&
+      scales.isEmpty;
+
+  /// The final third's bundle: the enum's own, or — once either of its
+  /// two sliders has been moved off the old options — the product of
+  /// the shot-selection blend and the crossing blend. The crossing low
+  /// end has no tuned enum behind it, so it is the mirror image of the
+  /// tuned Early Crosses anchor.
+  TacticModifiers get _finalThirdModifiers {
+    if (!scales.containsKey(TacticAxisId.shotSelection.key) &&
+        !scales.containsKey(TacticAxisId.crossing.key)) {
+      return finalThird.tuned;
+    }
+    final shot = axisModifiers(
+      low: FinalThirdApproach.workBallIntoBox.tuned,
+      mid: FinalThirdApproach.balanced.tuned,
+      high: FinalThirdApproach.shootOnSight.tuned,
+      value: scaleOf(TacticAxisId.shotSelection),
+    );
+    final cross = axisModifiers(
+      low: mirrorModifiers(FinalThirdApproach.earlyCrosses.tuned),
+      mid: FinalThirdApproach.balanced.tuned,
+      high: FinalThirdApproach.earlyCrosses.tuned,
+      value: scaleOf(TacticAxisId.crossing),
+    );
+    return shot * cross;
+  }
 
   /// The group's composed contribution to the engine bundle.
   /// Composed through the tuning seam (`.tuned`): the shipped
-  /// constants when no sweep override is installed.
-  TacticModifiers get modifiers =>
-      buildUp.tuned * tempo.tuned * width.tuned * finalThird.tuned;
+  /// constants when no sweep override is installed. With no slider
+  /// override this is exactly the legacy enum product.
+  TacticModifiers get modifiers {
+    if (scales.isEmpty) {
+      return buildUp.tuned * tempo.tuned * width.tuned * finalThird.tuned;
+    }
+    return _buildUpAxis.modifiersOf(scales, buildUp) *
+        _tempoAxis.modifiersOf(scales, tempo) *
+        _widthAxis.modifiersOf(scales, width) *
+        _finalThirdModifiers;
+  }
 
   /// Human-visible effect summary (GDD 10.3: effects must be visible),
   /// in the same honest-estimate format as the old possession line.
@@ -174,23 +341,30 @@ class InPossessionTactics {
     if (width != AttackWidth.standard) 'width': width.name,
     if (finalThird != FinalThirdApproach.balanced)
       'finalThird': finalThird.name,
+    if (scales.isNotEmpty) 'scales': Map<String, int>.of(scales),
   };
 
-  factory InPossessionTactics.fromJson(Map<String, dynamic> json) =>
-      InPossessionTactics(
-        buildUp: enumOr(
-          BuildUpStyle.values,
-          json['buildUp'],
-          BuildUpStyle.mixed,
-        ),
-        tempo: enumOr(AttackTempo.values, json['tempo'], AttackTempo.standard),
-        width: enumOr(AttackWidth.values, json['width'], AttackWidth.standard),
-        finalThird: enumOr(
-          FinalThirdApproach.values,
-          json['finalThird'],
-          FinalThirdApproach.balanced,
-        ),
-      );
+  factory InPossessionTactics.fromJson(Map<String, dynamic> json) {
+    var t = InPossessionTactics(
+      buildUp: enumOr(BuildUpStyle.values, json['buildUp'], BuildUpStyle.mixed),
+      tempo: enumOr(AttackTempo.values, json['tempo'], AttackTempo.standard),
+      width: enumOr(AttackWidth.values, json['width'], AttackWidth.standard),
+      finalThird: enumOr(
+        FinalThirdApproach.values,
+        json['finalThird'],
+        FinalThirdApproach.balanced,
+      ),
+    );
+    // Fold the stored slider positions in through the normalising setter
+    // so the enum fields and the overrides always agree, whatever the
+    // payload said.
+    final stored = parseScales(json['scales'], axes);
+    for (final axis in axes) {
+      final v = stored[axis.key];
+      if (v != null) t = t.withScale(axis, v);
+    }
+    return t;
+  }
 
   /// Tolerant enum parse: unknown or missing keys fall back to default
   /// so a payload from any earlier phase keeps loading.
@@ -202,17 +376,31 @@ class InPossessionTactics {
     return fallback;
   }
 
+  /// Sets an instruction to an exact enum step. Choosing a step drops
+  /// the slider override of that instruction (the step IS its position).
   InPossessionTactics copyWith({
     BuildUpStyle? buildUp,
     AttackTempo? tempo,
     AttackWidth? width,
     FinalThirdApproach? finalThird,
-  }) => InPossessionTactics(
-    buildUp: buildUp ?? this.buildUp,
-    tempo: tempo ?? this.tempo,
-    width: width ?? this.width,
-    finalThird: finalThird ?? this.finalThird,
-  );
+  }) {
+    final next = Map<String, int>.of(scales);
+    if (buildUp != null) next.remove(TacticAxisId.buildUp.key);
+    if (tempo != null) next.remove(TacticAxisId.tempo.key);
+    if (width != null) next.remove(TacticAxisId.width.key);
+    if (finalThird != null) {
+      next
+        ..remove(TacticAxisId.shotSelection.key)
+        ..remove(TacticAxisId.crossing.key);
+    }
+    return _copy(
+      buildUp: buildUp,
+      tempo: tempo,
+      width: width,
+      finalThird: finalThird,
+      scales: next,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -220,8 +408,10 @@ class InPossessionTactics {
       other.buildUp == buildUp &&
       other.tempo == tempo &&
       other.width == width &&
-      other.finalThird == finalThird;
+      other.finalThird == finalThird &&
+      scalesEqual(other.scales, scales);
 
   @override
-  int get hashCode => Object.hash(buildUp, tempo, width, finalThird);
+  int get hashCode =>
+      Object.hash(buildUp, tempo, width, finalThird, scalesHash(scales));
 }

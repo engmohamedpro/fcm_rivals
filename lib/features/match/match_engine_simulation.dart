@@ -273,7 +273,7 @@ extension _MatchEngineSim on MatchEngine {
     // defending fouls more, clean defending less. inBoxFoulChance
     // scales identically: aggressive defending concedes more
     // penalties, the real cost of the option.
-    final foulScale = def.tactics.outOfPossession.tackling.foulScale;
+    final foulScale = def.tactics.outOfPossession.foulScale;
     if (_random.chance(config.foulOnTurnover * foulScale)) {
       // Foul by the defending side (GDD 13.1 free kicks / penalties).
       final fouler = _pickDefender(def)!;
@@ -303,7 +303,7 @@ extension _MatchEngineSim on MatchEngine {
       // defending team's tackling aggression.
       if (_random.chance(
         config.yellowCardChance *
-            def.tactics.outOfPossession.tackling.yellowScale,
+            def.tactics.outOfPossession.yellowScale,
       )) {
         produced.addAll(
           _issueCard(

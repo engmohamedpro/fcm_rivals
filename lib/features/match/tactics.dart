@@ -16,12 +16,14 @@
 ///
 /// Barrel (T-0039): the families live in `tactic_modifiers.dart`,
 /// `in_possession_tactics.dart`, `out_of_possession_tactics.dart`,
-/// `transition_tactics.dart` and `team_tactics.dart`; this file keeps
+/// `transition_tactics.dart`, `team_tactics.dart` and the continuous
+/// 0–99 sliders in `tactic_sliders.dart`; this file keeps
 /// the historical `features/match/tactics.dart` import path stable.
 library;
 
 export 'in_possession_tactics.dart';
 export 'out_of_possession_tactics.dart';
 export 'tactic_modifiers.dart';
+export 'tactic_sliders.dart';
 export 'team_tactics.dart';
 export 'transition_tactics.dart';
