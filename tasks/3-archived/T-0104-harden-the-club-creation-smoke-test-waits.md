@@ -2,11 +2,11 @@
 id: T-0104
 title: Harden the club-creation smoke test's bounded async waits (load-dependent flake)
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-10
-completed:
+completed: 2026-11-10
 ---
 
 # T-0104: Harden the club-creation smoke test's bounded async waits (load-dependent flake)
@@ -34,9 +34,9 @@ The app smoke test (`test/widget_test.dart`, 'club creation leads to the game sh
 - Animation timings or the reveal timeline.
 
 ## Acceptance Criteria
-- [ ] The smoke test passes 3/3 consecutive solo runs.
-- [ ] Two consecutive full `flutter test` runs green with no widget_test.dart failure — at least one of them on a cold build cache (fresh SDK or `flutter clean`) if feasible in the session.
-- [ ] No assertion removed or weakened; `flutter analyze` zero warnings.
+- [x] The smoke test passes 3/3 consecutive solo runs.
+- [x] Two consecutive full `flutter test` runs green with no widget_test.dart failure — at least one of them on a cold build cache (fresh SDK or `flutter clean`) if feasible in the session.
+- [x] No assertion removed or weakened; `flutter analyze` zero warnings.
 
 ## How to Verify
 ```bash
@@ -81,3 +81,18 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9 fresh install, main @ f523a75):**
+- Full suite run 1 on the **COLD build cache** — the reviewer reinstalled the SDK and ran the suite as the FIRST command (nothing precompiled), i.e. the exact condition the original flake reproduced under → **1012/1012, "All tests passed!"** with zero failures including `widget_test.dart`.
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/widget_test.dart` solo → **3/3 consecutive green** ✓.
+- Full suite run 2 (warm) → **1012/1012, "All tests passed!"** ✓ — two consecutive full-suite greens with no widget_test failure, per the AC.
+
+**Code read:** `pumpUntilFound` is sound — a wall-clock 5s deadline checked before each 60ms `runAsync + pump` tick, a clear `fail` message on timeout, and it returns without a single tick when the finder is already satisfied (the while-condition ordering means satisfaction beats the deadline). The three fixed-iteration waits became two polls: `find.text('Season')` (the shell landed) and `find.text('Start your first season')` (the CTA). Every `expect` is verbatim (tabs, 'Match' absent, CTA `findsOneWidget`, Store contents, the 22-pack check) — the helper replaces the WAITING, not the proof. The drag-until-visible submit handling is untouched (geometry, not timing) and the stale DEBUG comment is gone. No production file touched.
+
+**Note:** the submit commit message again carried no recorded full-suite result despite the notes promising one ("result in the submit commit message") — a recurring process gap from this developer; the reviewer's own runs are the evidence for this gate.
+
+All three criteria met; every verify command run by the reviewer.
+
