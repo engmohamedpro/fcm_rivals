@@ -170,7 +170,21 @@ extension _MatchEngineSim on MatchEngine {
     //    superiority into half-chances, not penalties. The mid/steepness
     //    pair sets where the curve bends: ±10 engine points ≈ the
     //    crossing region, +20 is near-saturation.
-    final attackEdge = attTotals.attack - defTotals.defence;
+    // Dimensionless strength response (T-0115): the edge as a SHARE
+    // of the sides' average strength — attack-minus-defence divided
+    // by the mean of the two totals. Scale-free BY CONSTRUCTION:
+    // equal percentage growth on both sides cancels exactly (a
+    // +50%/+50% world reads the same edge as +0%/+0%), so the
+    // infinite upgrade ladder (T-0070) grows the WORLD without
+    // distorting matches; a one-sided lift reads a bounded fraction
+    // (±0.5 at ±100%), never a growing absolute number that
+    // saturates the logistic. Home advantage (1.07 on the home
+    // totals) stays where computeTotals applies it — measured
+    // attempt evidence: dividing it out of the edge breaks the
+    // gap-0 even-strength band (0.373 vs 0.42–0.52).
+    final attackEdge =
+        (attTotals.attack - defTotals.defence) /
+        ((attTotals.attack + defTotals.defence) / 2);
     final urgency = _urgencyBoost(attackerSide, minute);
     final edgeFactor =
         1 /

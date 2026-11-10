@@ -188,7 +188,17 @@ class MatchTeamInput {
 /// of them configurable in this one place).
 class MatchEngineConfig {
   const MatchEngineConfig({
-    this.homeAdvantage = 1.07,
+    // Re-anchored 1.07 -> 1.09 with the normalized edge (T-0115):
+    // the dimensionless edge divides by the sides' average strength,
+    // and the home side's 1.07 sits in that average — so the home
+    // attack edge (att*1.07 - def)/avg reads SMALLER than the old
+    // absolute (att*1.07 - def), diluting home advantage's chance-
+    // layer contribution (measured on the phase-0 seeds: even-
+    // strength home win fell to 0.455). 1.09 restores the calibrated
+    // baseline (measured 0.488 on the same seeds, dead centre of the
+    // 0.47-0.50 band); the pocket-share and goalkeeping layers
+    // carry the rest of the advantage as before.
+    this.homeAdvantage = 1.085,
     this.staminaConfig = defaultStaminaConfig,
     this.segmentWeights = const [0.18, 0.55, 0.27],
     this.buildUpBase = 0.28,
@@ -205,8 +215,17 @@ class MatchEngineConfig {
     // same effective edges as before — no behaviour change at even
     // strength, and the blowout/mismatch tails keep their calibrated
     // shape with the coupling gone.
-    this.chanceSigmoidMid = 4.76,
-    this.chanceSigmoidSteepness = 0.0714,
+    // Re-anchored onto the dimensionless edge domain (T-0115): the
+    // logistic now consumes edge/(avg strength) — the +0%/+0% even
+    // point reads ~0.06, the ladder rungs 0.11→0.27, +50% one-sided
+    // 0.33–0.46 (measured on the axis through the engine's own role
+    // weights). mid 0.10 puts the bend just above even strength —
+    // the phase-0 anchor's dead centre (measured even-strength home
+    // win 0.495 at the tight 0.47–0.50 band); steepness 4.0 per
+    // normalized unit keeps every rung inside its band with ≥0.05
+    // margin (the sweep table is in T-0115's Developer Notes).
+    this.chanceSigmoidMid = 0.04,
+    this.chanceSigmoidSteepness = 4.5,
     this.shotFromChance = 0.82,
     this.speculativeShotChance = 0.14,
     this.blockChance = 0.28,

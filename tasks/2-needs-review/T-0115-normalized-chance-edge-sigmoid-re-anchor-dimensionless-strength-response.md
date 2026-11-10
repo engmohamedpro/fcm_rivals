@@ -2,8 +2,8 @@
 id: T-0115
 title: Normalized chance edge + sigmoid re-anchor — the dimensionless strength response (T-0082's core swap)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0114]
 created: 2026-11-10
 completed:
@@ -51,5 +51,78 @@ flutter test test/features/match/                          # snapshot green (uns
 ---
 
 ## Developer Notes
+
+- **Summary of changes:**
+  - `lib/features/match/match_engine_simulation.dart` — the chance
+    layer's edge is now DIMENSIONLESS: `(attTotals.attack -
+    defTotals.defence) / ((attTotals.attack + defTotals.defence)/2)`
+    — edge as a share of the sides' average strength. Scale-free by
+    construction: symmetric +N% cancels exactly (the SYM sweep
+    verified: home win 0.463→0.498 across +0/+10/+25/+50 with away
+    ~0.27-0.28 — inside bands, drift no worse than the old 0.518);
+    a one-sided lift reads a bounded fraction, never a growing
+    absolute number saturating the logistic. Home advantage stays
+    in the totals (the documented reason: dividing it out broke
+    gap-0 at 0.373 in the attempt).
+  - `lib/features/match/match_event.dart` — the re-anchor, FINAL
+    configuration after the sweep: **chanceSigmoidMid 0.04,
+    chanceSigmoidSteepness 4.5, homeAdvantage 1.085** (was
+    4.76/0.0714/1.07 on the absolute domain). homeAdvantage's bump
+    is the measured re-anchor of the normalization's DILUTION: the
+    home 1.07 sits in the normalized edge's denominator, shrinking
+    the home attack edge vs the old absolute read — even-strength
+    home win fell to 0.455 on the phase-0 seeds; 1.085 + mid 0.04
+    restores the calibrated baseline (phase-0 0.5033→ in-band at
+    1.085; every knob measured on the FAILING TESTS' OWN seeds).
+  - The anchor sweep table (every row measured with the REAL
+    failing tests, not my probes): mid 0.16/4.0 → phase-0 0.452
+    (under), ladder 8/8 green; mid 0.10/4.0 → phase-0 0.461 (under);
+    ha 1.09+mid 0.10 → phase-0 in, but late-goals press ratio 0.901/
+    0.944 (over — the press bill's multiplicative carrier thinned);
+    steepness 4.5 → ratio 0.963 (worse alone); mid 0.03/4.5 →
+    phase-0 0.5003 + longBall 0.5405 (hair over); mid 0.04/4.5 →
+    only phase-0 0.5033 over; **ha 1.085 + mid 0.04 + steepness 4.5
+    → 31/31 green.**
+  - The forecast mirror (`match_forecast.dart`) audited: its
+    `_segmentGoals` consumes RATIOS (`attack/(attack+def)`) — ALREADY
+    dimensionless; no absolute-edge consumer anywhere (grepped
+    `chanceSigmoidMid` consumers: the engine only). No change needed
+    — documented, not skipped silently.
+  - Snapshot regenerated deliberately (`REGEN_SNAPSHOT=1`): 21 lines
+    moved in `engine_snapshot.json` (seeded output changed — the
+    edge semantics + re-anchor changed seeded match scores); green
+    with the env unset afterwards.
+- **Files changed:** lib/features/match/match_engine_simulation.dart,
+  lib/features/match/match_event.dart, test/features/match/
+  engine_snapshot.json (deliberate regen).
+- **How I tested it:** `flutter analyze --no-pub` zero new issues.
+  **match_engine_balance_test: 31/31 green, ZERO band edits.**
+  test/balance/: 104 passing, 2 failures — BOTH the T-0073
+  violation lock (0.92-0.98) and its drift-bands companion in
+  `upgrade_ladder_balance_test.dart`, failing EXACTLY as this
+  task's spec predicted ("it is EXPECTED to fail in this slice's
+  intermediate state"): the de-saturated curve reads B+25% at 0.698
+  (locked band 0.72-0.78) and B+50% below the old 0.92 floor.
+  Measured post-swap readings (seeds 0..999, from the suite's own
+  output): SYM all green; B+25% away-win 0.698, draw 0.14-0.20
+  band, goals in band; B+50% (T-0116's target): read from the
+  printed table — **T-0116 re-locks with n=1000 in both
+  directions.** The set_piece_income gate: 4/4 green (its
+  bit-identical guard re-locked to the NEW post-swap battery —
+  updated in the same change, documented here).
+  The match suite's 2 pre-existing tactic_slider_row failures
+  remain (documented earlier; unrelated to the engine).
+- **Concerns / assumptions:** (1) The B+25% drift-band failure
+  (0.698 vs 0.72-0.78) is the SPEC'd intermediate state — but note
+  it honestly: the de-saturation moved the moderate rung BELOW its
+  old lock, and T-0116 must decide whether 0.698 is acceptable for
+  the new lock or whether the income layer's turn-on recovers it
+  (the +25% no-overshoot guard in the income gate reads <0.92 —
+  it was 0.79 there). (2) homeAdvantage 1.085 is a semantics-
+  preserving re-anchor, not a balance change: the home-advantage
+  GROUP bands (away win 20-30%, goals) are green. (3) The late-
+  goals press-bill coupling (the ratio bands) is the most sensitive
+  family to this swap — it forced the steepness/mid co-tuning; any
+  future chance-layer change must re-run those two tests first.
 
 ## Review Log
