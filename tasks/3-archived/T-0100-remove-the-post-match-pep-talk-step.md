@@ -2,11 +2,11 @@
 id: T-0100
 title: Remove the post-match pep talk step
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0100: Remove the post-match pep talk step
@@ -36,10 +36,10 @@ When the full-time whistle blows, the match finishes straight into the report �
 - The report's layout or any other report section.
 
 ## Acceptance Criteria
-- [ ] After full time (win, draw or defeat) the report appears directly — no recovery card, no scrim, no completer wait; no dead UI state remains (no unreachable branches, no unused fields).
-- [ ] `finish()` has no pep-talk or ad-boost parameters; `PepTalk`/`PepTalkTarget` are deleted from `stamina.dart`; `RecoveryChoice` and the report's pep-talk confirmation are gone.
-- [ ] Only genuinely unused l10n keys were removed (both ARBs updated, regen clean); the half-time talk still renders EN and AR with its strings intact.
-- [ ] `flutter analyze` zero warnings; match suite green with the reworked tests; full `flutter test` green, no REGEN_SNAPSHOT.
+- [x] After full time (win, draw or defeat) the report appears directly — no recovery card, no scrim, no completer wait; no dead UI state remains (no unreachable branches, no unused fields).
+- [x] `finish()` has no pep-talk or ad-boost parameters; `PepTalk`/`PepTalkTarget` are deleted from `stamina.dart`; `RecoveryChoice` and the report's pep-talk confirmation are gone.
+- [x] Only genuinely unused l10n keys were removed (both ARBs updated, regen clean); the half-time talk still renders EN and AR with its strings intact.
+- [x] `flutter analyze` zero warnings; match suite green with the reworked tests; full `flutter test` green, no REGEN_SNAPSHOT.
 
 ## How to Verify
 ```bash
@@ -82,3 +82,17 @@ Code done (all compiles, `flutter analyze` → No issues found):
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Context note:** this reviewer had already diagnosed the WIP state of this task (commit 55b7cdb) during T-0097's review — 3 match_screen tests failed on main ("No pep talk — default recovery" tap, "CONTINUE" not found) — and attributed them to this task's unrun gates. The follow-up commit d301f15 fixed exactly those three (plus the season live-flow and economy-simulator expectations), matching this reviewer's own diagnosis.
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7, current main incl. d301f15):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/match/` → **187/187 green** ✓ (the five recovery-card tests replaced by two straight-to-report tests; the half-time `TouchlinePepTalkCard` tests in live_match_ux_test.dart green and untouched)
+- Full `flutter test` → **1001/1001, "All tests passed!"** (exit 0, zero exceptions) ✓ — no REGEN_SNAPSHOT (no golden touched)
+- Greps: `PepTalk` in lib/ survives only as the half-time/pre-match family (`TouchlinePepTalkCard`, `PepTalkCommand`, `PepTalkPhase`) — `stamina.dart` has zero PepTalk references; `RecoveryChoice`, `pep_talk_l10n`, `noPepTalkDefault`, `tapAgainToSkip` have zero references in lib/ and test/ ✓
+- Diff scope check (55b7cdb + d301f15, 22 files): every file maps to a requirement — match_screen/session/report_view/stamina, collection_store_match's plain natural+campus settlement, the ARB key removals with regen, and exactly the test files requirement 6 lists (the economy-simulator settlement-path simplification is disclosed and is the direct consequence of finish() losing its parameters). ✓
+- One task-text correction for the record: the Out-of-Scope line calls `lib/l10n/pep_talk_l10n.dart` "the half-time l10n" — it was actually the l10n of the removed POST-MATCH `PepTalk` enum (it imported `stamina.dart` and switched on `PepTalk.restEveryone` etc.). Deleting it was correct and required (its only consumer was the deleted card); the half-time chooser takes localized title/subtitle as parameters from its caller and keeps its own strings. The dev resolved the task's internal contradiction the right way and documented it.
+
+All four criteria met; every verify command run by the reviewer.
