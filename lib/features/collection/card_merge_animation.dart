@@ -188,10 +188,10 @@ class _CardMergeAnimationState extends State<CardMergeAnimation>
     if (crossed(0.42)) _haptic(HapticFeedback.mediumImpact);
     if (crossed(_T.impact)) _haptic(HapticFeedback.heavyImpact);
 
-    // Sound: the cards whoosh in, two drum lines close in from either side
-    // and land together on the collision, the impact shatters like glass,
-    // the stats tap up and the win hit with the crowd lands with the
-    // banner.
+    // Sound: the cards whoosh in, two energy streams close in from either
+    // side and meet on the collision, the impact flashes with a deep hit
+    // and a metallic strike, the stats tick up and the rising shine of
+    // the level-up lands with the banner.
     for (final e in _cues) {
       if (crossed(e.at)) {
         unawaited(

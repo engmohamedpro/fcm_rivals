@@ -8,18 +8,18 @@ Everything is generated from code with a fixed seed, so the files are
 reproducible and every recipe can be tuned and re-rendered. Swap any file
 for a recorded one with the same name and the game picks it up unchanged.
 
-Sound design: drums, glass and crowd. No melodic or tonal instruments.
-  - kick, snare, floor toms and taiko hits, in rolls that accelerate into
-    the burst (the "beat" of the charge),
-  - cymbal crashes and reverse-cymbal swells,
-  - breaking glass (crack, shards, debris) — the pack and the cards break,
-  - win / success: a big drum hit, a crash and a real crowd roar (layered
-    from assets/audio/goal_cheers.mp3, the stadium recording already in
-    the game),
-  - saturated sub-bass underneath everything: the added harmonics are what
-    a phone speaker can actually reproduce.
-Reverb tails are stereo but high-passed, so the low end stays dry, tight
-and centred.
+Sound design: the polished "reveal" language of FIFA / eFootball pack
+openings. No drums, no music, no melody.
+  - AIR: filtered-noise whooshes and blasts that sweep and bloom,
+  - ENERGY: a charge that builds from a fluttering shimmer, a rising
+    metallic whine and a swelling sub — tension without a beat,
+  - IMPACT: a deep cinematic sub hit with a soft air slam: felt more than
+    heard, saturated so a phone speaker still carries it,
+  - SHINE: bright, inharmonic metallic "shings" and showers of crystalline
+    sparkle — random pings, never a tune,
+  - SPACE: stereo reverb whose wet signal is high-passed, so the low end
+    stays dry, tight and centred.
+Each tier (normal / legend / premium) is the same language, bigger.
 """
 
 import os
@@ -159,65 +159,99 @@ def swept_noise(dur, f0, f1, q=1.0, blocks=48):
     return out / (np.max(np.abs(out)) + 1e-9)
 
 
-# ---------------------------------------------------------------- drums
+# ---------------------------------------------------------------- voices
 def drop_sine(dur, f0, f1, tau, decay, drive=2.0):
     """A sine whose pitch falls fast from f0 to f1 (time constant tau) and
-    dies away: the body of every drum."""
+    dies away: the body of every deep impact."""
     t = t_axis(dur)
     f = f1 + (f0 - f1) * np.exp(-t / tau)
     ph = 2 * np.pi * np.cumsum(f) / SR
     return sat(np.sin(ph) * np.exp(-decay * t), drive)
 
 
-def kick(vel=1.0, dur=0.7):
+def sub_hit(dur, f0=95, f1=34, decay=2.2, drive=1.8):
+    """A deep sub thump: pitch drops from f0 to f1 and rings out."""
+    return drop_sine(dur, f0, f1, 0.07, decay, drive)
+
+
+def slam(dur=0.35, fc=900, decay=14):
+    """The soft air slam riding an impact: dark noise, fast decay."""
     t = t_axis(dur)
-    body = drop_sine(dur, 175, 44, 0.03, 6.5, 2.4)
-    click = lowpass(noise(dur), 4200) * np.exp(-220 * t) * 0.45
-    return vel * (body + click)
+    return lowpass(noise(dur), fc) * np.exp(-decay * t) * np.minimum(t / 0.002, 1.0)
 
 
-def tom(freq, vel=1.0, dur=0.9):
+def impact(dur, depth=1.0):
+    """Cinematic impact: sub hit + air slam + a breath of bright air."""
+    x = blank(dur)
+    place(x, sub_hit(dur, 100, 33, 1.9 / max(depth, 0.6), 1.9), 0, 1.0)
+    place(x, 0.55 * sub_hit(dur, 52, 30, 1.2, 1.6), 0, 0.8)
+    place(x, slam(0.4, 1100, 11), 0, 0.7)
+    place(x, air_blast(0.9, 7000, 600, 6.0), 0, 0.28 * depth)
+    return x
+
+
+def air_blast(dur, f0, f1, decay):
+    """The burst of air outward: bright noise sweeping DOWN as it fades."""
     t = t_axis(dur)
-    body = drop_sine(dur, freq * 1.7, freq, 0.05, 5.0, 1.6)
-    skin = bandpass(noise(dur), 350, 3000) * np.exp(-65 * t) * 0.35
-    return vel * (body + skin)
+    env = np.exp(-decay * t) * np.minimum(t / 0.003, 1.0)
+    return swept_noise(dur, f0, f1, q=0.8) * env
 
 
-def snare(vel=1.0, dur=0.45):
+def air_swell(dur, f0, f1, power=2.4):
+    """Noise sweeping UP and swelling toward the end (a reverse whoosh)."""
     t = t_axis(dur)
-    tone = 0.7 * drop_sine(dur, 270, 185, 0.02, 24, 1.2)
-    wires = highpass(lowpass(noise(dur), 9500), 1200) * np.exp(-17 * t) * 0.95
-    crack = highpass(noise(dur), 3200) * np.exp(-95 * t) * 0.6
-    return vel * (tone + wires + crack)
+    return swept_noise(dur, f0, f1, q=0.9) * (t / dur) ** power
 
 
-def taiko(vel=1.0, dur=2.6):
-    """A huge war-drum hit: deep body, long sub tail, slapped skin."""
+# metallic, inharmonic partial ratios (a struck plate, not a bell tune)
+_METAL = (1.0, 2.76, 5.40, 8.93, 13.34)
+_METAL_AMP = (1.0, 0.7, 0.45, 0.3, 0.18)
+
+
+def shing(base=2300.0, dur=1.0, vel=1.0):
+    """A bright metallic strike: sharp attack, inharmonic ring, a flash of
+    rising air on the front."""
     t = t_axis(dur)
-    body = drop_sine(dur, 125, 54, 0.06, 2.3, 1.8)
-    sub = 0.6 * drop_sine(dur, 62, 36, 0.1, 1.6, 2.0)
-    skin = bandpass(noise(dur), 300, 2600) * np.exp(-48 * t) * 0.6
-    return vel * (body + sub + skin)
+    x = np.zeros_like(t)
+    for r, a in zip(_METAL, _METAL_AMP):
+        f = base * r
+        if f > SR / 2 - 1000:
+            continue
+        x += a * np.sin(2 * np.pi * f * t + RNG.uniform(0, 6.28)) * np.exp(-(4.5 + 2.5 * r) * t)
+    x *= np.minimum(t / 0.0012, 1.0)
+    flash = swept_noise(0.3, 2500, 12000, q=0.8) * np.exp(-11 * t_axis(0.3))
+    place(x, flash, 0.0, 0.7)
+    return vel * x / (np.max(np.abs(x)) + 1e-9)
 
 
-def crash(dur=2.8, vel=1.0):
-    """Cymbal crash: bright noise with a fast attack and a long shimmer."""
+def sparkle(dur, count, fmin=3200, fmax=11500, tau=None, bias=1.0, glint=0.4):
+    """A shower of crystalline pings: random brief high sines (some
+    gliding upward like a glint) scattered through [dur]. Their pitches
+    are random on purpose — sparkle, not melody. [tau] fades the shower
+    over time; [bias] > 1 crowds the pings toward the start, < 1 toward
+    the end."""
+    out = blank(dur)
+    tau = tau or dur * 0.6
+    for _ in range(count):
+        at = (RNG.random() ** bias) * (dur - 0.15)
+        f = RNG.uniform(fmin, fmax)
+        n = int(RNG.uniform(0.05, 0.22) * SR)
+        tt = np.arange(n) / SR
+        if RNG.random() < glint:
+            ph = 2 * np.pi * f * (tt + 0.5 * 0.25 * tt**2 / (n / SR))
+        else:
+            ph = 2 * np.pi * f * tt
+        ping = np.sin(ph) * np.exp(-RNG.uniform(28, 85) * tt)
+        ping *= np.minimum(tt / 0.0006, 1.0)
+        place(out, ping, at, RNG.uniform(0.25, 0.9) * np.exp(-at / tau))
+    return out
+
+
+def shimmer(dur, level=1.0):
+    """A soft airy bloom: band-passed noise breathing in and out."""
     t = t_axis(dur)
-    x = highpass(noise(dur), 3600) * np.exp(-1.7 * t)
-    x += 0.5 * bandpass(noise(dur), 6500, 14000) * np.exp(-2.4 * t)
-    x *= np.minimum(t / 0.004, 1.0)
-    return vel * x
-
-
-def reverse_swell(dur, vel=1.0):
-    """Reverse cymbal: a bright swell that peaks at the very end."""
-    t = t_axis(dur)
-    x = highpass(noise(dur), 3000) + 0.6 * bandpass(noise(dur), 5000, 13000)
-    return vel * x * (t / dur) ** 3
-
-
-def sub_boom(dur, f0=70, f1=27, decay=1.5, drive=2.0):
-    return drop_sine(dur, f0, f1, dur * 0.35, decay, drive)
+    env = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 2
+    return level * bandpass(noise(dur), 3500, 12500) * env
 
 
 def rumble(dur, amount=1.0):
@@ -226,162 +260,101 @@ def rumble(dur, amount=1.0):
     return amount * sat(np.sin(chirp_phase(30, 66, dur)), 2.0) * (t / dur) ** 2
 
 
-def roll(dur, hit, i0, i1, vel0=0.25, vel1=1.0, hits=None):
-    """A drum roll that accelerates (interval i0 -> i1 seconds) and gets
-    louder. [hit] is called with a velocity and returns one hit; a list in
-    [hits] cycles through several drums (a tom pattern)."""
+def crackle(dur, count, level=0.5):
+    """Energy arcing: tiny sharp electric ticks that get denser."""
     out = blank(dur)
-    t, i = 0.0, 0
-    while t < dur - 0.03:
-        frac = t / dur
-        vel = (vel0 + (vel1 - vel0) * frac**1.2) * RNG.uniform(0.85, 1.0)
-        fn = hits[i % len(hits)] if hits else hit
-        place(out, fn(vel), t)
-        t += i0 * (i1 / i0) ** frac
-        i += 1
+    for at in dur * np.sort(RNG.random(count)) ** 0.6:
+        n = int(RNG.uniform(0.002, 0.009) * SR)
+        c = bandpass(RNG.standard_normal(n), 2500, 11000) * np.exp(-np.arange(n) / SR * 500)
+        place(out, c, min(at, dur - 0.02), level * (0.25 + 0.75 * at / dur) * RNG.uniform(0.5, 1.0))
     return out
 
 
-def late_roll(dur, start, hit, i0, i1, vel0=0.2, vel1=1.0):
-    """A roll that only begins [start] seconds in, in a [dur]-long buffer."""
-    out = blank(dur)
-    place(out, roll(dur - start, hit, i0, i1, vel0, vel1), start)
-    return out
-
-
-# ---------------------------------------------------------------- glass
-def grain(freq, q, dur, decay):
+def whine(dur, f0, f1, level=1.0, power=2.0):
+    """A rising metallic whine: a few inharmonic partials gliding f0 -> f1
+    and swelling. Tension, not a note."""
     t = t_axis(dur)
-    return bandpass(noise(dur), freq / (1 + 1 / q), freq * (1 + 1 / q)) * np.exp(-decay * t)
+    x = np.zeros_like(t)
+    for r, a in zip(_METAL[:4], _METAL_AMP[:4]):
+        if f1 * r > SR / 2 - 1500:
+            continue
+        x += a * np.sin(chirp_phase(f0 * r, f1 * r, dur))
+    return level * x / 2.2 * (t / dur) ** power
 
 
-def glass(dur=1.6, size=1.0):
-    """A pane breaking: the crack, a spray of brittle shards, the heavy
-    thunk of the pane, and sparse debris tinkling down. The shards are
-    noisy and short — brittle glass, not bells."""
-    out = blank(dur)
+def flutter(dur, r0, r1, f_lo=2200, f_hi=9500):
+    """Shimmering band noise whose tremolo speeds up (r0 -> r1 Hz): the
+    charge getting more insistent without ever becoming a beat."""
     t = t_axis(dur)
-    c = int(0.03 * SR)
-    place(out, highpass(noise(0.03), 1800) * np.exp(-130 * t_axis(0.03)), 0.0)
-    place(out, 0.8 * lowpass(noise(0.35), 700) * np.exp(-26 * t_axis(0.35)), 0.0)
-    shards = int(120 * size)
-    for _ in range(shards):
-        at = min(RNG.exponential(0.2 * size + 0.05), dur - 0.12)
-        g = grain(RNG.uniform(2400, 9800), 3.0, RNG.uniform(0.02, 0.07), RNG.uniform(70, 220))
-        place(out, g, at, RNG.uniform(0.2, 0.9) * np.exp(-at / (0.55 * size + 0.1)))
-    for _ in range(int(16 * size)):
-        at = RNG.uniform(0.15, dur * 0.85)
-        f = RNG.uniform(3200, 8500)
-        n = int(0.18 * SR)
-        ping = np.sin(2 * np.pi * f * np.arange(n) / SR) * np.exp(-RNG.uniform(50, 130) * np.arange(n) / SR)
-        place(out, ping, at, 0.10 * np.exp(-at / 0.9))
-    return out
-
-
-def cracks(dur, count, level=0.6):
-    """Glass straining before it breaks: tiny sharp cracks, ever denser."""
-    out = blank(dur)
-    times = dur * np.sort(RNG.random(count)) ** 0.5
-    for at in times:
-        n = int(RNG.uniform(0.004, 0.012) * SR)
-        c = highpass(RNG.standard_normal(n), 2200) * np.exp(-np.arange(n) / SR * 400)
-        place(out, c, min(at, dur - 0.02), level * (0.3 + 0.7 * at / dur) * RNG.uniform(0.6, 1.0))
-    return out
-
-
-# ---------------------------------------------------------------- crowd
-_CHEER = None
-
-
-def crowd(dur=3.0, gain=1.0):
-    """The stadium roar: the game's own goal-cheer recording, trimmed and
-    normalised. Real audio — nothing synthesized comes close."""
-    global _CHEER
-    if _CHEER is None:
-        raw = subprocess.run(
-            ["ffmpeg", "-loglevel", "error", "-i", os.path.join(OUT, "goal_cheers.mp3"),
-             "-f", "f32le", "-ac", "1", "-ar", str(SR), "-"],
-            check=True, capture_output=True,
-        ).stdout
-        x = np.frombuffer(raw, dtype="<f4").astype(np.float64)
-        _CHEER = x / (np.max(np.abs(x)) + 1e-9)
-    x = _CHEER[: int(dur * SR)]
-    return gain * fade(x, 0.15, 0.4)
+    rate = r0 + (r1 - r0) * (t / dur) ** 1.5
+    am = 0.55 + 0.45 * np.sin(2 * np.pi * np.cumsum(rate) / SR)
+    return bandpass(noise(dur), f_lo, f_hi) * am * (t / dur) ** 1.4
 
 
 # ---------------------------------------------------------------- recipes
 def sfx_tick():
-    """The stat-count beat: a tight low tom tap."""
-    return finish(tom(95, 1.0, 0.16) + 0.4 * kick(0.8, 0.16), 0.8, 0.02)
+    """The stat-count tick: a crisp, tiny glass-like blip."""
+    t = t_axis(0.12)
+    blip = np.sin(2 * np.pi * 2600 * t) * np.exp(-45 * t) * np.minimum(t / 0.0008, 1.0)
+    click = bandpass(noise(0.12), 3000, 9000) * np.exp(-260 * t)
+    return finish(blip + 0.5 * click, 0.7, 0.02)
 
 
 def sfx_thud():
-    """Chest hit: a deep kick."""
-    return finish(kick(1.0, 0.75) + 0.5 * sub_boom(0.75, 80, 38, 5.0), 0.92, 0.06)
+    """A soft deep pulse: felt in the chest, no click, no drum."""
+    x = sub_hit(0.7, 78, 36, 5.2, 1.6)
+    place(x, slam(0.2, 500, 28), 0, 0.25)
+    return finish(x, 0.85, 0.08)
 
 
 def sfx_whoosh():
-    """Dark air-displacement swoosh with a low swell."""
+    """Clean air-displacement swoosh with a low swell and a bright edge."""
     dur = 0.85
     t = t_axis(dur)
     env = np.sin(np.pi * np.clip(t / dur, 0, 1) ** 0.8) ** 2
-    x = swept_noise(dur, 160, 2800, q=0.9) * env
-    x += 0.6 * sat(np.sin(chirp_phase(48, 96, dur)), 1.5) * env
+    x = swept_noise(dur, 220, 4200, q=0.9) * env
+    x += 0.5 * sat(np.sin(chirp_phase(52, 110, dur)), 1.4) * env
     return finish(x, 0.85, 0.06)
 
 
 def charge(dur, tier):
-    """The beat of the charge: drum rolls that accelerate and swell into
-    the burst, a reverse cymbal and a rising sub. Ordinary = snare roll and
-    kick pulse; legendary adds a tom pattern and cracking glass; premium is
-    the full machine — heavier toms, faster pulse, more cracks."""
+    """The energy charge: a fluttering shimmer, a rising metallic whine, an
+    air swell and a climbing sub, all peaking at the very end where the
+    burst lands. Normal is a clean build; legendary adds a faster flutter
+    and crackle; premium is the full surge with a sparkle rain at the top."""
     x = blank(dur)
-    toms = lambda f: (lambda v: tom(f, v, 0.4))
-    if tier == "normal":
-        x += 0.9 * roll(dur, lambda v: snare(v, 0.3), 0.17, 0.045, 0.2, 1.0)
-        x += 1.0 * roll(dur, lambda v: kick(v, 0.4), 0.42, 0.14, 0.4, 0.95)
-        x += 0.45 * reverse_swell(dur)
-        x += rumble(dur, 0.6)
-    elif tier == "legend":
-        x += 1.0 * roll(dur, None, 0.22, 0.07, 0.3, 1.0, hits=[toms(70), toms(92), toms(118)])
-        x += 0.75 * late_roll(dur, dur * 0.4, lambda v: snare(v, 0.3), 0.14, 0.04)
-        x += 1.0 * roll(dur, lambda v: kick(v, 0.4), 0.52, 0.13, 0.45, 1.0)
-        x += 0.55 * reverse_swell(dur)
-        x += 0.7 * cracks(dur, 14)
-        x += rumble(dur, 0.85)
-    else:
-        x += 1.1 * roll(dur, None, 0.3, 0.06, 0.3, 1.0, hits=[toms(56), toms(74), toms(98), toms(74)])
-        x += 0.8 * late_roll(dur, dur * 0.35, lambda v: snare(v, 0.3), 0.13, 0.035)
-        x += 1.1 * roll(dur, lambda v: kick(v, 0.4), 0.5, 0.1, 0.45, 1.0)
-        x += 0.7 * reverse_swell(dur)
-        x += 0.9 * cracks(dur, 30)
-        x += rumble(dur, 1.1)
+    s = {"normal": 0, "legend": 1, "premium": 2}[tier]
+    x += (0.8 + 0.1 * s) * air_swell(dur, 260, 9000 + 1500 * s)
+    x += (0.45 + 0.1 * s) * whine(dur, 380 + 60 * s, 1500 + 400 * s, 1.0, 2.2)
+    x += (0.55 + 0.2 * s) * flutter(dur, 5 + 2 * s, 20 + 8 * s)
+    x += rumble(dur, 0.55 + 0.25 * s)
+    if s >= 1:
+        x += (0.35 + 0.15 * s) * crackle(dur, 24 + 26 * s)
+    if s >= 2:
+        x += 0.55 * sparkle(dur, 60, bias=0.45, tau=dur * 5)
     return finish(x, 0.9, 0.012)
 
 
 def burst(dur, level):
-    """The pack shattering open: kick, taiko and snare crack, a cymbal
-    crash, breaking glass and a long sub boom. Each tier hits bigger;
-    premium adds echoing taiko hits and a bigger spray of glass."""
+    """The pack opening in a flash of light: a deep impact, a blast of air
+    and a metallic strike, then a shower of sparkle falling away. Each tier
+    hits bigger; premium adds a second strike and a wider shower."""
     x = blank(dur)
-    place(x, kick(1.0), 0)
-    place(x, taiko(1.0 if level == 0 else 1.15), 0, 0.85)
-    place(x, snare(1.0), 0, 0.65)
-    place(x, crash(min(dur, 2.4 + 0.5 * level), 1.0), 0, 0.7)
-    place(x, glass(1.3 + 0.35 * level, 0.8 + 0.4 * level), 0, 0.75)
-    place(x, sub_boom(dur, 72 - 4 * level, 26, 1.7 - 0.3 * level, 2.2), 0, 0.95)
+    place(x, impact(dur, 1.0 + 0.15 * level), 0, 1.0)
+    place(x, air_blast(1.3 + 0.4 * level, 11000, 500, 4.0), 0, 0.55)
+    place(x, shing(2100 + 150 * level, 1.4 + 0.5 * level), 0, 0.6)
+    place(x, sparkle(dur - 0.2, 45 + 35 * level, bias=1.6, tau=1.3 + 0.5 * level), 0.03, 0.5)
     if level >= 1:
-        place(x, taiko(0.8), 0.16, 0.55)
+        place(x, shing(3100, 1.3), 0.09, 0.45)
     if level >= 2:
-        place(x, taiko(0.9), 0.34, 0.6)
-        place(x, snare(0.9), 0.17, 0.5)
-        place(x, kick(0.8), 0.34, 0.6)
-        place(x, glass(2.0, 1.5), 0.05, 0.5)
+        place(x, shing(4300, 1.2), 0.2, 0.38)
+        place(x, shimmer(2.2, 0.5), 0.1, 0.5)
+        place(x, sparkle(2.4, 40, bias=1.0, tau=1.2), 0.5, 0.4)
     return finish(stereo_reverb(x, 1.6, 0.3), 0.93, 0.25)
 
 
 def phrase(hits, dur, tail):
-    """A short drum phrase: [(time, [(voice, gain), ...]), ...]."""
+    """A short layered reveal: [(time, [(voice, gain), ...]), ...]."""
     x = blank(dur)
     for at, voices in hits:
         for v, g in voices:
@@ -391,87 +364,97 @@ def phrase(hits, dur, tail):
 
 def name_normal():
     return phrase(
-        [(0.0, [(kick(1.0), 1.0), (snare(0.9), 0.8)]),
-         (0.2, [(kick(0.9), 0.9), (tom(80, 1.0), 0.8), (crash(1.2), 0.45)])],
+        [(0.0, [(shing(2600, 0.9), 0.8), (sub_hit(0.6, 80, 40, 4.0), 0.7),
+                (air_blast(0.5, 9000, 900, 9), 0.4)]),
+         (0.05, [(sparkle(1.1, 14, tau=0.5), 0.6)])],
         1.4, 0.9)
 
 
 def name_legend():
     return phrase(
-        [(0.0, [(kick(0.8), 0.9), (snare(0.7), 0.6)]),
-         (0.18, [(kick(0.9), 0.95), (snare(0.85), 0.75)]),
-         (0.36, [(taiko(1.0), 1.0), (kick(1.0), 1.0), (crash(2.2), 0.7), (glass(0.9, 0.5), 0.5)])],
+        [(0.0, [(air_swell(0.3, 600, 9000, 2.0), 0.55)]),
+         (0.3, [(shing(2200, 1.5), 0.85), (impact(1.2, 0.9), 0.8)]),
+         (0.38, [(shing(3300, 1.2), 0.5)]),
+         (0.34, [(sparkle(1.9, 34, tau=0.9, bias=1.4), 0.6)])],
         2.4, 1.3)
 
 
 def name_premium():
     return phrase(
-        [(0.0, [(kick(0.7), 0.85), (snare(0.65), 0.55)]),
-         (0.15, [(kick(0.85), 0.9), (snare(0.8), 0.7)]),
-         (0.30, [(kick(1.0), 1.0), (snare(0.95), 0.85), (tom(60, 1.0), 0.8)]),
-         (0.55, [(taiko(1.2), 1.0), (kick(1.0), 1.0), (crash(3.0), 0.8),
-                 (glass(1.5, 1.0), 0.6), (sub_boom(2.8, 66, 28, 1.4), 0.9)])],
+        [(0.0, [(air_swell(0.5, 500, 11000, 2.0), 0.6), (whine(0.5, 500, 1800, 0.5, 2.0), 0.5)]),
+         (0.5, [(shing(2000, 2.0), 0.9), (impact(2.0, 1.2), 0.9),
+                (air_blast(1.0, 10000, 500, 4.5), 0.5)]),
+         (0.58, [(shing(3000, 1.6), 0.55)]),
+         (0.68, [(shing(4200, 1.4), 0.4)]),
+         (0.52, [(sparkle(2.6, 70, tau=1.1, bias=1.3), 0.65)])],
         3.6, 1.7)
 
 
 def finale():
-    """The win: a drum fill into a huge hit, a crash and the stadium roar."""
+    """The reveal lands: a bright swell, then a soft impact, a strike and a
+    long fall of sparkle in a wide space. No crowd, no drums."""
     dur = 4.2
     x = blank(dur)
-    fill = roll(1.0, lambda v: snare(v, 0.3), 0.11, 0.03, 0.25, 1.0)
-    place(x, fill, 0.0, 0.9)
-    place(x, roll(1.0, lambda v: kick(v, 0.4), 0.3, 0.1, 0.4, 1.0), 0.0, 0.9)
-    place(x, reverse_swell(1.0), 0.0, 0.6)
+    place(x, air_swell(1.0, 400, 11000, 2.2), 0.0, 0.6)
+    place(x, whine(1.0, 600, 2200, 0.6, 2.0), 0.0, 0.5)
+    place(x, flutter(1.0, 8, 26), 0.0, 0.45)
     hit = 1.0
-    place(x, kick(1.0), hit)
-    place(x, taiko(1.2), hit, 0.95)
-    place(x, snare(1.0), hit, 0.7)
-    place(x, crash(3.2), hit, 0.8)
-    place(x, sub_boom(3.0, 66, 26, 1.5), hit, 0.95)
-    place(x, crowd(3.1, 0.9), hit - 0.2)
-    return finish(stereo_reverb(x, 1.8, 0.28), 0.93, 0.3)
+    place(x, impact(3.0, 1.1), hit, 0.9)
+    place(x, air_blast(1.6, 11000, 500, 3.2), hit, 0.5)
+    place(x, shing(2300, 2.2), hit, 0.7)
+    place(x, shing(3500, 1.8), hit + 0.07, 0.45)
+    place(x, shimmer(2.6, 0.55), hit + 0.05)
+    place(x, sparkle(3.0, 90, tau=1.5, bias=1.2), hit + 0.04, 0.55)
+    return finish(stereo_reverb(x, 1.9, 0.3), 0.93, 0.3)
 
 
 def merge_charge():
-    """Two drum lines close in from the left and right, offset beats that
-    tighten until they land together, over a speeding kick pulse."""
+    """Two energy streams close in from the left and right: one whine
+    rises, the other falls, and they meet in unison at the very end, with
+    arcing crackle, a rising air swell and a climbing sub."""
     dur = 1.5
-    left, right = blank(dur), blank(dur)
-    left += roll(dur, lambda v: tom(88, v, 0.35), 0.2, 0.05, 0.3, 1.0)
-    place(right, roll(dur - 0.08, lambda v: tom(112, v, 0.35), 0.2, 0.05, 0.3, 1.0), 0.08)
-    centre = roll(dur, lambda v: kick(v, 0.4), 0.4, 0.11, 0.4, 1.0)
-    centre += 0.5 * reverse_swell(dur) + rumble(dur, 0.8)
-    centre += 0.7 * late_roll(dur, dur * 0.4, lambda v: snare(v, 0.3), 0.12, 0.035)
-    stereo = np.stack([left + 0.35 * right + centre, right + 0.35 * left + centre], axis=1)
-    return finish(stereo, 0.9, 0.012)
+    t = t_axis(dur)
+    ramp = (t / dur) ** 1.6
+    a = ramp * sat(np.sin(chirp_phase(300, 1700, dur)), 1.6)
+    b = ramp * sat(np.sin(chirp_phase(3400, 1700, dur)), 1.6)
+    a2 = ramp * 0.35 * np.sin(chirp_phase(300 * 2.76, 1700 * 2.76, dur))
+    b2 = ramp * 0.35 * np.sin(chirp_phase(3400 * 1.5, 1700 * 1.5, dur))
+    centre = 0.7 * air_swell(dur, 300, 9500, 2.0) + 0.5 * flutter(dur, 7, 30)
+    centre += 0.45 * crackle(dur, 40) + rumble(dur, 0.8)
+    left = 0.55 * (a + a2) + 0.2 * (b + b2) + centre
+    right = 0.55 * (b + b2) + 0.2 * (a + a2) + centre
+    return finish(np.stack([left, right], axis=1), 0.9, 0.012)
 
 
 def merge_impact():
-    """The cards colliding: a heavy hit with a big pane of glass breaking."""
+    """The cards colliding in a flash: a heavy impact, a shockwave of air
+    and a double metallic strike, with sparkle scattering outward."""
     dur = 3.0
     x = blank(dur)
-    place(x, kick(1.1), 0)
-    place(x, taiko(1.2), 0, 0.9)
-    place(x, snare(1.1), 0, 0.8)
-    place(x, crash(2.8), 0, 0.7)
-    place(x, glass(2.2, 1.6), 0, 0.95)
-    place(x, sub_boom(dur, 78, 24, 1.3, 2.2), 0, 1.0)
-    place(x, kick(0.7), 0.22, 0.5)
+    place(x, impact(dur, 1.25), 0, 1.0)
+    place(x, air_blast(1.0, 12000, 300, 5.0), 0, 0.6)
+    place(x, shing(1900, 1.6), 0, 0.65)
+    place(x, shing(2850, 1.4), 0.05, 0.5)
+    place(x, shimmer(1.8, 0.45), 0.05)
+    place(x, sparkle(2.4, 75, bias=1.5, tau=1.0), 0.03, 0.5)
     return finish(stereo_reverb(x, 1.6, 0.3), 0.94, 0.25)
 
 
 def merge_levelup():
-    """Success: a swell into a deep hit, a crash and a short crowd roar."""
+    """Success: a bright rising swell into a soft sub hit and a high strike,
+    with sparkle gliding upward. Uplifting, not heavy."""
     dur = 3.0
     x = blank(dur)
-    place(x, reverse_swell(0.5), 0.0, 0.55)
+    place(x, air_swell(0.5, 700, 12000, 2.0), 0.0, 0.55)
+    place(x, whine(0.5, 700, 2400, 0.55, 2.0), 0.0, 0.5)
     hit = 0.5
-    place(x, kick(1.0), hit)
-    place(x, taiko(1.0), hit, 0.85)
-    place(x, crash(2.4), hit, 0.75)
-    place(x, sub_boom(2.2, 60, 30, 1.8), hit, 0.85)
-    place(x, crowd(2.4, 0.7), hit - 0.05)
-    return finish(stereo_reverb(x, 1.4, 0.28), 0.92, 0.3)
+    place(x, sub_hit(2.2, 70, 34, 2.0), hit, 0.75)
+    place(x, slam(0.3, 1000, 14), hit, 0.4)
+    place(x, shing(3000, 1.9), hit, 0.7)
+    place(x, shing(4500, 1.5), hit + 0.06, 0.45)
+    place(x, shimmer(2.0, 0.5), hit)
+    place(x, sparkle(2.3, 60, tau=1.0, bias=1.2, glint=0.8), hit + 0.02, 0.5)
+    return finish(stereo_reverb(x, 1.4, 0.28), 0.86, 0.3)
 
 
 SOUNDS = {

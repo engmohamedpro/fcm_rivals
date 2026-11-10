@@ -4,19 +4,22 @@
 /// fraction of the timeline it fires at, so the audio is locked to the
 /// same marks the haptics and visuals use and each of the three reveals
 /// (ordinary, legendary, premium) gets its own escalating track. All of
-/// it is drums, glass and crowd:
+/// it is the polished reveal language of a modern football game — air,
+/// energy, shine and deep impacts; no drums, no music:
 ///
-///  - a drum-roll charge (snare, kick pulse, toms, cracking glass) timed
-///    to END exactly on the burst,
-///  - the burst: kick, taiko, cymbal crash and the pack shattering,
+///  - an energy charge (fluttering shimmer, a rising metallic whine, an
+///    air swell and a climbing sub) timed to END exactly on the burst,
+///  - the burst: a deep impact, a blast of air, a metallic strike and a
+///    shower of sparkle as the pack opens in a flash of light,
 ///  - soft whooshes on the flag and position walkout and a full one on
 ///    the card flip,
-///  - low tom taps under the stat count, climbing slightly in pitch,
-///  - a drum phrase when the name lands (two hits, three, or four),
-///  - the win finale: a drum fill into a huge hit and the stadium roar
-///    (legendary once, premium twice — the second pitched down and
-///    slower, for more weight),
-///  - a deep kick on every remaining heavy mark.
+///  - crisp glass-like ticks under the stat count, climbing slightly in
+///    pitch,
+///  - a bright strike when the name lands (one, two, or three layers),
+///  - the win finale: a rising swell into a soft impact and a long fall
+///    of sparkle (legendary once, premium twice — the second pitched down
+///    and slower, for more weight),
+///  - a soft deep pulse on every remaining heavy mark.
 library;
 
 import '../../core/audio/fcm_sfx.dart';
@@ -107,7 +110,7 @@ List<SfxEvent> packSoundtrackFor(RevealTimeline tl) {
   events.add(SfxEvent(tl.posIn.begin, SfxCue.whoosh, volume: 0.5));
   events.add(SfxEvent(tl.flip.begin, SfxCue.whoosh));
 
-  // The stat count: low tocks climbing subtly in pitch.
+  // The stat count: crisp ticks climbing subtly in pitch.
   for (var i = 0; i < tl.tick.length; i++) {
     events.add(SfxEvent(tl.tick[i], SfxCue.tick, rate: 1.0 + 0.06 * i));
   }
