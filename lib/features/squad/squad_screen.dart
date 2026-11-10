@@ -125,6 +125,9 @@ class SquadScreen extends ConsumerWidget {
               // pre-match phase only.
               showStamina: false,
               showStats: false,
+              // T-0092: no setup summary row on the Team tab — the
+              // pitch tells the rating story; pre-match/live keep it.
+              showSetupSummary: false,
               // Tapping a player shows the full card big with an
               // animated zoom (rays, sparkle, pulsing glow) — a
               // showcase of a known player, not a pack-style reveal:

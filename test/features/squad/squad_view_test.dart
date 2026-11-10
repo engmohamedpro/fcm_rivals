@@ -72,6 +72,7 @@ PlayerCard _card(int id, Position position, {int stamina = 100}) => PlayerCard(
 Widget _host({
   bool showStamina = true,
   bool showStats = true,
+  bool showSetupSummary = true,
   List<PlayerCard>? bench,
   Map<int, PlayerCard> xi = const {},
   Locale? locale,
@@ -97,6 +98,7 @@ Widget _host({
         onAutoPick: () {},
         showStamina: showStamina,
         showStats: showStats,
+        showSetupSummary: showSetupSummary,
       ),
     ),
   ),
@@ -943,6 +945,52 @@ void main() {
     expect(badgeRect.right, lessThan(pitchRect.right));
     expect(badgeRect.top, greaterThan(pitchRect.top));
   });
+
+  testWidgets(
+    'T-0092: showSetupSummary false drops the setup row, the card '
+    'starts at the formation dropdown',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(340, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_host(showSetupSummary: false));
+      await tester.pumpAndSettle();
+
+      // The row's three blocks are gone…
+      expect(find.text('TEAM RATING'), findsNothing);
+      expect(find.text('MENTALITY'), findsNothing);
+      expect(find.text('Balanced'), findsNothing);
+      // …and TACTICS survives only as the control card's button.
+      expect(find.text('TACTICS'), findsOneWidget);
+
+      // The formation dropdown leads the column now.
+      expect(find.byType(FcmDropdown<String>), findsOneWidget);
+      expect(find.text('Auto Pick'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'T-0092: default showSetupSummary keeps the setup row (pre-match '
+    'and live surfaces)',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(340, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+
+      expect(find.text('TEAM RATING'), findsOneWidget);
+      expect(find.text('MENTALITY'), findsOneWidget);
+      // 'Balanced' twice: the TACTICS info block's value (the default
+      // style's own label) and the MENTALITY block's value.
+      expect(find.text('Balanced'), findsNWidgets(2));
+      expect(find.text('TACTICS'), findsNWidgets(2));
+    },
+  );
 
   // T-0094: the capsule's value counts up to its new reading when the
   // squad changes — the count floats to the settled text, then idles

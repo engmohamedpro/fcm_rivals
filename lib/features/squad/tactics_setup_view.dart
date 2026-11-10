@@ -42,6 +42,7 @@ class TacticsSetupView extends StatelessWidget {
     this.showStamina = true,
     this.showStats = true,
     this.showReserves = true,
+    this.showSetupSummary = true,
     this.onPlayerTap,
     this.upgradable,
     this.swapping,
@@ -86,6 +87,12 @@ class TacticsSetupView extends StatelessWidget {
   /// editor hides it — a match day squad has nobody beyond the bench.
   final bool showReserves;
 
+  /// Whether the control card opens with the three-part setup summary
+  /// row — TACTICS / MENTALITY / TEAM RATING (T-0092): the Team tab
+  /// drops it (the pitch already tells the rating story), while the
+  /// pre-match and live surfaces keep the default and the row.
+  final bool showSetupSummary;
+
   /// Opens the player detail sheet; null makes the cards non-tappable.
   final void Function(PlayerCard card)? onPlayerTap;
 
@@ -120,6 +127,7 @@ class TacticsSetupView extends StatelessWidget {
             formationCode: formationCode,
             tactics: tactics,
             mentality: mentality,
+            showSetupSummary: showSetupSummary,
             onFormation: onFormation,
             onAutoPick: onAutoPick,
             onTactics: () => showTacticsOptionsSheet(
@@ -207,6 +215,7 @@ class _ControlCard extends StatelessWidget {
     required this.onFormation,
     required this.onTactics,
     this.onAutoPick,
+    this.showSetupSummary = true,
   });
 
   final int teamRating;
@@ -217,6 +226,10 @@ class _ControlCard extends StatelessWidget {
   final VoidCallback onTactics;
   final VoidCallback? onAutoPick;
 
+  /// See [TacticsSetupView.showSetupSummary] — the row renders only
+  /// when true (T-0092).
+  final bool showSetupSummary;
+
   @override
   Widget build(BuildContext context) {
     final l10n = l10nOf(context);
@@ -226,6 +239,9 @@ class _ControlCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // The setup summary row (T-0092): Team tab opts out — the
+          // column then starts directly at the formation dropdown.
+          if (showSetupSummary) ...[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -242,6 +258,7 @@ class _ControlCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
+          ],
           // The formation picker, directly on the setup card: the closed
           // field shows the live shape ('4-3-3'), tapping lists every
           // formation — no detour into the tactic options sheet.

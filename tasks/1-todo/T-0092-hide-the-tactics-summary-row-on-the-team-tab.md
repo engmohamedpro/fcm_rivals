@@ -2,8 +2,8 @@
 id: T-0092
 title: Hide the tactics summary row on the Team tab
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -56,3 +56,25 @@ flutter test test/features/squad/
 flutter test
 # Expected: full suite green, no REGEN_SNAPSHOT
 ```
+---
+
+## Developer Notes
+
+### Attempt 1 — implementation
+
+**Summary of changes:** the Team tab's control card no longer opens with the three-part TACTICS / MENTALITY / TEAM RATING row — the column now starts directly at the formation dropdown, then Auto Pick + TACTICS. The pre-match and live surfaces keep the row untouched (default true).
+
+1. `lib/features/squad/tactics_setup_view.dart` — new `showSetupSummary` flag (default `true`, the same opt-in pattern as `showStamina`/`showStats`/`showReserves`) on `TacticsSetupView`, threaded into `_ControlCard`; the summary `Row` and its trailing `SizedBox(height: 8)` render only when true. The `_info`/`_rating` helpers stay — the default path still uses them.
+2. `lib/features/squad/squad_screen.dart` — the Team tab passes `showSetupSummary: false`. The pre-match (`pre_match_phases.dart`) and live (`live_tactics_screen.dart`) call sites untouched.
+3. Tests — `squad_screen_test.dart`: the empty-squad test's assertions flipped (TEAM RATING findsNothing, TACTICS findsOneWidget), plus a new test asserting all three row texts are absent (`TEAM RATING`, `MENTALITY`, `Balanced`, with `TACTICS` reduced to the single button) while the formation dropdown, 4-3-3 and Auto Pick still render. `squad_view_test.dart`: `_host` gained a `showSetupSummary` param and two contract tests — `false` drops the row and the card starts at the dropdown; the default keeps the row (where 'Balanced' appears TWICE: the TACTICS block's value is the default style's own label 'Balanced' plus the MENTALITY block's value — pinned as such).
+
+**Files changed:** `lib/features/squad/tactics_setup_view.dart`, `lib/features/squad/squad_screen.dart`, `test/features/squad/squad_screen_test.dart`, `test/features/squad/squad_view_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/squad/squad_screen_test.dart` → green ✓. `flutter test test/features/squad/squad_view_test.dart` → green ✓. `flutter test test/features/squad/` → **245/245 green** ✓ (pre-match/live unbroken). Full `flutter test` → (result recorded in the submit commit message) ✓.
+
+**Concerns / assumptions:**
+- One test-level discovery worth noting: the row's TACTICS info block shows the DEFAULT TACTICS' own label ('Balanced'), which equals the mentality's display name — so 'Balanced' legitimately renders twice on the default row. The Team-tab absence test still asserts zero, which is correct there.
+- No layout golden depends on the row (no REGEN_SNAPSHOT needed).
+
+## Review Log
+<!-- Reviewer agent appends one entry per review. Never delete old entries. -->

@@ -17,6 +17,7 @@ import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
+import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmDropdown;
 import 'package:fcm_rivals/features/squad/squad_screen.dart';
 import 'package:fcm_rivals/features/squad/squad_view.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
@@ -97,9 +98,11 @@ void main() {
     expect(find.byType(TacticsSetupView), findsOneWidget);
     expect(find.byType(SquadPitch), findsOneWidget);
     expect(find.text('4-3-3'), findsWidgets);
-    expect(find.text('TEAM RATING'), findsOneWidget);
-    // The setup label and the control card's TACTICS button.
-    expect(find.text('TACTICS'), findsNWidgets(2));
+    // T-0092: the setup summary row is gone on the Team tab — no TEAM
+    // RATING info block, and TACTICS now counts only the control
+    // card's button.
+    expect(find.text('TEAM RATING'), findsNothing);
+    expect(find.text('TACTICS'), findsOneWidget);
 
     // Bench and reserves stay visible even with nothing assigned: full
     // quota of ghost placeholder cards — 7 bench slots, 5 reserve slots.
@@ -122,6 +125,32 @@ void main() {
     expect(find.text('Best squad selected'), findsOneWidget);
     expect(find.byType(TacticsSetupView), findsOneWidget);
   });
+
+  testWidgets(
+    'T-0092: the Team tab hides the setup summary row — no TACTICS/'
+    'MENTALITY/TEAM RATING texts',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // None of the summary row's three blocks render: the label, the
+      // localized mentality value, the rating block.
+      expect(find.text('TEAM RATING'), findsNothing);
+      expect(find.text('TACTICS'), findsOneWidget,
+          reason: 'only the control card button remains');
+      expect(find.text('MENTALITY'), findsNothing);
+      expect(find.text('Balanced'), findsNothing,
+          reason: 'the mentality row value is gone with the row');
+
+      // The card still reads: formation dropdown first, then the Auto
+      // Pick + TACTICS buttons.
+      expect(find.byType(FcmDropdown<String>), findsOneWidget);
+      expect(find.text('4-3-3'), findsWidgets);
+      expect(find.text('Auto Pick'), findsOneWidget);
+    },
+  );
 
   // The pattern guard for every localized screen: delegates + AR locale
   // resolve the Arabic copy end-to-end through the generated bundle.
