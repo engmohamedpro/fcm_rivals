@@ -2,7 +2,7 @@
 id: T-0090
 title: Add back, sell and upgrade actions to the team card full view
 priority: high
-status: needs-review
+status: todo
 attempts: 1
 depends_on: [T-0089]
 created: 2026-11-09
@@ -38,12 +38,12 @@ Tapping a card on the team screen opens the full-card view with three actions at
 - Replacing the ad selling-bonus flow or the price formula.
 
 ## Acceptance Criteria
-- [ ] The full view shows BACK / SELL / UPGRADE in that order, localized EN + AR, RTL-safe.
+- [x] The full view shows BACK / SELL / UPGRADE in that order, localized EN + AR, RTL-safe.
 - [ ] SELL on an XI card: the slot is auto re-picked (11 valid slots), the price is credited, the view pops, the team screen reflects the change.
-- [ ] SELL on a bench/reserve card sells and pops the same way.
-- [ ] UPGRADE with a duplicate: merge animation plays, the card shows +1 level in place, the view stays open; the button disables when no copy remains.
-- [ ] No duplicate → UPGRADE disabled; BACK and tap-anywhere dismiss unchanged.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/squad/ test/features/collection/` green; full `flutter test` green.
+- [x] SELL on a bench/reserve card sells and pops the same way.
+- [x] UPGRADE with a duplicate: merge animation plays, the card shows +1 level in place, the view stays open; the button disables when no copy remains.
+- [x] No duplicate → UPGRADE disabled; BACK and tap-anywhere dismiss unchanged.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/squad/ test/features/collection/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -92,3 +92,24 @@ Manual: tap an XI card with a duplicate — UPGRADE (gold) merges and the card l
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — FAIL (5/6 criteria met; AC2 unmet)
+
+**Ran (Flutter 3.47.9 / Dart 3.13.7):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/squad/ test/features/collection/` → 286/286 green ✓
+- `flutter test` → 989/989, "All tests passed!" ✓
+- Diff scope check (commit ab4d41f): all 11 files inside the declared scope ✓. The reveal bar (BACK ghost / SELL steel / UPGRADE gold, flex 2/3/3, busy-gated, UPGRADE disabled with no copies, showcase callers keep TAP TO CLOSE), the squad_screen wiring (ad-bonus → confirm → sale → pop → invalidate; merge → animation → in-place refresh), the l10n keys (revealBack/Sell/Upgrade EN+AR, regenerated) and the `sellPlayers` refactor (squad refusal as a pre-transaction check, same message, same skip-on-missing semantics) all verified against the code ✓.
+
+**FAIL — AC2: "SELL on an XI card: the slot is auto re-picked (11 valid slots)…" does not hold at the boundary — `sellPlayerFromSquad` can sell a club below a full starting XI.**
+
+- Severity: high (soft-lock risk — the club cannot play matches until it re-acquires an 11th player).
+- Repro (ran as a temporary drift in-memory test, deleted afterwards):
+  1. Create a club; insert exactly 11 owned rows (playerIds 1..11) with squadSlot 0..10 — a full XI, empty bench/reserves.
+  2. `store.getSquad()` → XI has 11 valid slots (sanity ✓).
+  3. `store.sellPlayerFromSquad(xiMember.ownedId)`.
+- Expected: the sale is refused when no replacement exists — the method's own doc comment and `squad_swap.dart:14` ("the starting XI can never be left with a hole") pin the GDD 6.4 invariant.
+- Got (actual output): `XI slots after the sale: 10`, `owned players after the sale: 10` — the sale completed, coins were credited, and the XI was persisted 10-strong. `saveSquad` (`lib/features/collection/squad_store.dart:56-95`) performs no XI-count validation, and `squad.autoPick` simply leaves slots unassigned when the healthy pool runs short (`lib/features/squad/squad_engine.dart:281+`, "Fewer than 23 players simply leaves later slots unassigned"; injured players are excluded from the pool, so an all-injured remainder triggers the same hole).
+- Downstream: the next match then throws `'A full starting XI is required to play a match'` (`lib/features/match/match_session.dart:235-239`) — the user is locked out of matches until a new pack provides an 11th player. Pre-T-0090 this state was unreachable: `sellPlayers` refused every squad member.
+- What to do: inside `sellPlayerFromSquad`'s transaction, compute the re-pick assignment FIRST and refuse when it cannot cover the XI — `if (assignment.length < Formation.startingXiSize) throw const CollectionException('Selling would leave the starting XI short')` (nothing sold, coins untouched, the transaction rolls back). Add the unit test this review ran as a permanent case: exactly-11 club, XI sale throws, XI still 11, row still owned, coins unchanged. Keep everything else as is — the happy paths and the rest of the criteria are green.
+- Non-blocking note for the owner: a defense-in-depth XI-count backstop inside `saveSquad` itself (mirroring the swap rules) would close the whole class of holes and is a good candidate for its own small task.
