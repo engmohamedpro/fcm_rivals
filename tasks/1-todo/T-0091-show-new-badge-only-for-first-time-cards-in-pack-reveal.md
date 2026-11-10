@@ -2,7 +2,7 @@
 id: T-0091
 title: Show a NEW badge only for first-time cards in the pack reveal
 priority: high
-status: needs-review
+status: todo
 attempts: 1
 depends_on: [T-0085]
 created: 2026-11-09
@@ -38,11 +38,11 @@ When a pack reveals a player the club did not own before, the reveal card carrie
 - The Collection screen.
 
 ## Acceptance Criteria
-- [ ] A drawn player the club already owned shows no badge; a first-time player shows the gold NEW badge after the flip.
+- [x] A drawn player the club already owned shows no badge; a first-time player shows the gold NEW badge after the flip.
 - [ ] The same-player-twice-in-one-pack case flags only the first (unit-tested).
-- [ ] The badge is localized EN + AR and never appears before the card flips.
-- [ ] `ownedIds` sell behavior unchanged.
-- [ ] `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green.
+- [x] The badge is localized EN + AR and never appears before the card flips.
+- [x] `ownedIds` sell behavior unchanged.
+- [x] `flutter analyze` zero warnings; `flutter test test/features/packs/` green; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -91,3 +91,17 @@ Manual: open a pack containing a player you already own — that card flips with
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — FAIL (4/5 criteria met; AC2 unmet)
+
+**Ran (fresh Flutter 3.47.9 / Dart 3.13.7 install on this machine):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/packs/` → 130/130 green ✓ (both new T-0091 widget tests included)
+- `flutter test` → 982/982, "All tests passed!" ✓
+- Diff scope check (commit c16b092): all 14 files inside the declared scope ✓; threading `_reveal → AppRoutes.packReveal → PackOpeningScreen.newFlags` verified for BOTH open paths (first open + OPEN ANOTHER chain), default `const []` keeps previews/badge-less callers unchanged ✓; `ownedIds` and the sell wiring (`onSell(ownedIds[_index])`) untouched ✓; `packsNewCard` present in both ARBs with regenerated getters ✓; the badge is structurally face-up-only (`_withNewBadge` wraps the face-up branch) with `Interval(0.5, 0.8)` of flipT, so it cannot render before the flip midpoint ✓.
+
+**FAIL — AC2: "The same-player-twice-in-one-pack case flags only the first (unit-tested)" is not met.**
+- Ran/read: `test/features/collection/collection_store_test.dart`, test "T-0091: same-player-twice-in-one-open flags only the first".
+- Expected: a unit test exercising the same-pack duplicate path — the `seenThisPack` leg of the computation inside `openPack` (`lib/features/collection/collection_store.dart:250-257`).
+- Got: that test opens TWO SEPARATE packs (gkPack, then gkPack2 with the same seed) and asserts the second open's flag is false — that is the pre-owned leg, already covered by the first test's middle block. `PackEngine.open` draws exactly ONE player per open (`lib/features/packs/pack_engine.dart:351-360`), so the same-pack duplicate path has zero coverage anywhere in the suite. The test's own comment ("the in-pack seen-set leg is covered by the first test's everyElement(isTrue)") misstates reality: a single-element `[true]` result exercises no duplicate logic, and the test's title does not match what it tests.
+- What to do: (1) extract the per-draw decision into a pure `@visibleForTesting` function (e.g. `static List<bool> computeNewFlags(List<int> drawnPlayerIds, Set<int> preOwnedIds)` in `CollectionStore`) and have `openPack` call it — behavior identical, no public contract change; (2) add a direct unit test proving BOTH legs: `computeNewFlags([10, 10], {}) → [true, false]` and `computeNewFlags([10, 11, 10], {11}) → [true, false, false]`; (3) retitle the current misleading test to what it actually pins (pre-owned across two opens). Re-submit when the seen-set leg is genuinely proven — the logic itself reads correct, only the proof is missing.
