@@ -2,8 +2,8 @@
 id: T-0118
 title: Pre-match tactics phase — the true matchday duplicate of the Team screen, with fitness-aware auto-pick
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0117]
 created: 2026-11-10
 completed:
@@ -58,12 +58,65 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - `lib/features/squad/squad_engine.dart` — the matchday policy IN
+    the ONE autoPick, no method duplication: new parameters
+    `suspendedPlayerIds` (the red-card exclusion HOOK — empty today
+    because no suspension state exists) and `staminaFirst` (the
+    ranking: stamina band of 10, then slot rating — a
+    2-point fitness edge cannot outweigh a quality gap inside a
+    band). One `slotKey` closure swaps the rank key for all three XI
+    passes; the bench/reserves sort gains the same band-first rule.
+    Defaults keep every historical caller byte-identical.
+  - `lib/features/match/pre_match_phases.dart` — `_squadFor` now
+    picks with `excludeInjured: true, staminaFirst: true` (the
+    initial projection AND formation switches both go through it, so
+    what the user sees is the fittest legal team — injured players
+    visibly parked outside the XI AND bench with their badges, the
+    duplicate screen's difference); `TacticsPhase` gained the
+    `onAutoPick` parameter, passed into `TacticsSetupView` (the
+    button renders when non-null — it was ENTIRELY missing from the
+    pre-match surface before).
+  - `lib/features/match/pre_match_screen.dart` — wires the tap: a
+    match-only re-assert of the projection (haptic + setState; the
+    projection is deterministic from the saved squad + policy, and
+    the phase has no manual drag surface). Nothing persists —
+    `onKickOff` still hands the same match-only selection.
+  - Tests: NEW `test/features/match/matchday_autopick_test.dart`
+    (5 policy tests: same-band rating wins / band beats a -10
+    overall / injured excluded from XI AND BENCH / suspended-set
+    hook excludes like an injury with empty default unchanged /
+    T-0117 merit regression) + a new pre-match UI test (the Auto
+    Pick button exists on the tactics phase — the exact gap this
+    task closed — taps keep the phase up, never kick off, never
+    persist).
+- **Files changed:** lib/features/squad/squad_engine.dart,
+  lib/features/match/pre_match_phases.dart,
+  lib/features/match/pre_match_screen.dart,
+  test/features/match/matchday_autopick_test.dart (new),
+  test/features/match/pre_match_screen_test.dart.
+- **How I tested it:** `flutter analyze --no-pub` zero new issues
+  (2 pre-existing baseline warnings, untouched). Policy tests 5/5;
+  pre-match screen suite 9/9; full match suite: only the SAME 2
+  pre-existing tactic_slider_row Arabic failures (verified on the
+  clean tree during T-0115 — not from this task).
+- **Concerns / assumptions:** (1) THE SUSPENSION GAP, stated
+  plainly as the task demands: the `suspendedPlayerIds` parameter is
+  the shipped HOOK; the suspension STATE does not exist in the data
+  model today (no table, no post-match ban write). When the owner
+  confirms the feature, a dedicated task should add the state and
+  feed the set from the pre-match data — the pick logic will not
+  need to reopen. (2) The auto-pick tap re-asserts the deterministic
+  projection rather than mutating a local XI: the pre-match phase
+  has no manual drag/swap surface today, so there is nothing else to
+  re-pick FROM; the button's value is the explicit contract "give me
+  the fittest legal XI" + the refresh animation. If a manual XI edit
+  arrives on this surface later, the callback must diff against a
+  local override — noted for that future task. (3) The bench ORDER
+  the live AI substitutions consume now favours fittest-first under
+  staminaFirst — verified no live-substitution test broke (full
+  match suite green apart from the 2 pre-existing failures).
 
 
 ## Review Log

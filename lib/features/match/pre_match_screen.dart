@@ -145,6 +145,16 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                           setState(() => _formationCode = code),
                       onTactics: (t) => setState(() => _tactics = t),
                       onMentality: (m) => setState(() => _mentality = m),
+                      // T-0118: the matchday Auto Pick — the projection
+                      // is deterministic (saved squad + fitness-aware
+                      // policy), so the tap re-asserts the fittest legal
+                      // XI for the CURRENT shape and replays the swap
+                      // animation. Nothing persists: the club's saved
+                      // setup is never touched from the matchday flow.
+                      onAutoPick: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {});
+                      },
                     ),
                     _ => PepTalkPhase(
                       key: const ValueKey('pep'),

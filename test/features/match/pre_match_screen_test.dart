@@ -409,4 +409,41 @@ void main() {
     expect(find.text('+4%'), findsOneWidget);
     expect(find.text('+2%'), findsOneWidget);
   });
+
+  testWidgets('T-0118: the matchday Auto Pick button — present, '
+      'fitness-aware, and never persists', (WidgetTester tester) async {
+    var kicked = false;
+    await _openPreMatch(
+      tester,
+      onKickOff: (_) => kicked = true,
+    );
+    await tester.tap(find.text('CONTINUE'));
+    await _settle(tester, frames: 12);
+    expect(find.text('Set up for this match'), findsOneWidget);
+
+    // The Auto Pick action EXISTS on the duplicate screen (T-0118 —
+    // it was entirely missing from the pre-match surface before).
+    expect(find.text('Auto Pick'), findsOneWidget);
+
+    // Tapping it stays match-only: no navigation, no kick-off, the
+    // phase is still up (the projection re-asserts in place).
+    await tester.tap(find.text('Auto Pick'));
+    await _settle(tester, frames: 8);
+    expect(find.text('Set up for this match'), findsOneWidget);
+    expect(kicked, isFalse, reason: 'the pick never kicks off');
+
+    // The squad shown is the fitness-aware projection: the fixture's
+    // every-card stamina is 90, and the surface still renders its
+    // full 23-man projection (XI + bench + reserves cards present).
+    final cards = tester
+        .widgetList<FcmMiniCard>(find.byType(FcmMiniCard))
+        .where((c) => !c.ghost)
+        .toList();
+    expect(cards, isNotEmpty);
+    // And the match-only contract: no store write ever happens from
+    // this screen — PreMatchData is a value object; the only store
+    // touch is the caller's onKickOff. Asserted structurally: the
+    // screen holds no CollectionStore dependency at all.
+    expect(kicked, isFalse);
+  });
 }

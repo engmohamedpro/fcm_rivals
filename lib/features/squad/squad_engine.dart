@@ -285,6 +285,8 @@ class SquadEngine {
     List<PlayerCard> players,
     Formation formation, {
     bool excludeInjured = true,
+    Set<int> suspendedPlayerIds = const {},
+    bool staminaFirst = false,
   }) {
     final assignment = <int, int>{};
     // Matchday paths exclude injured players (T-0055, GDD 11.7 — the
@@ -293,14 +295,37 @@ class SquadEngine {
     // XI is the club's identity eleven on MERIT — an injured star is
     // still the best card the club owns, and the matchday layer
     // re-fields a fit XI at kick-off via the session guard.
+    //
+    // [suspendedPlayerIds] (T-0118): the red-card exclusion HOOK —
+    // empty today because no suspension state exists in the data
+    // model yet; the day it lands, the pre-match pick excludes the
+    // banned without reopening this logic.
+    //
+    // [staminaFirst] (T-0118): the matchday ranking — for each slot,
+    // candidates rank by STAMINA BAND first (bands of 10, so a 2-point
+    // fitness edge cannot outweigh a 15-point quality gap inside a
+    // band), then by slot rating. False (every historical caller and
+    // the Team tab) ranks on slot rating alone, exactly as before.
+    final unavailable = {
+      for (final p in players)
+        if (excludeInjured && p.isInjured) p.ownedId,
+      ...suspendedPlayerIds,
+    };
     final available = {
       for (final p in players)
-        if (!excludeInjured || !p.isInjured) p.ownedId,
+        if (!unavailable.contains(p.ownedId)) p.ownedId,
     };
     final byId = {
       for (final p in players)
-        if (!excludeInjured || !p.isInjured) p.ownedId: p,
+        if (!unavailable.contains(p.ownedId)) p.ownedId: p,
     };
+
+    // The slot-candidate ranking key: plain slot rating, or the
+    // matchday stamina-band-then-rating key (T-0118).
+    double slotKey(PlayerCard p, FormationSlot slot) => !staminaFirst
+        ? slotRatingOf(p, slot)
+        : (p.staminaPercent ~/ 10).toDouble() * 10000 +
+              slotRatingOf(p, slot);
 
     // Pass 1 — natural positions only: the best player of the slot's own
     // position takes the slot.
@@ -311,7 +336,7 @@ class SquadEngine {
       for (final id in available) {
         final p = byId[id]!;
         if (p.position != slot.position) continue;
-        final rating = slotRatingOf(p, slot);
+        final rating = slotKey(p, slot);
         if (rating > bestRating) {
           bestRating = rating;
           bestId = id;
@@ -332,7 +357,7 @@ class SquadEngine {
       int? bestId;
       var bestRating = 0.0;
       for (final id in available) {
-        final rating = slotRatingOf(byId[id]!, slot);
+        final rating = slotKey(byId[id]!, slot);
         if (rating > bestRating) {
           bestRating = rating;
           bestId = id;
@@ -352,7 +377,7 @@ class SquadEngine {
       int? bestId;
       var bestRating = -1.0;
       for (final id in available) {
-        final rating = slotRatingOf(byId[id]!, slot);
+        final rating = slotKey(byId[id]!, slot);
         if (rating > bestRating) {
           bestRating = rating;
           bestId = id;
@@ -368,6 +393,14 @@ class SquadEngine {
     // position rating then a stable id order.
     final remaining = available.map((id) => byId[id]!).toList()
       ..sort((a, b) {
+        if (staminaFirst) {
+          // Matchday bench (T-0118): fittest band first, then the
+          // best of the band (the owner's rule, applied to the bench
+          // exactly as to the XI).
+          final byBand =
+              (b.staminaPercent ~/ 10).compareTo(a.staminaPercent ~/ 10);
+          if (byBand != 0) return byBand;
+        }
         final byOverall = b.overall.compareTo(a.overall);
         if (byOverall != 0) return byOverall;
         final byPosition = b.positionRating().compareTo(a.positionRating());

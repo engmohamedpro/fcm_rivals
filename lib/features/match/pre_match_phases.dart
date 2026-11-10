@@ -34,6 +34,7 @@ class TacticsPhase extends StatelessWidget {
     required this.onFormation,
     required this.onTactics,
     required this.onMentality,
+    this.onAutoPick,
   });
 
   final PreMatchData data;
@@ -43,6 +44,12 @@ class TacticsPhase extends StatelessWidget {
   final ValueChanged<String> onFormation;
   final ValueChanged<TeamTactics> onTactics;
   final ValueChanged<Mentality> onMentality;
+
+  /// T-0118: the matchday Auto Pick — re-projects the XI/bench/
+  /// reserves in memory with the fitness-aware rules (injured and
+  /// suspended excluded, stamina band then rating). Match-only by
+  /// construction: it never touches the club's saved setup.
+  final VoidCallback? onAutoPick;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +125,7 @@ class TacticsPhase extends StatelessWidget {
           // (T-0117/T-0118): injuries and stamina show here.
           showCondition: true,
           showReserves: true,
+          onAutoPick: onAutoPick,
         ),
       ],
     );
@@ -125,10 +133,13 @@ class TacticsPhase extends StatelessWidget {
 }
 
 /// XI / bench / reserves for the selected formation: the persisted squad
-/// re-projected onto the new shape with the Squad Engine's Auto Pick
-/// rules (GDD 6.3), purely in memory — nothing is written back. Natural
-/// positions land in their slots, the rest rank the bench and reserves
-/// best-first, so what the user sees is the team that will kick off.
+/// re-projected onto the new shape with the Squad Engine's MATCHDAY
+/// Auto Pick rules (GDD 6.3 + T-0118), purely in memory — nothing is
+/// written back. Injured players (and, one day, suspended ones) are
+/// excluded from the XI AND the bench; every slot ranks by stamina
+/// band then slot rating, so what the user sees is the FITTEST team
+/// that will kick off — the duplicate screen's whole difference from
+/// the Team tab's merit-eleven.
 (Map<int, PlayerCard>, List<PlayerCard>, List<PlayerCard>) _squadFor(
   String formationCode,
   Map<int, PlayerCard> squad,
@@ -137,6 +148,11 @@ class TacticsPhase extends StatelessWidget {
   final assignment = const SquadEngine().autoPick(
     cards,
     formationByCode(formationCode),
+    // The matchday policy (T-0118): exclude the injured, rank by
+    // fitness band then quality. suspendedPlayerIds stays empty —
+    // the red-card HOOK exists, the suspension STATE does not yet.
+    excludeInjured: true,
+    staminaFirst: true,
   );
   final byId = {for (final c in cards) c.ownedId: c};
 
