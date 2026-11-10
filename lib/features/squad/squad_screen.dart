@@ -125,6 +125,12 @@ class SquadScreen extends ConsumerWidget {
               // pre-match phase only.
               showStamina: false,
               showStats: false,
+              // T-0117: the pure management surface — no match-day
+              // condition chrome of any kind (stamina bars, injury
+              // badges, injured-card inertness). The saved XI is the
+              // club's identity eleven on merit; fitness belongs to
+              // the pre-match duplicate and the kick-off guard.
+              showCondition: false,
               // T-0092: no setup summary row on the Team tab — the
               // pitch tells the rating story; pre-match/live keep it.
               showSetupSummary: false,
@@ -229,7 +235,10 @@ class SquadScreen extends ConsumerWidget {
 
   Future<void> _autoPick(BuildContext context, WidgetRef ref) async {
     final store = await ref.read(collectionStoreProvider.future);
-    await store.autoPickSquad();
+    // T-0117: the Team tab's pick is MERIT-ONLY — injured players
+    // still compete for the saved XI (fitness belongs to the pre-match
+    // duplicate and the kick-off guard, never the identity eleven).
+    await store.autoPickSquad(excludeInjured: false);
     ref.invalidate(squadProvider);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

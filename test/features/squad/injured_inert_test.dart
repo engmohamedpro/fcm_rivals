@@ -1,7 +1,15 @@
-/// T-0056: injured players in squad selection — badge on the pitch and
-/// strips, and fully inert selection: no pickup (SquadDraggable), no
-/// drop target. The store's save-time refusal (T-0055) stays the
-/// backstop; these tests lock the UI layer over a real in-memory store.
+/// T-0056: injured players in MATCHDAY squad surfaces — badge on the
+/// pitch and strips, and fully inert selection: no pickup
+/// (SquadDraggable), no drop target. The store's save-time refusal
+/// (T-0055) stays the backstop; these tests lock the UI layer over a
+/// real in-memory store.
+///
+/// T-0117 narrowed WHERE that behaviour lives: the Team tab is the
+/// pure management surface (no condition chrome — its contracts are
+/// in team_tab_purity_test.dart). These badges/inertness expectations
+/// therefore assert on the matchday flag surface (SquadPitch/
+/// SquadCardRow with showCondition: true), which is what the pre-match
+/// duplicate and the live surfaces render.
 library;
 
 import 'dart:math' as math;
@@ -18,8 +26,12 @@ import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/injury_badge.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import 'package:fcm_rivals/features/squad/formations.dart'
+    show Formation, formationByCode;
 import 'package:fcm_rivals/features/squad/squad_drag.dart';
-import 'package:fcm_rivals/features/squad/squad_screen.dart';
+import 'package:fcm_rivals/features/squad/squad_engine.dart'
+    show PlayerCard;
+import 'package:fcm_rivals/features/squad/squad_view.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
 
 void main() {
@@ -82,25 +94,61 @@ void main() {
     );
   }
 
-  Future<void> pumpSquad(WidgetTester tester, {Locale? locale}) async {
+  /// The club's saved squad (slot → card) as the matchday pitch
+  /// renders it: showCondition TRUE (the pre-match duplicate's view).
+  /// The slot mapping lives in the DB rows, not on PlayerCard.
+  Future<Map<int, PlayerCard>> _savedXi() async {
+    final club = await store.getClub();
+    final rows = await (db.select(db.ownedPlayers)
+          ..where((o) => o.clubId.equals(club!.id)))
+        .get();
+    final cards = await store.getCollection();
+    final byId = {for (final c in cards) c.ownedId: c};
+    return {
+      for (final r in rows)
+        if (r.squadSlot != null &&
+            r.squadSlot! < Formation.startingXiSize)
+          r.squadSlot!: byId[r.id]!,
+    };
+  }
+
+  Future<void> pumpMatchdayPitch(WidgetTester tester,
+      {Locale? locale}) async {
+    final xi = await _savedXi();
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [collectionStoreProvider.overrideWith((ref) => store)],
-        child: locale == null
-            ? const MaterialApp(home: Scaffold(body: SquadScreen()))
-            : MaterialApp(
-                locale: locale,
-                localizationsDelegates:
-                    AppLocalizations.localizationsDelegates,
-                supportedLocales: AppLocalizations.supportedLocales,
-                home: const Scaffold(body: SquadScreen()),
+      locale == null
+          ? MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: SquadPitch(
+                    formation: formationByCode('4-3-3'),
+                    assignments: xi,
+                    showStamina: true,
+                    showStats: false,
+                    showCondition: true,
+                  ),
+                ),
               ),
-      ),
+            )
+          : MaterialApp(
+              locale: locale,
+              localizationsDelegates:
+                  AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(
+                body: Center(
+                  child: SquadPitch(
+                    formation: formationByCode('4-3-3'),
+                    assignments: xi,
+                    showStamina: true,
+                    showStats: false,
+                    showCondition: true,
+                  ),
+                ),
+              ),
+            ),
     );
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 200)),
-    );
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   }
 
@@ -112,7 +160,7 @@ void main() {
     await tester.runAsync(() async {
       await seedSquad(injuredMatchesOut: 3);
     });
-    await pumpSquad(tester);
+    await pumpMatchdayPitch(tester);
 
     // The badge is on the pitch.
     expect(find.byType(InjuryBadge), findsWidgets);
@@ -142,7 +190,7 @@ void main() {
     await tester.runAsync(() async {
       await seedSquad(injuredMatchesOut: 1);
     });
-    await pumpSquad(tester, locale: const Locale('ar'));
+    await pumpMatchdayPitch(tester, locale: const Locale('ar'));
 
     expect(find.byType(InjuryBadge), findsWidgets);
     expect(find.text('1'), findsWidgets);
@@ -156,7 +204,7 @@ void main() {
     await tester.runAsync(() async {
       await seedSquad(injuredMatchesOut: 0);
     });
-    await pumpSquad(tester);
+    await pumpMatchdayPitch(tester);
 
     expect(find.byType(InjuryBadge), findsNothing);
     expect(

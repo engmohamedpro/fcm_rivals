@@ -2,8 +2,8 @@
 id: T-0117
 title: Team tab — the pure management surface: no stamina bars, no injury badges, no match-condition chrome
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-10
 completed:
@@ -57,12 +57,74 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW single explicit flag `showCondition` (the task's Requirement 1
+    choice) across the squad surface chain: `SquadPitch` and
+    `SquadCardRow` (squad_pitch_view.dart — the badge AND the injured
+    card's inert/frozen treatment gate on it, six render sites),
+    `TacticsSetupView` (plumbing), `SquadScreen` passes FALSE (the
+    Team tab — no stamina bars [already false], NO injury badges, no
+    condition inertness: an injured player stays a normal draggable
+    so a manager can rearrange the XI around him), and
+    `pre_match_phases.dart` passes TRUE explicitly (matchday fitness
+    IS the duplicate screen's point).
+  - Merit-only pick: `SquadEngine.autoPick` gained `excludeInjured`
+    (default TRUE — every historical caller identical), and
+    `SquadStore.autoPickSquad` + `CollectionStore.autoPickSquad`
+    forward it; the Team tab's `_autoPick` passes false — the saved
+    XI is the identity eleven on merit.
+  - THE structural discovery: `saveSquad`'s T-0055 backstop refused
+    ANY save referencing an injured player, which made a merit pick
+    unsaveable. Split: `saveSquad(allowInjured: false)` keeps the
+    backstop for every matchday/store-internal caller, and the Team
+    tab's management path passes allowInjured=true (via autoPickSquad
+    excludeInjured:false). Manual drag-saves on the Team tab still
+    REFUSE injured starters (backstop intact — dragging an injured
+    card was already impossible with showCondition:false? NO: he is
+    now draggable on the Team tab, and a manual save placing him in
+    the XI is still refused by the T-0055 backstop; only the auto
+    pick path opts in — a deliberate, documented seam).
+  - Tests: NEW `team_tab_purity_test.dart` (4 tests: injured card on
+    Team tab = no badge + still draggable; merit auto-pick keeps the
+    injured best player in slot 0 [asserted on the DB row]; the
+    matchday SquadPitch with showCondition:true still renders the
+    badge [regression guard]; red-card contract documentation test).
+    `injured_inert_test.dart` (T-0056) converted: its Team-tab
+    expectations moved to the MATCHDAY surface (SquadPitch with
+    showCondition:true) — the behaviour T-0056 pinned lives on where
+    it still belongs; doc header updated to say so.
+  - Doc comments updated: squad_view.dart library doc pending (see
+    concerns) — the flag doc comments on SquadPitch/SquadCardRow/
+    TacticsSetupView carry the purity contract in detail.
+- **Files changed:** lib/features/squad/squad_pitch_view.dart,
+  lib/features/squad/tactics_setup_view.dart,
+  lib/features/squad/squad_screen.dart,
+  lib/features/squad/squad_engine.dart,
+  lib/features/collection/squad_store.dart,
+  lib/features/collection/collection_store.dart,
+  lib/features/match/pre_match_phases.dart,
+  test/features/squad/team_tab_purity_test.dart (new),
+  test/features/squad/injured_inert_test.dart.
+- **How I tested it:** `flutter analyze --no-pub` zero new issues
+  (2 pre-existing baseline). Task's own files 7/7 green
+  (injured_inert + team_tab_purity). Full squad suite: the 6 failures
+  are ALL in squad_view_test.dart (T-0064 slider family) — verified
+  PRE-EXISTING by stashing all changes and re-running on the clean
+  tree: same 15 passed / 6 failed there.
+- **Concerns / assumptions:** (1) The manual-drag seam: with the
+  badge hidden the injured card LOOKS normal on the Team tab, but a
+  hand-placed injured XI save still throws the T-0055 CollectionException
+  (surface snackbar error). The merit AUTO pick opts in deliberately;
+  if the owner wants manual placement of injured players in the saved
+  XI too, that is a one-line follow-up (allowInjured on the manual
+  path) — flagged rather than silently widened, since the backstop
+  protecting the league kick-off was a deliberate T-0055 design.
+  (2) squad_view.dart's library doc was NOT edited (its body is an
+  export-only file whose doc I judged secondary to the flag docs);
+  the contract lives on the widgets. (3) The pre-match duplicate's
+  auto-pick button is T-0118's scope — here it only keeps rendering
+  the condition chrome as before.
 
 
 ## Review Log

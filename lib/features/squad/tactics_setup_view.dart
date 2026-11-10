@@ -42,6 +42,7 @@ class TacticsSetupView extends StatelessWidget {
     this.onAutoPick,
     this.showStamina = true,
     this.showStats = true,
+    this.showCondition = true,
     this.showReserves = true,
     this.showSetupSummary = true,
     this.onPlayerTap,
@@ -82,6 +83,12 @@ class TacticsSetupView extends StatelessWidget {
   /// No surface shows it today — the setup surfaces stay about shape,
   /// not attributes; kept for callers that opt in.
   final bool showStats;
+
+  /// Whether cards carry MATCH-DAY CONDITION chrome (T-0117) — the
+  /// injury badge and the injured cards' inert treatment. The Team
+  /// tab passes false (pure management surface); pre-match/live keep
+  /// the matchday truth.
+  final bool showCondition;
 
   /// Whether the reserves strip renders at all. The Team tab and the
   /// pre-match phase show the full 23-man surface; the LIVE tactics
@@ -155,6 +162,7 @@ class TacticsSetupView extends StatelessWidget {
                   chemistryPercent: xi.isEmpty ? null : chemistry,
                   showStamina: showStamina,
                   showStats: showStats,
+                  showCondition: showCondition,
                   onPlayerTap: onPlayerTap,
                   upgradable: upgradable,
                 ),
@@ -170,6 +178,7 @@ class TacticsSetupView extends StatelessWidget {
                 zone: SquadZone.bench,
                 showStamina: showStamina,
                 showStats: showStats,
+                showCondition: showCondition,
                 onPlayerTap: onPlayerTap,
                 upgradable: upgradable,
               ),

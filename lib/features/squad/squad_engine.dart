@@ -278,17 +278,28 @@ class SquadEngine {
   /// Returns slotIndex → ownedId for every assignable slot (XI 0..10,
   /// bench 11..17, reserves 18..22). Fewer than 23 players simply leaves
   /// later slots unassigned.
-  Map<int, int> autoPick(List<PlayerCard> players, Formation formation) {
+  ///
+  /// [excludeInjured] decides the pool: matchday paths exclude injured
+  /// players; the Team tab's management pick passes false (T-0117).
+  Map<int, int> autoPick(
+    List<PlayerCard> players,
+    Formation formation, {
+    bool excludeInjured = true,
+  }) {
     final assignment = <int, int>{};
-    // Injured players are unselectable on every path (T-0055, GDD 11.7):
-    // the pick pool simply excludes them — a gutted club picks fewer.
+    // Matchday paths exclude injured players (T-0055, GDD 11.7 — the
+    // default keeps every historical caller's behaviour identical).
+    // The Team tab's management pick passes false (T-0117): the saved
+    // XI is the club's identity eleven on MERIT — an injured star is
+    // still the best card the club owns, and the matchday layer
+    // re-fields a fit XI at kick-off via the session guard.
     final available = {
       for (final p in players)
-        if (!p.isInjured) p.ownedId,
+        if (!excludeInjured || !p.isInjured) p.ownedId,
     };
     final byId = {
       for (final p in players)
-        if (!p.isInjured) p.ownedId: p,
+        if (!excludeInjured || !p.isInjured) p.ownedId: p,
     };
 
     // Pass 1 — natural positions only: the best player of the slot's own

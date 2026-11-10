@@ -53,7 +53,16 @@ class SquadStore {
 
   /// Persists a full squad assignment (FR-017/FR-020 storage side). Slots
   /// not present in [assignments] are cleared. Runs in one transaction.
-  Future<void> saveSquad(Map<int, int> assignments) async {
+  ///
+  /// [allowInjured]: the Team tab's management pick saves the club's
+  /// identity eleven on merit — an injured player CAN hold his saved
+  /// slot (T-0117; the matchday layers re-field a fit XI at kick-off
+  /// via the session guard). Default false keeps the T-0055 backstop
+  /// for every other caller.
+  Future<void> saveSquad(
+    Map<int, int> assignments, {
+    bool allowInjured = false,
+  }) async {
     final club = await getClub();
     if (club == null) {
       throw const CollectionException('No club');
@@ -66,10 +75,12 @@ class SquadStore {
       if (!byOwned.containsKey(id)) {
         throw CollectionException('Owned player $id not found');
       }
-      // Injured players are unselectable (T-0055, GDD 11.7) — the store
-      // is the backstop behind the UI: a save referencing an injured
-      // player is refused.
-      if ((byOwned[id]!.injuryMatchesRemaining ?? 0) > 0) {
+      // Injured players are unselectable on MATCHDAY paths (T-0055,
+      // GDD 11.7) — the store is the backstop behind the UI. The Team
+      // tab's management save (T-0117) explicitly allows the identity
+      // eleven to include an injured player: fitness is a matchday
+      // concern, and the kick-off session guard re-fields a fit XI.
+      if (!allowInjured && (byOwned[id]!.injuryMatchesRemaining ?? 0) > 0) {
         throw CollectionException(
           'Injured player $id cannot be selected '
           '(${byOwned[id]!.injuryMatchesRemaining} matches remaining)',
@@ -97,7 +108,13 @@ class SquadStore {
 
   /// Auto Pick over the current collection and formation, then persist
   /// (FR-019). Returns the applied assignment.
-  Future<Map<int, int>> autoPickSquad() async {
+  ///
+  /// [excludeInjured]: the Team tab's pick passes false (T-0117) — the
+  /// saved XI is the club's identity eleven on MERIT; fitness is a
+  /// matchday concern (pre-match projection + kick-off guard), never
+  /// a reason the club's best XI changes. Defaults true so matchday
+  /// and store-internal callers keep the T-0055 behaviour.
+  Future<Map<int, int>> autoPickSquad({bool excludeInjured = true}) async {
     final club = await getClub();
     if (club == null) {
       throw const CollectionException('No club');
@@ -105,8 +122,12 @@ class SquadStore {
     final byId = await _ownedCardsById(club.id);
     final cards = byId.values.toList(growable: false);
     final formation = formationByCode(club.formationCode);
-    final assignment = squad.autoPick(cards, formation);
-    await saveSquad(assignment);
+    final assignment = squad.autoPick(
+      cards,
+      formation,
+      excludeInjured: excludeInjured,
+    );
+    await saveSquad(assignment, allowInjured: !excludeInjured);
     return assignment;
   }
 

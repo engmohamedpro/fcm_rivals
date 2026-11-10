@@ -114,6 +114,9 @@ class TacticsPhase extends StatelessWidget {
           onMentality: onMentality,
           showStamina: true,
           showStats: false,
+          // Matchday fitness IS the point of the duplicate screen
+          // (T-0117/T-0118): injuries and stamina show here.
+          showCondition: true,
           showReserves: true,
         ),
       ],

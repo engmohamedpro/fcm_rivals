@@ -52,6 +52,7 @@ class SquadPitch extends StatelessWidget {
     this.chemistryPercent,
     this.showStamina = true,
     this.showStats = true,
+    this.showCondition = true,
     this.onPlayerTap,
     this.upgradable,
   });
@@ -73,6 +74,15 @@ class SquadPitch extends StatelessWidget {
   final bool showStats;
 
   /// Optional card tap (player detail sheet).
+  /// Whether cards carry MATCH-DAY CONDITION chrome (T-0117): the
+  /// injury badge and the injured card's frozen/inert treatment.
+  /// The Team tab — the pure management surface — passes false:
+  /// the saved XI is the club's identity eleven on merit, and
+  /// fitness is a matchday concern that belongs to the pre-match
+  /// duplicate (and the kick-off session guard), never here.
+  /// Pre-match/live keep the true value.
+  final bool showCondition;
+
   final void Function(PlayerCard card)? onPlayerTap;
 
   /// Upgradable marks (T-0089): true when a duplicate of the base
@@ -154,7 +164,7 @@ class SquadPitch extends StatelessWidget {
                                   width: cardW,
                                 ),
                               )
-                            : card.injuryMatchesRemaining > 0
+                            : showCondition && card.injuryMatchesRemaining > 0
                             ? // Injured (T-0056): visually marked and fully
                               // inert — no pickup, no drop target, no swap.
                               // The store refuses any squad save
@@ -177,7 +187,9 @@ class SquadPitch extends StatelessWidget {
                                       ? card.staminaPercent
                                       : null,
                                   stats: showStats ? statsOf(card) : null,
-                                  injuryMatchesOut: card.injuryMatchesRemaining,
+                                  injuryMatchesOut: showCondition
+                                      ? card.injuryMatchesRemaining
+                                      : null,
                                   upgradable: upgradable?.call(
                                         card.base.playerId,
                                       ) ??
@@ -209,8 +221,9 @@ class SquadPitch extends StatelessWidget {
                                           ? card.staminaPercent
                                           : null,
                                       stats: showStats ? statsOf(card) : null,
-                                      injuryMatchesOut:
-                                          card.injuryMatchesRemaining,
+                                      injuryMatchesOut: showCondition
+                                          ? card.injuryMatchesRemaining
+                                          : null,
                                       upgradable: upgradable?.call(
                                             card.base.playerId,
                                           ) ??
@@ -246,6 +259,7 @@ class SquadCardRow extends StatelessWidget {
     this.zone,
     this.showStamina = true,
     this.showStats = true,
+    this.showCondition = true,
     this.onPlayerTap,
     this.upgradable,
   });
@@ -267,6 +281,11 @@ class SquadCardRow extends StatelessWidget {
   final bool showStats;
 
   /// Optional card tap (player detail sheet).
+  /// Whether cards carry MATCH-DAY CONDITION chrome (T-0117) — the
+  /// injury badge and the injured card's inert treatment. False on
+  /// the Team tab's strips: management shows the squad on merit.
+  final bool showCondition;
+
   final void Function(PlayerCard card)? onPlayerTap;
 
   /// Upgradable marks (T-0089): true when a duplicate of the base
@@ -301,7 +320,7 @@ class SquadCardRow extends StatelessWidget {
                   );
           }
           final c = cards[i];
-          final injured = c.injuryMatchesRemaining > 0;
+          final injured = showCondition && c.injuryMatchesRemaining > 0;
           return FcmEntrance(
             index: i,
             dx: 20,
@@ -320,7 +339,9 @@ class SquadCardRow extends StatelessWidget {
                       width: cardWidth,
                       stamina: showStamina ? c.staminaPercent : null,
                       stats: showStats ? statsOf(c) : null,
-                      injuryMatchesOut: c.injuryMatchesRemaining,
+                      injuryMatchesOut: showCondition
+                          ? c.injuryMatchesRemaining
+                          : null,
                       upgradable: upgradable?.call(c.base.playerId) ?? false,
                     ),
                   )
@@ -346,7 +367,9 @@ class SquadCardRow extends StatelessWidget {
                           width: cardWidth,
                           stamina: showStamina ? c.staminaPercent : null,
                           stats: showStats ? statsOf(c) : null,
-                          injuryMatchesOut: c.injuryMatchesRemaining,
+                          injuryMatchesOut: showCondition
+                              ? c.injuryMatchesRemaining
+                              : null,
                           upgradable: upgradable?.call(c.base.playerId) ??
                               false,
                         ),
