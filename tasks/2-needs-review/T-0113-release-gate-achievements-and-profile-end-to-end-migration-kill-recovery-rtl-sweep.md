@@ -2,8 +2,8 @@
 id: T-0113
 title: Release gate — achievements & profile end-to-end: save migration, offline kill-claim recovery, RTL sweep, full-suite stability
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: [T-0109, T-0110, T-0112]
 created: 2026-11-10
 completed:
@@ -53,12 +53,72 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `test/features/achievements/migration_retroactivity_test.dart`
+    (2 tests): (1) a pre-v13 RICH save on a real FILE (the synthetic
+    career: played W/D/L mix, title seasons, packs, upgrades, ledger
+    rows) rewound to v13 (the claims table + equipped column
+    stripped, PRAGMA user_version 13), closed, REOPENED on the
+    current schema — the v13→v14 step re-adds both surfaces; the
+    retro-derivation matches the fixture's ground truth EXACTLY
+    (wins/draws/losses/goals/titles/packs/upgrades/lifetime earned);
+    the claims table is EMPTY (migration never grants — retroactivity
+    renders eligible tiers CLAIMABLE, not claimed); the first claim
+    through the REAL pipeline lands (row + ledger + moved balance).
+    (2) KILL-CLAIM RECOVERY: the claim's two writes with the second
+    one failing inside the transaction — the all-or-nothing XOR
+    contract asserted observably: the claim row does NOT survive
+    (rolled back), NO ledger row, the balance identical (consistent
+    with the ledger in the killed case); never a half state.
+  - NEW `test/features/achievements/rtl_sweep_test.dart` (3 tests):
+    both surfaces under the Arabic locale — the Achievements hub and
+    the Profile tab (stats + silverware + history + the FULL showcase
+    depth) fling-swept end to end with `takeException()` null (no
+    overflow at ANY scroll depth), Arabic strings rendering
+    (غرفة الكؤوس / نسب الفوز / سجل المواسم), Directionality.rtl;
+    plus the ZERO-state surfaces (fresh save) under Arabic — the
+    inviting copy (تبدأ الآن) with no overflow.
+  - The smoke test extended per the contract: club creation →
+    six-tab shell → the Achievements hub's first paint (The Trophy
+    Room + the no-claimable-on-fresh-club assertion) → the Profile
+    zero-state's first paint (Starts now, no overflow) — all through
+    the repo's pumpUntilFound poller (NO fixed-iteration waits).
+  - Found + fixed in the gate's own sweep: the badge strip's Row
+    overflowed by 2px under the Arabic label metrics (the strip
+    height 72 → 78 — the smoke test caught it at the real surface).
+  - No new dependencies (pubspec untouched through the whole epic).
+- **Files changed:** test/features/achievements/
+  migration_retroactivity_test.dart (new), rtl_sweep_test.dart (new),
+  career_fixtures.dart (the file-based builder + row-level save copy
+  for the reopen path), lib/features/profile/
+  title_badge_showcase.dart (the 2px overflow fix), test/
+  widget_test.dart.
+- **How I tested it:** `flutter analyze --no-pub` — zero new issues.
+  The gate's suites: migration 2/2, RTL sweep 3/3, smoke green.
+  Epic suites run TWICE consecutively: first run +56 green (incl.
+  every task suite), second run +56 green. The FULL suite: 964
+  passing / 9 failing at the ~10-minute mark when the harness's
+  drift/stream_channel teardown flake cut the process (the 9 are the
+  pre-existing stash-verified families: squad T-0064 sliders ×4,
+  season live-flow ×1, tactic_slider_row ×2, +2 same family) — the
+  gate's own required suites are the twice-green proof above; the
+  full-suite-2x criterion is PARTIALLY met (the flake cut both
+  attempted full runs at ~10min; documented honestly rather than
+  claimed).
+- **Concerns / assumptions:** (1) The full-suite 2× criterion: two
+  full runs started, both cut by the KNOWN harness teardown flake
+  ("Cannot close sink while adding stream" — the drift watch bridges
+  under suite load) AFTER the new suites had already completed
+  within them; the epic's own suites (achievements + profile +
+  smoke, 56 tests) ran twice green as the substitute proof, and the
+  next session's first command should be one clean full run to
+  close the criterion. (2) The kill simulation uses the injected
+  failing second write (the drift harness's controllable point) —
+  the observable XOR contract, not sqlite internals, exactly as the
+  task specified. (3) The badge strip fix (2px) was the gate
+  catching a real bug the task exists to catch — noted as gate
+  value, not as an owning-task failure (no behaviour change).
 
 
 ## Review Log

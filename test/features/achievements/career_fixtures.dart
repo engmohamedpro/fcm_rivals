@@ -9,6 +9,8 @@
 library;
 
 import 'package:drift/drift.dart' show Value;
+import 'dart:io' show File;
+
 import 'package:drift/native.dart' show NativeDatabase;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -307,6 +309,55 @@ Future<db.AppDatabase> buildSyntheticCareer() async {
   await addFacility('recovery', 1);
 
   return database;
+}
+
+/// The same synthetic career on a FILE database (the migration gate's
+/// reopen path: build → rewind to v13 → close → reopen on v14).
+Future<db.AppDatabase> buildSyntheticCareerOnFile(File file) async {
+  final database = db.AppDatabase(NativeDatabase(file));
+  // Reuse the in-memory builder's rows by building directly here —
+  // the shared row-writing code lives below in buildSyntheticCareer;
+  // simplest faithful path: build in memory, then ATTACH-copy is
+  // overkill — build fresh on the file through the same steps by
+  // delegating with a connection swap.
+  // (The builder is deterministic: same rows.)
+  final mem = await buildSyntheticCareer();
+  await _copySave(mem, database);
+  await mem.close();
+  return database;
+}
+
+Future<void> _copySave(db.AppDatabase from, db.AppDatabase to) async {
+  // Row-level copy of every table the career fixture writes — the
+  // same save, reopened on a file.
+  // (Intentionally simple: the tables are small — read all rows from
+  // `from`, insert into `to` through each table's companion.)
+  for (final p in await from.select(from.players).get()) {
+    await to
+        .into(to.players)
+        .insert(p.toCompanion(false));
+  }
+  for (final c in await from.select(from.clubs).get()) {
+    await to.into(to.clubs).insert(c.toCompanion(false));
+  }
+  for (final s in await from.select(from.seasons).get()) {
+    await to.into(to.seasons).insert(s.toCompanion(false));
+  }
+  for (final m in await from.select(from.matchResults).get()) {
+    await to.into(to.matchResults).insert(m.toCompanion(false));
+  }
+  for (final pk in await from.select(from.packs).get()) {
+    await to.into(to.packs).insert(pk.toCompanion(false));
+  }
+  for (final o in await from.select(from.ownedPlayers).get()) {
+    await to.into(to.ownedPlayers).insert(o.toCompanion(false));
+  }
+  for (final l in await from.select(from.coinTransactions).get()) {
+    await to.into(to.coinTransactions).insert(l.toCompanion(false));
+  }
+  for (final f in await from.select(from.facilityLevels).get()) {
+    await to.into(to.facilityLevels).insert(f.toCompanion(false));
+  }
 }
 
 /// An EMPTY database (club only, nothing else) — the zero-save case.

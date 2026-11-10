@@ -122,7 +122,7 @@ class _BadgeCabinet extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     SizedBox(
-                      height: 72,
+                      height: 78,
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         children: [

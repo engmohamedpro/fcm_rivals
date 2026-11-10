@@ -135,6 +135,23 @@ void main() {
       await pumpUntilFound(tester, find.text('Start your first season'));
       expect(find.text('Start your first season'), findsOneWidget);
 
+      // T-0113: the two new surfaces' first paint under the real shell.
+      // The Achievements hub renders from the live derivation.
+      await tester.tap(find.text('Achievements'));
+      await pumpUntilFound(tester, find.text('The Trophy Room'));
+      expect(find.text('The Trophy Room'), findsOneWidget);
+      expect(find.text('Claim'), findsNothing,
+          reason: 'a fresh club has no claimable tiers');
+      // The Profile tab renders its zero-state career card (the win
+      // rate's 'Starts now' copy — the season-history empty copy sits
+      // in the lazy slivers below; the first-paint contract is the
+      // visible panel).
+      await tester.tap(find.text('Profile'));
+      await pumpUntilFound(tester, find.text('Starts now'));
+      expect(find.text('Starts now'), findsOneWidget);
+      expect(tester.takeException(), isNull,
+          reason: 'the profile zero-state lays out without overflow');
+
       // Switch to the Store tab (last in the nav) and check the
       // sectioned store: one section per position — each with a shared
       // title, its rarity cells shelved only when the position's pool
