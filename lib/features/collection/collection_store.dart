@@ -13,6 +13,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../core/database/app_database.dart';
 import '../../core/database/coin_ops.dart';
@@ -231,8 +232,10 @@ class CollectionStore {
     // playerIds BEFORE this open, read once so every draw judges
     // against the same pre-open state.
     final preOwnedIds = await _ownedPlayerIds(pack.clubId);
-    final seenThisPack = <int>{};
-    final newFlags = <bool>[];
+    final newFlags = computeNewFlags(
+      [for (final d in draws) d.player.playerId],
+      preOwnedIds,
+    );
     final ownedIds = <int>[];
     await db.transaction(() async {
       for (final draw in draws) {
@@ -247,13 +250,6 @@ class CollectionStore {
               ),
             );
         ownedIds.add(ownedId);
-        // NEW only for a genuinely first-time card: not owned before
-        // this open, and not drawn earlier in the same open.
-        newFlags.add(
-          !preOwnedIds.contains(draw.player.playerId) &&
-              !seenThisPack.contains(draw.player.playerId),
-        );
-        seenThisPack.add(draw.player.playerId);
       }
       await (db.update(db.packs)..where((p) => p.id.equals(packId))).write(
         PacksCompanion(opened: const Value(true), openedAt: Value(now)),
@@ -269,6 +265,28 @@ class CollectionStore {
 
   /// The owned (status 'owned') playerIds of [clubId] — the pre-open
   /// state the T-0091 new-flags judge against.
+  /// T-0091: the per-draw NEW decision, pure and side-effect free so
+  /// the same-pack duplicate leg is directly unit-testable (review 1):
+  /// a draw is first-time only when its playerId is NOT in the club's
+  /// pre-open owned set AND was not drawn earlier in this same open.
+  /// [drawnPlayerIds] is index-aligned with the returned flags.
+  @visibleForTesting
+  static List<bool> computeNewFlags(
+    List<int> drawnPlayerIds,
+    Set<int> preOwnedIds,
+  ) {
+    final seenThisPack = <int>{};
+    return [
+      for (final id in drawnPlayerIds)
+        () {
+          final firstTime =
+              !preOwnedIds.contains(id) && !seenThisPack.contains(id);
+          seenThisPack.add(id);
+          return firstTime;
+        }(),
+    ];
+  }
+
   Future<Set<int>> _ownedPlayerIds(int clubId) async {
     final rows = await (
       db.selectOnly(db.ownedPlayers)

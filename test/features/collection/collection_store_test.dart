@@ -283,17 +283,16 @@ void main() {
     });
 
     test(
-      'T-0091: same-player-twice-in-one-open flags only the first',
+      'T-0091: pre-owned across two opens flags the second false '
+      '(the pre-owned leg)',
       () async {
-        // The engine draws one player per open today, so exercise the
-        // computation the way a multi-draw future will: a doctored
-        // PackEngine would be overkill — instead open two packs that
-        // draw the SAME player and assert the SECOND open's flag is
-        // false because the first open's row now exists (pre-owned
-        // from the open itself). This pins the pre-owned leg; the
-        // in-pack seen-set leg is covered by the first test's
-        // everyElement(isTrue) on a multi-draw-shaped result and by
-        // the widget test.
+        // The engine draws one player per open today, so the in-pack
+        // duplicate leg cannot be exercised through openPack — the
+        // pure computeNewFlags tests below own it. What this test
+        // pins instead: opening two packs that draw the SAME player
+        // (same seed) makes the SECOND open's flag false because the
+        // first open's row now exists — pre-owned from the open
+        // itself. (Review 1: retitled to what it actually tests.)
         final packs = await store.getAvailablePacks();
         final gkPack = packs.firstWhere((p) => p.scopeValue == 'GK');
         final first = await store.openPack(
@@ -313,6 +312,36 @@ void main() {
         );
         expect(second.newFlags, [false],
             reason: 'the earlier open made him owned — not first-time');
+      },
+    );
+
+    test(
+      'T-0091: computeNewFlags — the same-pack duplicate leg, directly',
+      () {
+        // Review 1: the seen-set leg proven at last — the engine
+        // draws one player per open today, so the pure function is
+        // exercised directly. Both legs of the rule in one place.
+        expect(
+          CollectionStore.computeNewFlags([10, 10], {}),
+          [true, false],
+          reason: 'same player twice in one pack: only the first is NEW',
+        );
+        expect(
+          CollectionStore.computeNewFlags([10, 11, 10], {11}),
+          [true, false, false],
+          reason: 'player 11 was pre-owned; the second 10 is an in-pack '
+              'duplicate of the first',
+        );
+        expect(
+          CollectionStore.computeNewFlags([10, 11], {10, 11}),
+          [false, false],
+          reason: 'everything pre-owned: nothing is NEW',
+        );
+        expect(
+          CollectionStore.computeNewFlags([], {}),
+          isEmpty,
+          reason: 'empty draw list stays index-aligned',
+        );
       },
     );
 

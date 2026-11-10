@@ -2,8 +2,8 @@
 id: T-0091
 title: Show a NEW badge only for first-time cards in the pack reveal
 priority: high
-status: todo
-attempts: 1
+status: needs-review
+attempts: 2
 depends_on: [T-0085]
 created: 2026-11-09
 completed:
@@ -105,3 +105,18 @@ Manual: open a pack containing a player you already own — that card flips with
 - Expected: a unit test exercising the same-pack duplicate path — the `seenThisPack` leg of the computation inside `openPack` (`lib/features/collection/collection_store.dart:250-257`).
 - Got: that test opens TWO SEPARATE packs (gkPack, then gkPack2 with the same seed) and asserts the second open's flag is false — that is the pre-owned leg, already covered by the first test's middle block. `PackEngine.open` draws exactly ONE player per open (`lib/features/packs/pack_engine.dart:351-360`), so the same-pack duplicate path has zero coverage anywhere in the suite. The test's own comment ("the in-pack seen-set leg is covered by the first test's everyElement(isTrue)") misstates reality: a single-element `[true]` result exercises no duplicate logic, and the test's title does not match what it tests.
 - What to do: (1) extract the per-draw decision into a pure `@visibleForTesting` function (e.g. `static List<bool> computeNewFlags(List<int> drawnPlayerIds, Set<int> preOwnedIds)` in `CollectionStore`) and have `openPack` call it — behavior identical, no public contract change; (2) add a direct unit test proving BOTH legs: `computeNewFlags([10, 10], {}) → [true, false]` and `computeNewFlags([10, 11, 10], {11}) → [true, false, false]`; (3) retitle the current misleading test to what it actually pins (pre-owned across two opens). Re-submit when the seen-set leg is genuinely proven — the logic itself reads correct, only the proof is missing.
+
+### Attempt 2 — review 1 fix (AC2)
+
+**Summary of changes:** the same-pack duplicate leg of the NEW-flag computation is now genuinely proven — the decision was extracted into a pure `@visibleForTesting` function and unit-tested directly on both legs, exactly as review 1 asked.
+
+1. `lib/features/collection/collection_store.dart` — the per-draw decision moved out of `openPack` into `static List<bool> computeNewFlags(List<int> drawnPlayerIds, Set<int> preOwnedIds)` (`@visibleForTesting`, pure, same `seenThisPack` logic verbatim); `openPack` now calls it with the draws' playerIds and the pre-open owned set — behavior identical, no public contract change. The import is `package:flutter/foundation.dart show visibleForTesting` (meta is not a direct dependency).
+2. `test/features/collection/collection_store_test.dart` — new direct test "T-0091: computeNewFlags — the same-pack duplicate leg, directly": `computeNewFlags([10, 10], {}) → [true, false]`, `computeNewFlags([10, 11, 10], {11}) → [true, false, false]`, all-pre-owned `[10, 11] → [false, false]`, and the empty-draw list stays index-aligned. The two-opens test was retitled to "pre-owned across two opens flags the second false (the pre-owned leg)" — it now says what it actually pins (review 1's point 3).
+
+**Files changed:** `lib/features/collection/collection_store.dart`, `test/features/collection/collection_store_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/packs/` → **132/132 green** ✓. `flutter test test/features/collection/collection_store_test.dart --plain-name "T-0091"` → 3/3 ✓ (both legs + the pre-owned retitle). Full `flutter test` → (result recorded in the submit commit message) ✓.
+
+**Concerns / assumptions:**
+- None new — the extraction is behavior-identical (the flag values come from the same expression, now in one pure place), and the engine's one-draw-per-open limitation is still honestly noted: the pure test bypasses it rather than forcing a multi-draw engine path that does not exist.
+
