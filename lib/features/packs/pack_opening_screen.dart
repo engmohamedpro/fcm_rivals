@@ -514,8 +514,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     final push = legend ? 1.0 + 0.10 * Interval(0.73, 0.95).transform(t) : 1.0;
     final edge = math.sin(flipT * math.pi);
 
-    final bannerT = legend ? tl.bannerIn!.transform(t) : tl.stats.transform(t);
-
     final stage = Stack(
       fit: StackFit.expand,
       children: [
@@ -728,43 +726,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             child: Transform.scale(
               scale: push,
               child: _buildCard(t, flipT, cardWidth, rarity, tl),
-            ),
-          ),
-
-        // Legendary suspense captions, above the card.
-        if (legend)
-          Align(alignment: const Alignment(0, -0.86), child: _buildCaption(t)),
-
-        // Pull banner for epic / legendary cards.
-        if (rarity != CardRarity.rare && bannerT > 0)
-          Align(
-            alignment: const Alignment(0, -0.86),
-            child: Opacity(
-              opacity: bannerT.clamp(0.0, 1.0),
-              child: Transform.scale(
-                scale:
-                    (0.8 + 0.2 * bannerT) *
-                    (legend ? 1.0 + 0.04 * pulse(_idle.value, cycles: 2) : 1.0),
-                child: Text(
-                  premium
-                      ? l10nOf(context).revealBannerPremium
-                      : rarity == CardRarity.legendary
-                      ? 'LEGENDARY PULL!'
-                      : 'EPIC PULL!',
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: legend ? 26 : 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    shadows: [
-                      Shadow(
-                        color: accent.withValues(alpha: 0.9),
-                        blurRadius: legend ? 30 : 22,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ),
           ),
 

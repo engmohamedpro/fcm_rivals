@@ -329,9 +329,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cardClassPremium => 'نخبة';
 
   @override
-  String get revealBannerPremium => 'سحب النخبة!';
-
-  @override
   String get packRarityRare => 'نادر';
 
   @override

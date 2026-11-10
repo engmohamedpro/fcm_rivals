@@ -698,12 +698,6 @@ abstract class AppLocalizations {
   /// **'PREMIUM'**
   String get cardClassPremium;
 
-  /// No description provided for @revealBannerPremium.
-  ///
-  /// In en, this message translates to:
-  /// **'PREMIUM PULL!'**
-  String get revealBannerPremium;
-
   /// No description provided for @packRarityRare.
   ///
   /// In en, this message translates to:

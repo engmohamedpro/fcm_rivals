@@ -329,9 +329,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cardClassPremium => 'PREMIUM';
 
   @override
-  String get revealBannerPremium => 'PREMIUM PULL!';
-
-  @override
   String get packRarityRare => 'Rare';
 
   @override

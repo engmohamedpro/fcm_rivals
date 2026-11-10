@@ -446,8 +446,9 @@ void main() {
     expect(mid.opacity, 0);
     expect(find.text('TEST STRIKER'), findsNothing);
     expect(find.text('LEGENDARY PULL!'), findsNothing);
-    // The suspense caption is up while the silhouette waits.
-    expect(find.text('A LEGEND IS COMING…'), findsOneWidget);
+    // T-0101: the suspense captions are gone — nothing floats above
+    // the card while the silhouette waits.
+    expect(find.text('A LEGEND IS COMING…'), findsNothing);
   });
 
   testWidgets(
@@ -480,7 +481,8 @@ void main() {
       // (name starts at 0.89 = 11.6s).
       await tester.pump(const Duration(milliseconds: 3700)); // ~11.1s
       expect(find.text('ATT'), findsOneWidget);
-      expect(find.text('WHO IS IT?'), findsOneWidget);
+      // T-0101: no caption above the card anymore.
+      expect(find.text('WHO IS IT?'), findsNothing);
       expect(find.text('TEST STRIKER'), findsNothing);
       final stillHidden = tester.widget<AnimatedOpacity>(
         find.byKey(const ValueKey('keep-fade')),
@@ -490,7 +492,8 @@ void main() {
       // The name types in, then the finale banner and the action row.
       await tester.pump(const Duration(milliseconds: 1550)); // ~12.6s
       expect(find.text('TEST STRIKER'), findsOneWidget);
-      expect(find.text('LEGENDARY PULL!'), findsOneWidget);
+      // T-0101: the pull banner is gone too.
+      expect(find.text('LEGENDARY PULL!'), findsNothing);
       await tester.pump(const Duration(milliseconds: 1000));
       await tester.pump(const Duration(milliseconds: 400));
       final done = tester.widget<AnimatedOpacity>(
@@ -533,28 +536,30 @@ void main() {
     );
     await _autoOpen(tester);
 
-    // The mystery caption is up on the premium pacing (mysteryIn
-    // 0.19-0.27 of the 20s timeline).
+    // T-0101: no caption on the premium pacing either (mysteryIn
+    // 0.19-0.27 of the 20s timeline — the card alone carries the
+    // reveal).
     await tester.pump(const Duration(seconds: 5));
-    expect(find.text('A LEGEND IS COMING…'), findsOneWidget);
+    expect(find.text('A LEGEND IS COMING…'), findsNothing);
 
     // Where the GOLDEN reveal is already done (12.7s of 13s), the red
     // one is still holding the name back — longer by design, not
     // padding.
     await tester.pump(const Duration(seconds: 11));
-    expect(find.text('WHO IS IT?'), findsOneWidget);
+    expect(find.text('WHO IS IT?'), findsNothing);
     expect(find.text('TEST STRIKER'), findsNothing);
 
-    // The name lands with the localized premium banner; the caption has
-    // handed over (nameIn starts at 0.865 of 20s).
+    // The name lands (nameIn starts at 0.865 of 20s); no banner
+    // accompanies it — T-0101 removed the text overlays above the
+    // card.
     await tester.pump(const Duration(seconds: 4));
-    expect(find.text('PREMIUM PULL!'), findsOneWidget);
+    expect(find.text('PREMIUM PULL!'), findsNothing);
     expect(find.text('TEST STRIKER'), findsOneWidget);
     expect(find.text('WHO IS IT?'), findsNothing);
 
     // The second finale wave (finale2 0.975-1.0) fires AFTER the
     // buttons are up — the sequence runs to its end without crashing.
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('PREMIUM PULL!'), findsOneWidget);
+    expect(find.text('PREMIUM PULL!'), findsNothing);
   });
 }

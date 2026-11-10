@@ -2,8 +2,8 @@
 id: T-0101
 title: Remove the reveal hype captions and pull banners
 priority: medium
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-09
 completed:
@@ -63,6 +63,23 @@ Manual: open a rare pack, an epic pull and (seed or luck permitting) a legendary
 - **Files changed:**
 - **How I tested it:**
 - **Concerns / assumptions:**
+
+
+### Attempt 1 — implementation
+
+**Summary of changes:** nothing floats above the card during a pack reveal anymore.
+1. `lib/features/packs/pack_opening_screen.dart` — the legendary suspense caption render site and the whole pull-banner overlay block deleted; the now-unused `bannerT` local removed. Nothing else in the stage build changed (timeline, mystery silhouette, walkout, flash, ambient particles, card, NEW badge, action bar all untouched).
+2. `lib/features/packs/pack_opening_screen_reveal.dart` — `_buildCaption` (the 'A LEGEND IS COMING…' / 'WHO IS IT?' machinery) deleted with its doc comment.
+3. `lib/l10n/app_en.arb` + `app_ar.arb` — `revealBannerPremium` removed from both (grep confirmed the only remaining reference was its own test); `flutter gen-l10n` clean.
+4. `test/features/packs/pack_opening_screen_test.dart` — the caption/banner assertions flipped to `findsNothing` (the strings must never render: mid-build, stats-count, name-landing and finale-wave checkpoints all now assert absence); the timeline/progression assertions of those tests (mystery in, flip, ATT stats, redacted-name window, keep-fade opacity, BACK arrival) kept exactly as they were — the deletion weakens nothing about what they prove. `pack_reveal_timeline_test.dart` — the banner-localization test dropped with the key (compilation IS the proof the getter is gone); its unused AR import removed.
+
+**Files changed:** `lib/features/packs/pack_opening_screen.dart`, `lib/features/packs/pack_opening_screen_reveal.dart`, `lib/l10n/app_en.arb`, `lib/l10n/app_ar.arb`, `lib/l10n/app_localizations.dart` + generated files (regen), `test/features/packs/pack_opening_screen_test.dart`, `test/features/packs/pack_reveal_timeline_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓ (whole project, after regen). `flutter test test/features/packs/` → **132/132 green** ✓ with the flipped assertions. Full `flutter test` → (result recorded in the submit commit message) ✓, no REGEN_SNAPSHOT.
+
+**Concerns / assumptions:**
+- `RevealTimeline.bannerIn` still exists (a timeline interval now consumed by nothing on screen) — left untouched per Out of Scope ("no timeline duration, interval or animation change"); removing it would alter the timeline data structure the pacing tests pin.
+- The timeline test's banner member removal means the file now proves absence by compiling without the getter — noted in the test body.
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
