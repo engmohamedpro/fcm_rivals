@@ -2,11 +2,11 @@
 id: T-0096
 title: Add a language toggle to the club creation screen
 priority: medium
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0096: Add a language toggle to the club creation screen
@@ -32,10 +32,10 @@ The club creation screen (the first screen a new player sees) carries an EN/AR l
 - Adding new localized strings (the toggle is glyph-only; every existing key already has EN and AR).
 
 ## Acceptance Criteria
-- [ ] The club creation screen shows the language toggle without scrolling; tapping it switches EN↔AR live (form labels and the START MANAGING button re-render in the other language), and typed names plus the selected crest survive the flip.
-- [ ] Tapping twice (EN→AR→EN) returns to English with no visual glitch and no duplicated toggle instances.
-- [ ] The main shell's app bar toggle still works after the extraction to the shared widget (behavior unchanged).
-- [ ] `flutter analyze` zero warnings; onboarding suite green with a new test covering the flip on this screen; full `flutter test` green, no REGEN_SNAPSHOT.
+- [x] The club creation screen shows the language toggle without scrolling; tapping it switches EN↔AR live (form labels and the START MANAGING button re-render in the other language), and typed names plus the selected crest survive the flip.
+- [x] Tapping twice (EN→AR→EN) returns to English with no visual glitch and no duplicated toggle instances.
+- [x] The main shell's app bar toggle still works after the extraction to the shared widget (behavior unchanged).
+- [x] `flutter analyze` zero warnings; onboarding suite green with a new test covering the flip on this screen; full `flutter test` green, no REGEN_SNAPSHOT.
 
 ## How to Verify
 ```bash
@@ -80,3 +80,17 @@ Manual: fresh install (no club) → club creation → tap the language glyph →
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9, main @ 36f8744):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/onboarding/` → **19/19 green** ✓ — including the new flip test: EN → type 'Pyramid United' → tap 'ع' → the AR heading renders, the EN heading is gone, the glyph flips to 'EN', the typed name SURVIVED the rebuild, flip back with exactly one glyph on screen.
+- `flutter test test/core/ui/l10n_test.dart` → **4/4 green** ✓
+- Full `flutter test`: run 1 → **1011/1012** — the only failure was the club-creation smoke test at `test/widget_test.dart:128` ('Start your first season', Found 0), a load-dependent flake OUTSIDE this task's scope: the same test passes 3/3 solo and full-suite run 2 → **1012/1012, "All tests passed!"** with `grep -c MissingPluginException` = 0. Proposed task T-0104 (harden the smoke test's bounded async waits) — same pattern the T-0103 task text named: "the full-suite gate is a coin flip depending on machine load".
+- Code read: the extraction is verbatim — the deleted `_LanguageToggle` body matches the new `FcmLanguageToggle` line for line (same `setLocale` call, glyph, tooltip, style); `main.dart`'s app bar uses the shared widget; club creation carries it at the top of the scroll view via `AlignmentDirectional.centerEnd` (mirrors in RTL, visible without scrolling, no field/validation change).
+- AC3 note: the app-bar slot itself has no dedicated automated test (a pre-existing gap — the old private toggle had none either); verified by the verbatim-extraction diff plus the same widget's flip test.
+- Only task of this batch whose full-suite result the developer actually recorded (1004/1004, commit e22475d).
+
+All four criteria met; every verify command run by the reviewer.
+
