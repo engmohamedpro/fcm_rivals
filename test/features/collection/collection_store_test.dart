@@ -421,6 +421,90 @@ void main() {
     );
 
     test(
+      'T-0090 (review 1): an exactly-11 club cannot sell an XI player — '
+      'the XI is never left short',
+      () async {
+        // Review 1's boundary case, made permanent: a club with EXACTLY
+        // the starting XI (empty bench/reserves) has no replacement, so
+        // the sale must be refused and the transaction rolled back —
+        // nothing sold, coins untouched, the row still owned and the XI
+        // still 11 strong (GDD 6.4 / the squad_swap rule).
+        final club = await store.getClub();
+        expect(club, isNotNull);
+
+        // Eleven distinct base players, slotted straight into XI 0..10
+        // (the 4-3-3 default's GK + CB + LB + RB + CM×3 + LW/RW/ST
+        // shape — position-fit keeps autoPick deterministic).
+        const slots = [
+          'GK', 'CB', 'LB', 'RB', 'CM', 'CM', 'CM', 'LW', 'RW', 'ST',
+          // one more outfielder for the 11th slot
+          'CB',
+        ];
+        // Pull position-matched players straight from the base table.
+        final datasetRows = await (
+          db.select(db.players)
+        ).get();
+        expect(datasetRows.length, greaterThanOrEqualTo(11));
+        final byPosition = <String, List<Player>>{};
+        for (final row in datasetRows) {
+          byPosition.putIfAbsent(row.position, () => []).add(row);
+        }
+
+        var ownedId = 0;
+        final insertedIds = <int>[];
+        for (var i = 0; i < 11; i++) {
+          final want = slots[i];
+          final row = byPosition[want]!.first;
+          ownedId = await db
+              .into(db.ownedPlayers)
+              .insert(
+                OwnedPlayersCompanion.insert(
+                  clubId: club!.id,
+                  playerId: row.playerId,
+                  acquiredAt: DateTime.now(),
+                  squadSlot: Value(i),
+                ),
+              );
+          insertedIds.add(ownedId);
+          // Consume the row so two CB inserts take different players.
+          byPosition[want]!.removeAt(0);
+        }
+        await store.saveSquad({
+          for (var i = 0; i < 11; i++) i: insertedIds[i],
+        });
+        final squadBefore = await store.getSquad();
+        expect(
+          squadBefore.keys.where((k) => k < 11).length,
+          11,
+          reason: 'sanity: a full XI before the sale',
+        );
+
+        final coinsBefore = (await store.getClub())!.coins;
+
+        await expectLater(
+          store.sellPlayerFromSquad(insertedIds.first),
+          throwsA(
+            isA<CollectionException>().having(
+              (e) => e.message,
+              'message',
+              'Selling would leave the starting XI short',
+            ),
+          ),
+        );
+
+        // Rolled back completely: XI still 11, row still owned, coins
+        // untouched.
+        final squadAfter = await store.getSquad();
+        expect(squadAfter.keys.where((k) => k < 11).length, 11);
+        final collection = await store.getCollection();
+        expect(collection.any((c) => c.ownedId == insertedIds.first),
+            isTrue,
+            reason: 'the row was not sold');
+        expect((await store.getClub())!.coins, coinsBefore);
+      },
+    );
+
+    test(
       'collection grows across packs and duplicates are separate copies',
       () async {
         final packs = await store.getAvailablePacks();

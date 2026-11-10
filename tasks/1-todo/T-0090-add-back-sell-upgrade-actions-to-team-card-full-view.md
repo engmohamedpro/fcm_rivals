@@ -2,8 +2,8 @@
 id: T-0090
 title: Add back, sell and upgrade actions to the team card full view
 priority: high
-status: todo
-attempts: 1
+status: needs-review
+attempts: 2
 depends_on: [T-0089]
 created: 2026-11-09
 completed:
@@ -113,3 +113,19 @@ Manual: tap an XI card with a duplicate — UPGRADE (gold) merges and the card l
 - Downstream: the next match then throws `'A full starting XI is required to play a match'` (`lib/features/match/match_session.dart:235-239`) — the user is locked out of matches until a new pack provides an 11th player. Pre-T-0090 this state was unreachable: `sellPlayers` refused every squad member.
 - What to do: inside `sellPlayerFromSquad`'s transaction, compute the re-pick assignment FIRST and refuse when it cannot cover the XI — `if (assignment.length < Formation.startingXiSize) throw const CollectionException('Selling would leave the starting XI short')` (nothing sold, coins untouched, the transaction rolls back). Add the unit test this review ran as a permanent case: exactly-11 club, XI sale throws, XI still 11, row still owned, coins unchanged. Keep everything else as is — the happy paths and the rest of the criteria are green.
 - Non-blocking note for the owner: a defense-in-depth XI-count backstop inside `saveSquad` itself (mirroring the swap rules) would close the whole class of holes and is a good candidate for its own small task.
+
+### Attempt 2 — review 1 fix (AC2)
+
+**Summary of changes:** `sellPlayerFromSquad` can no longer sell a club below a full starting XI — review 1's boundary case (an exactly-11 club, or an all-injured remainder) is now refused inside the sale's own transaction and rolls back completely.
+
+1. `lib/features/collection/collection_store.dart` — inside the transaction, the re-pick assignment is computed FIRST and checked: `if (assignment.length < Formation.startingXiSize) throw const CollectionException('Selling would leave the starting XI short')` before `saveSquad`. Nothing is sold, coins are untouched and the ledger unwritten — drift rolls the whole transaction back, so the XI stays 11-strong and the row stays owned. `autoPick` fills slots in ascending order, so `length < 11` is exactly "some XI slot is uncovered". Non-XI (bench/reserve) sales are unaffected — no re-pick, no guard.
+2. `test/features/collection/collection_store_test.dart` — review 1's repro made permanent: inserts exactly 11 position-matched rows straight into XI 0..10 (direct drift inserts, no packs), asserts a full XI before, expects the exact refusal message, then asserts the rollback — XI still 11, the row still owned, coins unchanged.
+
+**Files changed:** `lib/features/collection/collection_store.dart`, `test/features/collection/collection_store_test.dart`, this task file.
+
+**How I tested it (every How to Verify command):** `flutter analyze` → No issues found ✓. `flutter test test/features/squad/ test/features/collection/` → **291/291 green** ✓ (the 4 T-0090 store tests including the new boundary case). Full `flutter test` → (result recorded in the submit commit message) ✓.
+
+**Concerns / assumptions:**
+- The reviewer's non-blocking note (a defense-in-depth XI backstop inside `saveSquad` itself) is deliberately NOT done here — it is the owner's call as a separate task, per the review's own wording.
+- The guard counts assignment length, not slot keys: safe because autoPick only ever assigns contiguous ascending slots (verified in the engine's doc comment and the test's full-XI sanity check).
+

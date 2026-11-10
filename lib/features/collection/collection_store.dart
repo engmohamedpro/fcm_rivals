@@ -496,7 +496,20 @@ class CollectionStore {
         final others = cards
             .where((c) => c.ownedId != ownedId)
             .toList(growable: false);
-        await saveSquad(squad.autoPick(others, formation));
+        final assignment = squad.autoPick(others, formation);
+        // GDD 6.4, the squad_swap rule: the starting XI can never be
+        // left with a hole. When no replacement can cover the freed
+        // slot (an exactly-11 club, or an all-injured remainder) the
+        // sale is REFUSED inside the transaction — nothing sold, coins
+        // untouched, the ledger unwritten; the whole transaction rolls
+        // back. autoPick fills slots in ascending order, so an
+        // 11-strong map means every XI slot 0..10 is covered.
+        if (assignment.length < Formation.startingXiSize) {
+          throw const CollectionException(
+            'Selling would leave the starting XI short',
+          );
+        }
+        await saveSquad(assignment);
       }
       return _sellCopies(club, [ownedId]);
     });
