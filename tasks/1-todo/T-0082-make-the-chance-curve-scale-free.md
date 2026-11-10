@@ -2,7 +2,7 @@
 id: T-0082
 title: Make the chance-creation curve scale-free so big upgrade edges stop producing stomps
 priority: high
-status: blocked
+status: re-specified
 attempts: 1
 depends_on: [T-0073]
 created: 2026-11-09
@@ -10,6 +10,13 @@ completed:
 ---
 
 # T-0082: Make the chance-creation curve scale-free so big upgrade edges stop producing stomps
+
+> **RE-SPECIFIED 2026-11-10 (the delegated decision).** This file is
+> now the DECISION RECORD + the umbrella spec. The executable work
+> moved to T-0114/T-0115/T-0116 (created in `tasks/1-todo/`). The
+> original Requirements below are kept for the record; they are NOT
+> actionable as written — see the Decision record at the bottom for
+> the measured reason and the replacement plan.
 
 ## Goal
 A +50% upgrade edge wins at most 0.88 of matches in BOTH directions (no more 0.950/0.970 stomps at 22 shots), while every existing balance band and the strength-gap ladder stay intact — the engine's strength response becomes dimensionless so the infinite upgrade ladder (T-0070) can grow forever without distorting match outcomes.
@@ -87,3 +94,65 @@ flutter test
 **What is needed to unblock (a design decision, not a constant):** an underdog income layer DECOUPLED from the attack-minus-defence edge — e.g. edge-independent set-piece income (corners/penalties scale with territory, not strength) or a pocket-count floor for the defending side — plus a decision on where home advantage should live (pocket share vs totals vs a flat win-probability nudge). Any of these reshapes bands the task forbids me from editing, so the owner/planner must re-spec with new bands. The near-miss configuration (away 0.877/home 0.953) is fully documented above and reproducible for that re-spec: sigmoid m=0.16 s=4.0 over the normalized edge, goalDiffScale 0.20/normalized-unit, onTargetBase 0.326 + onTargetScale 0.18/normalized-edge, goalkeeping without homeFactor, pocket share from squad support × flat 1.07.
 
 **Files changed (final state): NONE in lib/ or test/ — all experiments reverted and verified (analyze 0, test/balance/ 95/95). Only this task file changed.**
+
+### Decision record — 2026-11-10 (the delegated decision)
+
+The owner delegated the decision ("take the right decision"). The
+blocked attempt's evidence was RE-VERIFIED INDEPENDENTLY before
+deciding — nothing below is accepted on the report's word:
+
+1. **Baseline re-measured** with a fresh probe (the balance suites'
+   own generators, n=300 per cell, CI ±3%): B+50% wins **0.957**,
+   A+50% wins **0.973**, SYM+50 home-win 0.527 (the suite's own
+   n=1200 lock reads 0.518). The T-0073 lock's readings are real
+   and current.
+2. **The response axis measured directly from the engine's own
+   composition path** (role-weighted totals via `_MatchEngineRole`,
+   the 1.07 home factor applied where `computeTotals` applies it):
+   - B+50% (away lifted) reads normalized edge **0.330**;
+   - A+50% (home lifted) reads **0.460**.
+   The same upgrade level sits **0.13 apart on the axis by
+   construction** — the "≤0.88 in BOTH directions" requirement asks
+   ONE monotone curve for TWO different outputs at the same input.
+   This is the structural (not tuning) cause of the block.
+3. **The ladder rungs on the same axis:** gap-16 ≈ 0.272, gap-20 ≈
+   0.247, +50% lands at 0.330–0.460 — the gap-20 band floor
+   (win ≥ 0.72) and the +50% ceiling (win ≤ 0.88) are ADJACENT
+   constraints on the same curve, in the wrong order for a knee.
+   Confirmed by measurement, not assumption.
+4. **The symmetric property verified:** SYM reads 0.058–0.061 across
+   +0/+10/+25/+50 (drift ≤ 0.003) — the normalization genuinely
+   cancels symmetric growth. The core design is sound; only the
+   two-direction ceiling is unreachable within the current
+   mechanism set.
+
+**The decision:** re-specify into three tasks, implementing exactly
+the underdog income layer the attempt identified as the unblocking
+mechanism, in reviewable slices with their OWN measurable bands:
+
+- **T-0114 — the underdog set-piece income layer** (the unblocking
+  mechanism): an edge-independent chance source for the side out of
+  possession, scaling with territory (the support-ratio pocket
+  share), NOT with the attack-minus-defence edge. Ships OFF by
+  default (config 0 → bit-identical output, snapshot untouched)
+  with a probe harness proving band-neutrality at even strength and
+  the underdog-goal lift at B+50%.
+- **T-0115 — the normalized chance edge + re-anchor:** the
+  production swap (edge / average of the sides' totals), the
+  sigmoid constants re-anchored on the normalized domain, the gap
+  ladder re-measured per rung with ZERO band edits, the deliberate
+  snapshot regen (the only slice that changes seeded output). Home
+  advantage STAYS in the totals — the attempt measured gap-0
+  falling to 0.373 when it was divided out of the edge; that
+  breakage is the documented reason.
+- **T-0116 — the ceiling lock, both directions:** turn the income
+  layer on, sweep seeds 0..999 in BOTH directions, replace T-0073's
+  violation lock with the ≤0.88 two-direction assertion + re-locked
+  drift bands. Documented fallback if home-lift still misses after
+  the income layer: a capped home-advantage composed read — a
+  measured decision at that point, never a band edit.
+
+**Zero band edits anywhere. Zero economy tuning. No UI/l10n/save
+format changes.** The verification probes used for this decision
+were temporary and deleted — the tree ships only this file and the
+three new task files (nothing in lib/ or test/ changed).
