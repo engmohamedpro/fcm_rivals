@@ -28,82 +28,9 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../core/ui/fcm_style.dart';
+import 'commentary_style.dart' show CardChip, MomentStyle, momentStyleOf;
 import 'match_engine.dart' show MatchSide;
 import 'match_report.dart';
-
-/// The dressing of one event kind: its badge icon and, for the
-/// referee's neutral moments, the bar's neutral accent.
-class _MomentStyle {
-  const _MomentStyle({required this.icon, required this.neutral});
-
-  final IconData icon;
-
-  /// Accent for whistle moments (no side) and the fallback tint.
-  final Color neutral;
-}
-
-const _momentStyles = {
-  CommentaryKind.goal: _MomentStyle(
-    icon: Icons.sports_soccer_rounded,
-    neutral: FcmColors.gold,
-  ),
-  CommentaryKind.penalty: _MomentStyle(
-    icon: Icons.adjust_rounded,
-    neutral: FcmColors.gold,
-  ),
-  CommentaryKind.redCard: _MomentStyle(
-    icon: Icons.style_rounded,
-    neutral: FcmColors.danger,
-  ),
-  CommentaryKind.yellowCard: _MomentStyle(
-    icon: Icons.style_rounded,
-    neutral: FcmColors.goldSoft,
-  ),
-  CommentaryKind.save: _MomentStyle(
-    icon: Icons.sports_handball_rounded,
-    neutral: FcmColors.success,
-  ),
-  CommentaryKind.substitution: _MomentStyle(
-    icon: Icons.swap_horiz_rounded,
-    neutral: FcmColors.silver,
-  ),
-  CommentaryKind.tactical: _MomentStyle(
-    icon: Icons.tune_rounded,
-    neutral: FcmColors.silver,
-  ),
-  CommentaryKind.order: _MomentStyle(
-    icon: Icons.campaign_rounded,
-    neutral: FcmColors.gold,
-  ),
-  CommentaryKind.kickoff: _MomentStyle(
-    icon: Icons.sports_rounded,
-    neutral: FcmColors.bronze,
-  ),
-  CommentaryKind.halfTime: _MomentStyle(
-    icon: Icons.sports_rounded,
-    neutral: FcmColors.gold,
-  ),
-  CommentaryKind.fullTime: _MomentStyle(
-    icon: Icons.flag_rounded,
-    neutral: FcmColors.gold,
-  ),
-  CommentaryKind.foul: _MomentStyle(
-    icon: Icons.sports_rounded,
-    neutral: FcmColors.textDim,
-  ),
-  CommentaryKind.offside: _MomentStyle(
-    icon: Icons.flag_rounded,
-    neutral: FcmColors.textDim,
-  ),
-  CommentaryKind.corner: _MomentStyle(
-    icon: Icons.sports_soccer_rounded,
-    neutral: FcmColors.textDim,
-  ),
-  CommentaryKind.none: _MomentStyle(
-    icon: Icons.circle_rounded,
-    neutral: FcmColors.textDim,
-  ),
-};
 
 /// One live moment, lower-third style. [line] is the newest commentary
 /// line; [homeColor]/[awayColor] are the two halves' colours — the live
@@ -203,11 +130,11 @@ class _CommentaryTickerState extends State<CommentaryTicker>
   @override
   Widget build(BuildContext context) {
     final line = widget.line;
-    final style = _momentStyles[line.kind] ?? _momentStyles.values.first;
+    final style = momentStyleOf(line.kind);
     final side = line.side;
     final Color teamColor;
     if (side == null) {
-      teamColor = style.neutral;
+      teamColor = style.accent;
     } else if (side == MatchSide.home) {
       teamColor = widget.homeColor;
     } else {
@@ -235,7 +162,7 @@ class _CommentaryTickerState extends State<CommentaryTicker>
   Widget _buildBar(
     BuildContext context,
     CommentaryLine line,
-    _MomentStyle style,
+    MomentStyle style,
     Color teamColor, {
     double sweep = -1,
     double pulse = -1,
@@ -322,7 +249,9 @@ class _CommentaryTickerState extends State<CommentaryTicker>
                             width: 1,
                           ),
                         ),
-                        child: Icon(style.icon, color: teamColor, size: 18),
+                        child: style.card != null
+    ? CardChip(color: style.card!, size: 18)
+    : Icon(style.icon, color: teamColor, size: 18),
                       ),
                       const SizedBox(width: 10),
                       Expanded(

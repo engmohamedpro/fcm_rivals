@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/ui/fcm_style.dart';
+import 'package:fcm_rivals/features/match/commentary_style.dart';
 import 'package:fcm_rivals/features/match/commentary_ticker.dart';
 import 'package:fcm_rivals/features/match/match_engine.dart';
 import 'package:fcm_rivals/features/match/match_report.dart';
@@ -182,17 +183,24 @@ void main() {
         ),
       ),
     );
-    expect(find.byIcon(Icons.style_rounded), findsOneWidget);
+    // T-0115: a red card is a literal red card chip, not an icon.
+    expect(find.byType(CardChip), findsOneWidget);
+    final sentOff = tester.widget<CardChip>(find.byType(CardChip));
+    expect(sentOff.color, FcmColors.cardRed);
 
     await tester.pumpWidget(
       _host(_line('P 4 is booked.', kind: CommentaryKind.yellowCard)),
     );
-    expect(find.byIcon(Icons.style_rounded), findsOneWidget);
+    // T-0115: a booking renders a literal card chip, not an icon.
+    expect(find.byType(CardChip), findsOneWidget);
+    final booked = tester.widget<CardChip>(find.byType(CardChip));
+    expect(booked.color, FcmColors.cardYellow);
 
     await tester.pumpWidget(
       _host(_line('Corner for Home.', kind: CommentaryKind.corner)),
     );
-    expect(find.byIcon(Icons.sports_soccer_rounded), findsOneWidget);
+    // T-0115: corners wear their own flag icon, distinct from goals.
+    expect(find.byIcon(Icons.crop_free_rounded), findsOneWidget);
   });
 
   testWidgets('a goal flashes: sweep + pulse + glow, then rests', (

@@ -37,106 +37,12 @@ import 'package:flutter/material.dart';
 
 import '../../core/ui/fcm_style.dart';
 import 'commentary.dart';
+import 'commentary_style.dart'
+    show CardChip, MomentStyle, momentStyleOf;
 import 'injury_live_banner.dart';
 import 'match_engine.dart' show MatchSide;
 
 /// The dressing of one event kind: badge icon, small-caps name and the
-/// neutral accent for moments that belong to neither side.
-class _Moment {
-  const _Moment(this.icon, this.label, this.neutral);
-
-  final IconData icon;
-  final String label;
-  final Color neutral;
-}
-
-// Labels deliberately avoid the exact strings other live-screen widgets
-// own ('HALF TIME' is the half-time card's title, 'FT' the clock's).
-const _moments = <CommentaryKind, _Moment>{
-  CommentaryKind.goal: _Moment(
-    Icons.sports_soccer_rounded,
-    'GOAL',
-    FcmColors.gold,
-  ),
-  CommentaryKind.penalty: _Moment(
-    Icons.adjust_rounded,
-    'PENALTY',
-    FcmColors.gold,
-  ),
-  CommentaryKind.redCard: _Moment(
-    Icons.style_rounded,
-    'RED CARD',
-    FcmColors.danger,
-  ),
-  CommentaryKind.yellowCard: _Moment(
-    Icons.style_rounded,
-    'YELLOW CARD',
-    FcmColors.goldSoft,
-  ),
-  CommentaryKind.save: _Moment(
-    Icons.sports_handball_rounded,
-    'SAVE',
-    FcmColors.success,
-  ),
-  CommentaryKind.injury: _Moment(
-    Icons.medical_services_outlined,
-    'INJURY',
-    FcmColors.danger,
-  ),
-  CommentaryKind.substitution: _Moment(
-    Icons.swap_horiz_rounded,
-    'SUBSTITUTION',
-    FcmColors.silver,
-  ),
-  CommentaryKind.tactical: _Moment(
-    Icons.account_tree_rounded,
-    'TACTICAL CHANGE',
-    FcmColors.silver,
-  ),
-  CommentaryKind.order: _Moment(
-    Icons.campaign_rounded,
-    'MANAGER ORDER',
-    FcmColors.gold,
-  ),
-  CommentaryKind.kickoff: _Moment(
-    Icons.sports_rounded,
-    'KICK-OFF',
-    FcmColors.bronze,
-  ),
-  CommentaryKind.halfTime: _Moment(
-    Icons.sports_rounded,
-    'THE BREAK',
-    FcmColors.gold,
-  ),
-  CommentaryKind.fullTime: _Moment(
-    Icons.flag_rounded,
-    'THE FINAL WHISTLE',
-    FcmColors.gold,
-  ),
-  CommentaryKind.foul: _Moment(
-    Icons.sports_rounded,
-    'FOUL',
-    FcmColors.textDim,
-  ),
-  CommentaryKind.offside: _Moment(
-    Icons.flag_rounded,
-    'OFFSIDE',
-    FcmColors.textDim,
-  ),
-  CommentaryKind.corner: _Moment(
-    Icons.sports_soccer_rounded,
-    'CORNER',
-    FcmColors.textDim,
-  ),
-  CommentaryKind.none: _Moment(
-    Icons.circle_rounded,
-    'UPDATE',
-    FcmColors.textDim,
-  ),
-};
-
-_Moment _momentOf(CommentaryKind kind) =>
-    _moments[kind] ?? _moments[CommentaryKind.none]!;
 
 /// The live commentary feed: featured moment + fading timeline.
 class LiveCommentaryFeed extends StatelessWidget {
@@ -170,7 +76,7 @@ class LiveCommentaryFeed extends StatelessWidget {
 
   Color _colorOf(CommentaryLine line) {
     final side = line.side;
-    if (side == null) return _momentOf(line.kind).neutral;
+    if (side == null) return momentStyleOf(line.kind).accent;
     return side == MatchSide.home ? homeColor : awayColor;
   }
 
@@ -305,6 +211,16 @@ class _FeedLabel extends StatelessWidget {
   }
 }
 
+/// The kind's event-identity badge: its unique icon, or the literal
+/// booking card chip for the two card kinds. Event identity only —
+/// never the team colour (T-0115's two-channel contract).
+Widget _kindBadge(MomentStyle moment, Color accent, double size) {
+  if (moment.card != null) {
+    return CardChip(color: moment.card!, size: size);
+  }
+  return Icon(moment.icon, size: size, color: accent);
+}
+
 /// The featured moment card. A goal runs the flash: one sweep of light
 /// across the card while a glow pulses out around it.
 class _FeaturedMoment extends StatelessWidget {
@@ -315,7 +231,7 @@ class _FeaturedMoment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final moment = _momentOf(line.kind);
+    final moment = momentStyleOf(line.kind);
     if (line.kind != CommentaryKind.goal) {
       return _card(moment, flash: -1);
     }
@@ -327,7 +243,7 @@ class _FeaturedMoment extends StatelessWidget {
   }
 
   /// [flash] is the goal flash's progress 0..1, or -1 when off.
-  Widget _card(_Moment moment, {required double flash}) {
+  Widget _card(MomentStyle moment, {required double flash}) {
     final flashing = flash >= 0 && flash < 1;
     final glow = flashing ? (1 - flash) : 0.0;
     const radius = 18.0;
@@ -376,7 +292,7 @@ class _FeaturedMoment extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(moment.icon, size: 13, color: color),
+                    _kindBadge(moment, moment.accent, 13),
                     const SizedBox(width: 5),
                     Flexible(
                       child: Text(
@@ -384,7 +300,7 @@ class _FeaturedMoment extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: color,
+                          color: moment.accent,
                           fontSize: 10.5,
                           height: 1,
                           fontWeight: FontWeight.w900,
@@ -596,7 +512,7 @@ class _TimelineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final moment = _momentOf(line.kind);
+    final moment = momentStyleOf(line.kind);
     return SizedBox(
       height: LiveCommentaryFeed._rowHeight,
       child: Row(
@@ -626,10 +542,9 @@ class _TimelineRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Icon(
-            moment.icon,
-            size: 15,
-            color: color.withValues(alpha: 0.9 * strength),
+          Opacity(
+            opacity: 0.9 * strength,
+            child: _kindBadge(moment, moment.accent, 15),
           ),
           const SizedBox(width: 8),
           Expanded(

@@ -2,8 +2,8 @@
 id: T-0115
 title: Commentary event visual language — every action kind reads instantly (literal yellow/red card chips, distinct hues, unique icons)
 priority: high
-status: todo
-attempts: 0
+status: needs-review
+attempts: 1
 depends_on: []
 created: 2026-11-10
 completed:
@@ -56,12 +56,67 @@ flutter test
 <!-- Everything below this line is filled in by agents, never by the task author. -->
 
 ## Developer Notes
-<!-- Developer agent fills this in before moving the file to 2-needs-review. -->
 
 - **Summary of changes:**
-- **Files changed:**
-- **How I tested it:**
-- **Concerns / assumptions:**
+  - NEW `lib/features/match/commentary_style.dart` — the ONE dressing
+    table (`momentStyles` + `momentStyleOf`) for all 16 kinds: unique
+    icon per kind, per-kind accent, and the literal tilted
+    `CardChip` widget for the two booking kinds. Discovered during
+    implementation: the ticker carried a SECOND private copy of the
+    map (no `injury` entry, its own icon set) — the task's
+    "one source of truth" therefore also unified the ticker onto the
+    shared table (it was never rendered by `MatchScreen`, which uses
+    `LiveCommentaryFeed`, so behaviour change is contained to the
+    widget's own tests).
+  - `lib/core/ui/fcm_style.dart` — the two football-card semaphore
+    tokens `cardYellow` (0xFFF9C846) and `cardRed` (0xFFE23B33),
+    documented as commentary-only until another surface means
+    "booking".
+  - `lib/features/match/live_commentary_feed.dart` — private `_moments`
+    map deleted; featured card + timeline rows render the event
+    identity (`_kindBadge`: icon or CardChip, event accent) while the
+    wash/border/minute badge keep the team colour — the two-channel
+    contract. The featured card's kind-row LABEL now also wears the
+    event accent (was team colour).
+  - `lib/features/match/commentary_ticker.dart` — its private
+    `_momentStyles` map deleted; rewired to `momentStyleOf`, card
+    kinds render `CardChip`, the neutral whistle tint reads the
+    event accent.
+  - Tests: `commentary_ticker_test.dart` updated (card kinds assert
+    the chip + its colour; corner's new unique icon), NEW
+    `commentary_event_style_test.dart` — icon-uniqueness contract,
+    loud-kind accent distinctness (goal/penalty/cards/save/injury all
+    pairwise distinct), home-team yellow card keeps YELLOW chip +
+    HOME wash (two channels), red card literal chip + label, kind-row
+    accent for 8 representative kinds.
+- **Files changed:** lib/features/match/commentary_style.dart (new),
+  lib/core/ui/fcm_style.dart, lib/features/match/live_commentary_feed.dart,
+  lib/features/match/commentary_ticker.dart,
+  test/features/match/commentary_ticker_test.dart,
+  test/features/match/commentary_event_style_test.dart (new).
+- **How I tested it:** `flutter analyze --no-pub` → only the 2
+  pre-existing baseline issues (fcm_crest.dart:269 unused var,
+  tactic_slider_row.dart:16 unnecessary_import — both present on
+  the untouched tree). `flutter test test/features/match/` →
+  239 passed, 2 failures BOTH pre-existing on the clean tree
+  (tactic_slider_row Arabic wording — verified by stashing my
+  changes and re-running). Full suite in chunks:
+  balance+core+widget 199 green; squad+season has 7 failures, ALL 7
+  verified pre-existing on the clean tree (slider-commit + RTL
+  wording family and one season live-flow commit; stashed re-run
+  confirms). The task's own files: 5/5 + 12/12 green.
+- **Concerns / assumptions:** (1) The 7 pre-existing failures are NOT
+  from this task — they sit in the T-0103 tactic-slider family and a
+  season commit flow and need their own fix (recommend a dedicated
+  task; do not silently fix them inside T-0115). (2) Full-suite
+  single-process run hits a known stream-channel shutdown hang on
+  this 2-core sandbox — chunked runs cover the same tests. (3) The
+  ticker unification means the ticker's neutral tint for whistle
+  moments is now the event accent (bronze for kick-off/break,
+  gold for full time) instead of a flat gold — intentional, part of
+  the per-kind language. (4) `Icons.pause_rounded` for half time:
+  the ticker test asserts the same uniform height for all kinds —
+  the chip and icons sit in fixed-height rows so parity holds.
 
 
 ## Review Log

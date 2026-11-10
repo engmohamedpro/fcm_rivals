@@ -49,6 +49,17 @@ class FcmColors {
   static const Color success = Color(0xFF8FD09A);
   static const Color danger = Color(0xFFD96A62);
 
+  /// Football-card semaphore (T-0115) — a literal referee's booking
+  /// yellow: saturated, unmistakably YELLOW, far warmer than the cream
+  /// `goldSoft`. Commentary moments ONLY until another surface
+  /// legitimately means "booking", not "gold highlight".
+  static const Color cardYellow = Color(0xFFF9C846);
+
+  /// Football-card semaphore (T-0115) — the decisive booking red, a
+  /// touch hotter than the soft `danger` so a sending-off reads at a
+  /// glance next to the injury tone. Same discipline as `cardYellow`.
+  static const Color cardRed = Color(0xFFE23B33);
+
   /// Ink that sits on gold surfaces.
   static const Color ink = Color(0xFF241806);
 
