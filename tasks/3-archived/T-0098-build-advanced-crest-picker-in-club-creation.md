@@ -2,11 +2,11 @@
 id: T-0098
 title: Build the advanced crest picker in club creation
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0097]
 created: 2026-11-09
-completed:
+completed: 2026-11-10
 ---
 
 # T-0098: Build the advanced crest picker in club creation
@@ -34,11 +34,11 @@ The CLUB CREST section of club creation becomes an advanced crest builder: a liv
 - New palette colours or per-club uploaded images.
 
 ## Acceptance Criteria
-- [ ] The crest section offers shape, primary, secondary and icon choices with a live preview; every combination renders in the preview without overflow.
-- [ ] Randomize produces a valid spec in one tap; the submitted club carries exactly the shown spec (verified through the store round-trip), with `crestIndex` = primary index.
-- [ ] Primary and secondary can never collide (picker prevents or auto-corrects).
-- [ ] Labels localized EN/AR; RTL mirrors; the screen still scrolls and submits with validation unchanged.
-- [ ] `flutter analyze` zero warnings; onboarding suite green with the new tests; full `flutter test` green, no REGEN_SNAPSHOT.
+- [x] The crest section offers shape, primary, secondary and icon choices with a live preview; every combination renders in the preview without overflow.
+- [x] Randomize produces a valid spec in one tap; the submitted club carries exactly the shown spec (verified through the store round-trip), with `crestIndex` = primary index.
+- [x] Primary and secondary can never collide (picker prevents or auto-corrects).
+- [x] Labels localized EN/AR; RTL mirrors; the screen still scrolls and submits with validation unchanged.
+- [x] `flutter analyze` zero warnings; onboarding suite green with the new tests; full `flutter test` green, no REGEN_SNAPSHOT.
 
 ## How to Verify
 ```bash
@@ -83,3 +83,15 @@ Manual: fresh install → build a shield/crown crest in red+gold, randomize a fe
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 1 — 2026-11-10 — PASS
+
+**Ran (Flutter 3.47.9, main @ 36f8744):**
+- `flutter analyze` → No issues found! ✓
+- `flutter test test/features/onboarding/` → **19/19 green** ✓ — the four new tests: every picker renders with the live preview; picks persist through the store round-trip (`CrestSpec.fromJsonString(club.crest)` shape match + `crestIndex == primaryIndex`); randomize lands valid (primary ≠ secondary, indexes 0-5) and submits exactly the previewed spec; the Arabic RTL pump renders every label without overflow.
+- Full `flutter test`: run 1 → **1011/1012** — the only failure was the club-creation smoke test at `test/widget_test.dart:128` ('Start your first season', Found 0), a load-dependent flake OUTSIDE this task's scope: the same test passes 3/3 solo and full-suite run 2 → **1012/1012, "All tests passed!"** with `grep -c MissingPluginException` = 0. Proposed task T-0104 (harden the smoke test's bounded async waits) — same pattern the T-0103 task text named: "the full-suite gate is a coin flip depending on machine load".
+- Code read: collision auto-correct on BOTH paths (`onPrimary` nudges the secondary, `onSecondary` nudges the primary; `(i+1) % 6` ≠ i always) → the primary ≠ secondary invariant holds after every path (picks, randomize, defaults). `_submit` persists the spec through the T-0097 API with `crestIndex: spec.primaryIndex`; the backdrop tint follows the primary live (clamped lookup); four l10n keys in EN and AR with a clean regen; the section scrolls with the form (no fixed height). The unseeded `math.Random()` in randomize is a user-driven UI action — the determinism rules govern the engines; agreed.
+- Notes: (a) the grown form broke the widget_test.dart smoke assumptions; the fix landed in 7139e54 (documented in T-0088's notes) and the resulting bounded wait is the load-flaky one → T-0104; (b) the submit commit message carried no recorded full-suite result despite the notes promising one — the reviewer's own runs are the evidence for this gate.
+
+All five criteria met; every verify command run by the reviewer.
+
