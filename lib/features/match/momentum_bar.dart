@@ -260,7 +260,7 @@ class MomentumTugBar extends StatelessWidget {
     required this.share,
     this.homeColor = FcmColors.gold,
     this.awayColor = opponentMomentumColor,
-    this.height = 14,
+    this.height = 9,
   });
 
   final double share;
@@ -409,7 +409,9 @@ class _TugPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const inset = 2.0;
+    // Everything scales with the bar's height (thin in the header,
+    // fuller in the report-sized meter).
+    final inset = size.height / 7;
     final trackRect = Rect.fromLTWH(
       0,
       inset,
@@ -469,29 +471,31 @@ class _TugPainter extends CustomPainter {
     canvas.restore();
 
     // The knob: a soft glow, a bright split line and a round handle.
-    final kx = x.clamp(5.0, size.width - 5.0).toDouble();
+    final kx = x.clamp(size.height * 0.36, size.width - size.height * 0.36)
+        .toDouble();
     final cy = size.height / 2;
+    final knob = size.height * 0.39;
     canvas.drawCircle(
       Offset(kx, cy),
-      9,
+      knob * 1.6,
       Paint()
         ..color = Colors.white.withValues(alpha: 0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, knob * 0.9),
     );
     canvas.drawLine(
       Offset(kx, 0),
       Offset(kx, size.height),
       Paint()
         ..color = Colors.white
-        ..strokeWidth = 2,
+        ..strokeWidth = size.height >= 12 ? 2 : 1.4,
     );
-    canvas.drawCircle(Offset(kx, cy), 5.5, Paint()..color = Colors.white);
+    canvas.drawCircle(Offset(kx, cy), knob, Paint()..color = Colors.white);
     canvas.drawCircle(
       Offset(kx, cy),
-      5.5,
+      knob,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
+        ..strokeWidth = size.height >= 12 ? 2 : 1.2
         ..color = FcmColors.night,
     );
   }

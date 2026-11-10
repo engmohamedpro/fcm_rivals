@@ -23,8 +23,8 @@ import 'momentum_bar.dart';
 /// vertical space of the old stack (scoreboard panel, then a separate
 /// controls row), which is vertical budget the commentary feed now owns.
 ///
-/// The momentum bar (`MomentumTugBar`, `momentum_bar.dart`) sits between
-/// the live dot and the clock: no text, no numbers — the home side's
+/// The momentum bar (`MomentumTugBar`, `momentum_bar.dart`) sits alone in
+/// its own row under the centred clock: no text, no numbers — the home side's
 /// colour presses in from the left, the away side's from the right, and
 /// the knob slides as the pressure swings.
 class MatchHeader extends StatelessWidget {
@@ -115,33 +115,30 @@ class MatchHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            // Match clock row: live dot, the momentum bar, the minute.
+            // Match clock: the live dot and the minute, centred ...
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const _LiveDot(),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: MomentumTugBar(
-                    share: momentumShare,
-                    homeColor: homeColor,
-                    awayColor: awayColor,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 44,
-                  child: FitText(
-                    fullTime ? 'FT' : "$minute'",
-                    align: Alignment.center,
-                    style: TextStyle(
-                      color: fullTime ? FcmColors.gold : Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                      letterSpacing: 1,
-                    ),
+                const SizedBox(width: 6),
+                FitText(
+                  fullTime ? 'FT' : "$minute'",
+                  align: Alignment.center,
+                  style: TextStyle(
+                    color: fullTime ? FcmColors.gold : Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    letterSpacing: 1,
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 6),
+            // ... and the momentum bar alone in the row beneath it.
+            MomentumTugBar(
+              share: momentumShare,
+              homeColor: homeColor,
+              awayColor: awayColor,
             ),
             const SizedBox(height: 8),
             // Controls fused into the same panel: play/pause, 1x–3x
