@@ -33,13 +33,14 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
 
   /// T-0098: the advanced crest builder's live state — shape, primary,
   /// secondary, icon. The default is the legacy look (shield, palette
-  /// index 0 primary, index 3 secondary, star) so a fresh player who
+  /// royal blue and ivory, star) so a fresh player who
   /// skips the builder saves a sane crest. Secondary never equals
   /// primary — the picker auto-corrects on every path.
   var _crestShape = CrestShape.shield;
-  var _crestPrimary = 0;
-  var _crestSecondary = 3;
+  var _crestPrimary = 7; // royal blue
+  var _crestSecondary = 13; // ivory
   var _crestIcon = CrestIcon.star;
+  var _crestPattern = CrestPattern.halves;
 
   /// The built spec — what the preview shows and _submit persists.
   CrestSpec get _crestSpec => CrestSpec(
@@ -47,22 +48,19 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
     primaryIndex: _crestPrimary,
     secondaryIndex: _crestSecondary,
     icon: _crestIcon,
+    pattern: _crestPattern,
   );
 
-  /// Randomize: one tap, a uniformly random VALID combination
-  /// (primary != secondary guaranteed by a re-draw bump).
+  /// Randomize: one tap, a fresh crest drawn by the SAME generator the
+  /// AI clubs use ([CrestSpec.random]) — every option of the builder.
   void _randomizeCrest() {
-    final shapes = CrestShape.values;
-    final icons = CrestIcon.values;
-    final n = FcmColors.crestPalette.length;
+    final spec = CrestSpec.random(math.Random());
     setState(() {
-      _crestShape = shapes[math.Random().nextInt(shapes.length)];
-      _crestIcon = icons[math.Random().nextInt(icons.length)];
-      _crestPrimary = math.Random().nextInt(n);
-      _crestSecondary = math.Random().nextInt(n);
-      if (_crestSecondary == _crestPrimary) {
-        _crestSecondary = (_crestSecondary + 1) % n;
-      }
+      _crestShape = spec.shape;
+      _crestIcon = spec.icon;
+      _crestPattern = spec.pattern;
+      _crestPrimary = spec.primaryIndex;
+      _crestSecondary = spec.secondaryIndex;
     });
   }
 
@@ -236,6 +234,8 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                                 }
                               }),
                               onIcon: (ic) => setState(() => _crestIcon = ic),
+                              onPattern: (pt) =>
+                                  setState(() => _crestPattern = pt),
                               onRandomize: _randomizeCrest,
                             ),
                             const SizedBox(height: 22),
@@ -325,6 +325,7 @@ class _CrestBuilder extends StatelessWidget {
     required this.onPrimary,
     required this.onSecondary,
     required this.onIcon,
+    required this.onPattern,
     required this.onRandomize,
   });
 
@@ -334,6 +335,7 @@ class _CrestBuilder extends StatelessWidget {
   final ValueChanged<int> onPrimary;
   final ValueChanged<int> onSecondary;
   final ValueChanged<CrestIcon> onIcon;
+  final ValueChanged<CrestPattern> onPattern;
   final VoidCallback onRandomize;
 
   @override
@@ -376,9 +378,27 @@ class _CrestBuilder extends StatelessWidget {
           children: [
             for (final shape in CrestShape.values)
               _ShapeOption(
+                spec: spec,
                 shape: shape,
                 selected: shape == spec.shape,
                 onTap: () => onShape(shape),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _PickerLabel(l.crestPatternLabel),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            for (final pattern in CrestPattern.values)
+              _PatternOption(
+                pattern: pattern,
+                primary: spec.primaryColor,
+                secondary: spec.secondaryColor,
+                selected: pattern == spec.pattern,
+                onTap: () => onPattern(pattern),
               ),
           ],
         ),
@@ -445,18 +465,20 @@ class _PickerLabel extends StatelessWidget {
 /// the choice reads visually, not as text.
 class _ShapeOption extends StatelessWidget {
   const _ShapeOption({
+    required this.spec,
     required this.shape,
     required this.selected,
     required this.onTap,
   });
 
+  final CrestSpec spec;
   final CrestShape shape;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = FcmColors.crestColor(2);
+    final color = spec.primaryColor;
     return FcmPressable(
       onTap: onTap,
       child: AnimatedScale(
@@ -478,11 +500,12 @@ class _ShapeOption extends StatelessWidget {
           child: FcmCrest(
             spec: CrestSpec(
               shape: shape,
-              primaryIndex: 2,
-              secondaryIndex: 4,
-              icon: CrestIcon.star,
+              primaryIndex: spec.primaryIndex,
+              secondaryIndex: spec.secondaryIndex,
+              icon: spec.icon,
+              pattern: spec.pattern,
             ),
-            width: 30,
+            width: 34,
           ),
         ),
       ),
@@ -506,8 +529,8 @@ class _ColorRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+      spacing: 10,
+      runSpacing: 10,
       alignment: WrapAlignment.center,
       children: [
         for (var i = 0; i < colors.length; i++)
@@ -532,15 +555,6 @@ class _IconOption extends StatelessWidget {
   final CrestIcon icon;
   final bool selected;
   final VoidCallback onTap;
-
-  IconData get _glyph => switch (icon) {
-    CrestIcon.star => Icons.star_rounded,
-    CrestIcon.ball => Icons.sports_soccer_rounded,
-    CrestIcon.crown => Icons.workspace_premium_rounded,
-    CrestIcon.lion => Icons.pets_rounded,
-    CrestIcon.flame => Icons.local_fire_department_rounded,
-    CrestIcon.bolt => Icons.bolt_rounded,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -569,10 +583,10 @@ class _IconOption extends StatelessWidget {
                 ),
             ],
           ),
-          child: Icon(
-            _glyph,
+          child: FcmCrestGlyph(
+            icon: icon,
             color: selected ? FcmColors.goldSoft : Colors.white70,
-            size: 22,
+            size: 24,
           ),
         ),
       ),
@@ -580,7 +594,7 @@ class _IconOption extends StatelessWidget {
   }
 }
 
-/// Shield-shaped crest swatch; the selected one pops and glows.
+/// A round colour swatch; the selected one pops with a gold ring.
 class _CrestOption extends StatelessWidget {
   const _CrestOption({
     required this.color,
@@ -602,22 +616,17 @@ class _CrestOption extends StatelessWidget {
         curve: Curves.easeOutBack,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
-          width: 52,
-          height: 58,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(10),
-              topRight: Radius.circular(10),
-              bottomLeft: Radius.circular(26),
-              bottomRight: Radius.circular(26),
-            ),
+            shape: BoxShape.circle,
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
                 Color.lerp(color, Colors.white, 0.28)!,
                 color,
-                Color.lerp(color, Colors.black, 0.4)!,
+                Color.lerp(color, Colors.black, 0.3)!,
               ],
             ),
             border: Border.all(
@@ -626,10 +635,54 @@ class _CrestOption extends StatelessWidget {
             ),
             boxShadow: [
               if (selected)
-                BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 18),
+                BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 14),
             ],
           ),
-          child: const Icon(Icons.star_rounded, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+/// A pattern swatch in the crest's current colours.
+class _PatternOption extends StatelessWidget {
+  const _PatternOption({
+    required this.pattern,
+    required this.primary,
+    required this.secondary,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final CrestPattern pattern;
+  final Color primary;
+  final Color secondary;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPressable(
+      onTap: onTap,
+      child: AnimatedScale(
+        scale: selected ? 1.12 : 1.0,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutBack,
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? FcmColors.gold : Colors.white24,
+              width: selected ? 2.5 : 1.5,
+            ),
+          ),
+          child: FcmCrestPatternChip(
+            pattern: pattern,
+            primary: primary,
+            secondary: secondary,
+            size: 34,
+          ),
         ),
       ),
     );

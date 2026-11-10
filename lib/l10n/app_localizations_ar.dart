@@ -124,6 +124,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get crestIconLabel => 'الرمز';
 
   @override
+  String get crestPatternLabel => 'النقش';
+
+  @override
   String get starterFormationSection => 'التشكيلة الأولى';
 
   @override

@@ -7,6 +7,8 @@ import 'dart:convert' show jsonDecode, jsonEncode;
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,6 +50,52 @@ void main() {
           expect(CrestSpec.fromJsonString(spec.encode()), spec);
         }
       }
+    });
+
+    test('every pattern round-trips and old payloads default to halves', () {
+      for (final pattern in CrestPattern.values) {
+        final spec = CrestSpec(
+          shape: CrestShape.heater,
+          primaryIndex: 7,
+          secondaryIndex: 13,
+          icon: CrestIcon.sword,
+          pattern: pattern,
+        );
+        expect(CrestSpec.fromJsonString(spec.encode()), spec);
+      }
+      final old = CrestSpec.fromJson(const {
+        'shape': 'shield',
+        'primary': 1,
+        'secondary': 2,
+        'icon': 'star',
+      });
+      expect(old!.pattern, CrestPattern.halves);
+    });
+
+    test('CrestSpec.random is seeded, valid and uses every option', () {
+      expect(
+        CrestSpec.random(math.Random(7)),
+        CrestSpec.random(math.Random(7)),
+      );
+      final r = math.Random(1);
+      final shapes = <CrestShape>{};
+      final patterns = <CrestPattern>{};
+      final icons = <CrestIcon>{};
+      final colours = <int>{};
+      for (var i = 0; i < 600; i++) {
+        final s = CrestSpec.random(r);
+        expect(s.primaryIndex, isNot(s.secondaryIndex));
+        expect(s.primaryIndex, inInclusiveRange(0, FcmColors.crestPalette.length - 1));
+        expect(s.secondaryIndex, inInclusiveRange(0, FcmColors.crestPalette.length - 1));
+        shapes.add(s.shape);
+        patterns.add(s.pattern);
+        icons.add(s.icon);
+        colours..add(s.primaryIndex)..add(s.secondaryIndex);
+      }
+      expect(shapes, CrestShape.values.toSet());
+      expect(patterns, CrestPattern.values.toSet());
+      expect(icons, CrestIcon.values.toSet());
+      expect(colours.length, FcmColors.crestPalette.length);
     });
 
     test('legacy(i) reproduces today\'s palette colour for i in 0..5', () {

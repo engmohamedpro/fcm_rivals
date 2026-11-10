@@ -369,6 +369,9 @@ void main() {
         expect(spec.primaryIndex, inInclusiveRange(0, palette - 1));
         expect(spec.secondaryIndex, inInclusiveRange(0, palette - 1));
         expect(spec.primaryIndex, isNot(spec.secondaryIndex));
+        // AI crests come from the builder's own option set.
+        expect(CrestShape.values, contains(spec.shape));
+        expect(CrestPattern.values, contains(spec.pattern));
         // Unique within the league.
         expect(seen.contains(spec), isFalse,
             reason: 'duplicate crest for ${club.name}');

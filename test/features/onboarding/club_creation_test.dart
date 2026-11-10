@@ -13,6 +13,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fcm_rivals/core/domain/crest.dart';
 import 'package:fcm_rivals/core/ui/fcm_crest.dart';
+import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
@@ -279,6 +280,7 @@ void main() {
       expect(find.text('PRIMARY COLOUR'), findsOneWidget);
       expect(find.text('SECONDARY COLOUR'), findsOneWidget);
       expect(find.text('ICON'), findsOneWidget);
+      expect(find.text('PATTERN'), findsOneWidget);
       expect(find.byIcon(Icons.casino_rounded), findsOneWidget,
           reason: 'the randomize action');
       // The live preview is a real crest: the default shield/star.
@@ -399,8 +401,8 @@ void main() {
           preview.first.widget as FcmCrest;
       expect(crest.spec.primaryIndex, isNot(crest.spec.secondaryIndex),
           reason: 'randomize never collides the two colours');
-      expect(crest.spec.primaryIndex, inInclusiveRange(0, 5));
-      expect(crest.spec.secondaryIndex, inInclusiveRange(0, 5));
+      expect(crest.spec.primaryIndex, inInclusiveRange(0, FcmColors.crestPalette.length - 1));
+      expect(crest.spec.secondaryIndex, inInclusiveRange(0, FcmColors.crestPalette.length - 1));
 
       // Submit the randomized spec — the store round-trips it exactly.
       final submit = find.text('Start managing');
@@ -431,6 +433,7 @@ void main() {
       expect(find.text('اللون الأساسي'), findsOneWidget);
       expect(find.text('اللون الثانوي'), findsOneWidget);
       expect(find.text('الرمز'), findsOneWidget);
+      expect(find.text('النقش'), findsOneWidget);
       expect(find.byIcon(Icons.casino_rounded), findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'no RTL overflow');
     },

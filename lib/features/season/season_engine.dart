@@ -14,9 +14,7 @@ import '../match/tactics.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import 'season_ai_models.dart';
-import '../../core/domain/crest.dart'
-    show CrestIcon, CrestShape, CrestSpec;
-import '../../core/ui/fcm_style.dart' show FcmColors;
+import '../../core/domain/crest.dart' show CrestSpec;
 
 export 'season_ai_models.dart';
 
@@ -581,21 +579,10 @@ class SeasonEngine {
   /// never spins; it is bounded by the option space itself and always
   /// terminates.
   CrestSpec _drawUniqueCrest(math.Random random, Set<CrestSpec> used) {
-    final shapes = CrestShape.values;
-    final icons = CrestIcon.values;
-    final colourCount = FcmColors.crestPalette.length;
+    // The same generator the club builder's dice button uses, so an AI
+    // club only ever wears a crest a player could have built.
     for (;;) {
-      final primary = random.nextInt(colourCount);
-      var secondary = random.nextInt(colourCount);
-      if (secondary == primary) {
-        secondary = (secondary + 1) % colourCount;
-      }
-      final spec = CrestSpec(
-        shape: shapes[random.nextInt(shapes.length)],
-        primaryIndex: primary,
-        secondaryIndex: secondary,
-        icon: icons[random.nextInt(icons.length)],
-      );
+      final spec = CrestSpec.random(random);
       if (used.contains(spec)) continue;
       return spec;
     }

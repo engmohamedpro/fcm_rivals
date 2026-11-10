@@ -63,6 +63,7 @@
   "crestPrimaryLabel": "Primary colour",
   "crestSecondaryLabel": "Secondary colour",
   "crestIconLabel": "Icon",
+  "crestPatternLabel": "Pattern",
   "starterFormationSection": "STARTER FORMATION",
   "startManaging": "Start managing",
   "fieldRequired": "Required",

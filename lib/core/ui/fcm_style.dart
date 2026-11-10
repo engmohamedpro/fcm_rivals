@@ -74,8 +74,9 @@ class FcmColors {
     colors: [Color(0xFFC4E8C9), Color(0xFF8FD09A), Color(0xFF54845F)],
   );
 
-  /// Crest swatches the manager picks from at club creation: champagne,
-  /// bronze, ember, olive, steel and oxblood — the brand's warm metals.
+  /// Crest swatches the manager picks from at club creation: the brand's
+  /// warm metals (champagne, bronze, ember, olive, steel, oxblood) then
+  /// ten vivid club colours.
   /// Shared by the creation picker and everywhere the club's colour is
   /// shown live (e.g. the match momentum bar's user side spikes).
   static const List<Color> crestPalette = [
@@ -85,6 +86,18 @@ class FcmColors {
     Color(0xFF57683F), // olive pitch
     Color(0xFF8D8A96), // steel silver
     Color(0xFF7A3B36), // oxblood
+    // Vivid club colours (appended after the brand metals so every
+    // saved index keeps its meaning).
+    Color(0xFFC62833), // crimson
+    Color(0xFF1F55C2), // royal blue
+    Color(0xFF5AB4EA), // sky blue
+    Color(0xFF14894F), // emerald
+    Color(0xFFF08A1E), // orange
+    Color(0xFFF2CC1B), // yellow
+    Color(0xFF6A38B0), // purple
+    Color(0xFFF4F1EA), // ivory white
+    Color(0xFF14203B), // midnight navy
+    Color(0xFF138E92), // teal
   ];
 
   /// The club's crest colour by saved [crestIndex] — clamped so a stale

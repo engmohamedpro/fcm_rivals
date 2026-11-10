@@ -308,6 +308,12 @@ abstract class AppLocalizations {
   /// **'Icon'**
   String get crestIconLabel;
 
+  /// No description provided for @crestPatternLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pattern'**
+  String get crestPatternLabel;
+
   /// No description provided for @starterFormationSection.
   ///
   /// In en, this message translates to:

@@ -124,6 +124,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get crestIconLabel => 'Icon';
 
   @override
+  String get crestPatternLabel => 'Pattern';
+
+  @override
   String get starterFormationSection => 'STARTER FORMATION';
 
   @override
