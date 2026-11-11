@@ -2,11 +2,11 @@
 id: T-0114
 title: Underdog set-piece income layer — edge-independent chance source (the T-0082 unblocking mechanism)
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0073]
 created: 2026-11-10
-completed:
+completed: 2026-11-11
 ---
 
 # T-0114: Underdog set-piece income layer — edge-independent chance source
@@ -36,9 +36,9 @@ A small chance-income stream for the side OUT of possession that is INDEPENDENT 
 - Economy, pack odds, UI, l10n, save format.
 
 ## Acceptance Criteria
-- [ ] Default config: bit-identical seeded output (probe + snapshot green, REGEN_SNAPSHOT unset).
-- [ ] Layer on: even-strength bands hold at n≥600; the underdog-goal lift and direction assertions pass at +50%.
-- [ ] Zero existing-test edits; `flutter analyze` clean; full balance suite green.
+- [x] Default config: bit-identical seeded output (probe + snapshot green, REGEN_SNAPSHOT unset).
+- [x] Layer on: even-strength bands hold at n≥600; the underdog-goal lift and direction assertions pass at +50%.
+- [x] Zero existing-test edits; `flutter analyze` clean; full balance suite green.
 
 ## How to Verify
 ```bash
