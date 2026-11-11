@@ -114,7 +114,13 @@ class SquadStore {
   /// matchday concern (pre-match projection + kick-off guard), never
   /// a reason the club's best XI changes. Defaults true so matchday
   /// and store-internal callers keep the T-0055 behaviour.
-  Future<Map<int, int>> autoPickSquad({bool excludeInjured = true}) async {
+  ///
+  /// [naturalOnly]: XI slots take only natural-position players and stay
+  /// empty otherwise (the Team tab's Auto Pick button).
+  Future<Map<int, int>> autoPickSquad({
+    bool excludeInjured = true,
+    bool naturalOnly = false,
+  }) async {
     final club = await getClub();
     if (club == null) {
       throw const CollectionException('No club');
@@ -126,6 +132,7 @@ class SquadStore {
       cards,
       formation,
       excludeInjured: excludeInjured,
+      naturalOnly: naturalOnly,
     );
     await saveSquad(assignment, allowInjured: !excludeInjured);
     return assignment;

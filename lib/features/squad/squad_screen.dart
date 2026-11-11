@@ -256,17 +256,10 @@ class SquadScreen extends ConsumerWidget {
     // T-0117: the Team tab's pick is MERIT-ONLY — injured players
     // still compete for the saved XI (fitness belongs to the pre-match
     // duplicate and the kick-off guard, never the identity eleven).
-    await store.autoPickSquad(excludeInjured: false);
+    // Natural positions only: a slot nobody can play naturally stays
+    // empty rather than taking an out-of-position filler. No snackbar.
+    await store.autoPickSquad(excludeInjured: false, naturalOnly: true);
     ref.invalidate(squadProvider);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            l10nOf(context).bestSquadSelected,
-          ),
-        ),
-      );
-    }
   }
 
   /// Persists a new formation (GDD 6.4) and re-picks the best XI for it.

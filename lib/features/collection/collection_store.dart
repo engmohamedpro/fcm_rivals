@@ -724,8 +724,13 @@ class CollectionStore {
   Future<Map<int, PlayerCard>> getSquad() => _squadStore.getSquad();
   Future<void> saveSquad(Map<int, int> assignments) =>
       _squadStore.saveSquad(assignments);
-  Future<Map<int, int>> autoPickSquad({bool excludeInjured = true}) =>
-      _squadStore.autoPickSquad(excludeInjured: excludeInjured);
+  Future<Map<int, int>> autoPickSquad({
+    bool excludeInjured = true,
+    bool naturalOnly = false,
+  }) => _squadStore.autoPickSquad(
+    excludeInjured: excludeInjured,
+    naturalOnly: naturalOnly,
+  );
   Future<void> changeFormation(String formationCode) =>
       _squadStore.changeFormation(formationCode);
   Future<void> changeTactics({

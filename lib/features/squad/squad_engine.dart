@@ -279,6 +279,11 @@ class SquadEngine {
   /// bench 11..17, reserves 18..22). Fewer than 23 players simply leaves
   /// later slots unassigned.
   ///
+  /// [naturalOnly]: the Team tab's Auto Pick — an XI slot takes ONLY a
+  /// player of its own natural position; with none, the slot stays
+  /// empty (no out-of-position filler). The unused players still fill
+  /// the bench and reserves.
+  ///
   /// [excludeInjured] decides the pool: matchday paths exclude injured
   /// players; the Team tab's management pick passes false (T-0117).
   Map<int, int> autoPick(
@@ -287,6 +292,7 @@ class SquadEngine {
     bool excludeInjured = true,
     Set<int> suspendedPlayerIds = const {},
     bool staminaFirst = false,
+    bool naturalOnly = false,
   }) {
     final assignment = <int, int>{};
     // Matchday paths exclude injured players (T-0055, GDD 11.7 — the
@@ -350,8 +356,11 @@ class SquadEngine {
 
     // Pass 2 — slots with no natural candidate: the best compatible
     // remaining player, rarest slot first so any remaining specialists
-    // stay available for slots that can still use them.
-    for (final slotIndex in _rarestFirstSlots(players, formation)) {
+    // stay available for slots that can still use them. Skipped in
+    // naturalOnly mode: those slots stay empty.
+    for (final slotIndex in naturalOnly
+        ? const <int>[]
+        : _rarestFirstSlots(players, formation)) {
       if (assignment.containsKey(slotIndex)) continue;
       final slot = formation.slots[slotIndex];
       int? bestId;
@@ -372,7 +381,11 @@ class SquadEngine {
     // Pass 3 — degenerate pools: XI slots still empty take the
     // least-damaging remaining player (better than an empty slot).
     for (var slotIndex = 0; slotIndex < formation.slots.length; slotIndex++) {
-      if (assignment.containsKey(slotIndex) || available.isEmpty) continue;
+      if (naturalOnly ||
+          assignment.containsKey(slotIndex) ||
+          available.isEmpty) {
+        continue;
+      }
       final slot = formation.slots[slotIndex];
       int? bestId;
       var bestRating = -1.0;
