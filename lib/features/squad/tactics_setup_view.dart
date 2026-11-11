@@ -163,6 +163,7 @@ class TacticsSetupView extends StatelessWidget {
             pickPulse: pulse,
             onClear: onClear,
             teamRating: teamRating,
+            chemistry: chemistry,
             formationCode: formationCode,
             tactics: tactics,
             mentality: mentality,
@@ -199,7 +200,7 @@ class TacticsSetupView extends StatelessWidget {
                   child: SquadPitch(
                     formation: formationByCode(formationCode),
                     assignments: xi,
-                    chemistryPercent: xi.isEmpty ? null : chemistry,
+                    showChemistryLinks: true,
                     showStamina: showStamina,
                     showStats: showStats,
                     showCondition: showCondition,
@@ -282,6 +283,7 @@ class TacticsSetupView extends StatelessWidget {
 class _ControlCard extends StatelessWidget {
   const _ControlCard({
     required this.teamRating,
+    required this.chemistry,
     required this.formationCode,
     required this.tactics,
     required this.mentality,
@@ -299,6 +301,10 @@ class _ControlCard extends StatelessWidget {
   final int pickPulse;
 
   final int teamRating;
+
+  /// The XI's nationality chemistry, 0..10 — always shown (+0% for an
+  /// empty or all-distinct XI).
+  final int chemistry;
   final String formationCode;
   final TeamTactics tactics;
   final Mentality mentality;
@@ -319,8 +325,14 @@ class _ControlCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // The setup summary row (T-0092): Team tab opts out — the
-          // column then starts directly at the formation dropdown.
+          // The scoreboard row, on every surface: the team rating at the
+          // start, the XI's chemistry at the end.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [_rating(), const Spacer(), _chemistry()],
+          ),
+          const SizedBox(height: 10),
+          // The setup summary row (T-0092): Team tab opts out.
           if (showSetupSummary) ...[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,8 +345,6 @@ class _ControlCard extends StatelessWidget {
                   mentalityDisplayName(l10n, mentality),
                 ),
               ),
-              const Spacer(),
-              _rating(),
             ],
           ),
           const SizedBox(height: 8),
@@ -427,15 +437,15 @@ class _ControlCard extends StatelessWidget {
     ],
   );
 
-  /// The team rating closing the setup row: dim label over the big
-  /// colour-coded number, right-aligned.
+  /// The team rating opening the scoreboard row: dim label over the big
+  /// colour-coded number, start-aligned.
   Widget _rating() => Column(
-    crossAxisAlignment: CrossAxisAlignment.end,
+    crossAxisAlignment: CrossAxisAlignment.start,
     mainAxisSize: MainAxisSize.min,
     children: [
       const Text(
         'TEAM RATING',
-        textAlign: TextAlign.end,
+        textAlign: TextAlign.start,
         style: TextStyle(
           color: FcmColors.textDim,
           fontSize: 9,
@@ -448,6 +458,48 @@ class _ControlCard extends StatelessWidget {
         value: teamRating,
         style: TextStyle(
           color: ratingColor(teamRating),
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+          height: 1.0,
+        ),
+      ),
+    ],
+  );
+
+  /// The XI's chemistry closing the scoreboard row: link icon + dim
+  /// label over the big '+N%' (dim at 0, the rating colour ramp above),
+  /// end-aligned.
+  Widget _chemistry() => Column(
+    crossAxisAlignment: CrossAxisAlignment.end,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.link_rounded, size: 12, color: FcmColors.gold),
+          const SizedBox(width: 4),
+          Builder(
+            builder: (context) => Text(
+              l10nOf(context).teamChemistry.toUpperCase(),
+              maxLines: 1,
+              style: const TextStyle(
+                color: FcmColors.textDim,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 2),
+      FcmCountUp(
+        value: chemistry,
+        format: (n) => '+$n%',
+        style: TextStyle(
+          color: chemistry >= 1
+              ? ratingColor(70 + chemistry * 3)
+              : FcmColors.textDim,
           fontSize: 22,
           fontWeight: FontWeight.w900,
           height: 1.0,

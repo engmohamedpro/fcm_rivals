@@ -15,7 +15,6 @@ import '../../core/ui/country_flag.dart' show flagEmojiFor;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
-import '../../l10n/l10n_context.dart';
 import '../collection/player_detail_sheet.dart' show rarityOf;
 import '../match/chemistry_links.dart';
 import 'formations.dart';
@@ -50,7 +49,7 @@ class SquadPitch extends StatelessWidget {
     super.key,
     required this.formation,
     required this.assignments,
-    this.chemistryPercent,
+    this.showChemistryLinks = false,
     this.showStamina = true,
     this.showStats = true,
     this.showCondition = true,
@@ -63,10 +62,9 @@ class SquadPitch extends StatelessWidget {
   /// Slot index → card for the starting XI.
   final Map<int, PlayerCard> assignments;
 
-  /// The starting XI's nationality chemistry, 0..10 (T-0069 value,
-  /// T-0080 display): null hides the badge — an empty XI has no
-  /// chemistry to read, so the pitch shows no badge either.
-  final int? chemistryPercent;
+  /// Draws a line between same-nationality players of the XI. The
+  /// chemistry reading itself lives on the control card above the pitch.
+  final bool showChemistryLinks;
 
   /// Whether cards carry their stamina bar (hidden in the Team tab).
   final bool showStamina;
@@ -92,23 +90,6 @@ class SquadPitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pitch = _buildPitch();
-    if (chemistryPercent == null) return pitch;
-    // The chemistry badge sits ABOVE the pitch, never on it: the
-    // attacking line's cards fill the whole pitch top and used to paint
-    // over a badge placed inside the artwork.
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _ChemistryBadge(percent: chemistryPercent!),
-        const SizedBox(height: 8),
-        pitch,
-      ],
-    );
-  }
-
-  Widget _buildPitch() {
     return AspectRatio(
       aspectRatio: 0.66,
       child: ClipRRect(
@@ -148,7 +129,7 @@ class SquadPitch extends StatelessWidget {
                   // same-nationality neighbours, drawn UNDER the cards so
                   // they read as threads running from card to card. Only
                   // on surfaces that show the chemistry reading.
-                  if (chemistryPercent != null)
+                  if (showChemistryLinks)
                     Positioned.fill(
                       child: IgnorePointer(
                         child: _ChemistryLinksLayer(
@@ -528,136 +509,6 @@ class _EmptyBenchCard extends StatelessWidget {
         rarity: CardRarity.rare,
         width: width,
         ghost: true,
-      ),
-    );
-  }
-}
-
-/// The XI's chemistry reading as a capsule ABOVE the pitch (it used to
-/// sit inside the artwork, where the attacking line's cards painted over
-/// it): a dark pill with a gold border, a chemistry link icon, the FULL
-/// localized label and a large '+N%' value that counts up to its new
-/// reading whenever the squad changes. One subtle scale/fade pulse fires
-/// on the value change itself; idle is fully static (no looping work).
-/// Colour semantics are the T-0080 rules: dim at 0, the same rating
-/// colour ramp at n ≥ 1.
-class _ChemistryBadge extends StatefulWidget {
-  const _ChemistryBadge({required this.percent});
-
-  final int percent;
-
-  @override
-  State<_ChemistryBadge> createState() => _ChemistryBadgeState();
-}
-
-class _ChemistryBadgeState extends State<_ChemistryBadge>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 240),
-  );
-  int _shown = -1;
-
-  @override
-  void initState() {
-    super.initState();
-    _shown = widget.percent;
-  }
-
-  @override
-  void didUpdateWidget(_ChemistryBadge old) {
-    super.didUpdateWidget(old);
-    if (old.percent != widget.percent) {
-      // The reading changed: one soft scale/fade pulse while the
-      // count-up floats to the new number.
-      _shown = widget.percent;
-      _pulse.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final label = l10nOf(context).teamChemistry.toUpperCase();
-    final valueColor = widget.percent >= 1
-        ? ratingColor(70 + widget.percent * 3)
-        : FcmColors.textDim;
-    return Center(
-      child: ScaleTransition(
-        scale: Tween<double>(begin: 1, end: 1.06).animate(
-          CurvedAnimation(
-            parent: _pulse,
-            curve: const Interval(0, 0.4, curve: Curves.easeOut),
-            reverseCurve: Curves.easeIn,
-          ),
-        ),
-        child: FadeTransition(
-          opacity: Tween<double>(begin: 1, end: 0.75).animate(
-            CurvedAnimation(parent: _pulse, curve: Curves.easeOut),
-          ),
-          child: Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [FcmColors.surfaceHigh, FcmColors.surface],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.circular(17),
-              border: Border.all(
-                color: FcmColors.gold.withValues(alpha: 0.6),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.link_rounded,
-                  size: 16,
-                  color: FcmColors.gold,
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  label,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: FcmColors.silver,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.4,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // The value floats to the new reading on squad changes
-                // (FcmCountUp, the control card's own idiom).
-                FcmCountUp(
-                  key: ValueKey('chem-count-$_shown'),
-                  value: widget.percent,
-                  duration: const Duration(milliseconds: 700),
-                  format: (n) => '+$n%',
-                  style: TextStyle(
-                    color: valueColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -143,7 +143,7 @@ void main() {
     expect(mentalityFromScale(59), Mentality.positive);
   });
 
-  testWidgets('setup row closes with the team rating, actions below', (
+  testWidgets('scoreboard row: rating at the start, chemistry at the end', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(340, 900);
@@ -166,12 +166,14 @@ void main() {
     expect(find.text('MENTALITY'), findsOneWidget);
     expect(find.text('Auto Pick'), findsOneWidget);
 
-    // The rating ends the setup row: right of the TACTICS label
-    // (the setup row's first info value), on its line.
+    // The scoreboard row opens with the rating and closes with the
+    // chemistry, both on one line ABOVE the setup row.
     final tacticsLabel = tester.getTopLeft(find.text('TACTICS').first);
     final rating = tester.getTopLeft(find.text('TEAM RATING'));
-    expect(rating.dx, greaterThan(tacticsLabel.dx));
-    expect((rating.dy - tacticsLabel.dy).abs(), lessThan(4));
+    final chem = tester.getTopLeft(find.text('CHEMISTRY'));
+    expect(chem.dx, greaterThan(rating.dx));
+    expect((chem.dy - rating.dy).abs(), lessThan(6));
+    expect(rating.dy, lessThan(tacticsLabel.dy));
 
     // The formation dropdown sits under the setup row, and the action
     // buttons on the full-width row under it.
@@ -856,7 +858,7 @@ void main() {
   });
 
   testWidgets(
-    'T-0069/T-0080: the XI chemistry badge renders ON the pitch (+4%)',
+    'T-0069: the XI chemistry reads +4% in the control card, not on the pitch',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(340, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -874,49 +876,37 @@ void main() {
       };
       await tester.pumpWidget(_host(xi: xi));
       await tester.pumpAndSettle();
-      final pitchRect0 = tester.getRect(find.byType(SquadPitch));
 
-      // T-0094: the badge is a premium floating capsule — the label is
-      // now FULL (the 5-char truncation existed only because bare text
-      // had no background) and the value counts up beside it.
       expect(find.text('CHEMISTRY'), findsOneWidget);
       expect(find.text('+4%'), findsOneWidget);
-      // The capsule is pinned INSIDE the pitch widget, never on the
-      // control card surface.
+      // The reading sits on the control card, never on the pitch (where
+      // the cards used to cover it).
       final pitch = find.byType(SquadPitch);
       expect(
         find.descendant(of: pitch, matching: find.text('CHEMISTRY')),
-        findsOneWidget,
+        findsNothing,
       );
-      // The link icon rides the capsule.
-      expect(
-        find.descendant(of: pitch, matching: find.byIcon(Icons.link_rounded)),
-        findsOneWidget,
-      );
-      // Compact: the capsule stays inside the top margin strip.
-      final capsuleTop = tester.getTopLeft(
-        find.descendant(of: pitch, matching: find.text('CHEMISTRY')),
-      );
-      expect(capsuleTop.dy, lessThan(pitchRect0.top + 40));
+      // The link icon rides the label.
+      expect(find.byIcon(Icons.link_rounded), findsOneWidget);
     },
   );
 
   testWidgets(
-    'T-0080: an empty XI hides the chemistry badge entirely',
+    'an empty XI still shows the chemistry reading (+0%)',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(340, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      // No starting XI at all — the pitch renders its formation slots
-      // but no chemistry reading (the empty-collection case).
+      // No starting XI at all — the chemistry reading stays on the card
+      // at +0% (the empty-collection case).
       await tester.pumpWidget(_host());
       await tester.pumpAndSettle();
 
-      expect(find.text('CHEMISTRY'), findsNothing);
-      expect(find.text('+0%'), findsNothing);
-      expect(find.byIcon(Icons.link_rounded), findsNothing);
+      expect(find.text('CHEMISTRY'), findsOneWidget);
+      expect(find.text('+0%'), findsOneWidget);
+      expect(find.byIcon(Icons.link_rounded), findsOneWidget);
       expect(find.byType(SquadPitch), findsOneWidget);
     },
   );
@@ -971,30 +961,12 @@ void main() {
     expect(find.text('الكيمياء'), findsOneWidget);
     expect(find.text('+4%'), findsOneWidget);
     expect(find.text('CHEMISTRY'), findsNothing);
-    final pitch = find.byType(SquadPitch);
-    expect(
-      find.descendant(of: pitch, matching: find.text('الكيمياء')),
-      findsOneWidget,
-    );
     // The icon mirrors to the START side (right edge in RTL) — Row
     // order follows the text direction.
-    final iconDx = tester.getTopLeft(
-      find.descendant(of: pitch, matching: find.byIcon(Icons.link_rounded)),
-    ).dx;
-    final labelDx = tester.getTopLeft(
-      find.descendant(of: pitch, matching: find.text('الكيمياء')),
-    ).dx;
+    final iconDx = tester.getTopLeft(find.byIcon(Icons.link_rounded)).dx;
+    final labelDx = tester.getTopLeft(find.text('الكيمياء')).dx;
     expect(iconDx, greaterThan(labelDx),
         reason: 'RTL: the icon sits at the start (right) of the label');
-    // The capsule stays inside the pitch bounds in RTL too — centred,
-    // so the horizontal flip cannot push it out.
-    final badgeRect = tester.getRect(
-      find.descendant(of: pitch, matching: find.text('الكيمياء')),
-    );
-    final pitchRect = tester.getRect(pitch);
-    expect(badgeRect.left, greaterThan(pitchRect.left));
-    expect(badgeRect.right, lessThan(pitchRect.right));
-    expect(badgeRect.top, greaterThan(pitchRect.top));
   });
 
   testWidgets(
@@ -1009,8 +981,9 @@ void main() {
       await tester.pumpWidget(_host(showSetupSummary: false));
       await tester.pumpAndSettle();
 
-      // The row's three blocks are gone…
-      expect(find.text('TEAM RATING'), findsNothing);
+      // The setup row's blocks are gone (the scoreboard row with the
+      // team rating and chemistry stays on every surface)…
+      expect(find.text('TEAM RATING'), findsOneWidget);
       expect(find.text('MENTALITY'), findsNothing);
       expect(find.text('Balanced'), findsNothing);
       // …and TACTICS survives only as the control card's button.

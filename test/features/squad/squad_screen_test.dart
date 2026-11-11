@@ -98,10 +98,11 @@ void main() {
     expect(find.byType(TacticsSetupView), findsOneWidget);
     expect(find.byType(SquadPitch), findsOneWidget);
     expect(find.text('4-3-3'), findsWidgets);
-    // T-0092: the setup summary row is gone on the Team tab — no TEAM
-    // RATING info block, and TACTICS now counts only the control
-    // card's button.
-    expect(find.text('TEAM RATING'), findsNothing);
+    // T-0092: the setup summary row is gone on the Team tab — TACTICS
+    // counts only the control card's button; the scoreboard row (team
+    // rating + chemistry) stays.
+    expect(find.text('TEAM RATING'), findsOneWidget);
+    expect(find.text('CHEMISTRY'), findsOneWidget);
     expect(find.text('TACTICS'), findsOneWidget);
 
     // Bench and reserves stay visible even with nothing assigned: full
@@ -137,7 +138,8 @@ void main() {
 
       // None of the summary row's three blocks render: the label, the
       // localized mentality value, the rating block.
-      expect(find.text('TEAM RATING'), findsNothing);
+      expect(find.text('TEAM RATING'), findsOneWidget,
+          reason: 'the scoreboard row stays on every surface');
       expect(find.text('TACTICS'), findsOneWidget,
           reason: 'only the control card button remains');
       expect(find.text('MENTALITY'), findsNothing);
