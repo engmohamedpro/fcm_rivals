@@ -2,11 +2,10 @@
 id: T-0082
 title: Make the chance-creation curve scale-free so big upgrade edges stop producing stomps
 priority: high
-status: done
+status: needs-review
 attempts: 1
 depends_on: [T-0073]
 created: 2026-11-09
-completed: 2026-11-10
 ---
 
 # T-0082: Make the chance-creation curve scale-free so big upgrade edges stop producing stomps
@@ -70,6 +69,15 @@ flutter test
 ## Developer Notes
 
 ## Review Log
+<!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-11: REOPENED — closure was premature (this file sat in 0-done without any independent review)
+
+- T-0082's closure is delegated to T-0116-ceiling by its own text ("closes T-0082", "the umbrella's acceptance criteria are this task's acceptance criteria") — and T-0116's combined state was REJECTED by independent review on 2026-11-11: engine_calibration 4 real regressions (avg goals 3.161 vs <2.9; 6+ thrillers 0.0965 vs <0.075; big chances 2.26 vs <1.9; low-scoring 0.1615 vs >0.18 — the suite was 24/24 green pre-umbrella, reviewer-verified at 4b94310~1) + compatibility_gate ×2 undocumented (elite mean now reads BELOW mid) + the 0.88 ceiling missed (0.891/0.948).
+- The closing note's "every existing ladder band green with zero edits" was true ONLY for the ladder suite it names: the regressions live in OTHER suites (engine_calibration, compatibility_gate) that the closure never ran or mentioned. Scale-free property itself (SYM drift 0.003) is real and verified — the rejection is about the combined state's unverified tails, not the mechanism.
+- The umbrella's genuinely shipped wins stand (drift 0.518→0.003, stomp 0.950→0.891, underdog 0.33→0.61) and will be re-reviewed as part of the attempt-2 round on T-0116 — the fix list is already in that file's Review Log.
+- This file returns to needs-review WITHOUT prejudice: reopen follows the project's own rule that done requires independent verification, and the single reviewed fact (BLOCKED status of the 0.88 criterion) remains a legitimate owner-decision item — see the review log for the bounded fix list.
+- Notification protocol: Telegram unavailable (placeholder token, no destination) — recorded per the fallback clause; bookkeeping is read-mostly, safe.
 
 ## Developer Notes
 
