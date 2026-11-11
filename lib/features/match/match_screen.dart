@@ -469,6 +469,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                             MatchHeader(
                               home: session.homeTeamName,
                               away: session.awayTeamName,
+                              homeCrest: session.homeCrest,
+                              awayCrest: session.awayCrest,
                               scoreHome: state.scoreHome,
                               scoreAway: state.scoreAway,
                               minute: state.minute,

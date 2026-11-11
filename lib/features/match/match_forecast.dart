@@ -12,6 +12,7 @@
 /// the module stays unit-testable (GDD development rule 4).
 library;
 
+import '../../core/domain/crest.dart' show CrestSpec;
 import 'chemistry.dart';
 import 'dart:math' as math;
 
@@ -98,12 +99,19 @@ class PreMatchData {
     this.userTactics = const TeamTactics(),
     this.userMentality = Mentality.balanced,
     this.userSquad = const {},
+    this.userCrest,
+    this.opponentCrest,
   });
 
   /// e.g. 'League · Round 3'.
   final String fixtureLabel;
   final String userClubName;
   final String opponentClubName;
+
+  /// Both clubs' crests — shown instead of initials in the analysis
+  /// header. Null falls back to the initials circle.
+  final CrestSpec? userCrest;
+  final CrestSpec? opponentCrest;
 
   /// Whether the user hosts (drives the HOME/AWAY chip).
   final bool userAtHome;

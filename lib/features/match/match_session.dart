@@ -8,6 +8,7 @@
 library;
 
 import '../../core/database/app_database.dart' as db;
+import '../../core/domain/crest.dart' show CrestSpec;
 import '../collection/collection_store.dart';
 import '../economy/economy_engine.dart';
 import '../../core/domain/players.dart';
@@ -51,8 +52,10 @@ class MatchSession {
     this._opponentName,
     this._opponentTeamId,
     this._homeName,
-    this._awayName,
-  );
+    this._awayName, {
+    this.homeCrest,
+    this.awayCrest,
+  });
 
   final MatchEngine engine;
   final CollectionStore _store;
@@ -67,6 +70,11 @@ class MatchSession {
   /// live commentary (the user is NOT always the home side).
   final String _homeName;
   final String _awayName;
+
+  /// Crests in engine home/away order for the live header; null (a
+  /// synthetic friendly opponent) falls back to initials.
+  final CrestSpec? homeCrest;
+  final CrestSpec? awayCrest;
 
   /// Creates a session from the user's current squad (FR-025: player
   /// attributes and stamina feed the engine, GDD 12.2) against a synthetic
@@ -118,6 +126,7 @@ class MatchSession {
       -1,
       inputs.$2.name,
       opponentName,
+      homeCrest: CollectionStore.crestOf(inputs.$2),
     );
   }
 
@@ -181,6 +190,8 @@ class MatchSession {
       opponentClub.id,
       userAtHome ? inputs.$2.name : opponentClub.name,
       userAtHome ? opponentClub.name : inputs.$2.name,
+      homeCrest: CollectionStore.crestOf(userAtHome ? inputs.$2 : opponentClub),
+      awayCrest: CollectionStore.crestOf(userAtHome ? opponentClub : inputs.$2),
     );
   }
 

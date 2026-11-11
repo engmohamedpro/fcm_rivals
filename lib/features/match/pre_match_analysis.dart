@@ -14,6 +14,8 @@ import 'package:flutter/material.dart';
 
 import '../squad/squad_engine.dart' show PlayerCard;
 import '../../core/domain/players.dart';
+import '../../core/domain/crest.dart' show CrestSpec;
+import '../../core/ui/fcm_club_badge.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/injury_badge.dart';
@@ -213,6 +215,7 @@ class _OpponentHeader extends StatelessWidget {
                     position: d.userAtHome
                         ? d.userPosition
                         : d.opponentPosition,
+                    crest: d.userAtHome ? d.userCrest : d.opponentCrest,
                     isUser: d.userAtHome,
                   ),
                 ),
@@ -236,6 +239,7 @@ class _OpponentHeader extends StatelessWidget {
                     position: d.userAtHome
                         ? d.opponentPosition
                         : d.userPosition,
+                    crest: d.userAtHome ? d.opponentCrest : d.userCrest,
                     isUser: !d.userAtHome,
                   ),
                 ),
@@ -314,60 +318,27 @@ class _OpponentHeader extends StatelessWidget {
   }
 }
 
-/// One side of the team-vs-team header (T-0102): the club's initials
-/// circle, name and table position stacked — compact, gold-accented
-/// when it is the user's club, steel otherwise.
+/// One side of the team-vs-team header (T-0102): the club's crest,
+/// name and table position stacked — compact, gold-accented when it is
+/// the user's club, steel otherwise.
 class _TeamChip extends StatelessWidget {
   const _TeamChip({
     required this.clubName,
     required this.position,
+    required this.crest,
     required this.isUser,
   });
 
   final String clubName;
   final int position;
+  final CrestSpec? crest;
   final bool isUser;
 
   @override
   Widget build(BuildContext context) {
-    final accent = isUser ? FcmColors.gold : FcmColors.silver;
-    final initials = clubName
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
     return Column(
       children: [
-        Container(
-          width: 46,
-          height: 46,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: FcmColors.steelGradient,
-            border: Border.all(
-              color: accent.withValues(alpha: isUser ? 0.9 : 0.5),
-              width: isUser ? 2 : 1.5,
-            ),
-            boxShadow: [
-              if (isUser)
-                BoxShadow(
-                  color: FcmColors.gold.withValues(alpha: 0.30),
-                  blurRadius: 16,
-                ),
-            ],
-          ),
-          child: FitText(
-            initials,
-            align: Alignment.center,
-            style: TextStyle(
-              color: isUser ? FcmColors.goldSoft : FcmColors.silver,
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
-            ),
-          ),
-        ),
+        FcmClubBadge(name: clubName, crest: crest, size: 54, isUser: isUser),
         const SizedBox(height: 6),
         Text(
           clubName,

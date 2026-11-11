@@ -12,6 +12,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../core/domain/crest.dart' show CrestSpec;
+import '../../core/ui/fcm_club_badge.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import 'momentum_bar.dart';
@@ -46,10 +48,17 @@ class MatchHeader extends StatelessWidget {
     this.homeColor = FcmColors.gold,
     this.awayColor = opponentMomentumColor,
     this.fixtureLabel,
+    this.homeCrest,
+    this.awayCrest,
   });
 
   final String home;
   final String away;
+
+  /// The clubs' crests, shown instead of initials; null falls back to
+  /// the initials circle.
+  final CrestSpec? homeCrest;
+  final CrestSpec? awayCrest;
   final int scoreHome;
   final int scoreAway;
   final int minute;
@@ -109,7 +118,11 @@ class MatchHeader extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _TeamChip(name: home, isUser: userIsHome),
+                  child: _TeamChip(
+                    name: home,
+                    crest: homeCrest,
+                    isUser: userIsHome,
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -137,7 +150,11 @@ class MatchHeader extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: _TeamChip(name: away, isUser: !userIsHome),
+                  child: _TeamChip(
+                    name: away,
+                    crest: awayCrest,
+                    isUser: !userIsHome,
+                  ),
                 ),
               ],
             ),
@@ -199,45 +216,26 @@ class MatchHeader extends StatelessWidget {
   }
 }
 
-/// Round crest chip + club name, one per side of the score. Horizontal —
+/// Club crest + club name, one per side of the score. Horizontal —
 /// the old vertical column (crest over name) paid two lines for what
 /// this says in one.
 class _TeamChip extends StatelessWidget {
-  const _TeamChip({required this.name, required this.isUser});
+  const _TeamChip({
+    required this.name,
+    required this.crest,
+    required this.isUser,
+  });
 
   final String name;
+  final CrestSpec? crest;
   final bool isUser;
 
   @override
   Widget build(BuildContext context) {
-    final initials = name
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 30,
-          height: 30,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: isUser ? FcmColors.goldGradient : FcmColors.steelGradient,
-            border: Border.all(color: Colors.white24),
-          ),
-          child: FitText(
-            initials,
-            align: Alignment.center,
-            style: TextStyle(
-              color: isUser ? FcmColors.ink : FcmColors.goldSoft,
-              fontWeight: FontWeight.w900,
-              fontSize: 11,
-            ),
-          ),
-        ),
+        FcmClubBadge(name: name, crest: crest, size: 34, isUser: isUser),
         const SizedBox(width: 6),
         Flexible(
           child: FitText(

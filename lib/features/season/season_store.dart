@@ -380,6 +380,8 @@ class SeasonStore {
       userTactics: teamTactics,
       userMentality: mentality,
       userSquad: squad,
+      userCrest: CollectionStore.crestOf(club),
+      opponentCrest: CollectionStore.crestOf(opponent.club),
     );
   }
 
