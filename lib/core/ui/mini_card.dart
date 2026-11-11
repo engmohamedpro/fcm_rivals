@@ -15,11 +15,13 @@ import 'injury_badge.dart';
 import 'player_card_painters.dart';
 
 /// Compact card for the pitch and bench: the face mirrors the big
-/// card — the identity stack (rating → position → flag → crest) down
-/// the left with the player portrait filling the band beside it — and
-/// under the shield: surname, an optional three-column stat row and a
-/// colour-coded stamina bar. [width] is the shield width; everything
-/// else stacks under it.
+/// card — the rating column (OVR → position) down the left with the
+/// player portrait beside it, and the identity pair (flag + crest)
+/// centred on the glass panel, the band the big card gives to the name
+/// and attributes the mini never shows — then under the shield:
+/// surname, an optional three-column stat row and a colour-coded
+/// stamina bar. [width] is the shield width; everything else stacks
+/// under it.
 class FcmMiniCard extends StatelessWidget {
   const FcmMiniCard({
     super.key,
@@ -45,19 +47,19 @@ class FcmMiniCard extends StatelessWidget {
   final CardRarity rarity;
   final double width;
 
-  /// Country flag emoji in the identity stack (T-0066), mirroring the
-  /// big card's OVR → position → flag order. Null renders nothing — the
-  /// layout stays byte-identical for unset callers and ghosts.
+  /// Country flag emoji (T-0066) — beside the crest in the centred
+  /// identity pair on the glass panel. Null renders the pair without
+  /// it; ghosts never show one at all.
   final String? flag;
 
   /// Player portrait (dataset v3): the network photo fills the band
-  /// beside the identity stack, over the painted silhouette — the same
+  /// beside the rating column, over the painted silhouette — the same
   /// treatment as the big card, scaled down. Null or empty keeps the
   /// silhouette; ghosts never pass one.
   final String? imageUrl;
 
-  /// Club crest under the flag (dataset v3) — the identity stack's last
-  /// step, mirroring the big card. Null or empty renders nothing.
+  /// Club crest (dataset v3) — beside the flag in the centred identity
+  /// pair on the glass panel. Null or empty renders nothing.
   final String? clubCrestUrl;
 
   /// Red outline when the player is out of position.
@@ -149,15 +151,18 @@ class FcmMiniCard extends StatelessWidget {
                       start: 2,
                       child: _UpgradableMark(size: math.max(11, width * 0.21)),
                     ),
-                  // The face mirrors the big card: the identity stack
-                  // (OVR → position → flag → crest) down the left, the
-                  // portrait filling the band beside it. The ghost draws
-                  // no data layer at all — it stays wordless.
-                  if (!ghost)
+                  // The face mirrors the big card, mini-sized: the rating
+                  // column (OVR → position) down the left with the
+                  // portrait filling the band beside it, and the identity
+                  // pair (flag + crest) centred in the glass panel — the
+                  // band where the big card carries the name and
+                  // attributes. The mini never shows those, so the pair
+                  // works that space instead of leaving it empty.
+                  if (!ghost) ...[
                     Positioned(
                       left: 0,
                       right: width * 0.05,
-                      top: h * 0.105,
+                      top: h * 0.10,
                       bottom: h * 0.45,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +182,7 @@ class FcmMiniCard extends StatelessWidget {
                                       softWrap: false,
                                       style: TextStyle(
                                         color: ink,
-                                        fontSize: width * 0.21,
+                                        fontSize: width * 0.26,
                                         fontWeight: FontWeight.w900,
                                         height: 1,
                                       ),
@@ -191,39 +196,12 @@ class FcmMiniCard extends StatelessWidget {
                                       softWrap: false,
                                       style: TextStyle(
                                         color: ink.withValues(alpha: 0.9),
-                                        fontSize: width * 0.095,
+                                        fontSize: width * 0.115,
                                         fontWeight: FontWeight.w800,
                                         height: 1.1,
                                       ),
                                     ),
                                   ),
-                                  if (flag != null) ...[
-                                    SizedBox(height: width * 0.015),
-                                    Text(
-                                      flag!,
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      style: TextStyle(
-                                        fontSize: width * 0.105,
-                                      ),
-                                    ),
-                                  ],
-                                  if (clubCrestUrl != null &&
-                                      clubCrestUrl!.isNotEmpty) ...[
-                                    SizedBox(height: width * 0.015),
-                                    SizedBox(
-                                      width: width * 0.30,
-                                      child: Image.network(
-                                        clubCrestUrl!,
-                                        height: width * 0.11,
-                                        fit: BoxFit.contain,
-                                        filterQuality: FilterQuality.medium,
-                                        gaplessPlayback: true,
-                                        errorBuilder: (_, _, _) =>
-                                            const SizedBox.shrink(),
-                                      ),
-                                    ),
-                                  ],
                                 ],
                               ),
                             ),
@@ -265,6 +243,48 @@ class FcmMiniCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // The identity pair rides the glass panel, centred:
+                    // the flag beside the crest, both at sizes the pitch
+                    // can actually resolve. Only what exists renders —
+                    // one of the pair, or nothing at all.
+                    if (flag != null ||
+                        (clubCrestUrl != null && clubCrestUrl!.isNotEmpty))
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: h * 0.645,
+                        height: h * 0.16,
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (flag != null)
+                                Text(
+                                  flag!,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  style: TextStyle(fontSize: width * 0.14),
+                                ),
+                              if (flag != null &&
+                                  clubCrestUrl != null &&
+                                  clubCrestUrl!.isNotEmpty)
+                                SizedBox(width: width * 0.06),
+                              if (clubCrestUrl != null &&
+                                  clubCrestUrl!.isNotEmpty)
+                                Image.network(
+                                  clubCrestUrl!,
+                                  height: width * 0.15,
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.medium,
+                                  gaplessPlayback: true,
+                                  errorBuilder: (_, _, _) =>
+                                      const SizedBox.shrink(),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
