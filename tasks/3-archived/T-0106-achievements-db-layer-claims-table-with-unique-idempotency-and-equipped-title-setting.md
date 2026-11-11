@@ -2,11 +2,11 @@
 id: T-0106
 title: Achievements DB layer — claims table with UNIQUE idempotency + equipped-title setting (schema v14)
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0105]
 created: 2026-11-10
-completed:
+completed: 2026-11-11
 ---
 
 # T-0106: Achievements DB layer — claims table with UNIQUE idempotency + equipped-title setting (schema v14)
@@ -33,9 +33,9 @@ Claiming an achievement tier is atomic, idempotent and crash-safe at the DATABAS
 - Any catalog content change (T-0105 owns the catalog).
 
 ## Acceptance Criteria
-- [ ] UNIQUE(clubId, achievementId, tierKey) enforced at the DB level — the test proves a duplicate insert cannot land.
-- [ ] v13 → v14 migration preserves every pre-existing row; fresh installs create v14 cleanly.
-- [ ] `flutter analyze` zero warnings; full `flutter test` green.
+- [x] UNIQUE(clubId, achievementId, tierKey) enforced at the DB level — the test proves a duplicate insert cannot land.
+- [x] v13 → v14 migration preserves every pre-existing row; fresh installs create v14 cleanly.
+- [x] `flutter analyze` zero warnings; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -126,3 +126,10 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-11, attempt 1: PASS
+- Ran: `flutter analyze` (the same 2 pre-existing baseline issues only — fcm_crest.dart:269, tactic_slider_row.dart:16, zero new), `flutter test test/features/achievements/` (43/43 green: catalog 15 + repository 6 + v14 migration 2 + v12 2 + coin_ops 4 + migration_retroactivity/KILL-CLAIM 14), full `flutter test` (964+ passing; 16 failures IDENTICAL to the T-0105 review's verified baseline — 9 pre-existing on db628d6 + 7 from the documented T-0082 umbrella BLOCK record; set-diff vs the T-0105 HEAD failure list is EMPTY: zero new failures from T-0106).
+- AC verified independently against the real code: (1) `AchievementClaims` declares drift `uniqueKeys` [{clubId, achievementId, tierKey}] (app_database.dart:318) and the idempotency test pins the actual SQLite refusal (throws with 'UNIQUE constraint failed' + table holds exactly one row) — not an advisory guard. (2) The v13→v14 test hand-crafts a real raw-sqlite v13 DB (club + settings + ledger rows, user_version=13), migrates, and asserts byte-for-byte snapshots (matchSpeed 3, locale 'ar', coins, ledger row) PLUS new writes landing beside them; fresh v14 create pinned at schemaVersion 14 with the UNIQUE constraint live. The v14 step's PRAGMA existence guards mirror the v13 precedent. (3) tierKey as threshold-canonical-string, rewardCoins audit column, equippedTitle FK-less nullable — all per the task spec. Repository contains NO coin logic (T-0108's job).
+- Out of scope respected: no claim transaction, no providers/UI; the only non-feature edits are schema-version pin updates in older migration tests (12→14) + the v11 fixture gaining the faithful user_settings table — legitimate consequences of the schema bump, documented in Developer Notes.
+- Notification protocol: Telegram unavailable (placeholder token, no destination) — recorded per the fallback clause; review proceeded (read-mostly, safe).
+- Notes: claimedAt second-precision (drift integer DateTime mode) documented; drift's UNIQUE exception pinned by message string is the stable cross-version surface — T-0108 should catch broadly, as the developer also noted.
