@@ -192,10 +192,9 @@ class SquadDraggable extends StatelessWidget {
 }
 
 /// Makes [child] a place a held player can be dropped. While a card is
-/// held, every place that would accept him glows green and every refused
-/// one dims; under the finger the ring turns gold (will swap) or red
-/// (refused — the drop then explains why). A plain pass-through when no
-/// [SquadDragScope] is above.
+/// held, every place that would refuse him is hidden and the places that
+/// accept him stay as they are; under the finger the ring turns gold
+/// (will swap). A plain pass-through when no [SquadDragScope] is above.
 class SquadDropZone extends StatelessWidget {
   const SquadDropZone({
     super.key,
@@ -230,14 +229,17 @@ class SquadDropZone extends StatelessWidget {
           if (dragged != null && !_isSelf(dragged)) {
             final ok = scope.swapping.rejection(dragged, target) == null;
             if (ok) {
-              ring = hovering
-                  ? FcmColors.gold
-                  : FcmColors.success.withValues(alpha: 0.6);
-              ringWidth = hovering ? 2.5 : 1.5;
-            } else {
-              ring = hovering ? FcmColors.danger : null;
-              ringWidth = 2.5;
-              fade = hovering ? 1.0 : 0.55;
+              // No ring on the places he can go to — only the gold ring
+              // on the one under the finger.
+              if (hovering) {
+                ring = FcmColors.gold;
+                ringWidth = 2.5;
+              }
+            } else if (target.zone != SquadZone.reserves) {
+              // The places he cannot go to disappear while he is held.
+              // (The pool strip is exempt: it is also where the held
+              // card may come from, and hiding it would hide the source.)
+              fade = 0.0;
             }
           }
           return AnimatedOpacity(
