@@ -407,6 +407,8 @@ class _PlayerRow extends StatelessWidget {
                 overall: player.baseStats.overall,
                 position: player.position.code,
                 flag: flagEmojiFor(player.nationality),
+                imageUrl: player.imageUrl,
+                clubCrestUrl: player.clubCrestUrl,
                 name: player.name.split(' ').last,
                 rarity: rarity,
                 width: 56,

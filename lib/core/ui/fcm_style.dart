@@ -152,14 +152,21 @@ enum CardClass {
       : CardClass.standard;
 
   /// Premium red palette (T-0049) — meaningful only for [premium]
-  /// (call sites branch on the class before reading it): crimson sheen
-  /// into champion crimson into deep oxblood for the face, a crimson
+  /// (call sites branch on the class before reading it): warm salmon
+  /// sheen into deep champion crimson into near-black oxblood for the
+  /// face — the 2026-11 restyle darkened the whole ladder a notch (the
+  /// first cut read pink-bright next to the gold tier) — a hot crimson
   /// glow accent, the near-black maroon ink that stays readable on it,
   /// and intensity 2.5 — one notch above the legendary 2.0 show.
   List<Color> get faceGradient =>
-      const [Color(0xFFFFD9CF), Color(0xFFDC2436), Color(0xFF4A0409)];
+      const [Color(0xFFE89079), Color(0xFFB01524), Color(0xFF2E0208)];
 
-  Color get accent => const Color(0xFFF43F5E);
+  Color get accent => const Color(0xFFE8404F);
+
+  /// The regalia gold of the premium frame and pattern: hot champagne
+  /// that reads on the oxblood face and stays distinct from the
+  /// legendary accent (it crowns the card, it never glows).
+  Color get frameGold => const Color(0xFFF2C14E);
 
   Color get ink => const Color(0xFF2B0206);
 

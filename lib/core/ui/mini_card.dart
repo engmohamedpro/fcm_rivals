@@ -14,9 +14,12 @@ import 'fcm_widgets.dart' show ratingColor, staminaColor;
 import 'injury_badge.dart';
 import 'player_card_painters.dart';
 
-/// Compact card for the pitch and bench: rating, position, surname, an
-/// optional three-column stat row and a colour-coded stamina bar.
-/// [width] is the shield width; everything else stacks under it.
+/// Compact card for the pitch and bench: the face mirrors the big
+/// card — the identity stack (rating → position → flag → crest) down
+/// the left with the player portrait filling the band beside it — and
+/// under the shield: surname, an optional three-column stat row and a
+/// colour-coded stamina bar. [width] is the shield width; everything
+/// else stacks under it.
 class FcmMiniCard extends StatelessWidget {
   const FcmMiniCard({
     super.key,
@@ -26,6 +29,8 @@ class FcmMiniCard extends StatelessWidget {
     required this.rarity,
     this.width = 56,
     this.flag,
+    this.imageUrl,
+    this.clubCrestUrl,
     this.warn = false,
     this.stamina,
     this.stats,
@@ -40,10 +45,20 @@ class FcmMiniCard extends StatelessWidget {
   final CardRarity rarity;
   final double width;
 
-  /// Country flag emoji under the position code (T-0066), mirroring the
+  /// Country flag emoji in the identity stack (T-0066), mirroring the
   /// big card's OVR → position → flag order. Null renders nothing — the
   /// layout stays byte-identical for unset callers and ghosts.
   final String? flag;
+
+  /// Player portrait (dataset v3): the network photo fills the band
+  /// beside the identity stack, over the painted silhouette — the same
+  /// treatment as the big card, scaled down. Null or empty keeps the
+  /// silhouette; ghosts never pass one.
+  final String? imageUrl;
+
+  /// Club crest under the flag (dataset v3) — the identity stack's last
+  /// step, mirroring the big card. Null or empty renders nothing.
+  final String? clubCrestUrl;
 
   /// Red outline when the player is out of position.
   final bool warn;
@@ -134,51 +149,119 @@ class FcmMiniCard extends StatelessWidget {
                       start: 2,
                       child: _UpgradableMark(size: math.max(11, width * 0.21)),
                     ),
-                  // The ghost draws no overall and no position — the card
-                  // keeps the text slots' footprint but stays wordless.
+                  // The face mirrors the big card: the identity stack
+                  // (OVR → position → flag → crest) down the left, the
+                  // portrait filling the band beside it. The ghost draws
+                  // no data layer at all — it stays wordless.
                   if (!ghost)
                     Positioned(
                       left: 0,
-                      right: 0,
-                      top: h * 0.17,
-                      child: Column(
+                      right: width * 0.05,
+                      top: h * 0.105,
+                      bottom: h * 0.45,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              '$overall',
-                              maxLines: 1,
-                              softWrap: false,
-                              style: TextStyle(
-                                color: ink,
-                                fontSize: width * 0.36,
-                                fontWeight: FontWeight.w900,
-                                height: 1,
+                          Padding(
+                            padding: EdgeInsets.only(left: width * 0.05),
+                            child: SizedBox(
+                              width: width * 0.30,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      '$overall',
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: TextStyle(
+                                        color: ink,
+                                        fontSize: width * 0.21,
+                                        fontWeight: FontWeight.w900,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      position,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: TextStyle(
+                                        color: ink.withValues(alpha: 0.9),
+                                        fontSize: width * 0.095,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                  ),
+                                  if (flag != null) ...[
+                                    SizedBox(height: width * 0.015),
+                                    Text(
+                                      flag!,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: TextStyle(
+                                        fontSize: width * 0.105,
+                                      ),
+                                    ),
+                                  ],
+                                  if (clubCrestUrl != null &&
+                                      clubCrestUrl!.isNotEmpty) ...[
+                                    SizedBox(height: width * 0.015),
+                                    SizedBox(
+                                      width: width * 0.30,
+                                      child: Image.network(
+                                        clubCrestUrl!,
+                                        height: width * 0.11,
+                                        fit: BoxFit.contain,
+                                        filterQuality: FilterQuality.medium,
+                                        gaplessPlayback: true,
+                                        errorBuilder: (_, _, _) =>
+                                            const SizedBox.shrink(),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              position,
-                              maxLines: 1,
-                              softWrap: false,
-                              style: TextStyle(
-                                color: ink.withValues(alpha: 0.9),
-                                fontSize: width * 0.2,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
+                          // The portrait band: the photo over the painted
+                          // silhouette, fading in when it loads. An empty
+                          // URL or a failed download keeps the silhouette.
+                          Expanded(
+                            child: (imageUrl != null &&
+                                    imageUrl!.isNotEmpty)
+                                ? Image.network(
+                                    imageUrl!,
+                                    fit: BoxFit.contain,
+                                    alignment: const Alignment(0.2, 1),
+                                    filterQuality: FilterQuality.medium,
+                                    gaplessPlayback: true,
+                                    frameBuilder: (
+                                      context,
+                                      child,
+                                      frame,
+                                      wasSynchronouslyLoaded,
+                                    ) {
+                                      if (wasSynchronouslyLoaded) {
+                                        return child;
+                                      }
+                                      return AnimatedOpacity(
+                                        opacity: frame == null ? 0.0 : 1.0,
+                                        duration: const Duration(
+                                          milliseconds: 180,
+                                        ),
+                                        child: child,
+                                      );
+                                    },
+                                    errorBuilder: (_, _, _) =>
+                                        const SizedBox.shrink(),
+                                  )
+                                : const SizedBox.shrink(),
                           ),
-                          if (flag != null) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              flag!,
-                              maxLines: 1,
-                              softWrap: false,
-                              style: TextStyle(fontSize: width * 0.20),
-                            ),
-                          ],
                         ],
                       ),
                     ),

@@ -105,6 +105,7 @@ class CardFacePainter extends CustomPainter {
     final path = cardPath(size);
     final g = _faceGradient;
     final hair = math.max(0.5, w * 0.006);
+    final premium = cardClass == CardClass.premium;
 
     // Aura: a soft halo hugging the silhouette (not a square box).
     if (glow > 0) {
@@ -127,6 +128,22 @@ class CardFacePainter extends CustomPainter {
           end: Alignment.bottomRight,
           colors: [Colors.white, g[0], g[1], g[2], g[1]],
           stops: const [0.0, 0.22, 0.5, 0.82, 1.0],
+        ).createShader(rect),
+    );
+
+    // Milled bezel: a catch-light band sweeping the metal.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [
+            Colors.white.withValues(alpha: 0.0),
+            Colors.white.withValues(alpha: 0.16),
+            Colors.white.withValues(alpha: 0.0),
+          ],
+          stops: const [0.34, 0.44, 0.60],
         ).createShader(rect),
     );
 
@@ -169,6 +186,20 @@ class CardFacePainter extends CustomPainter {
       phase: phase,
     );
 
+    // Bottom vignette: grounds the glass panel in the face's depth.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(0.0, 1.7),
+          radius: 1.2,
+          colors: [
+            Colors.black.withValues(alpha: 0.32),
+            Colors.black.withValues(alpha: 0.0),
+          ],
+        ).createShader(rect),
+    );
+
     // Soft top light.
     canvas.drawRect(
       rect,
@@ -182,6 +213,20 @@ class CardFacePainter extends CustomPainter {
           ],
         ).createShader(rect),
     );
+
+    // Security-print chevrons under the top edge.
+    final chevron = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = hair
+      ..color = Colors.white.withValues(alpha: 0.07);
+    final chevStep = w * 0.05;
+    for (var x = -chevStep; x < w + chevStep; x += chevStep) {
+      canvas.drawLine(
+        Offset(x, h * 0.030),
+        Offset(x + chevStep * 0.5, h * 0.018),
+        chevron,
+      );
+    }
 
     // Player silhouette (head + shoulders), right of centre.
     final cx = w * 0.60;
@@ -233,14 +278,16 @@ class CardFacePainter extends CustomPainter {
         ).createShader(panel),
     );
     final edge = Rect.fromLTWH(0, panelTop - hair, w, hair * 2);
+    // Premium regalia: the panel's light edge carries the frame's gold.
+    final edgeColor = premium ? cardClass.frameGold : g[0];
     canvas.drawRect(
       edge,
       Paint()
         ..shader = LinearGradient(
           colors: [
-            g[0].withValues(alpha: 0.0),
-            g[0],
-            g[0].withValues(alpha: 0.0),
+            edgeColor.withValues(alpha: 0.0),
+            edgeColor,
+            edgeColor.withValues(alpha: 0.0),
           ],
         ).createShader(edge),
     );
@@ -325,7 +372,10 @@ class CardFacePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = hair
-        ..color = Colors.white.withValues(alpha: 0.30),
+          // Premium regalia: the inner keyline carries the frame's gold.
+          ..color = premium
+              ? cardClass.frameGold.withValues(alpha: 0.60)
+              : Colors.white.withValues(alpha: 0.30),
     );
     canvas.restore();
     paintRimPulse(

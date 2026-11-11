@@ -9,8 +9,10 @@
 ///   angular shards and twinkling glints.
 /// * LEGENDARY (gold) — royal crest: a slowly turning double sunburst,
 ///   laurel wings hugging both sides and drifting golden sparkles.
-/// * PREMIUM 90+ (crimson) — the legendary crest charged with branching
-///   lightning veins and rising embers.
+/// * PREMIUM 90+ (oxblood) — the regalia line over the legendary crest:
+///   a gold guilloché weave, a double silhouette keyline crowned with
+///   diamond studs, gold lightning veins crawling the edges and rising
+///   gold embers.
 ///
 /// Everything is drawn in proportion to the card size (it is used from the
 /// 56px pitch shield up to the 320px reveal) and stays cheap: strokes and
@@ -37,8 +39,10 @@ void paintRarityArt(
 }) {
   final premium = cardClass == CardClass.premium;
   if (premium) {
+    _premiumPattern(canvas, size, cardClass);
     _legendaryArt(canvas, size, accent, gradient, phase);
-    _premiumVeins(canvas, size, accent, phase);
+    _premiumFrame(canvas, size, cardClass);
+    _premiumVeins(canvas, size, accent, cardClass, phase);
     return;
   }
   switch (rarity) {
@@ -332,11 +336,105 @@ void _legendaryArt(
 
 // ------------------------------------------------------------- PREMIUM ---
 
-void _premiumVeins(Canvas canvas, Size size, Color accent, double? phase) {
+/// The card outline scaled [inset] px inside [s] — mirrors cardPath so
+/// the regalia frame can follow the silhouette without importing the
+/// painters file (they import this one).
+Path _regaliaOutline(Size s, double inset) {
+  final dx = inset, dy = inset;
+  final w = s.width - inset * 2, h = s.height - inset * 2;
+  final c = w * 0.12;
+  return Path()
+    ..moveTo(dx + c, dy)
+    ..lineTo(dx + w - c, dy)
+    ..lineTo(dx + w, dy + c)
+    ..lineTo(dx + w, dy + h * 0.865)
+    ..quadraticBezierTo(dx + w, dy + h * 0.935, dx + w * 0.5, dy + h)
+    ..quadraticBezierTo(dx, dy + h * 0.935, dx, dy + h * 0.865)
+    ..lineTo(dx, dy + c)
+    ..close();
+}
+
+/// The guilloché weave: two counter-diagonal line families — gold over
+/// shade — finer than the face lattice, so the premium face reads as
+/// championship banknote stock even between the sunburst rays.
+void _premiumPattern(Canvas canvas, Size size, CardClass cardClass) {
+  final w = size.width, h = size.height;
+  final hair = math.max(0.5, w * 0.006);
+  final gold = Paint()
+    ..strokeWidth = hair
+    ..color = cardClass.frameGold.withValues(alpha: 0.10);
+  final shade = Paint()
+    ..strokeWidth = hair
+    ..color = Colors.black.withValues(alpha: 0.10);
+  final step = w * 0.085;
+  for (var x = -h; x < w + h; x += step) {
+    canvas.drawLine(Offset(x, h), Offset(x + h, 0), gold);
+    canvas.drawLine(Offset(x, 0), Offset(x + h, h), shade);
+  }
+}
+
+/// The regalia frame: a double gold keyline following the card
+/// silhouette, crowned by diamond studs — a larger one on each top
+/// chamfer corner and a pair flanking the bezel gem along the top
+/// edge (the gem itself keeps the crown's centre).
+void _premiumFrame(Canvas canvas, Size size, CardClass cardClass) {
+  final w = size.width;
+  final hair = math.max(0.5, w * 0.006);
+  final gold = cardClass.frameGold;
+
+  canvas.drawPath(
+    _regaliaOutline(size, w * 0.016),
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.0, w * 0.010)
+      ..strokeJoin = StrokeJoin.round
+      ..color = gold.withValues(alpha: 0.85),
+  );
+  canvas.drawPath(
+    _regaliaOutline(size, w * 0.034),
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = hair
+      ..color = gold.withValues(alpha: 0.30),
+  );
+
+  void stud(Offset c, double r) {
+    final p = Path()
+      ..moveTo(c.dx, c.dy - r)
+      ..lineTo(c.dx + r, c.dy)
+      ..lineTo(c.dx, c.dy + r)
+      ..lineTo(c.dx - r, c.dy)
+      ..close();
+    canvas.drawPath(p, Paint()..color = gold.withValues(alpha: 0.95));
+    canvas.drawPath(
+      p,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = hair
+        ..color = Colors.black.withValues(alpha: 0.35),
+    );
+  }
+
+  // The chamfer corners of the outline (inset w*0.016): each stud sits
+  // on the diagonal edge's midpoint.
+  stud(Offset(w * 0.074, w * 0.074), w * 0.016);
+  stud(Offset(w * 0.926, w * 0.074), w * 0.016);
+  stud(Offset(w * 0.33, w * 0.016), w * 0.011);
+  stud(Offset(w * 0.67, w * 0.016), w * 0.011);
+}
+
+void _premiumVeins(
+  Canvas canvas,
+  Size size,
+  Color accent,
+  CardClass cardClass,
+  double? phase,
+) {
   final w = size.width, h = size.height;
   final hair = math.max(0.5, w * 0.006);
 
-  // Branching lightning veins climbing both edges; flicker with the phase.
+  // Branching lightning veins climbing both edges; flicker with the
+  // phase. Crimson aura under a regalia-gold core.
   const bolt = <(double, double)>[
     (0.05, 0.54),
     (0.14, 0.44),
@@ -376,7 +474,7 @@ void _premiumVeins(Canvas canvas, Size size, Color accent, double? phase) {
           ..style = PaintingStyle.stroke
           ..strokeWidth = hair * 4.5
           ..strokeJoin = StrokeJoin.round
-          ..color = accent.withValues(alpha: 0.30 * flick),
+          ..color = accent.withValues(alpha: 0.28 * flick),
       );
       canvas.drawPath(
         path,
@@ -384,12 +482,12 @@ void _premiumVeins(Canvas canvas, Size size, Color accent, double? phase) {
           ..style = PaintingStyle.stroke
           ..strokeWidth = hair * 1.4
           ..strokeJoin = StrokeJoin.round
-          ..color = Colors.white.withValues(alpha: 0.70 * flick),
+          ..color = cardClass.frameGold.withValues(alpha: 0.85 * flick),
       );
     }
   }
 
-  // Embers rising off the base of the crest.
+  // Gold embers rising off the base of the crest.
   final ember = Paint();
   for (var i = 0; i < 9; i++) {
     final seed = i * 0.6180339;
@@ -397,8 +495,8 @@ void _premiumVeins(Canvas canvas, Size size, Color accent, double? phase) {
     final base = (i * 0.173) % 1.0;
     final prog = phase == null ? base : (base + phase) % 1.0;
     final y = h * (0.54 - 0.50 * prog);
-    ember.color = Colors.white.withValues(
-      alpha: 0.65 * math.sin(math.pi * prog),
+    ember.color = cardClass.frameGold.withValues(
+      alpha: 0.60 * math.sin(math.pi * prog),
     );
     canvas.drawCircle(Offset(x, y), w * (0.006 + 0.006 * (i % 3)), ember);
   }
