@@ -17,6 +17,7 @@ import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
 import '../../l10n/l10n_context.dart';
 import '../collection/player_detail_sheet.dart' show rarityOf;
+import '../match/chemistry_links.dart';
 import 'formations.dart';
 import 'pitch_layout.dart';
 import 'squad_drag.dart';
@@ -91,6 +92,23 @@ class SquadPitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pitch = _buildPitch();
+    if (chemistryPercent == null) return pitch;
+    // The chemistry badge sits ABOVE the pitch, never on it: the
+    // attacking line's cards fill the whole pitch top and used to paint
+    // over a badge placed inside the artwork.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ChemistryBadge(percent: chemistryPercent!),
+        const SizedBox(height: 8),
+        pitch,
+      ],
+    );
+  }
+
+  Widget _buildPitch() {
     return AspectRatio(
       aspectRatio: 0.66,
       child: ClipRRect(
@@ -126,19 +144,29 @@ class SquadPitch extends StatelessWidget {
                   const Positioned.fill(
                     child: CustomPaint(painter: _PitchPainter()),
                   ),
+                  // Chemistry links: a line between every pair of
+                  // same-nationality neighbours, drawn UNDER the cards so
+                  // they read as threads running from card to card. Only
+                  // on surfaces that show the chemistry reading.
                   if (chemistryPercent != null)
-                    Positioned(
-                      top: ph * 0.018,
-                      left: 0,
-                      right: 0,
-                      // The badge reads as part of the scoreboard end
-                      // of the artwork, never as a control: it sits in
-                      // the top margin strip above the penalty box and
-                      // is fully inert so the top-line player chips keep
-                      // every tap, drag and drop.
+                    Positioned.fill(
                       child: IgnorePointer(
-                        child: _ChemistryBadge(
-                          percent: chemistryPercent!,
+                        child: _ChemistryLinksLayer(
+                          nationalities: {
+                            for (final e in assignments.entries)
+                              if (e.key < formation.slots.length)
+                                e.key: e.value.base.nationality,
+                          },
+                          centres: {
+                            for (final e in assignments.entries)
+                              if (e.key < formation.slots.length)
+                                e.key: Offset(
+                                  layout.boxes[e.key].left +
+                                      layout.boxes[e.key].width / 2,
+                                  layout.boxes[e.key].top +
+                                      cardW / kPlayerCardAspect / 2,
+                                ),
+                          },
                         ),
                       ),
                     ),
@@ -505,17 +533,14 @@ class _EmptyBenchCard extends StatelessWidget {
   }
 }
 
-/// The XI's chemistry reading as a premium floating capsule
-/// (T-0094, over T-0080's positioning): a dark glass pill pinned to
-/// the top end of the pitch artwork — translucent surface, thin gold
-/// border, a chemistry link icon, the FULL localized label (the old
-/// 5-char truncation existed only because bare text had no
-/// background) and a '+N%' value that counts up to its new reading
-/// whenever the squad changes. One subtle scale/fade pulse fires on
-/// the value change itself; idle is fully static (no looping work).
+/// The XI's chemistry reading as a capsule ABOVE the pitch (it used to
+/// sit inside the artwork, where the attacking line's cards painted over
+/// it): a dark pill with a gold border, a chemistry link icon, the FULL
+/// localized label and a large '+N%' value that counts up to its new
+/// reading whenever the squad changes. One subtle scale/fade pulse fires
+/// on the value change itself; idle is fully static (no looping work).
 /// Colour semantics are the T-0080 rules: dim at 0, the same rating
-/// colour ramp at n ≥ 1. Compact (≤ 30px tall) so the margin strip
-/// above the top penalty box keeps the attacking line's tap targets.
+/// colour ramp at n ≥ 1.
 class _ChemistryBadge extends StatefulWidget {
   const _ChemistryBadge({required this.percent});
 
@@ -576,35 +601,46 @@ class _ChemistryBadgeState extends State<_ChemistryBadge>
             CurvedAnimation(parent: _pulse, curve: Curves.easeOut),
           ),
           child: Container(
-            height: 28,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: FcmColors.surface.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: FcmColors.gold.withValues(alpha: 0.35),
+              gradient: const LinearGradient(
+                colors: [FcmColors.surfaceHigh, FcmColors.surface],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
+              borderRadius: BorderRadius.circular(17),
+              border: Border.all(
+                color: FcmColors.gold.withValues(alpha: 0.6),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.link_rounded,
-                  size: 13,
-                  color: FcmColors.gold.withValues(alpha: 0.9),
+                  size: 16,
+                  color: FcmColors.gold,
                 ),
-                const SizedBox(width: 5),
+                const SizedBox(width: 7),
                 Text(
                   label,
                   maxLines: 1,
                   style: const TextStyle(
-                    color: FcmColors.textDim,
-                    fontSize: 8,
+                    color: FcmColors.silver,
+                    fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.4,
                   ),
                 ),
-                const SizedBox(width: 5),
+                const SizedBox(width: 8),
                 // The value floats to the new reading on squad changes
                 // (FcmCountUp, the control card's own idiom).
                 FcmCountUp(
@@ -614,8 +650,8 @@ class _ChemistryBadgeState extends State<_ChemistryBadge>
                   format: (n) => '+$n%',
                   style: TextStyle(
                     color: valueColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
@@ -625,6 +661,142 @@ class _ChemistryBadgeState extends State<_ChemistryBadge>
       ),
     );
   }
+}
+
+/// Palette for the chemistry lines — bright tones that read on the
+/// grass; one per nationality group, assigned in nationality order.
+const List<Color> _kLinkColors = [
+  Color(0xFFFFD54F),
+  Color(0xFF4FC3F7),
+  Color(0xFFFF8A65),
+  Color(0xFFBA68C8),
+  Color(0xFFF06292),
+  Color(0xFFFFFFFF),
+];
+
+/// Draws the chemistry lines (same-nationality links) under the cards.
+/// When the formation changes the cards glide to their new spots, and the
+/// line ends follow them with the same curve and duration.
+class _ChemistryLinksLayer extends StatefulWidget {
+  const _ChemistryLinksLayer({
+    required this.nationalities,
+    required this.centres,
+  });
+
+  final Map<int, String?> nationalities;
+  final Map<int, Offset> centres;
+
+  @override
+  State<_ChemistryLinksLayer> createState() => _ChemistryLinksLayerState();
+}
+
+class _ChemistryLinksLayerState extends State<_ChemistryLinksLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glide = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  );
+  late Map<int, Offset> _from = widget.centres;
+  late Map<int, Offset> _to = widget.centres;
+
+  static bool _sameCentres(Map<int, Offset> a, Map<int, Offset> b) {
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      if (b[e.key] != e.value) return false;
+    }
+    return true;
+  }
+
+  Map<int, Offset> _current() {
+    final t = Curves.easeOutCubic.transform(_glide.value);
+    return {
+      for (final e in _to.entries)
+        e.key: Offset.lerp(_from[e.key] ?? e.value, e.value, t)!,
+    };
+  }
+
+  @override
+  void didUpdateWidget(_ChemistryLinksLayer old) {
+    super.didUpdateWidget(old);
+    if (!_sameCentres(_to, widget.centres)) {
+      _from = _current();
+      _to = widget.centres;
+      _glide.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _glide.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final links = chemistryLinks(
+      nationalities: widget.nationalities,
+      centres: {
+        for (final e in _to.entries) e.key: (x: e.value.dx, y: e.value.dy),
+      },
+    );
+    final linked = <String>{for (final l in links) l.nationality}.toList()
+      ..sort();
+    final colorOf = <String, Color>{
+      for (var i = 0; i < linked.length; i++)
+        linked[i]: _kLinkColors[i % _kLinkColors.length],
+    };
+    return AnimatedBuilder(
+      animation: _glide,
+      builder: (context, _) => CustomPaint(
+        painter: _ChemistryLinksPainter(
+          links: links,
+          centres: _current(),
+          colorOf: colorOf,
+        ),
+      ),
+    );
+  }
+}
+
+class _ChemistryLinksPainter extends CustomPainter {
+  const _ChemistryLinksPainter({
+    required this.links,
+    required this.centres,
+    required this.colorOf,
+  });
+
+  final List<ChemistryLink> links;
+  final Map<int, Offset> centres;
+  final Map<String, Color> colorOf;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final link in links) {
+      final a = centres[link.a];
+      final b = centres[link.b];
+      if (a == null || b == null) continue;
+      // A dark under-stroke keeps the colour legible on the grass bands.
+      canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..strokeWidth = 5.5
+          ..strokeCap = StrokeCap.round
+          ..color = Colors.black.withValues(alpha: 0.35),
+      );
+      canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round
+          ..color = colorOf[link.nationality] ?? Colors.white,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ChemistryLinksPainter old) => true;
 }
 
 class _PitchPainter extends CustomPainter {
