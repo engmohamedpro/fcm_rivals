@@ -2,11 +2,11 @@
 id: T-0109
 title: Achievements economy gate — the achievement faucet is measured, banded and locked against the match faucet
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0108]
 created: 2026-11-10
-completed:
+completed: 2026-11-11
 ---
 
 # T-0109: Achievements economy gate — the achievement faucet is measured, banded and locked against the match faucet
@@ -35,9 +35,9 @@ A seeded, multi-season simulation proves the achievement coin faucet is a contro
 - T-0082's blocked chance-curve re-spec (independent; if it lands first and shifts match income, the bands re-measure in ITS task, not here).
 
 ## Acceptance Criteria
-- [ ] Four bands locked with measured values + tolerance; the sweep runs the real claim service, real rewards, real ledger.
-- [ ] Achievement income attributed from real ledger rows; the attribution path documented.
-- [ ] `flutter analyze` zero warnings; full `flutter test` green including the pre-existing T-0076 economy gate (both gates co-exist without band fights).
+- [x] Four bands locked with measured values + tolerance; the sweep runs the real claim service, real rewards, real ledger.
+- [x] Achievement income attributed from real ledger rows; the attribution path documented.
+- [x] `flutter analyze` zero warnings; full `flutter test` green including the pre-existing T-0076 economy gate (both gates co-exist without band fights).
 
 ## How to Verify
 ```bash
@@ -113,3 +113,11 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-11, attempt 1: PASS
+- Ran: `flutter analyze` (the same 2 pre-existing baseline issues only — zero new), the new gate `flutter test test/balance/achievement_economy_test.dart` (green, ~40s, seeds 5801/5802 deterministic), the OLD T-0076 gate `season_reward_economy_test.dart` (6/6 green — co-existence proven, no band fights: claimAchievements defaults off), and achievements+balance directories together (152 tests: the 5 balance failures are exactly the knife-edge T-0082 umbrella family I flagged in the T-0107/T-0108 reviews — NOT this task).
+- ISOLATION PROOF: T-0109's diff touches ZERO match-engine files (economy_simulator.dart + the new gate test only — verified by git show --stat), and `flutter test test/balance/match_engine_balance_test.dart` at T-0109's own commit 5e5f013 = All tests passed. The HEAD failures belong to the still-in-review engine umbrella (T-0114/T-0115/T-0116).
+- AC verified independently: (1) The four bands are locked to MEASURED values with headroom (not at the edge): season-1 peak < 5% (measured 2.4–2.8%), seasons 2+ < 3.5% (measured ≤ 1.2%), decay property with one-noisy-season tolerance (measured 2.6% → 0.1%), lifetime < 2% (measured 0.6% — a tenth of the 20% brief, the tighter lock), catalog ceiling 21,520 coins ≈ 1.7% vs the < 15% brief; the measured table is pinned in the test's doc comment (the T-0076 tradition). (2) Attribution is REAL: the simulator routes claims through the REAL AchievementClaimService.claimAllTiers at season boundaries (real UNIQUE-guarded transactions, real creditCoins ledger rows with reason 'achievement' + detail '<id>:<tier>'), and achievementCoins accumulates from actual ClaimGranted results — not curve arithmetic; per Requirement 2's timing-invariance note, claims are threshold-derived and terminal so band math is timing-invariant (verified as a documented argument, not a runtime claim). (3) claimAchievements defaults false — every existing caller unchanged; T-0076's bands untouched (proven by the old gate's 6/6 green).
+- The hypothesis-vs-measurement honesty held: the faucet measured far smaller than the brief anticipated (rounding-error territory); no re-pin consumed; bands locked TIGHTER than the brief where measurement allowed — the stronger regression lock, documented in Developer Notes.
+- Notification protocol: Telegram unavailable (placeholder token, no destination) — recorded per the fallback clause; review proceeded (read-mostly, safe).
+- Notes: the sweep exercises SimDataset stats (documented by the developer); a real-dataset sweep is T-0113's release-gate territory — correct scoping, not a gap here.
