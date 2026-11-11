@@ -10,6 +10,7 @@ import '../../core/ui/fcm_crest.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../match/tactics.dart' show MatchPepTalk;
+import '../squad/formations.dart' show Formation;
 import '../match/pre_match_tactics_selection.dart';
 import 'season_engine.dart' show StandingEntry;
 import 'season_store.dart';
@@ -78,6 +79,27 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
         return;
       }
       if (!mounted) return;
+      // No complete starting XI yet: send the player to the Team tab to
+      // pick one instead of opening the pre-match flow on an error.
+      final squad = await (await ref.read(collectionStoreProvider.future))
+          .getSquad();
+      if (!mounted) return;
+      final xiComplete = [
+        for (var slot = 0; slot < Formation.startingXiSize; slot++)
+          squad.containsKey(slot),
+      ].every((filled) => filled);
+      if (!xiComplete) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('Pick your starting XI to play the match'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        ref.read(shellTabRequestProvider.notifier).state = 1;
+        return;
+      }
       // The matchday build-up: analysis + match-only tactics + dressing
       // room, then the chosen pep talk (null = no talk). Ad-free by design
       // (FR-043). The tactic selection is handed back at kick-off and used

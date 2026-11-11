@@ -160,16 +160,16 @@ class GameShell extends ConsumerWidget {
 
 /// Stateful body: owns the selected tab index; only the selected page is
 /// built.
-class _GameShellBody extends StatefulWidget {
+class _GameShellBody extends ConsumerStatefulWidget {
   const _GameShellBody({required this.items});
 
   final List<FcmNavItem> items;
 
   @override
-  State<_GameShellBody> createState() => _GameShellBodyState();
+  ConsumerState<_GameShellBody> createState() => _GameShellBodyState();
 }
 
-class _GameShellBodyState extends State<_GameShellBody> {
+class _GameShellBodyState extends ConsumerState<_GameShellBody> {
   int _index = 0;
 
   // One primary scroll controller per tab, so the outgoing and incoming
@@ -213,6 +213,15 @@ class _GameShellBodyState extends State<_GameShellBody> {
 
   @override
   Widget build(BuildContext context) {
+    // Screens can send the player to another tab (e.g. Play Match with
+    // no starting XI → Team): switch, then clear the one-shot request.
+    ref.listen<int?>(shellTabRequestProvider, (_, request) {
+      if (request == null) return;
+      ref.read(shellTabRequestProvider.notifier).state = null;
+      if (request >= 0 && request < widget.items.length && mounted) {
+        setState(() => _index = request);
+      }
+    });
     // The Team tab (index 1) hides the app bar to give the squad pitch
     // its vertical space (owner decision 2026-11-09); every other tab
     // shows it exactly as before. The hide/show animates the whole

@@ -192,6 +192,11 @@ final squadCapacityProvider = FutureProvider<SquadCapacity>((ref) async {
   return store.getSquadCapacity();
 });
 
+/// One-shot request for the game shell to switch tab (index into the
+/// bottom nav, e.g. 1 = Team). The shell consumes it and resets it to
+/// null, so any screen can send the player to another tab.
+final shellTabRequestProvider = StateProvider<int?>((ref) => null);
+
 /// Persisted squad assignment: slot → card.
 final squadProvider = FutureProvider<Map<int, PlayerCard>>((ref) async {
   final store = await ref.watch(collectionStoreProvider.future);
