@@ -157,20 +157,23 @@ class FcmMiniCard extends StatelessWidget {
                   // pair (flag + crest) centred in the glass panel — the
                   // band where the big card carries the name and
                   // attributes. The mini never shows those, so the pair
-                  // works that space instead of leaving it empty.
+                  // works that space instead of leaving it empty. The
+                  // column ends exactly where the painted portrait
+                  // window begins (0.37w), aligning the mini's photo
+                  // band with the big card's frame.
                   if (!ghost) ...[
                     Positioned(
                       left: 0,
                       right: width * 0.05,
                       top: h * 0.10,
-                      bottom: h * 0.45,
+                      bottom: h * 0.46,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Padding(
                             padding: EdgeInsets.only(left: width * 0.05),
                             child: SizedBox(
-                              width: width * 0.30,
+                              width: width * 0.32,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
+import 'package:fcm_rivals/core/ui/fcm_logo.dart' show kFcmFullLogoAsset;
 import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
@@ -127,25 +128,19 @@ void main() {
       expect(_faceClassOf(tester), CardClass.standard);
     });
 
-    testWidgets('the pre-flip back takes the explicit class axis', (tester) async {
+    testWidgets('the pre-flip back is class-agnostic brand art', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FcmPlayerCardBack(
-              rarity: CardRarity.legendary,
-              cardClass: CardClass.fromOverall(95),
-            ),
-          ),
+        const MaterialApp(
+          home: Scaffold(body: FcmPlayerCardBack(width: 120)),
         ),
       );
-      final painter = tester
-          .widgetList<CustomPaint>(
-            find.byWidgetPredicate((w) => w is CustomPaint),
-          )
-          .map((p) => p.painter)
-          .whereType<CardBackPainter>()
-          .first;
-      expect(painter.cardClass, CardClass.premium);
+      // One back for every card: the full brand mark, cover-fit and
+      // clipped to the silhouette — no rarity or class axis, nothing
+      // about the card leaks before the flip.
+      final image = tester.widget<Image>(find.byType(Image));
+      expect((image.image as AssetImage).assetName, kFcmFullLogoAsset);
+      expect(image.fit, BoxFit.cover);
+      expect(tester.takeException(), isNull);
     });
   });
 

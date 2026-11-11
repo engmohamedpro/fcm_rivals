@@ -1,8 +1,7 @@
 /// FCM Rivals — player card painters and drawing primitives
 /// (extracted from `player_card.dart`, app-structure review task
 /// `2026-11-05_app-structure_split-player-card`): the card outline
-/// path, canvas helpers, the card-face and card-back CustomPainters.
-/// Pure relocation — painting code unchanged.
+/// path, canvas helpers and the card-face CustomPainter.
 library;
 
 import 'dart:math' as math;
@@ -42,22 +41,16 @@ void _insetCanvas(Canvas canvas, Size size, double inset) {
   canvas.translate(-size.width / 2, -size.height / 2);
 }
 
-/// Small five-point star path for the card back's rarity row.
-Path _cardStarPath(Offset c, double r) {
-  final p = Path();
-  for (var i = 0; i < 10; i++) {
-    final a = -math.pi / 2 + i * math.pi / 5;
-    final rad = i.isEven ? r : r * 0.45;
-    final x = c.dx + math.cos(a) * rad;
-    final y = c.dy + math.sin(a) * rad;
-    if (i == 0) {
-      p.moveTo(x, y);
-    } else {
-      p.lineTo(x, y);
-    }
-  }
-  p.close();
-  return p;
+/// Clips any widget to the card outline — the card back's full-bleed
+/// art gets the same chamfered silhouette as the painted faces.
+class CardPathClipper extends CustomClipper<Path> {
+  const CardPathClipper();
+
+  @override
+  Path getClip(Size size) => cardPath(size);
+
+  @override
+  bool shouldReclip(CardPathClipper oldClipper) => false;
 }
 
 class CardFacePainter extends CustomPainter {
@@ -228,7 +221,66 @@ class CardFacePainter extends CustomPainter {
       );
     }
 
-    // Player silhouette (head + shoulders), right of centre.
+    // Portrait window: the plate the player stands on — dark glass in
+    // a chamfered metal frame echoing the card's own silhouette. The
+    // portrait widget (and the placeholder silhouette, clipped to the
+    // same path below) lives inside it; the big card and the mini share
+    // the zone (mini column ends where the window begins, at 0.37w).
+    final winL = w * 0.37, winT = h * 0.095;
+    final winR = w * 0.95, winB = h * 0.545;
+    Path windowPath(double inset) {
+      final c = math.max(0.0, w * 0.045 - inset);
+      final r = math.max(0.0, w * 0.030 - inset);
+      final l = winL + inset, t = winT + inset;
+      final rr = winR - inset, b = winB - inset;
+      return Path()
+        ..moveTo(l + c, t)
+        ..lineTo(rr - c, t)
+        ..lineTo(rr, t + c)
+        ..lineTo(rr, b - r)
+        ..quadraticBezierTo(rr, b, rr - r, b)
+        ..lineTo(l + r, b)
+        ..quadraticBezierTo(l, b, l, b - r)
+        ..lineTo(l, t + c)
+        ..close();
+    }
+
+    final win = windowPath(0);
+    final winRect = Rect.fromLTRB(winL, winT, winR, winB);
+    // Recessed glass — darker than the face, a touch lighter than the
+    // panel below, so it reads as its own depth layer.
+    canvas.drawPath(
+      win,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.35),
+            Colors.black.withValues(alpha: 0.66),
+          ],
+        ).createShader(winRect),
+    );
+    // A catch-light sweeping down the glass, like the milled bezel.
+    canvas.drawPath(
+      win,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.10),
+            Colors.white.withValues(alpha: 0.0),
+          ],
+          stops: const [0.0, 0.55],
+        ).createShader(winRect),
+    );
+
+    // Player silhouette (head + shoulders), right of centre — the
+    // photo's permanent placeholder, clipped to the window so the bust
+    // reads as framed portraiture (and never washes over the rails).
+    canvas.save();
+    canvas.clipPath(win);
     final cx = w * 0.60;
     final headR = w * 0.125;
     final headY = h * 0.255;
@@ -260,6 +312,33 @@ class CardFacePainter extends CustomPainter {
         )
         ..close(),
       sil,
+    );
+    canvas.restore();
+
+    // Metal rails over the glass edge — the bezel language in
+    // miniature, with the premium regalia gold on 90+ faces. The
+    // bottom rail meets the panel's lit edge and merges into it.
+    final frameColor = premium ? cardClass.frameGold : g[0];
+    canvas.drawPath(
+      win,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.0, w * 0.010)
+        ..strokeJoin = StrokeJoin.round
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, frameColor, g[2]],
+          stops: const [0.0, 0.45, 1.0],
+        ).createShader(winRect),
+    );
+    // Fine inner keyline, like the face's own.
+    canvas.drawPath(
+      windowPath(w * 0.018),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = hair
+        ..color = Colors.white.withValues(alpha: 0.25),
     );
 
     // Dark glass information panel for name and attributes.
@@ -405,113 +484,6 @@ class CardFacePainter extends CustomPainter {
       old.glow != glow ||
       old.glowColor != glowColor ||
       old.phase != phase;
-}
-
-class CardBackPainter extends CustomPainter {
-  CardBackPainter({required this.rarity, this.cardClass = CardClass.standard});
-
-  final CardRarity rarity;
-
-  /// The presentation-level class axis (T-0049): premium paints the red
-  /// bezel/glow escalation above gold; the rarity stays legendary.
-  final CardClass cardClass;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-    final rect = Offset.zero & size;
-    final path = cardPath(size);
-    final g = cardClass == CardClass.premium
-        ? cardClass.faceGradient
-        : rarity.faceGradient;
-    final accent = cardClass == CardClass.premium
-        ? cardClass.accent
-        : rarity.accent;
-    final hair = math.max(0.5, w * 0.006);
-
-    // Bezel in the rarity's metal.
-    canvas.drawPath(
-      path,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [g[0], accent, g[2], accent],
-          stops: const [0.0, 0.35, 0.75, 1.0],
-        ).createShader(rect),
-    );
-
-    // Carbon-black face.
-    canvas.save();
-    _insetCanvas(canvas, size, w * 0.034);
-    canvas.clipPath(path);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF2A2731), Color(0xFF121014), Color(0xFF0B0A0E)],
-        ).createShader(rect),
-    );
-    final lattice = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = hair
-      ..color = accent.withValues(alpha: 0.14);
-    final step = w * 0.10;
-    for (var x = -h; x < w + h; x += step) {
-      canvas.drawLine(Offset(x, h), Offset(x + h, 0), lattice);
-      canvas.drawLine(Offset(x, 0), Offset(x + h, h), lattice);
-    }
-    // Warm glow behind the wordmark.
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = RadialGradient(
-          radius: 0.7,
-          colors: [
-            accent.withValues(alpha: 0.30),
-            accent.withValues(alpha: 0.0),
-          ],
-        ).createShader(rect),
-    );
-    // Rarity stars along the foot: 3 rare, 4 epic, 5 legendary.
-    final n = switch (rarity) {
-      CardRarity.rare => 3,
-      CardRarity.epic => 4,
-      CardRarity.legendary => 5,
-    };
-    final starR = w * 0.042;
-    for (var i = 0; i < n; i++) {
-      final c = Offset(w / 2 + (i - (n - 1) / 2) * starR * 2.5, h * 0.80);
-      canvas.drawPath(_cardStarPath(c, starR), Paint()..color = g[0]);
-    }
-    canvas.restore();
-
-    // Frames: a fine keyline inside the face and the bright outer rim.
-    canvas.save();
-    _insetCanvas(canvas, size, w * 0.075);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = hair
-        ..color = accent.withValues(alpha: 0.65),
-    );
-    canvas.restore();
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(1.0, w * 0.012)
-        ..strokeJoin = StrokeJoin.round
-        ..color = accent,
-    );
-  }
-
-  @override
-  bool shouldRepaint(CardBackPainter old) =>
-      old.rarity != rarity || old.cardClass != cardClass;
 }
 
 /// Compact card for the pitch and bench: rating, position, surname, an

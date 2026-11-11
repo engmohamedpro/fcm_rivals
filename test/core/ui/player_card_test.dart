@@ -73,7 +73,7 @@ void main() {
   testWidgets('card back renders at every size', (WidgetTester tester) async {
     for (final width in [56.0, 160.0, 320.0]) {
       await tester.pumpWidget(
-        _host(FcmPlayerCardBack(rarity: CardRarity.legendary, width: width)),
+        _host(FcmPlayerCardBack(width: width)),
       );
       await tester.pump();
       final size = tester.getSize(find.byType(FcmPlayerCardBack));

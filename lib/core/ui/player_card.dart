@@ -19,7 +19,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/players.dart';
 import 'country_flag.dart';
-import 'fcm_logo.dart' show kFcmWordmarkAsset;
+import 'fcm_logo.dart' show kFcmFullLogoAsset;
 import 'fcm_style.dart';
 import 'player_card_painters.dart';
 
@@ -134,7 +134,7 @@ class FcmPlayerCard extends StatelessWidget {
     // The nationality name under the flag — the fallback shown whenever
     // the club crest is unavailable (no tracked club, failed download).
     final nationalityName = SizedBox(
-      width: w * 0.30,
+      width: w * 0.285,
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(
@@ -229,15 +229,16 @@ class FcmPlayerCard extends StatelessWidget {
             // silhouette once it loads, gated by the identity reveal. An
             // empty URL (no real photo) or a failed download keeps the
             // silhouette showing — the painted fallback below never goes
-            // away, the photo only covers it. The zone sits between the
-            // rating column and the tier ribbon, fully inside the face
-            // (BoxFit.contain keeps every source aspect inside too).
+            // away, the photo only covers it. The zone sits inside the
+            // painted portrait window (feet on its bottom rail, clear of
+            // the rating column); BoxFit.contain keeps every source
+            // aspect inside it too.
             if (player.imageUrl.isNotEmpty)
               Positioned(
                 left: w * 0.38,
                 right: w * 0.05,
                 top: h * 0.10,
-                bottom: h * 0.45,
+                bottom: h * 0.46,
                 child: IgnorePointer(
                   child: Opacity(
                     opacity: photoReveal,
@@ -261,15 +262,17 @@ class FcmPlayerCard extends StatelessWidget {
                   ),
                 ),
               ),
-            // Rating, position, flag.
+            // Rating, position, flag — the column ends clear of the
+            // portrait window's left rail (0.37w), so no glyph ever
+            // touches the frame.
             Positioned(
               left: w * 0.075,
               top: h * 0.10,
-              width: w * 0.30,
+              width: w * 0.285,
               child: Column(
                 children: [
                   SizedBox(
-                    width: w * 0.30,
+                    width: w * 0.285,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
@@ -301,15 +304,16 @@ class FcmPlayerCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Identity stack: one rhythm — a w*0.03 gap between
-                  // position, flag and crest, with the crest (the club
-                  // identity) reading larger than the flag.
+                  // Identity stack: position and flag keep a w*0.03
+                  // rhythm, but the crest sits tight under the flag —
+                  // the club reads as the flag's pair — and shows
+                  // larger than it.
                   SizedBox(height: w * 0.03),
                   Text(
                     flagEmojiFor(player.nationality),
                     style: TextStyle(fontSize: w * 0.09),
                   ),
-                  SizedBox(height: w * 0.03),
+                  SizedBox(height: w * 0.012),
                   // Club crest under the flag (dataset v3) — always
                   // visible like the flag itself (the walkout already
                   // told the country). The nationality name is the
@@ -318,7 +322,7 @@ class FcmPlayerCard extends StatelessWidget {
                   // text, never to a blank slot.
                   player.clubCrestUrl.isNotEmpty
                       ? SizedBox(
-                          width: w * 0.30,
+                          width: w * 0.285,
                           child: Image.network(
                             player.clubCrestUrl,
                             height: w * 0.16,
@@ -448,21 +452,15 @@ class FcmPlayerCard extends StatelessWidget {
   }
 }
 
-/// The card back shown before the flip: carbon-black face, the rarity's
-/// metal bezel and frames, the brand wordmark and the rarity stars.
+/// The card back shown before the flip: the full brand badge as the
+/// card itself — the square art cover-fit and clipped to the card
+/// silhouette (the art's bright content sits well inside the strip a
+/// 0.70-aspect cover keeps, so nothing meaningful is cropped). One
+/// back for every rarity and class, so nothing about the card leaks
+/// before the reveal.
 class FcmPlayerCardBack extends StatelessWidget {
-  const FcmPlayerCardBack({
-    super.key,
-    required this.rarity,
-    this.cardClass = CardClass.standard,
-    this.width = 260,
-  });
+  const FcmPlayerCardBack({super.key, this.width = 260});
 
-  final CardRarity rarity;
-
-  /// The premium class axis (T-0049): the pre-flip back paints the red
-  /// bezel for 90+ players.
-  final CardClass cardClass;
   final double width;
 
   @override
@@ -471,24 +469,16 @@ class FcmPlayerCardBack extends StatelessWidget {
     return SizedBox(
       width: width,
       height: h,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: CardBackPainter(rarity: rarity, cardClass: cardClass),
-            ),
-          ),
-          Image.asset(
-            kFcmWordmarkAsset,
-            width: width * 0.72,
-            cacheWidth: 480,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium,
-            // The back is still a card without its wordmark.
-            errorBuilder: (_, _, _) => const SizedBox.shrink(),
-          ),
-        ],
+      child: ClipPath(
+        clipper: const CardPathClipper(),
+        child: Image.asset(
+          kFcmFullLogoAsset,
+          fit: BoxFit.cover,
+          cacheWidth: 1024,
+          filterQuality: FilterQuality.medium,
+          // The back is still a card without its art.
+          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        ),
       ),
     );
   }

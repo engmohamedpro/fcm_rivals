@@ -202,11 +202,7 @@ extension _PackRevealViews on _PackOpeningScreenState {
           alignment: Alignment.center,
           transform: rot,
           child: showBack
-              ? FcmPlayerCardBack(
-                  rarity: rarity,
-                  cardClass: CardClass.fromOverall(_player.baseStats.overall),
-                  width: cardWidth,
-                )
+              ? FcmPlayerCardBack(width: cardWidth)
               : Builder(
                   builder: (cardContext) => _withNewBadge(
                     cardContext,
