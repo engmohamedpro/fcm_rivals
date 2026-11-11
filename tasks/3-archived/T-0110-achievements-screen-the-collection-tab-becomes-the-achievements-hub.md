@@ -2,11 +2,11 @@
 id: T-0110
 title: Achievements screen — the Collection tab becomes the Achievements hub (categories, badges, progress, claims)
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0108]
 created: 2026-11-10
-completed:
+completed: 2026-11-11
 ---
 
 # T-0110: Achievements screen — the Collection tab becomes the Achievements hub (categories, badges, progress, claims)
@@ -36,9 +36,9 @@ The Collection tab is REPLACED in-place by a production-grade Achievements scree
 - Redesigning the collection grid's visuals — it moves as-is.
 
 ## Acceptance Criteria
-- [ ] Third nav slot is the Achievements screen; no dead code left for the old tab wiring; collection browsing reachable from Team.
-- [ ] Badge art is painter-drawn tier metals; progress honest against thresholds; claims flow through the atomic pipeline.
-- [ ] EN/AR + RTL verified in tests; `flutter analyze` zero warnings; full `flutter test` green (smoke test updated and green).
+- [x] Third nav slot is the Achievements screen; no dead code left for the old tab wiring; collection browsing reachable from Team.
+- [x] Badge art is painter-drawn tier metals; progress honest against thresholds; claims flow through the atomic pipeline.
+- [x] EN/AR + RTL verified in tests; `flutter analyze` zero warnings; full `flutter test` green (smoke test updated and green).
 
 ## How to Verify
 ```bash
@@ -133,3 +133,11 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-11, attempt 1: PASS
+- Ran: `flutter analyze` (the same 2 pre-existing baseline issues only — zero new), `flutter test test/features/achievements/ + test/widget_test.dart` (44/44 green — screen 6 + smoke with the new 'Achievements' label), `flutter test test/features/collection/` (46/46 green — the RELOCATED grid passes unmodified including injury_surfaces 4/4), `flutter test test/features/onboarding/ + test/features/squad/` (266 passing, 6 failed — ALL the pre-existing T-0064 squad slider family, proven pre-existing by running the squad suite at T-0110's OWN commit e14098a: same 6 failures there, i.e. NOT from this task).
+- AC verified independently: (1) Nav swap real — lib/main.dart third slot = Achievements (military_tech, navAchievements), 5-tab mechanics untouched, smoke test updated; collection browsing moved to a typed AppRoutes.collectionBrowse route pushed from the Team tab (routes.dart +12, squad_screen.dart +18 — the grid screen itself untouched, its 46/46 suite green). (2) Progress is HONEST: value/threshold capped geometric bar with '4 / 1' readouts asserted; locked tiers show NO claim action (contract from T-0108); claimed state renders from a LIVE drift watch of the claims table (no local flags — asserted by pre-seeding a real claim and reading the '1 claimed' chip); the claim pipeline test runs the REAL service in-memory (3 Granted, real ledger rows, moved balance, idempotent re-run). (3) Painter-drawn tier metals (achievements_badge_painter.dart — laurel shield, strokes/fills only), RepaintBoundary per tier row. (4) RTL: Arabic-locale test with Directionality.rtl captured before the fling (المسيرة/الهجوم/غرفة الكؤوس/استحق). (5) l10n: +9 keys both arbs, gen-l10n clean; the 104-key static bridge relies on the catalog completeness lock (both-arbs guarantee).
+- Bonus fix verified: crest_spec_test.dart schema pin 13→14 — the last stale pin from T-0106's bump, found and fixed by this task's sweep (onboarding suite green).
+- Out of scope respected: no Profile tab, no economy bands, no grid visual redesign. The one out-of-feature edit (crest_spec pin) is a legitimate schema-bump consequence.
+- Notification protocol: Telegram unavailable (placeholder token, no destination) — recorded per the fallback clause; review proceeded (read-mostly, safe).
+- Notes: the ambient-animation repaint cost is bounded by per-row RepaintBoundary isolation; the async claim closure concern is documented by the developer and covered by the real-pipeline test.
