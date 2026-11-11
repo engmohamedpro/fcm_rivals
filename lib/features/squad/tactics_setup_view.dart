@@ -22,7 +22,7 @@ import 'formations.dart';
 import 'squad_drag.dart';
 import 'squad_engine.dart';
 import 'squad_pitch_view.dart';
-import 'squad_swap.dart' show SquadZone;
+import 'squad_swap.dart' show SquadDropTarget, SquadZone;
 
 /// The whole tactical setup column: the control card (the setup row —
 /// formation, playing style, mentality — closed by the team rating, with

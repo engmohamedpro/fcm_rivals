@@ -8,7 +8,6 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart' show NativeDatabase;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 

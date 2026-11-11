@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../l10n/l10n_context.dart';
 
 import '../../app/providers.dart';
 import '../ads/ad_engine.dart' show AdEngine, AdRewardKind;

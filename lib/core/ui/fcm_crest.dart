@@ -348,7 +348,6 @@ class _CrestPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
-    final h = size.height;
     final primary = spec.primaryColor;
     final secondary = spec.secondaryColor;
     final bounds = Offset.zero & size;
