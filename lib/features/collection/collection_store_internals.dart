@@ -7,13 +7,21 @@ part of 'collection_store.dart';
 /// inside caller-owned transactions. Pure relocation — bodies unchanged;
 /// private scope, so no call site outside this library is affected.
 extension _RowMapping on CollectionStore {
-  /// Adapts a persisted player row to the domain model.
+  /// Adapts a persisted player row to the domain model. The presentation
+  /// facts (portrait, club/league) ride along so owned cards keep them
+  /// after the registry warm-up and across restarts (schema v16).
   BasePlayer _toBasePlayer(Player row) => BasePlayer(
     playerId: row.playerId,
     name: row.name,
     position: Position.fromCode(row.position),
     nationality: row.nationality,
     marketValueEur: row.marketValueEur,
+    clubId: row.clubId,
+    clubName: row.clubName,
+    clubCrestUrl: row.clubCrestUrl,
+    leagueName: row.leagueName,
+    leagueLogoUrl: row.leagueLogoUrl,
+    imageUrl: row.imageUrl,
     baseStats: BaseStats(
       overall: row.overall,
       attack: row.attack,

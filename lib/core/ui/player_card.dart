@@ -8,7 +8,9 @@
 /// crystal shards, rare arcs), a dark glass information panel, a foil
 /// light sweep and a player silhouette, with the rating and attributes
 /// laid on top. Stats count up from zero driven by [statProgress] so the
-/// reveal can animate them.
+/// reveal can animate them. The player portrait (dataset v3, when the
+/// source has a photo) fades in over the painted silhouette — the
+/// silhouette stays the permanent placeholder for players without one.
 library;
 
 import 'dart:math' as math;
@@ -126,6 +128,9 @@ class FcmPlayerCard extends StatelessWidget {
     final shownStats = stats ?? statsFor(player);
     final letters = nameLetters;
     final nameHidden = letters == null ? nameProgress <= 0.01 : letters <= 0;
+    // The portrait shares the name's reveal clock: the typewriter walkout
+    // lands the face together with the identity, never before it.
+    final photoReveal = (letters ?? nameProgress).clamp(0.0, 1.0).toDouble();
 
     // Engraved look for the dark ink on the bright metal: a faint light
     // edge just below each glyph.
@@ -201,6 +206,42 @@ class FcmPlayerCard extends StatelessWidget {
                 ),
               ),
             ),
+            // Player portrait (dataset v3): fades in over the painted
+            // silhouette once it loads, gated by the identity reveal. An
+            // empty URL (no real photo) or a failed download keeps the
+            // silhouette showing — the painted fallback below never goes
+            // away, the photo only covers it. The zone sits between the
+            // rating column and the tier ribbon, fully inside the face
+            // (BoxFit.contain keeps every source aspect inside too).
+            if (player.imageUrl.isNotEmpty)
+              Positioned(
+                left: w * 0.38,
+                right: w * 0.05,
+                top: h * 0.10,
+                bottom: h * 0.45,
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: photoReveal,
+                    child: Image.network(
+                      player.imageUrl,
+                      fit: BoxFit.contain,
+                      alignment: const Alignment(0.2, 1),
+                      filterQuality: FilterQuality.medium,
+                      gaplessPlayback: true,
+                      frameBuilder:
+                          (context, child, frame, wasSynchronouslyLoaded) {
+                            if (wasSynchronouslyLoaded) return child;
+                            return AnimatedOpacity(
+                              opacity: frame == null ? 0.0 : 1.0,
+                              duration: const Duration(milliseconds: 240),
+                              child: child,
+                            );
+                          },
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
             // Rating, position, flag.
             Positioned(
               left: w * 0.075,

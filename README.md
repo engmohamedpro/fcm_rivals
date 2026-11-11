@@ -93,10 +93,17 @@ not per player): `clubs` maps each club id to `[name, crestUrl, leagueCode]`
 and `leagues` maps each Transfermarkt league code to `[displayName, logoUrl]`
 — 1,469 clubs and 32 leagues. Crests and league logos are transparent PNGs
 on Transfermarkt's CDN (`wappen/head/{id}.png`, `logo/header/{code}.png`
-with the code lowercased — the CDN is case-sensitive). Fields beyond the
-first five ship as data preparation for the club/crest UI: the current Dart
-parser reads indices 0–4 and ignores the rest, so the asset drops in with
-zero code changes.
+with the code lowercased — the CDN is case-sensitive).
+
+The parser resolves rows against the maps at import time, so every
+[BasePlayer] carries the portrait and club/league facts end to end —
+persisted on the players table (schema v16) and surviving restarts through
+the registry warm-up. Presentation-fact changes (a new photo, a transfer)
+update in place without touching Base Stats (GDD 4.6 keeps value/position
+as the only regeneration triggers). On the card, `FcmPlayerCard` paints
+the portrait over the drawn silhouette, gated by the identity reveal so
+the pack walkout never leaks the face early; an empty URL, a failed
+download or an in-flight load keeps the silhouette showing.
 
 Built from the open **player-scores** dataset (Transfermarkt-derived,
 originally by dcaribou, mirrored on HuggingFace), filtered to players active

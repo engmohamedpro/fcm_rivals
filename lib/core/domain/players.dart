@@ -109,8 +109,10 @@ int upgradedValue(int baseValue, int upgradeLevel) {
 /// A global player record from the imported database (GDD 4.2).
 /// Identity is the permanent [playerId]; mutable facts (value, position)
 /// may change between dataset versions without changing identity.
-/// The core data is deliberately minimal — name, nationality, position
-/// and market value — no club, age or league affiliation.
+/// The core data stays minimal — name, nationality, position and market
+/// value — plus the presentation facts carried since dataset v3: the
+/// Transfermarkt portrait URL and the player's real-world club and
+/// domestic league (names + CDN links, '' when the source tracks none).
 @ImmutableMarker()
 class BasePlayer {
   const BasePlayer({
@@ -120,6 +122,12 @@ class BasePlayer {
     required this.nationality,
     required this.marketValueEur,
     required this.baseStats,
+    this.clubId = 0,
+    this.clubName = '',
+    this.clubCrestUrl = '',
+    this.leagueName = '',
+    this.leagueLogoUrl = '',
+    this.imageUrl = '',
   });
 
   /// Permanent unique identifier — the Transfermarkt player id.
@@ -134,12 +142,36 @@ class BasePlayer {
 
   final BaseStats baseStats;
 
+  /// The player's real-world club on Transfermarkt (0 when untracked —
+  /// free agents and players outside the scraped leagues).
+  final int clubId;
+
+  /// Club display name ('' when unknown) and crest link.
+  final String clubName;
+  final String clubCrestUrl;
+
+  /// Domestic league display name ('' when the club carries no league
+  /// in the source) and its logo link.
+  final String leagueName;
+  final String leagueLogoUrl;
+
+  /// Transfermarkt portrait link ('' for the ~1,400 players whose only
+  /// source image is the CDN placeholder — the app renders its own
+  /// fallback for those).
+  final String imageUrl;
+
   BasePlayer copyWith({
     String? name,
     Position? position,
     String? nationality,
     int? marketValueEur,
     BaseStats? baseStats,
+    int? clubId,
+    String? clubName,
+    String? clubCrestUrl,
+    String? leagueName,
+    String? leagueLogoUrl,
+    String? imageUrl,
   }) => BasePlayer(
     playerId: playerId,
     name: name ?? this.name,
@@ -147,6 +179,12 @@ class BasePlayer {
     nationality: nationality ?? this.nationality,
     marketValueEur: marketValueEur ?? this.marketValueEur,
     baseStats: baseStats ?? this.baseStats,
+    clubId: clubId ?? this.clubId,
+    clubName: clubName ?? this.clubName,
+    clubCrestUrl: clubCrestUrl ?? this.clubCrestUrl,
+    leagueName: leagueName ?? this.leagueName,
+    leagueLogoUrl: leagueLogoUrl ?? this.leagueLogoUrl,
+    imageUrl: imageUrl ?? this.imageUrl,
   );
 
   @override

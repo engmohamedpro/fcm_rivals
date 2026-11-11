@@ -20,8 +20,20 @@ class ImmutableMarker {
   const ImmutableMarker([this.fields = const <String>[]]);
 }
 
+/// Club facts from the dataset's `clubs` map (dataset v3): display name,
+/// crest link and domestic league code ('' when the source tracks none).
+typedef PlayerDatasetClub = ({String name, String crestUrl, String leagueCode});
+
+/// League facts from the dataset's `leagues` map (dataset v3): display
+/// name and logo link.
+typedef PlayerDatasetLeague = ({String name, String logoUrl});
+
 /// Raw player row as found in the importable dataset:
-/// [playerId, name, position, nationality, marketValueEur].
+/// [playerId, name, position, nationality, marketValueEur] — the five
+/// fields every format version shares — optionally extended by dataset
+/// v3 to [..., clubId, imageUrl]. The club/league names and links are
+/// resolved against the dataset's `clubs`/`leagues` maps when present;
+/// every presentation field defaults to 'none' on legacy 5-field rows.
 @ImmutableMarker()
 class PlayerDatasetRow {
   const PlayerDatasetRow({
@@ -30,21 +42,51 @@ class PlayerDatasetRow {
     required this.position,
     required this.nationality,
     required this.marketValueEur,
+    this.clubId = 0,
+    this.clubName = '',
+    this.clubCrestUrl = '',
+    this.leagueName = '',
+    this.leagueLogoUrl = '',
+    this.imageUrl = '',
   });
 
-  factory PlayerDatasetRow.fromList(List<dynamic> row) => PlayerDatasetRow(
-    playerId: row[0] as int,
-    name: row[1] as String,
-    position: Position.fromCode(row[2] as String),
-    nationality: row[3] as String,
-    marketValueEur: row[4] as int,
-  );
+  factory PlayerDatasetRow.fromList(
+    List<dynamic> row, {
+    Map<String, PlayerDatasetClub> clubs = const {},
+    Map<String, PlayerDatasetLeague> leagues = const {},
+  }) {
+    final clubId = row.length > 5 ? row[5] as int : 0;
+    final club = clubs['$clubId'];
+    final league = leagues[club?.leagueCode ?? ''];
+    return PlayerDatasetRow(
+      playerId: row[0] as int,
+      name: row[1] as String,
+      position: Position.fromCode(row[2] as String),
+      nationality: row[3] as String,
+      marketValueEur: row[4] as int,
+      clubId: clubId,
+      clubName: club?.name ?? '',
+      clubCrestUrl: club?.crestUrl ?? '',
+      leagueName: league?.name ?? '',
+      leagueLogoUrl: league?.logoUrl ?? '',
+      imageUrl: row.length > 6 ? row[6] as String : '',
+    );
+  }
 
   final int playerId;
   final String name;
   final Position position;
   final String nationality;
   final int marketValueEur;
+
+  /// Presentation facts (dataset v3); defaults keep legacy 5-field rows
+  /// and rows built from persisted data valid everywhere.
+  final int clubId;
+  final String clubName;
+  final String clubCrestUrl;
+  final String leagueName;
+  final String leagueLogoUrl;
+  final String imageUrl;
 }
 
 /// A parsed player dataset file. Validation (including duplicate ids) is
@@ -55,12 +97,23 @@ class PlayerDataset {
     required this.asOf,
     this.digest = '',
     List<PlayerDatasetRow> rows = const [],
+    this.clubs = const {},
+    this.leagues = const {},
   }) : _rows = List.unmodifiable(rows);
 
   final int version;
   final String asOf;
   final String digest;
   final List<PlayerDatasetRow> _rows;
+
+  /// Shared club facts keyed by Transfermarkt club id (dataset v3; empty
+  /// on legacy files). Rows resolve their club/league presentation fields
+  /// against these maps at parse time.
+  final Map<String, PlayerDatasetClub> clubs;
+
+  /// Shared league facts keyed by league code (dataset v3; empty on
+  /// legacy files).
+  final Map<String, PlayerDatasetLeague> leagues;
 
   int get count => _rows.length;
   Iterable<PlayerDatasetRow> get rows => _rows;
@@ -70,14 +123,49 @@ class PlayerDataset {
     if (map['format'] != 'fcm-rivals-players') {
       throw const FormatException('unsupported player dataset format');
     }
+    final clubs = <String, PlayerDatasetClub>{};
+    final rawClubs = map['clubs'];
+    if (rawClubs is Map<String, dynamic>) {
+      rawClubs.forEach((key, value) {
+        final facts = value as List;
+        if (facts.length >= 3) {
+          clubs[key] = (
+            name: facts[0] as String,
+            crestUrl: facts[1] as String,
+            leagueCode: facts[2] as String,
+          );
+        }
+      });
+    }
+    final leagues = <String, PlayerDatasetLeague>{};
+    final rawLeagues = map['leagues'];
+    if (rawLeagues is Map<String, dynamic>) {
+      rawLeagues.forEach((key, value) {
+        final facts = value as List;
+        if (facts.length >= 2) {
+          leagues[key] = (
+            name: facts[0] as String,
+            logoUrl: facts[1] as String,
+          );
+        }
+      });
+    }
     final rows = (map['players'] as List)
-        .map((r) => PlayerDatasetRow.fromList(r as List))
+        .map(
+          (r) => PlayerDatasetRow.fromList(
+            r as List,
+            clubs: clubs,
+            leagues: leagues,
+          ),
+        )
         .toList();
     return PlayerDataset(
       version: map['version'] as int,
       asOf: map['asOf'] as String,
       digest: (map['digest'] ?? '') as String,
       rows: rows,
+      clubs: clubs,
+      leagues: leagues,
     );
   }
 }
@@ -211,6 +299,12 @@ class PlayerDatabase {
         final player = existing.copyWith(
           name: row.name,
           nationality: row.nationality,
+          clubId: row.clubId,
+          clubName: row.clubName,
+          clubCrestUrl: row.clubCrestUrl,
+          leagueName: row.leagueName,
+          leagueLogoUrl: row.leagueLogoUrl,
+          imageUrl: row.imageUrl,
         );
         _players[row.playerId] = player;
         updated.add(player);
@@ -240,8 +334,18 @@ class PlayerDatabase {
   ImportResult importDatasetFromJson(String jsonText) =>
       importDataset(PlayerDataset.fromJson(jsonText));
 
+  /// Presentation facts (name, nationality, club/league identity, image)
+  /// update in place; they never regenerate Base Stats — only Market Value
+  /// or Position do (GDD 4.6).
   bool _mutableFactsChanged(BasePlayer existing, PlayerDatasetRow row) =>
-      existing.name != row.name || existing.nationality != row.nationality;
+      existing.name != row.name ||
+      existing.nationality != row.nationality ||
+      existing.clubId != row.clubId ||
+      existing.clubName != row.clubName ||
+      existing.clubCrestUrl != row.clubCrestUrl ||
+      existing.leagueName != row.leagueName ||
+      existing.leagueLogoUrl != row.leagueLogoUrl ||
+      existing.imageUrl != row.imageUrl;
 
   BasePlayer _toPlayer(PlayerDatasetRow row, BaseStats stats) => BasePlayer(
     playerId: row.playerId,
@@ -250,5 +354,11 @@ class PlayerDatabase {
     nationality: row.nationality,
     marketValueEur: row.marketValueEur,
     baseStats: stats,
+    clubId: row.clubId,
+    clubName: row.clubName,
+    clubCrestUrl: row.clubCrestUrl,
+    leagueName: row.leagueName,
+    leagueLogoUrl: row.leagueLogoUrl,
+    imageUrl: row.imageUrl,
   );
 }

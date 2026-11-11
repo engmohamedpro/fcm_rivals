@@ -41,7 +41,7 @@ void main() {
     // 3. Reopen on the current schema: the v13→v14→v15 steps run on
     // the real file (the raw-file path the migration contract rides).
     database = db.AppDatabase(NativeDatabase(file));
-    expect(database.schemaVersion, 15);
+    expect(database.schemaVersion, 16);
     final hasClaims = (await database
             .customSelect('PRAGMA table_info(achievement_claims)')
             .get())

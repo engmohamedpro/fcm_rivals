@@ -114,6 +114,78 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _clubIdMeta = const VerificationMeta(
+    'clubId',
+  );
+  @override
+  late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
+    'club_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _clubNameMeta = const VerificationMeta(
+    'clubName',
+  );
+  @override
+  late final GeneratedColumn<String> clubName = GeneratedColumn<String>(
+    'club_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _clubCrestUrlMeta = const VerificationMeta(
+    'clubCrestUrl',
+  );
+  @override
+  late final GeneratedColumn<String> clubCrestUrl = GeneratedColumn<String>(
+    'club_crest_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _leagueNameMeta = const VerificationMeta(
+    'leagueName',
+  );
+  @override
+  late final GeneratedColumn<String> leagueName = GeneratedColumn<String>(
+    'league_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _leagueLogoUrlMeta = const VerificationMeta(
+    'leagueLogoUrl',
+  );
+  @override
+  late final GeneratedColumn<String> leagueLogoUrl = GeneratedColumn<String>(
+    'league_logo_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _imageUrlMeta = const VerificationMeta(
+    'imageUrl',
+  );
+  @override
+  late final GeneratedColumn<String> imageUrl = GeneratedColumn<String>(
+    'image_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     playerId,
@@ -126,6 +198,12 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     support,
     defence,
     goalkeeping,
+    clubId,
+    clubName,
+    clubCrestUrl,
+    leagueName,
+    leagueLogoUrl,
+    imageUrl,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -226,6 +304,51 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     } else if (isInserting) {
       context.missing(_goalkeepingMeta);
     }
+    if (data.containsKey('club_id')) {
+      context.handle(
+        _clubIdMeta,
+        clubId.isAcceptableOrUnknown(data['club_id']!, _clubIdMeta),
+      );
+    }
+    if (data.containsKey('club_name')) {
+      context.handle(
+        _clubNameMeta,
+        clubName.isAcceptableOrUnknown(data['club_name']!, _clubNameMeta),
+      );
+    }
+    if (data.containsKey('club_crest_url')) {
+      context.handle(
+        _clubCrestUrlMeta,
+        clubCrestUrl.isAcceptableOrUnknown(
+          data['club_crest_url']!,
+          _clubCrestUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('league_name')) {
+      context.handle(
+        _leagueNameMeta,
+        leagueName.isAcceptableOrUnknown(
+          data['league_name']!,
+          _leagueNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('league_logo_url')) {
+      context.handle(
+        _leagueLogoUrlMeta,
+        leagueLogoUrl.isAcceptableOrUnknown(
+          data['league_logo_url']!,
+          _leagueLogoUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('image_url')) {
+      context.handle(
+        _imageUrlMeta,
+        imageUrl.isAcceptableOrUnknown(data['image_url']!, _imageUrlMeta),
+      );
+    }
     return context;
   }
 
@@ -275,6 +398,30 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
         DriftSqlType.int,
         data['${effectivePrefix}goalkeeping'],
       )!,
+      clubId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}club_id'],
+      )!,
+      clubName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}club_name'],
+      )!,
+      clubCrestUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}club_crest_url'],
+      )!,
+      leagueName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}league_name'],
+      )!,
+      leagueLogoUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}league_logo_url'],
+      )!,
+      imageUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_url'],
+      )!,
     );
   }
 
@@ -295,6 +442,12 @@ class Player extends DataClass implements Insertable<Player> {
   final int support;
   final int defence;
   final int goalkeeping;
+  final int clubId;
+  final String clubName;
+  final String clubCrestUrl;
+  final String leagueName;
+  final String leagueLogoUrl;
+  final String imageUrl;
   const Player({
     required this.playerId,
     required this.name,
@@ -306,6 +459,12 @@ class Player extends DataClass implements Insertable<Player> {
     required this.support,
     required this.defence,
     required this.goalkeeping,
+    required this.clubId,
+    required this.clubName,
+    required this.clubCrestUrl,
+    required this.leagueName,
+    required this.leagueLogoUrl,
+    required this.imageUrl,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -320,6 +479,12 @@ class Player extends DataClass implements Insertable<Player> {
     map['support'] = Variable<int>(support);
     map['defence'] = Variable<int>(defence);
     map['goalkeeping'] = Variable<int>(goalkeeping);
+    map['club_id'] = Variable<int>(clubId);
+    map['club_name'] = Variable<String>(clubName);
+    map['club_crest_url'] = Variable<String>(clubCrestUrl);
+    map['league_name'] = Variable<String>(leagueName);
+    map['league_logo_url'] = Variable<String>(leagueLogoUrl);
+    map['image_url'] = Variable<String>(imageUrl);
     return map;
   }
 
@@ -335,6 +500,12 @@ class Player extends DataClass implements Insertable<Player> {
       support: Value(support),
       defence: Value(defence),
       goalkeeping: Value(goalkeeping),
+      clubId: Value(clubId),
+      clubName: Value(clubName),
+      clubCrestUrl: Value(clubCrestUrl),
+      leagueName: Value(leagueName),
+      leagueLogoUrl: Value(leagueLogoUrl),
+      imageUrl: Value(imageUrl),
     );
   }
 
@@ -354,6 +525,12 @@ class Player extends DataClass implements Insertable<Player> {
       support: serializer.fromJson<int>(json['support']),
       defence: serializer.fromJson<int>(json['defence']),
       goalkeeping: serializer.fromJson<int>(json['goalkeeping']),
+      clubId: serializer.fromJson<int>(json['clubId']),
+      clubName: serializer.fromJson<String>(json['clubName']),
+      clubCrestUrl: serializer.fromJson<String>(json['clubCrestUrl']),
+      leagueName: serializer.fromJson<String>(json['leagueName']),
+      leagueLogoUrl: serializer.fromJson<String>(json['leagueLogoUrl']),
+      imageUrl: serializer.fromJson<String>(json['imageUrl']),
     );
   }
   @override
@@ -370,6 +547,12 @@ class Player extends DataClass implements Insertable<Player> {
       'support': serializer.toJson<int>(support),
       'defence': serializer.toJson<int>(defence),
       'goalkeeping': serializer.toJson<int>(goalkeeping),
+      'clubId': serializer.toJson<int>(clubId),
+      'clubName': serializer.toJson<String>(clubName),
+      'clubCrestUrl': serializer.toJson<String>(clubCrestUrl),
+      'leagueName': serializer.toJson<String>(leagueName),
+      'leagueLogoUrl': serializer.toJson<String>(leagueLogoUrl),
+      'imageUrl': serializer.toJson<String>(imageUrl),
     };
   }
 
@@ -384,6 +567,12 @@ class Player extends DataClass implements Insertable<Player> {
     int? support,
     int? defence,
     int? goalkeeping,
+    int? clubId,
+    String? clubName,
+    String? clubCrestUrl,
+    String? leagueName,
+    String? leagueLogoUrl,
+    String? imageUrl,
   }) => Player(
     playerId: playerId ?? this.playerId,
     name: name ?? this.name,
@@ -395,6 +584,12 @@ class Player extends DataClass implements Insertable<Player> {
     support: support ?? this.support,
     defence: defence ?? this.defence,
     goalkeeping: goalkeeping ?? this.goalkeeping,
+    clubId: clubId ?? this.clubId,
+    clubName: clubName ?? this.clubName,
+    clubCrestUrl: clubCrestUrl ?? this.clubCrestUrl,
+    leagueName: leagueName ?? this.leagueName,
+    leagueLogoUrl: leagueLogoUrl ?? this.leagueLogoUrl,
+    imageUrl: imageUrl ?? this.imageUrl,
   );
   Player copyWithCompanion(PlayersCompanion data) {
     return Player(
@@ -414,6 +609,18 @@ class Player extends DataClass implements Insertable<Player> {
       goalkeeping: data.goalkeeping.present
           ? data.goalkeeping.value
           : this.goalkeeping,
+      clubId: data.clubId.present ? data.clubId.value : this.clubId,
+      clubName: data.clubName.present ? data.clubName.value : this.clubName,
+      clubCrestUrl: data.clubCrestUrl.present
+          ? data.clubCrestUrl.value
+          : this.clubCrestUrl,
+      leagueName: data.leagueName.present
+          ? data.leagueName.value
+          : this.leagueName,
+      leagueLogoUrl: data.leagueLogoUrl.present
+          ? data.leagueLogoUrl.value
+          : this.leagueLogoUrl,
+      imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
     );
   }
 
@@ -429,7 +636,13 @@ class Player extends DataClass implements Insertable<Player> {
           ..write('attack: $attack, ')
           ..write('support: $support, ')
           ..write('defence: $defence, ')
-          ..write('goalkeeping: $goalkeeping')
+          ..write('goalkeeping: $goalkeeping, ')
+          ..write('clubId: $clubId, ')
+          ..write('clubName: $clubName, ')
+          ..write('clubCrestUrl: $clubCrestUrl, ')
+          ..write('leagueName: $leagueName, ')
+          ..write('leagueLogoUrl: $leagueLogoUrl, ')
+          ..write('imageUrl: $imageUrl')
           ..write(')'))
         .toString();
   }
@@ -446,6 +659,12 @@ class Player extends DataClass implements Insertable<Player> {
     support,
     defence,
     goalkeeping,
+    clubId,
+    clubName,
+    clubCrestUrl,
+    leagueName,
+    leagueLogoUrl,
+    imageUrl,
   );
   @override
   bool operator ==(Object other) =>
@@ -460,7 +679,13 @@ class Player extends DataClass implements Insertable<Player> {
           other.attack == this.attack &&
           other.support == this.support &&
           other.defence == this.defence &&
-          other.goalkeeping == this.goalkeeping);
+          other.goalkeeping == this.goalkeeping &&
+          other.clubId == this.clubId &&
+          other.clubName == this.clubName &&
+          other.clubCrestUrl == this.clubCrestUrl &&
+          other.leagueName == this.leagueName &&
+          other.leagueLogoUrl == this.leagueLogoUrl &&
+          other.imageUrl == this.imageUrl);
 }
 
 class PlayersCompanion extends UpdateCompanion<Player> {
@@ -474,6 +699,12 @@ class PlayersCompanion extends UpdateCompanion<Player> {
   final Value<int> support;
   final Value<int> defence;
   final Value<int> goalkeeping;
+  final Value<int> clubId;
+  final Value<String> clubName;
+  final Value<String> clubCrestUrl;
+  final Value<String> leagueName;
+  final Value<String> leagueLogoUrl;
+  final Value<String> imageUrl;
   const PlayersCompanion({
     this.playerId = const Value.absent(),
     this.name = const Value.absent(),
@@ -485,6 +716,12 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     this.support = const Value.absent(),
     this.defence = const Value.absent(),
     this.goalkeeping = const Value.absent(),
+    this.clubId = const Value.absent(),
+    this.clubName = const Value.absent(),
+    this.clubCrestUrl = const Value.absent(),
+    this.leagueName = const Value.absent(),
+    this.leagueLogoUrl = const Value.absent(),
+    this.imageUrl = const Value.absent(),
   });
   PlayersCompanion.insert({
     this.playerId = const Value.absent(),
@@ -497,6 +734,12 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     required int support,
     required int defence,
     required int goalkeeping,
+    this.clubId = const Value.absent(),
+    this.clubName = const Value.absent(),
+    this.clubCrestUrl = const Value.absent(),
+    this.leagueName = const Value.absent(),
+    this.leagueLogoUrl = const Value.absent(),
+    this.imageUrl = const Value.absent(),
   }) : name = Value(name),
        position = Value(position),
        nationality = Value(nationality),
@@ -517,6 +760,12 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     Expression<int>? support,
     Expression<int>? defence,
     Expression<int>? goalkeeping,
+    Expression<int>? clubId,
+    Expression<String>? clubName,
+    Expression<String>? clubCrestUrl,
+    Expression<String>? leagueName,
+    Expression<String>? leagueLogoUrl,
+    Expression<String>? imageUrl,
   }) {
     return RawValuesInsertable({
       if (playerId != null) 'player_id': playerId,
@@ -529,6 +778,12 @@ class PlayersCompanion extends UpdateCompanion<Player> {
       if (support != null) 'support': support,
       if (defence != null) 'defence': defence,
       if (goalkeeping != null) 'goalkeeping': goalkeeping,
+      if (clubId != null) 'club_id': clubId,
+      if (clubName != null) 'club_name': clubName,
+      if (clubCrestUrl != null) 'club_crest_url': clubCrestUrl,
+      if (leagueName != null) 'league_name': leagueName,
+      if (leagueLogoUrl != null) 'league_logo_url': leagueLogoUrl,
+      if (imageUrl != null) 'image_url': imageUrl,
     });
   }
 
@@ -543,6 +798,12 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     Value<int>? support,
     Value<int>? defence,
     Value<int>? goalkeeping,
+    Value<int>? clubId,
+    Value<String>? clubName,
+    Value<String>? clubCrestUrl,
+    Value<String>? leagueName,
+    Value<String>? leagueLogoUrl,
+    Value<String>? imageUrl,
   }) {
     return PlayersCompanion(
       playerId: playerId ?? this.playerId,
@@ -555,6 +816,12 @@ class PlayersCompanion extends UpdateCompanion<Player> {
       support: support ?? this.support,
       defence: defence ?? this.defence,
       goalkeeping: goalkeeping ?? this.goalkeeping,
+      clubId: clubId ?? this.clubId,
+      clubName: clubName ?? this.clubName,
+      clubCrestUrl: clubCrestUrl ?? this.clubCrestUrl,
+      leagueName: leagueName ?? this.leagueName,
+      leagueLogoUrl: leagueLogoUrl ?? this.leagueLogoUrl,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
@@ -591,6 +858,24 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     if (goalkeeping.present) {
       map['goalkeeping'] = Variable<int>(goalkeeping.value);
     }
+    if (clubId.present) {
+      map['club_id'] = Variable<int>(clubId.value);
+    }
+    if (clubName.present) {
+      map['club_name'] = Variable<String>(clubName.value);
+    }
+    if (clubCrestUrl.present) {
+      map['club_crest_url'] = Variable<String>(clubCrestUrl.value);
+    }
+    if (leagueName.present) {
+      map['league_name'] = Variable<String>(leagueName.value);
+    }
+    if (leagueLogoUrl.present) {
+      map['league_logo_url'] = Variable<String>(leagueLogoUrl.value);
+    }
+    if (imageUrl.present) {
+      map['image_url'] = Variable<String>(imageUrl.value);
+    }
     return map;
   }
 
@@ -606,7 +891,13 @@ class PlayersCompanion extends UpdateCompanion<Player> {
           ..write('attack: $attack, ')
           ..write('support: $support, ')
           ..write('defence: $defence, ')
-          ..write('goalkeeping: $goalkeeping')
+          ..write('goalkeeping: $goalkeeping, ')
+          ..write('clubId: $clubId, ')
+          ..write('clubName: $clubName, ')
+          ..write('clubCrestUrl: $clubCrestUrl, ')
+          ..write('leagueName: $leagueName, ')
+          ..write('leagueLogoUrl: $leagueLogoUrl, ')
+          ..write('imageUrl: $imageUrl')
           ..write(')'))
         .toString();
   }

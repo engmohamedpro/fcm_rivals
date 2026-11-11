@@ -220,6 +220,12 @@ class SquadStore {
           position: Position.fromCode(base.position),
           nationality: base.nationality,
           marketValueEur: base.marketValueEur,
+          clubId: base.clubId,
+          clubName: base.clubName,
+          clubCrestUrl: base.clubCrestUrl,
+          leagueName: base.leagueName,
+          leagueLogoUrl: base.leagueLogoUrl,
+          imageUrl: base.imageUrl,
           baseStats: BaseStats(
             overall: base.overall,
             attack: base.attack,

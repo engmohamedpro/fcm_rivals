@@ -23,8 +23,11 @@ part 'app_database.g.dart';
 ///
 /// Identity is the permanent [playerId] (Transfermarkt id, GDD 4.4). Base
 /// stats columns are written at import time by the Player Database Engine
-/// and follow its update rules (GDD 4.6). Core data is minimal: name,
-/// nationality, position and market value — no club, age or league.
+/// and follow its update rules (GDD 4.6). Core data is name, nationality,
+/// position and market value, plus the presentation facts carried since
+/// dataset v3 (schema v16): the Transfermarkt portrait URL and the
+/// player's real-world club and domestic league — names and CDN links,
+/// '' when the source tracks none.
 class Players extends Table {
   IntColumn get playerId => integer()();
   TextColumn get name => text()();
@@ -36,6 +39,20 @@ class Players extends Table {
   IntColumn get support => integer()();
   IntColumn get defence => integer()();
   IntColumn get goalkeeping => integer()();
+
+  /// The player's real-world club on Transfermarkt (0 = untracked, e.g.
+  /// free agents); denormalized name + crest link ('' when unknown).
+  IntColumn get clubId => integer().withDefault(const Constant(0))();
+  TextColumn get clubName => text().withDefault(const Constant(''))();
+  TextColumn get clubCrestUrl => text().withDefault(const Constant(''))();
+
+  /// Domestic league display name ('' when the club carries no league in
+  /// the source) and its logo link.
+  TextColumn get leagueName => text().withDefault(const Constant(''))();
+  TextColumn get leagueLogoUrl => text().withDefault(const Constant(''))();
+
+  /// Transfermarkt portrait link ('' for players with no real photo).
+  TextColumn get imageUrl => text().withDefault(const Constant(''))();
 
   @override
   Set<Column> get primaryKey => {playerId};
@@ -376,7 +393,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -518,6 +535,25 @@ class AppDatabase extends _$AppDatabase {
             .isNotEmpty;
         if (!hasStreak) {
           await m.createTable(dailyStreakClaims);
+        }
+      }
+      if (from < 16) {
+        // Player presentation facts (dataset v3): the Transfermarkt
+        // portrait URL and the real-world club/league identity — pure
+        // additions, no rebuild; every existing row keeps its values
+        // byte-for-byte and reads the ''/0 defaults. The existence
+        // guard mirrors the v13-v15 steps against rewound fixtures.
+        final hasImageUrl = (await customSelect(
+          'PRAGMA table_info(players)',
+        ).get())
+            .any((row) => row.read<String>('name') == 'image_url');
+        if (!hasImageUrl) {
+          await m.addColumn(players, players.clubId);
+          await m.addColumn(players, players.clubName);
+          await m.addColumn(players, players.clubCrestUrl);
+          await m.addColumn(players, players.leagueName);
+          await m.addColumn(players, players.leagueLogoUrl);
+          await m.addColumn(players, players.imageUrl);
         }
       }
     },

@@ -329,9 +329,11 @@ void main() {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(db.close);
       // T-0106 bumped the schema to 14 (achievement claims + equipped
-      // title); the crest column this test locks landed in v13 and
-      // survives the bump untouched.
-      expect(db.schemaVersion, 14);
+      // title), the daily rewards streak to 15, and dataset v3's
+      // presentation columns to 16; the crest column this test locks
+      // landed in v13 and survives every bump untouched. (The stale 14
+      // assertion shipped since the v15 bump — corrected here.)
+      expect(db.schemaVersion, 16);
 
       // The fresh-create path is the same schema the migration lands
       // on; write a row directly and read the column back through the

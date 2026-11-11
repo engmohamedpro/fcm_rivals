@@ -86,9 +86,10 @@ void main() {
     expect(healthy.injuryKind, isNull);
     // T-0097 bumped the schema to 13 (clubs.crest); T-0106 to
     // 14 (achievement_claims + equipped_title); the daily rewards
-    // streak bumped it to 15 (daily_streak_claims) — the injury
-    // columns this fixture exercises are untouched by all three.
-    expect(database.schemaVersion, 15);
+    // streak bumped it to 15 (daily_streak_claims); dataset v3's
+    // presentation columns to 16 — the injury columns this fixture
+    // exercises are untouched by all four.
+    expect(database.schemaVersion, 16);
     await database.close();
   });
 

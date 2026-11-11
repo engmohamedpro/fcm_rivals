@@ -172,4 +172,155 @@ void main() {
       },
     );
   });
+
+  group('dataset v3: club, league and portrait facts', () {
+    // A v3-shaped payload: 7-field rows + the shared clubs/leagues maps.
+    String v3Json(
+      List<List<dynamic>> rows, {
+      Map<String, dynamic>? clubs,
+      Map<String, dynamic>? leagues,
+    }) => json.encode({
+      'format': 'fcm-rivals-players',
+      'version': 3,
+      'asOf': '2026-11-11',
+      'digest': 'test',
+      'clubs': ?clubs,
+      'leagues': ?leagues,
+      'players': rows,
+    });
+
+    const v3Clubs = {
+      '281': ['Manchester City', 'https://tm.test/wappen/head/281.png', 'GB1'],
+      '515': ['Free Agent', '', ''],
+    };
+    const v3Leagues = {
+      'GB1': ['Premier League', 'https://tm.test/logo/header/gb1.png'],
+    };
+
+    test('7-field rows resolve club, league and portrait via the maps', () {
+      final db = PlayerDatabase();
+      db.importDataset(
+        PlayerDataset.fromJson(
+          v3Json(
+            [
+              [1, 'Player One', 'ST', 'Egypt', 5_000_000, 281, 'https://tm.test/p/1.png'],
+            ],
+            clubs: v3Clubs,
+            leagues: v3Leagues,
+          ),
+        ),
+      );
+
+      final p = db[1]!;
+      expect(p.clubId, 281);
+      expect(p.clubName, 'Manchester City');
+      expect(p.clubCrestUrl, 'https://tm.test/wappen/head/281.png');
+      expect(p.leagueName, 'Premier League');
+      expect(p.leagueLogoUrl, 'https://tm.test/logo/header/gb1.png');
+      expect(p.imageUrl, 'https://tm.test/p/1.png');
+    });
+
+    test('legacy 5-field rows default every presentation fact', () {
+      final dataset = PlayerDataset.fromJson(v3Json(baseRows));
+      expect(dataset.rows, isNotEmpty);
+      for (final row in dataset.rows) {
+        expect(row.clubId, 0);
+        expect(row.clubName, '');
+        expect(row.clubCrestUrl, '');
+        expect(row.leagueName, '');
+        expect(row.leagueLogoUrl, '');
+        expect(row.imageUrl, '');
+      }
+      final db = PlayerDatabase();
+      db.importDataset(dataset);
+      expect(db[1]!.imageUrl, '');
+    });
+
+    test('free agents carry the club convention and no crest', () {
+      final db = PlayerDatabase();
+      db.importDataset(
+        PlayerDataset.fromJson(
+          v3Json(
+            [
+              [2, 'Player Two', 'CB', 'Brazil', 1_000_000, 515, ''],
+            ],
+            clubs: v3Clubs,
+            leagues: v3Leagues,
+          ),
+        ),
+      );
+      final p = db[2]!;
+      expect(p.clubId, 515);
+      expect(p.clubName, 'Free Agent');
+      expect(p.clubCrestUrl, '');
+      expect(p.leagueName, '');
+      expect(p.leagueLogoUrl, '');
+    });
+
+    test('image-only change updates in place without regenerating stats',
+        () {
+      final db = PlayerDatabase();
+      db.importDataset(
+        PlayerDataset.fromJson(
+          v3Json(
+            [
+              [1, 'Player One', 'ST', 'Egypt', 5_000_000, 281, 'https://tm.test/p/1.png'],
+            ],
+            clubs: v3Clubs,
+            leagues: v3Leagues,
+          ),
+        ),
+      );
+      final before = db[1]!.baseStats;
+
+      final result = db.importDataset(
+        PlayerDataset.fromJson(
+          v3Json(
+            [
+              [1, 'Player One', 'ST', 'Egypt', 5_000_000, 281, 'https://tm.test/p/1-new.png'],
+            ],
+            clubs: v3Clubs,
+            leagues: v3Leagues,
+          ),
+        ),
+      );
+
+      expect(result.regenerated, isEmpty);
+      expect(result.updated.single.playerId, 1);
+      expect(db[1]!.imageUrl, 'https://tm.test/p/1-new.png');
+      expect(db[1]!.baseStats, before);
+    });
+
+    test('club move (transfer) updates the club facts without a regen', () {
+      final db = PlayerDatabase();
+      db.importDataset(
+        PlayerDataset.fromJson(
+          v3Json(
+            [
+              [1, 'Player One', 'ST', 'Egypt', 5_000_000, 281, 'https://tm.test/p/1.png'],
+            ],
+            clubs: v3Clubs,
+            leagues: v3Leagues,
+          ),
+        ),
+      );
+      final before = db[1]!.baseStats;
+
+      final result = db.importDataset(
+        PlayerDataset.fromJson(
+          v3Json(
+            [
+              [1, 'Player One', 'ST', 'Egypt', 5_000_000, 515, 'https://tm.test/p/1.png'],
+            ],
+            clubs: v3Clubs,
+            leagues: v3Leagues,
+          ),
+        ),
+      );
+
+      expect(result.regenerated, isEmpty);
+      expect(db[1]!.clubName, 'Free Agent');
+      expect(db[1]!.baseStats, before);
+    });
+  });
 }

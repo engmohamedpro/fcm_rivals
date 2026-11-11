@@ -200,8 +200,9 @@ void main() {
 
     // T-0097 bumped the schema to 13 (the clubs.crest column);
     // T-0106 to 14 (claims + equipped title); the daily rewards
-    // streak (d392228) bumped it to 15 (daily_streak_claims).
-    expect(db.schemaVersion, 15);
+    // streak (d392228) to 15 (daily_streak_claims); dataset v3's
+    // presentation columns to 16 (portrait + club/league facts).
+    expect(db.schemaVersion, 16);
     expect(
       (await columnsOf(db, 'daily_streak_claims')).contains('streak_day'),
       isTrue,
