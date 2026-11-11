@@ -301,12 +301,7 @@ class FcmPlayerCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: h * 0.012),
-                    height: math.max(1.0, w * 0.008),
-                    width: w * 0.12,
-                    color: ink.withValues(alpha: 0.4),
-                  ),
+                  SizedBox(height: h * 0.02),
                   Text(
                     flagEmojiFor(player.nationality),
                     style: TextStyle(fontSize: w * 0.095),
