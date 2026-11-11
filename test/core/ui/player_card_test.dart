@@ -10,20 +10,22 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart';
 
-BasePlayer _player({int overall = 91}) => BasePlayer(
-  playerId: 7,
-  name: 'Karim Fouad',
-  position: Position.st,
-  nationality: 'Egypt',
-  marketValueEur: 50000000,
-  baseStats: BaseStats(
-    overall: overall,
-    attack: 93,
-    support: 72,
-    defence: 40,
-    goalkeeping: 0,
-  ),
-);
+BasePlayer _player({int overall = 91, String clubCrestUrl = ''}) =>
+    BasePlayer(
+      playerId: 7,
+      name: 'Karim Fouad',
+      position: Position.st,
+      nationality: 'Egypt',
+      marketValueEur: 50000000,
+      clubCrestUrl: clubCrestUrl,
+      baseStats: BaseStats(
+        overall: overall,
+        attack: 93,
+        support: 72,
+        defence: 40,
+        goalkeeping: 0,
+      ),
+    );
 
 Widget _host(Widget child) => MaterialApp(
   home: Scaffold(
@@ -101,6 +103,30 @@ void main() {
     expect(find.text('95'), findsOneWidget);
     expect(find.text('+3'), findsOneWidget);
     expect(find.text('99'), findsOneWidget);
+  });
+
+  testWidgets('club crest replaces the nationality name under the flag', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        FcmPlayerCard(
+          player: _player(
+            clubCrestUrl:
+                'https://img.a.transfermarkt.technology/wappen/head/281.png',
+          ),
+          rarity: CardRarity.epic,
+        ),
+      ),
+    );
+    // The crest is a network image under the flag; the fallback name is
+    // not built while the crest URL is present.
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('EGYPT'), findsNothing);
+    // The test HTTP client fails the download (400) — the card must
+    // degrade to the nationality name, never to a blank slot.
+    await tester.pumpAndSettle();
+    expect(find.text('EGYPT'), findsOneWidget);
   });
 
   testWidgets('name is absent until revealed (plain fade)', (

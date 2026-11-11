@@ -131,6 +131,25 @@ class FcmPlayerCard extends StatelessWidget {
     // The portrait shares the name's reveal clock: the typewriter walkout
     // lands the face together with the identity, never before it.
     final photoReveal = (letters ?? nameProgress).clamp(0.0, 1.0).toDouble();
+    // The nationality name under the flag — the fallback shown whenever
+    // the club crest is unavailable (no tracked club, failed download).
+    final nationalityName = SizedBox(
+      width: w * 0.30,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          player.nationality.toUpperCase(),
+          maxLines: 1,
+          softWrap: false,
+          style: TextStyle(
+            color: ink.withValues(alpha: 0.92),
+            fontSize: w * 0.045,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+    );
 
     // Engraved look for the dark ink on the bright metal: a faint light
     // edge just below each glyph.
@@ -293,42 +312,26 @@ class FcmPlayerCard extends StatelessWidget {
                     style: TextStyle(fontSize: w * 0.095),
                   ),
                   SizedBox(height: w * 0.015),
-                  // Nationality name under the flag — always visible like
-                  // the flag itself (the walkout already told the country).
-                  SizedBox(
-                    width: w * 0.30,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        player.nationality.toUpperCase(),
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(
-                          color: ink.withValues(alpha: 0.92),
-                          fontSize: w * 0.045,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Club crest under the flag (dataset v3) — always
+                  // visible like the flag itself (the walkout already
+                  // told the country). The nationality name is the
+                  // fallback: players with no tracked club (free agents,
+                  // legacy fixtures) and failed downloads degrade to the
+                  // text, never to a blank slot.
+                  player.clubCrestUrl.isNotEmpty
+                      ? SizedBox(
+                          width: w * 0.30,
+                          child: Image.network(
+                            player.clubCrestUrl,
+                            height: w * 0.15,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.medium,
+                            gaplessPlayback: true,
+                            errorBuilder: (_, _, _) => nationalityName,
+                          ),
+                        )
+                      : nationalityName,
                 ],
-              ),
-            ),
-            // Tier ribbon, top-right.
-            Positioned(
-              right: w * 0.10,
-              top: h * 0.085,
-              child: Text(
-                premium ? cardClass.label : rarity.label,
-                maxLines: 1,
-                softWrap: false,
-                style: TextStyle(
-                  color: ink.withValues(alpha: 0.78),
-                  fontSize: w * 0.04,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
               ),
             ),
             if (upgradeLevel > 0)
