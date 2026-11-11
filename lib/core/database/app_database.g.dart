@@ -7834,6 +7834,421 @@ class AchievementClaimsCompanion extends UpdateCompanion<AchievementClaim> {
   }
 }
 
+class $DailyStreakClaimsTable extends DailyStreakClaims
+    with TableInfo<$DailyStreakClaimsTable, DailyStreakClaim> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DailyStreakClaimsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _clubIdMeta = const VerificationMeta('clubId');
+  @override
+  late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
+    'club_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dayKeyMeta = const VerificationMeta('dayKey');
+  @override
+  late final GeneratedColumn<String> dayKey = GeneratedColumn<String>(
+    'day_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _streakDayMeta = const VerificationMeta(
+    'streakDay',
+  );
+  @override
+  late final GeneratedColumn<int> streakDay = GeneratedColumn<int>(
+    'streak_day',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardCoinsMeta = const VerificationMeta(
+    'rewardCoins',
+  );
+  @override
+  late final GeneratedColumn<int> rewardCoins = GeneratedColumn<int>(
+    'reward_coins',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _claimedAtMeta = const VerificationMeta(
+    'claimedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> claimedAt = GeneratedColumn<DateTime>(
+    'claimed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    clubId,
+    dayKey,
+    streakDay,
+    rewardCoins,
+    claimedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'daily_streak_claims';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DailyStreakClaim> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('club_id')) {
+      context.handle(
+        _clubIdMeta,
+        clubId.isAcceptableOrUnknown(data['club_id']!, _clubIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clubIdMeta);
+    }
+    if (data.containsKey('day_key')) {
+      context.handle(
+        _dayKeyMeta,
+        dayKey.isAcceptableOrUnknown(data['day_key']!, _dayKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayKeyMeta);
+    }
+    if (data.containsKey('streak_day')) {
+      context.handle(
+        _streakDayMeta,
+        streakDay.isAcceptableOrUnknown(data['streak_day']!, _streakDayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_streakDayMeta);
+    }
+    if (data.containsKey('reward_coins')) {
+      context.handle(
+        _rewardCoinsMeta,
+        rewardCoins.isAcceptableOrUnknown(
+          data['reward_coins']!,
+          _rewardCoinsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rewardCoinsMeta);
+    }
+    if (data.containsKey('claimed_at')) {
+      context.handle(
+        _claimedAtMeta,
+        claimedAt.isAcceptableOrUnknown(data['claimed_at']!, _claimedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_claimedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {clubId, dayKey},
+  ];
+  @override
+  DailyStreakClaim map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DailyStreakClaim(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      clubId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}club_id'],
+      )!,
+      dayKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_key'],
+      )!,
+      streakDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}streak_day'],
+      )!,
+      rewardCoins: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reward_coins'],
+      )!,
+      claimedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}claimed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DailyStreakClaimsTable createAlias(String alias) {
+    return $DailyStreakClaimsTable(attachedDatabase, alias);
+  }
+}
+
+class DailyStreakClaim extends DataClass
+    implements Insertable<DailyStreakClaim> {
+  final int id;
+  final int clubId;
+
+  /// The local calendar day the claim landed on, canonical
+  /// 'YYYY-MM-DD' — the idempotency key alongside the club.
+  final String dayKey;
+
+  /// The streak ordinal this claim advanced to (1, 2, 3, …).
+  final int streakDay;
+
+  /// The coins actually paid at claim time (audit trail).
+  final int rewardCoins;
+
+  /// When the claim landed (audit; the day window is [dayKey]).
+  final DateTime claimedAt;
+  const DailyStreakClaim({
+    required this.id,
+    required this.clubId,
+    required this.dayKey,
+    required this.streakDay,
+    required this.rewardCoins,
+    required this.claimedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['club_id'] = Variable<int>(clubId);
+    map['day_key'] = Variable<String>(dayKey);
+    map['streak_day'] = Variable<int>(streakDay);
+    map['reward_coins'] = Variable<int>(rewardCoins);
+    map['claimed_at'] = Variable<DateTime>(claimedAt);
+    return map;
+  }
+
+  DailyStreakClaimsCompanion toCompanion(bool nullToAbsent) {
+    return DailyStreakClaimsCompanion(
+      id: Value(id),
+      clubId: Value(clubId),
+      dayKey: Value(dayKey),
+      streakDay: Value(streakDay),
+      rewardCoins: Value(rewardCoins),
+      claimedAt: Value(claimedAt),
+    );
+  }
+
+  factory DailyStreakClaim.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DailyStreakClaim(
+      id: serializer.fromJson<int>(json['id']),
+      clubId: serializer.fromJson<int>(json['clubId']),
+      dayKey: serializer.fromJson<String>(json['dayKey']),
+      streakDay: serializer.fromJson<int>(json['streakDay']),
+      rewardCoins: serializer.fromJson<int>(json['rewardCoins']),
+      claimedAt: serializer.fromJson<DateTime>(json['claimedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'clubId': serializer.toJson<int>(clubId),
+      'dayKey': serializer.toJson<String>(dayKey),
+      'streakDay': serializer.toJson<int>(streakDay),
+      'rewardCoins': serializer.toJson<int>(rewardCoins),
+      'claimedAt': serializer.toJson<DateTime>(claimedAt),
+    };
+  }
+
+  DailyStreakClaim copyWith({
+    int? id,
+    int? clubId,
+    String? dayKey,
+    int? streakDay,
+    int? rewardCoins,
+    DateTime? claimedAt,
+  }) => DailyStreakClaim(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    dayKey: dayKey ?? this.dayKey,
+    streakDay: streakDay ?? this.streakDay,
+    rewardCoins: rewardCoins ?? this.rewardCoins,
+    claimedAt: claimedAt ?? this.claimedAt,
+  );
+  DailyStreakClaim copyWithCompanion(DailyStreakClaimsCompanion data) {
+    return DailyStreakClaim(
+      id: data.id.present ? data.id.value : this.id,
+      clubId: data.clubId.present ? data.clubId.value : this.clubId,
+      dayKey: data.dayKey.present ? data.dayKey.value : this.dayKey,
+      streakDay: data.streakDay.present ? data.streakDay.value : this.streakDay,
+      rewardCoins: data.rewardCoins.present
+          ? data.rewardCoins.value
+          : this.rewardCoins,
+      claimedAt: data.claimedAt.present ? data.claimedAt.value : this.claimedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DailyStreakClaim(')
+          ..write('id: $id, ')
+          ..write('clubId: $clubId, ')
+          ..write('dayKey: $dayKey, ')
+          ..write('streakDay: $streakDay, ')
+          ..write('rewardCoins: $rewardCoins, ')
+          ..write('claimedAt: $claimedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, clubId, dayKey, streakDay, rewardCoins, claimedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DailyStreakClaim &&
+          other.id == this.id &&
+          other.clubId == this.clubId &&
+          other.dayKey == this.dayKey &&
+          other.streakDay == this.streakDay &&
+          other.rewardCoins == this.rewardCoins &&
+          other.claimedAt == this.claimedAt);
+}
+
+class DailyStreakClaimsCompanion extends UpdateCompanion<DailyStreakClaim> {
+  final Value<int> id;
+  final Value<int> clubId;
+  final Value<String> dayKey;
+  final Value<int> streakDay;
+  final Value<int> rewardCoins;
+  final Value<DateTime> claimedAt;
+  const DailyStreakClaimsCompanion({
+    this.id = const Value.absent(),
+    this.clubId = const Value.absent(),
+    this.dayKey = const Value.absent(),
+    this.streakDay = const Value.absent(),
+    this.rewardCoins = const Value.absent(),
+    this.claimedAt = const Value.absent(),
+  });
+  DailyStreakClaimsCompanion.insert({
+    this.id = const Value.absent(),
+    required int clubId,
+    required String dayKey,
+    required int streakDay,
+    required int rewardCoins,
+    required DateTime claimedAt,
+  }) : clubId = Value(clubId),
+       dayKey = Value(dayKey),
+       streakDay = Value(streakDay),
+       rewardCoins = Value(rewardCoins),
+       claimedAt = Value(claimedAt);
+  static Insertable<DailyStreakClaim> custom({
+    Expression<int>? id,
+    Expression<int>? clubId,
+    Expression<String>? dayKey,
+    Expression<int>? streakDay,
+    Expression<int>? rewardCoins,
+    Expression<DateTime>? claimedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (clubId != null) 'club_id': clubId,
+      if (dayKey != null) 'day_key': dayKey,
+      if (streakDay != null) 'streak_day': streakDay,
+      if (rewardCoins != null) 'reward_coins': rewardCoins,
+      if (claimedAt != null) 'claimed_at': claimedAt,
+    });
+  }
+
+  DailyStreakClaimsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? clubId,
+    Value<String>? dayKey,
+    Value<int>? streakDay,
+    Value<int>? rewardCoins,
+    Value<DateTime>? claimedAt,
+  }) {
+    return DailyStreakClaimsCompanion(
+      id: id ?? this.id,
+      clubId: clubId ?? this.clubId,
+      dayKey: dayKey ?? this.dayKey,
+      streakDay: streakDay ?? this.streakDay,
+      rewardCoins: rewardCoins ?? this.rewardCoins,
+      claimedAt: claimedAt ?? this.claimedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (clubId.present) {
+      map['club_id'] = Variable<int>(clubId.value);
+    }
+    if (dayKey.present) {
+      map['day_key'] = Variable<String>(dayKey.value);
+    }
+    if (streakDay.present) {
+      map['streak_day'] = Variable<int>(streakDay.value);
+    }
+    if (rewardCoins.present) {
+      map['reward_coins'] = Variable<int>(rewardCoins.value);
+    }
+    if (claimedAt.present) {
+      map['claimed_at'] = Variable<DateTime>(claimedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DailyStreakClaimsCompanion(')
+          ..write('id: $id, ')
+          ..write('clubId: $clubId, ')
+          ..write('dayKey: $dayKey, ')
+          ..write('streakDay: $streakDay, ')
+          ..write('rewardCoins: $rewardCoins, ')
+          ..write('claimedAt: $claimedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7857,6 +8272,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UserSettingsTable userSettings = $UserSettingsTable(this);
   late final $AchievementClaimsTable achievementClaims =
       $AchievementClaimsTable(this);
+  late final $DailyStreakClaimsTable dailyStreakClaims =
+      $DailyStreakClaimsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7877,6 +8294,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     facilityLevels,
     userSettings,
     achievementClaims,
+    dailyStreakClaims,
   ];
 }
 
@@ -11777,6 +12195,234 @@ typedef $$AchievementClaimsTableProcessedTableManager =
       AchievementClaim,
       PrefetchHooks Function()
     >;
+typedef $$DailyStreakClaimsTableCreateCompanionBuilder =
+    DailyStreakClaimsCompanion Function({
+      Value<int> id,
+      required int clubId,
+      required String dayKey,
+      required int streakDay,
+      required int rewardCoins,
+      required DateTime claimedAt,
+    });
+typedef $$DailyStreakClaimsTableUpdateCompanionBuilder =
+    DailyStreakClaimsCompanion Function({
+      Value<int> id,
+      Value<int> clubId,
+      Value<String> dayKey,
+      Value<int> streakDay,
+      Value<int> rewardCoins,
+      Value<DateTime> claimedAt,
+    });
+
+class $$DailyStreakClaimsTableFilterComposer
+    extends Composer<_$AppDatabase, $DailyStreakClaimsTable> {
+  $$DailyStreakClaimsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dayKey => $composableBuilder(
+    column: $table.dayKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get streakDay => $composableBuilder(
+    column: $table.streakDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rewardCoins => $composableBuilder(
+    column: $table.rewardCoins,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get claimedAt => $composableBuilder(
+    column: $table.claimedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DailyStreakClaimsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DailyStreakClaimsTable> {
+  $$DailyStreakClaimsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dayKey => $composableBuilder(
+    column: $table.dayKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get streakDay => $composableBuilder(
+    column: $table.streakDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rewardCoins => $composableBuilder(
+    column: $table.rewardCoins,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get claimedAt => $composableBuilder(
+    column: $table.claimedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DailyStreakClaimsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DailyStreakClaimsTable> {
+  $$DailyStreakClaimsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get clubId =>
+      $composableBuilder(column: $table.clubId, builder: (column) => column);
+
+  GeneratedColumn<String> get dayKey =>
+      $composableBuilder(column: $table.dayKey, builder: (column) => column);
+
+  GeneratedColumn<int> get streakDay =>
+      $composableBuilder(column: $table.streakDay, builder: (column) => column);
+
+  GeneratedColumn<int> get rewardCoins => $composableBuilder(
+    column: $table.rewardCoins,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get claimedAt =>
+      $composableBuilder(column: $table.claimedAt, builder: (column) => column);
+}
+
+class $$DailyStreakClaimsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DailyStreakClaimsTable,
+          DailyStreakClaim,
+          $$DailyStreakClaimsTableFilterComposer,
+          $$DailyStreakClaimsTableOrderingComposer,
+          $$DailyStreakClaimsTableAnnotationComposer,
+          $$DailyStreakClaimsTableCreateCompanionBuilder,
+          $$DailyStreakClaimsTableUpdateCompanionBuilder,
+          (
+            DailyStreakClaim,
+            BaseReferences<
+              _$AppDatabase,
+              $DailyStreakClaimsTable,
+              DailyStreakClaim
+            >,
+          ),
+          DailyStreakClaim,
+          PrefetchHooks Function()
+        > {
+  $$DailyStreakClaimsTableTableManager(
+    _$AppDatabase db,
+    $DailyStreakClaimsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DailyStreakClaimsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DailyStreakClaimsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DailyStreakClaimsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> clubId = const Value.absent(),
+                Value<String> dayKey = const Value.absent(),
+                Value<int> streakDay = const Value.absent(),
+                Value<int> rewardCoins = const Value.absent(),
+                Value<DateTime> claimedAt = const Value.absent(),
+              }) => DailyStreakClaimsCompanion(
+                id: id,
+                clubId: clubId,
+                dayKey: dayKey,
+                streakDay: streakDay,
+                rewardCoins: rewardCoins,
+                claimedAt: claimedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int clubId,
+                required String dayKey,
+                required int streakDay,
+                required int rewardCoins,
+                required DateTime claimedAt,
+              }) => DailyStreakClaimsCompanion.insert(
+                id: id,
+                clubId: clubId,
+                dayKey: dayKey,
+                streakDay: streakDay,
+                rewardCoins: rewardCoins,
+                claimedAt: claimedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DailyStreakClaimsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DailyStreakClaimsTable,
+      DailyStreakClaim,
+      $$DailyStreakClaimsTableFilterComposer,
+      $$DailyStreakClaimsTableOrderingComposer,
+      $$DailyStreakClaimsTableAnnotationComposer,
+      $$DailyStreakClaimsTableCreateCompanionBuilder,
+      $$DailyStreakClaimsTableUpdateCompanionBuilder,
+      (
+        DailyStreakClaim,
+        BaseReferences<
+          _$AppDatabase,
+          $DailyStreakClaimsTable,
+          DailyStreakClaim
+        >,
+      ),
+      DailyStreakClaim,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11811,4 +12457,6 @@ class $AppDatabaseManager {
       $$UserSettingsTableTableManager(_db, _db.userSettings);
   $$AchievementClaimsTableTableManager get achievementClaims =>
       $$AchievementClaimsTableTableManager(_db, _db.achievementClaims);
+  $$DailyStreakClaimsTableTableManager get dailyStreakClaims =>
+      $$DailyStreakClaimsTableTableManager(_db, _db.dailyStreakClaims);
 }

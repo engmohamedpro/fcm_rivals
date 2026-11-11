@@ -44,6 +44,11 @@ abstract final class LedgerReasons {
   /// `<achievementId>:<tierKey>` so the economy sweep attributes
   /// achievement income precisely.
   static const achievement = 'achievement';
+
+  /// The daily rewards streak: detail carries
+  /// `<dayKey>:<streakDay>` so the economy sweep attributes streak
+  /// income precisely.
+  static const streakReward = 'streak_reward';
 }
 
 /// The career's derived metric snapshot — every number the achievement

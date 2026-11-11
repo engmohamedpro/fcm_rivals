@@ -119,6 +119,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
+    // The streak card sits above the history (the daily claim
+    // surface meets the returning player first) — scroll to the
+    // history rows instead of assuming they fit the fold.
+    await tester.scrollUntilVisible(
+      find.text('Season 2 · Div 1'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 150));
+
     // Two completed seasons: ordinal 2/Div 1 (stayed) and ordinal 1/
     // Div 2 (promoted) — newest first.
     expect(find.text('Season 2 · Div 1'), findsOneWidget);
@@ -139,10 +149,18 @@ void main() {
     expect(find.text('Starts now'), findsOneWidget,
         reason: 'win rate shows the starts-now copy, never NaN');
     expect(find.text('The cabinet is waiting'), findsOneWidget);
-    expect(find.text('Your career starts now'), findsOneWidget);
     // The fallback identity renders (no club rows in the empty db
-    // beyond the setUp one — the unset names show).
+    // beyond the setUp one — the unset names show) — above the fold,
+    // checked BEFORE scrolling away.
     expect(find.textContaining('Nobody'), findsOneWidget);
+    // The streak card sits above the history — scroll to it.
+    await tester.scrollUntilVisible(
+      find.text('Your career starts now'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text('Your career starts now'), findsOneWidget);
   });
 
   testWidgets('six nav items render with Profile last', (tester) async {

@@ -320,6 +320,38 @@ class AchievementClaims extends Table {
   ];
 }
 
+/// One claimed daily-streak day (the daily rewards streak): the same
+/// DB-level idempotency pattern as [AchievementClaims] — the UNIQUE
+/// key on (club, day) makes a double claim of any single day
+/// STRUCTURALLY impossible, so one claim per day is enforced by the
+/// schema itself, not by UI discipline. `streakDay` is the streak's
+/// ordinal day (1 for the first ever claim, 2 after a consecutive
+/// claim, back to 1 after a missed day resets the run); the ladder
+/// reward is recomputed from it, `rewardCoins` records what was
+/// actually paid for audit.
+class DailyStreakClaims extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get clubId => integer()();
+
+  /// The local calendar day the claim landed on, canonical
+  /// 'YYYY-MM-DD' — the idempotency key alongside the club.
+  TextColumn get dayKey => text()();
+
+  /// The streak ordinal this claim advanced to (1, 2, 3, …).
+  IntColumn get streakDay => integer()();
+
+  /// The coins actually paid at claim time (audit trail).
+  IntColumn get rewardCoins => integer()();
+
+  /// When the claim landed (audit; the day window is [dayKey]).
+  DateTimeColumn get claimedAt => dateTime()();
+
+  @override
+  List<Set<Column>>? get uniqueKeys => [
+    {clubId, dayKey},
+  ];
+}
+
 @DriftDatabase(
   tables: [
     Players,
@@ -337,13 +369,14 @@ class AchievementClaims extends Table {
     FacilityLevels,
     UserSettings,
     AchievementClaims,
+    DailyStreakClaims,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -471,6 +504,20 @@ class AppDatabase extends _$AppDatabase {
             .any((row) => row.read<String>('name') == 'equipped_title');
         if (!hasEquippedTitle) {
           await m.addColumn(userSettings, userSettings.equippedTitle);
+        }
+      }
+      if (from < 15) {
+        // The daily rewards streak: the claims table — a pure
+        // addition, no rebuild; every existing row keeps its values
+        // byte-for-byte. The existence guard mirrors the v13/v14
+        // steps: test fixtures that rewind tables to an older shape
+        // must not hit duplicate DDL (SQLite has no IF NOT EXISTS).
+        final hasStreak = (await customSelect(
+          'PRAGMA table_info(daily_streak_claims)',
+        ).get())
+            .isNotEmpty;
+        if (!hasStreak) {
+          await m.createTable(dailyStreakClaims);
         }
       }
     },

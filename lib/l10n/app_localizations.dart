@@ -1843,6 +1843,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Finish 1st in Division {division}'**
   String titleSourceDivision(int division);
+
+  /// No description provided for @streakTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily rewards'**
+  String get streakTitle;
+
+  /// No description provided for @streakClaimAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim {coins} Coins'**
+  String streakClaimAction(int coins);
+
+  /// No description provided for @streakClaimedToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed today'**
+  String get streakClaimedToday;
+
+  /// No description provided for @streakDayCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {day}'**
+  String streakDayCount(int day);
+
+  /// No description provided for @streakTomorrowPays.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow: {coins} Coins'**
+  String streakTomorrowPays(int coins);
+
+  /// No description provided for @streakResetWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Miss a day and the streak restarts at day 1'**
+  String get streakResetWarning;
+
+  /// No description provided for @streakBrokenNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak broken — back to day 1'**
+  String get streakBrokenNotice;
+
+  /// No description provided for @streakWeeklyBonus.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 7th day pays a bonus'**
+  String get streakWeeklyBonus;
+
+  /// No description provided for @streakCoinsUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'{coins} Coins'**
+  String streakCoinsUnit(int coins);
 }
 
 class _AppLocalizationsDelegate

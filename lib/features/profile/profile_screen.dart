@@ -26,6 +26,7 @@ import '../../core/ui/fcm_style.dart';
 import '../../l10n/l10n_context.dart';
 import '../achievements/achievements_providers.dart'
     show careerMetricsProvider;
+import '../economy/streak_card.dart' show StreakCard;
 import 'profile_providers.dart';
 import 'title_badge_showcase.dart';
 
@@ -59,6 +60,15 @@ class ProfileScreen extends ConsumerWidget {
                     joinedAt: m.joinedAt,
                   ),
                 ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              sliver: SliverToBoxAdapter(
+                // The daily rewards streak: the claim surface lives at
+                // the top of the profile so a returning player meets
+                // it first.
+                child: RepaintBoundary(child: const StreakCard()),
               ),
             ),
             SliverPadding(

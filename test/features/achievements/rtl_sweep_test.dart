@@ -95,15 +95,26 @@ void main() {
     expect(find.text('الملف الشخصي'), findsNothing,
         reason: 'the nav label lives on the shell, not the screen');
     expect(find.text('نسبة الفوز'), findsOneWidget);
-    expect(find.text('سجل المواسم'), findsOneWidget);
 
-    // Directional layout.
+    // Directional layout — checked BEFORE scrolling away (the
+    // identity header leaves the tree once the viewport moves).
     expect(
       Directionality.of(
         tester.element(find.text('نسبة الفوز').first),
       ),
       TextDirection.rtl,
     );
+
+    // The streak card sits above the history now (the daily claim
+    // surface meets the returning player first) — scroll to the
+    // history title instead of assuming it fits the fold.
+    await tester.scrollUntilVisible(
+      find.text('سجل المواسم'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text('سجل المواسم'), findsOneWidget);
 
     // The full sweep: fling through the stats, silverware, history
     // AND the showcase (cabinet + gallery) — no overflow anywhere.

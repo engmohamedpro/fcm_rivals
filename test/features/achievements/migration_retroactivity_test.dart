@@ -38,10 +38,10 @@ void main() {
         .customStatement('PRAGMA user_version = 13');
     await database.close();
 
-    // 3. Reopen on the current schema: the v13→v14 step runs on the
-    // real file (the raw-file path the migration contract rides).
+    // 3. Reopen on the current schema: the v13→v14→v15 steps run on
+    // the real file (the raw-file path the migration contract rides).
     database = db.AppDatabase(NativeDatabase(file));
-    expect(database.schemaVersion, 14);
+    expect(database.schemaVersion, 15);
     final hasClaims = (await database
             .customSelect('PRAGMA table_info(achievement_claims)')
             .get())
@@ -54,6 +54,12 @@ void main() {
         reason: 'the v14 step re-created the claims table');
     expect(hasEquipped, isTrue,
         reason: 'the v14 step re-added the equipped column');
+    final hasStreak = (await database
+            .customSelect('PRAGMA table_info(daily_streak_claims)')
+            .get())
+        .isNotEmpty;
+    expect(hasStreak, isTrue,
+        reason: 'the v15 step created the daily streak claims table');
 
     // 4. Retro-derivation: EXACT against the fixture's ground truth.
     final metrics = await deriveCareerMetrics(database, 1);

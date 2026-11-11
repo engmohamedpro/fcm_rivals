@@ -354,5 +354,18 @@
   "titleSourceAchievement": "Earned at {achievement} tier {threshold}",
   "@titleSourceAchievement": {"placeholders": {"achievement": {"type": "String"}, "threshold": {"type": "int"}}},
   "titleSourceDivision": "Finish 1st in Division {division}",
-  "@titleSourceDivision": {"placeholders": {"division": {"type": "int"}}}
+  "@titleSourceDivision": {"placeholders": {"division": {"type": "int"}}},
+  "streakTitle": "Daily rewards",
+  "streakClaimAction": "Claim {coins} Coins",
+  "@streakClaimAction": {"placeholders": {"coins": {"type": "int"}}},
+  "streakClaimedToday": "Claimed today",
+  "streakDayCount": "Day {day}",
+  "@streakDayCount": {"placeholders": {"day": {"type": "int"}}},
+  "streakTomorrowPays": "Tomorrow: {coins} Coins",
+  "@streakTomorrowPays": {"placeholders": {"coins": {"type": "int"}}},
+  "streakResetWarning": "Miss a day and the streak restarts at day 1",
+  "streakBrokenNotice": "Streak broken — back to day 1",
+  "streakWeeklyBonus": "Every 7th day pays a bonus",
+  "streakCoinsUnit": "{coins} Coins",
+  "@streakCoinsUnit": {"placeholders": {"coins": {"type": "int"}}}
 }

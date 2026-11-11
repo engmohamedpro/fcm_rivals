@@ -957,4 +957,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String titleSourceDivision(int division) {
     return 'Finish 1st in Division $division';
   }
+
+  @override
+  String get streakTitle => 'Daily rewards';
+
+  @override
+  String streakClaimAction(int coins) {
+    return 'Claim $coins Coins';
+  }
+
+  @override
+  String get streakClaimedToday => 'Claimed today';
+
+  @override
+  String streakDayCount(int day) {
+    return 'Day $day';
+  }
+
+  @override
+  String streakTomorrowPays(int coins) {
+    return 'Tomorrow: $coins Coins';
+  }
+
+  @override
+  String get streakResetWarning =>
+      'Miss a day and the streak restarts at day 1';
+
+  @override
+  String get streakBrokenNotice => 'Streak broken — back to day 1';
+
+  @override
+  String get streakWeeklyBonus => 'Every 7th day pays a bonus';
+
+  @override
+  String streakCoinsUnit(int coins) {
+    return '$coins Coins';
+  }
 }

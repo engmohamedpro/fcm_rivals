@@ -309,5 +309,18 @@
   "titleSourceAchievement": "يُكتسب عند {achievement} بدرجة {threshold}",
   "@titleSourceAchievement": {"placeholders": {"achievement": {"type": "String"}, "threshold": {"type": "int"}}},
   "titleSourceDivision": "أنهِ الأول في الدرجة {division}",
-  "@titleSourceDivision": {"placeholders": {"division": {"type": "int"}}}
+  "@titleSourceDivision": {"placeholders": {"division": {"type": "int"}}},
+  "streakTitle": "الجوائز اليومية",
+  "streakClaimAction": "استلم {coins} عملة",
+  "@streakClaimAction": {"placeholders": {"coins": {"type": "int"}}},
+  "streakClaimedToday": "تم استلام اليوم",
+  "streakDayCount": "اليوم {day}",
+  "@streakDayCount": {"placeholders": {"day": {"type": "int"}}},
+  "streakTomorrowPays": "غدًا: {coins} عملة",
+  "@streakTomorrowPays": {"placeholders": {"coins": {"type": "int"}}},
+  "streakResetWarning": "لو فاتك يوم يبدأ العد من اليوم الأول",
+  "streakBrokenNotice": "انقطعت السلسلة — رجوع لليوم الأول",
+  "streakWeeklyBonus": "كل سابع يوم فيه مكافأة إضافية",
+  "streakCoinsUnit": "{coins} عملة",
+  "@streakCoinsUnit": {"placeholders": {"coins": {"type": "int"}}}
 }

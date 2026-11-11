@@ -950,4 +950,39 @@ class AppLocalizationsAr extends AppLocalizations {
   String titleSourceDivision(int division) {
     return 'أنهِ الأول في الدرجة $division';
   }
+
+  @override
+  String get streakTitle => 'الجوائز اليومية';
+
+  @override
+  String streakClaimAction(int coins) {
+    return 'استلم $coins عملة';
+  }
+
+  @override
+  String get streakClaimedToday => 'تم استلام اليوم';
+
+  @override
+  String streakDayCount(int day) {
+    return 'اليوم $day';
+  }
+
+  @override
+  String streakTomorrowPays(int coins) {
+    return 'غدًا: $coins عملة';
+  }
+
+  @override
+  String get streakResetWarning => 'لو فاتك يوم يبدأ العد من اليوم الأول';
+
+  @override
+  String get streakBrokenNotice => 'انقطعت السلسلة — رجوع لليوم الأول';
+
+  @override
+  String get streakWeeklyBonus => 'كل سابع يوم فيه مكافأة إضافية';
+
+  @override
+  String streakCoinsUnit(int coins) {
+    return '$coins عملة';
+  }
 }
