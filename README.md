@@ -78,18 +78,36 @@ pre-balance placeholders per GDD rule 14.
 
 ## Player database
 
-`assets/data/players_v1.json` — 20,876 real players with:
+`assets/data/players_v1.json` (format v3) — 20,876 real players. Each row:
+
+`[playerId, name, position, nationality, marketValueEur, clubId, imageUrl]`
 
 - `playerId` — stable permanent identity (Transfermarkt player id, GDD 4.4)
-- name, position (12 GDD codes), age, nationality, club, domestic league
-  code, Market Value in EUR
+- name, position (12 GDD codes), nationality, Market Value in EUR
+- `clubId` — Transfermarkt club id, resolved through the `clubs` map
+- `imageUrl` — Transfermarkt portrait CDN link (empty for the ~1,400
+  players with no real photo; the CDN placeholder is normalised away)
+
+Two top-level maps carry the shared club/league facts (one entry per club,
+not per player): `clubs` maps each club id to `[name, crestUrl, leagueCode]`
+and `leagues` maps each Transfermarkt league code to `[displayName, logoUrl]`
+— 1,469 clubs and 32 leagues. Crests and league logos are transparent PNGs
+on Transfermarkt's CDN (`wappen/head/{id}.png`, `logo/header/{code}.png`
+with the code lowercased — the CDN is case-sensitive). Fields beyond the
+first five ship as data preparation for the club/crest UI: the current Dart
+parser reads indices 0–4 and ignores the rest, so the asset drops in with
+zero code changes.
 
 Built from the open **player-scores** dataset (Transfermarkt-derived,
 originally by dcaribou, mirrored on HuggingFace), filtered to players active
-in 2024+ seasons with a positive market value. The shipped asset embeds
-dataset version, as-of date, league table and a content digest for integrity
-checking. Example rows (top by Market Value): Erling Haaland (ST, 200M),
-Lamine Yamal (RW, 200M), Kylian Mbappé (ST, 180M).
+in 2024+ seasons with a positive market value. Refresh any time with
+`python3 scripts/refresh_player_dataset.py` — it downloads the latest
+upstream CSVs, re-applies the eligibility filter and rebuilds the asset
+(`--keep-current-set` re-emits today's roster without re-filtering). The
+digest is the first 16 hex chars of SHA-256 over the compact JSON players
+array. Example rows (top by Market Value): Erling Haaland (ST, 200M,
+Manchester City), Lamine Yamal (RW, 200M, FC Barcelona), Kylian Mbappé
+(ST, 180M, Real Madrid).
 
 Player facts follow the GDD update rules on re-import: Base Stats regenerate
 only when Market Value or Position changed; unchanged players keep their
