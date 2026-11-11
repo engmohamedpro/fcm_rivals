@@ -126,7 +126,10 @@ class MatchSession {
       -1,
       inputs.$2.name,
       opponentName,
+      // The friendly opponent has no persisted spec — a badge derived
+      // from its name, so every club on screen reads as a crest.
       homeCrest: CollectionStore.crestOf(inputs.$2),
+      awayCrest: CrestSpec.derived(opponentName),
     );
   }
 

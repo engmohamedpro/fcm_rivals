@@ -234,6 +234,33 @@ class CrestSpec {
   /// metals only; later colours were appended, never reordered.
   static const int _legacyPaletteSize = 6;
 
+  /// A crest derived from a club NAME: for opponents that have no
+  /// persisted spec — synthetic friendly squads. Hashes the name into
+  /// every option the builder offers, so the same opponent always wears
+  /// the same badge (across sessions and seeds) while different names
+  /// spread across the catalogue. The secondary colour is the primary
+  /// shifted by an odd offset inside the palette, which never lands on
+  /// the same index — the contrast guard by construction.
+  factory CrestSpec.derived(String name) {
+    var hash = 0;
+    for (final code in name.codeUnits) {
+      hash = (hash * 31 + code) & 0x7fffffff;
+    }
+    if (hash == 0) hash = 1;
+    final n = FcmColors.crestPalette.length;
+    final primary = hash % n;
+    // Odd offsets only: with the even palette size, an odd shift never
+    // wraps back onto the primary itself.
+    final secondary = (primary + 1 + (hash >> 8) % (n ~/ 2 - 1) * 2) % n;
+    return CrestSpec(
+      shape: CrestShape.values[(hash >> 4) % CrestShape.values.length],
+      primaryIndex: primary,
+      secondaryIndex: secondary,
+      icon: CrestIcon.values[(hash >> 12) % CrestIcon.values.length],
+      pattern: CrestPattern.values[(hash >> 16) % CrestPattern.values.length],
+    );
+  }
+
   /// A fresh, good-looking crest drawn from EVERY option the club
   /// builder offers (shape, pattern, both colours, icon). The one source
   /// of random crests: the builder's dice button and the AI league
