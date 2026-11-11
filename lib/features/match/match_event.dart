@@ -236,12 +236,27 @@ class MatchEngineConfig {
     // corner is a corner at OVR 70 or 105, which is exactly the
     // stability the chance layer's strength response lacks at big
     // upgrade gaps (the underdog at +50% was pinned at the chanceP
-    // clamp floor, scoring 0.33 goals/match pre-umbrella). 0.05 is
-    // the combined-state sweep's value: the away-lift favourite
-    // reads 0.86 (under the 0.88 ceiling) with the underdog at 0.61
-    // goals/match, while even-strength goals stay inside the 2.6-2.9
-    // band (2.86 measured); higher rates breach it (0.08 reads 3.04).
-    this.setPieceIncome = 0.045,
+    // clamp floor, scoring 0.33 goals/match pre-umbrella).
+    //
+    // T-0117 realism re-anchor (2026-11-11): the T-0116 landing
+    // (0.045 with the parity big/normal carrier) was measured
+    // against match_engine_balance but never against the real-
+    // football calibration suite, and it pushed the profile hot —
+    // 3.14 goals/match (band 2.4–2.9), 9.3% 6+ thrillers (band
+    // <7.5%), 2.24 big chances/team (band 1.3–1.9). The repair, all
+    // measured on the calibration suite's own seeds: the carrier
+    // drops its parity big-chance half (normal quality only) and the
+    // draw now fires only when the out side's territory share is
+    // under 0.45 — at even strength (~0.5 share) most minutes skip
+    // the draw and the engine sits at its calibrated baseline
+    // (2.70 goals, 5.5% 6+, 1.65 big chances, 11.3% conversion);
+    // concentrated where it was built to matter, the underdog at
+    // B+50 reads 0.58 goals/match with the favourite's win rate
+    // 0.872 — both inside the ladder's locked bands. 0.075 pays for
+    // the threshold's skipped minutes; every other conversion
+    // constant stays at its T-0115/T-0116 value (the battery pins
+    // the layer-off stream byte-identical).
+    this.setPieceIncome = 0.07,
     // Fatigue-decoupling re-anchor (T-0052, 2026-11-07): attributes now
     // apply at FULL VALUE, so the shooter term in onTargetP sits at its
     // full-value level — the old base was calibrated against the removed

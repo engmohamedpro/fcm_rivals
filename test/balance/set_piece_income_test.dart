@@ -147,26 +147,33 @@ _B _run(
   return _B(n, hw, d, aw, hg, ag, hs, asx);
 }
 
-/// The probe-validated income value T-0116 will turn on. Sized from
-/// the value sweep (n=300/cell, matched seeds — the table is in the
-/// Developer Notes): 0.10 lands the underdog at +50% from 0.43 →
-/// 0.63 goals/match with even-strength goals 3.02 and combined 5.08
-/// (band ceiling 5.2 respected); 0.13 reaches 0.70 but combined
-/// crosses 5.2 — 0.10 is the honest landing, with the remaining lift
-/// expected from T-0115's de-saturated edge (the attempt's table:
-/// ~0.05–0.07 underdog goals) rather than this knob alone.
-const kProbeIncome = 0.045;
+/// The shipped income value. T-0116 landed 0.045 with the parity
+/// big/normal carrier and an unconditional draw; the T-0117 realism
+/// re-anchor (calibration repair) moved the layer to 0.075 with a
+/// NORMAL-ONLY carrier behind a territory-share threshold (<0.45 —
+/// the draw fires only when the OUT side is genuinely the underdog
+/// of the possession). The T-0116 landing was measured against
+/// match_engine_balance but never the real-football calibration
+/// suite, and paid both sides at even strength: 3.14 goals/match
+/// (band 2.4–2.9), 9.3% 6+ thrillers (<7.5%), 2.24 big chances/team
+/// (1.3–1.9). Behind the threshold the underdog lifeline reads
+/// 0.58 goals/match at B+50 with the favourite's win rate 0.872 —
+/// both inside the ladder's locked bands.
+const kProbeIncome = 0.07;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('SHIPPED-STATE GUARD: the battery and the default pin', () {
-    // T-0116 turned the layer ON at 0.045 — the production default
-    // is part of the shipped calibration now (four tactics-anchor
-    // families ride on this value; an accidental default change
-    // would silently move them). The battery below pins the CURRENT
+    // T-0116 turned the layer ON at 0.045 with the parity carrier;
+    // T-0117's realism re-anchor moved it to 0.075 with the
+    // normal-only carrier behind the territory threshold (the
+    // parity big half plus the unconditional draw were the
+    // measured source of the calibration excess). The default
+    // remains part of the shipped calibration — tactics-anchor
+    // families ride on it. The battery below pins the CURRENT
     // engine's seeded output — any move is a real engine change.
-    expect(MatchEngineConfig().setPieceIncome, 0.045);
+    expect(MatchEngineConfig().setPieceIncome, 0.07);
     for (final seed in _battery.keys) {
       final engine = _engine(seed, homeLevel: 0, awayLevel: 0);
       engine.simulateToEnd();

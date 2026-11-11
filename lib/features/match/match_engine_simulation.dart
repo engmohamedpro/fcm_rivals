@@ -62,7 +62,19 @@ extension _MatchEngineSim on MatchEngine {
           : awayPoss;
       final territoryShare =
           defendingPoss / (homePoss + awayPoss);
-      if (_random.chance(config.setPieceIncome * territoryShare)) {
+      // T-0117: the draw fires only when the OUT side is genuinely
+      // the underdog of THIS possession — its territory share BELOW
+      // 0.45 means the other side owns the game. At even strength
+      // the share sits ~0.5 and most minutes skip the draw entirely,
+      // so the engine rests on its calibrated baseline (the parity
+      // mix + unconditional draw of the T-0116 landing paid both
+      // sides at even strength and pushed the profile hot: 3.14
+      // goals/match vs the 2.4–2.9 band). Concentrated behind the
+      // threshold, the underdog's lifeline reads 0.58 goals/match
+      // at B+50 — stronger than the 0.61-at-0.045 landing per
+      // ladder point, because no income is spent on even minutes.
+      if (territoryShare < 0.45 &&
+          _random.chance(config.setPieceIncome * territoryShare)) {
         // The defending side wins a set piece deep in the attacker's
         // half — one DIRECT low-quality chance for the OUT side
         // through the normal conversion pipeline (measured course
@@ -81,19 +93,14 @@ extension _MatchEngineSim on MatchEngine {
             defendingSide,
             out,
             _runtimeOf(attackerSide),
-            // Set-piece quality is a deterministic 50/50 mix — odd
-            // minutes a big chance (a corner/free-kick delivery
-            // against a set defence), even minutes a snatched
-            // half-chance — the minute-parity trick the corner-claim
-            // already uses (no extra random draw; the stream stays
-            // byte-identical). The mix is what holds the conversion
-            // anchor: the pure-normal carrier read 10.9% (floor
-            // 11.5) and the pure-bigChance carrier 12.6% (ceiling
-            // 12.5) — the parity mix lands between them, and it is
-            // where real set pieces live anyway.
-            minute.isOdd
-                ? ChanceQuality.bigChance
-                : ChanceQuality.normal,
+            // T-0117: a snatched half-chance, ALWAYS normal quality —
+            // the T-0116 parity mix's big half (odd minutes) was the
+            // measured driver of the big-chances excess that broke
+            // the calibration bands (2.24/team vs the 1.9 ceiling);
+            // dropping it was worth ~0.6 big chances/team at even
+            // strength while the underdog lift survived (the volume
+            // behind the threshold pays it).
+            ChanceQuality.normal,
           ),
         );
         // The minute's possession pocket is consumed by the set

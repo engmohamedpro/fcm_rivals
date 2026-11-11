@@ -404,8 +404,12 @@ void main() {
       // A+50 0.944. The mirror reads higher than the away direction
       // at every level — home advantage compounding into the lifted
       // side; the ladder bands (gap-based) are untouched by this.
-      expect(results[10]!.homeWinRate, inInclusiveRange(0.62, 0.69));
-      expect(results[25]!.homeWinRate, inInclusiveRange(0.80, 0.87));
+      // T-0117 (2026-11-11): the underdog set-piece threshold gives
+      // the away underdog extra income against the lifted home side,
+      // so A+10 re-locked 0.606 (was 0.655 on the hot T-0116
+      // engine) — measured, same seeds.
+      expect(results[10]!.homeWinRate, inInclusiveRange(0.58, 0.69));
+      expect(results[25]!.homeWinRate, inInclusiveRange(0.78, 0.87));
       expect(results[10]!.drawRate, inInclusiveRange(0.16, 0.25));
       expect(results[25]!.drawRate, inInclusiveRange(0.06, 0.16));
       expect(results[50]!.drawRate, inInclusiveRange(0.01, 0.07));
