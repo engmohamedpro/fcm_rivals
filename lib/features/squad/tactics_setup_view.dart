@@ -6,6 +6,8 @@
 /// both.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/ui/fcm_style.dart';
@@ -126,18 +128,27 @@ class TacticsSetupView extends StatelessWidget {
       for (var slot = 0; slot < 11; slot++) xi[slot]?.base.nationality,
     ]);
 
-    return Column(
+    return _PickScope(
+      builder: (context, pulse, bump) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FcmEntrance(
           child: _ControlCard(
+            pickPulse: pulse,
             teamRating: teamRating,
             formationCode: formationCode,
             tactics: tactics,
             mentality: mentality,
             showSetupSummary: showSetupSummary,
             onFormation: onFormation,
-            onAutoPick: onAutoPick,
+            onAutoPick: onAutoPick == null
+                ? null
+                : () {
+                    // Feedback first (button check + pitch sweep), then
+                    // the pick itself.
+                    bump();
+                    onAutoPick!();
+                  },
             onTactics: () => showTacticsOptionsSheet(
               context,
               tactics: tactics,
@@ -156,15 +167,18 @@ class TacticsSetupView extends StatelessWidget {
             children: [
               FcmEntrance(
                 index: 1,
-                child: SquadPitch(
-                  formation: formationByCode(formationCode),
-                  assignments: xi,
-                  chemistryPercent: xi.isEmpty ? null : chemistry,
-                  showStamina: showStamina,
-                  showStats: showStats,
-                  showCondition: showCondition,
-                  onPlayerTap: onPlayerTap,
-                  upgradable: upgradable,
+                child: _PickFlash(
+                  trigger: pulse,
+                  child: SquadPitch(
+                    formation: formationByCode(formationCode),
+                    assignments: xi,
+                    chemistryPercent: xi.isEmpty ? null : chemistry,
+                    showStamina: showStamina,
+                    showStats: showStats,
+                    showCondition: showCondition,
+                    onPlayerTap: onPlayerTap,
+                    upgradable: upgradable,
+                  ),
                 ),
               ),
               // Bench and reserves never hide: the sections stay with
@@ -200,6 +214,7 @@ class TacticsSetupView extends StatelessWidget {
           ),
         ),
       ],
+    ),
     );
   }
 
@@ -225,7 +240,11 @@ class _ControlCard extends StatelessWidget {
     required this.onTactics,
     this.onAutoPick,
     this.showSetupSummary = true,
+    this.pickPulse = 0,
   });
+
+  /// Bumps on every Auto Pick tap — drives the button's "done" state.
+  final int pickPulse;
 
   final int teamRating;
   final String formationCode;
@@ -285,12 +304,9 @@ class _ControlCard extends StatelessWidget {
             children: [
               if (onAutoPick != null) ...[
                 Expanded(
-                  child: FcmButton(
-                    compact: true,
-                    style: FcmButtonStyle.steel,
-                    icon: Icons.auto_awesome,
-                    label: 'Auto Pick',
-                    onPressed: onAutoPick,
+                  child: _AutoPickButton(
+                    pulse: pickPulse,
+                    onPressed: onAutoPick!,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -519,4 +535,174 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
       ),
     );
   }
+}
+
+/// Holds the Auto Pick tap counter that the button and the pitch both
+/// react to (no snackbar: the feedback is the button check + the sweep
+/// over the pitch).
+class _PickScope extends StatefulWidget {
+  const _PickScope({required this.builder});
+
+  final Widget Function(BuildContext context, int pulse, VoidCallback bump)
+  builder;
+
+  @override
+  State<_PickScope> createState() => _PickScopeState();
+}
+
+class _PickScopeState extends State<_PickScope> {
+  int _pulse = 0;
+
+  @override
+  Widget build(BuildContext context) =>
+      widget.builder(context, _pulse, () => setState(() => _pulse++));
+}
+
+/// The Auto Pick button: after a tap it flips to a green "Picked" with a
+/// check that pops in, then settles back (an animation, not a timer, so
+/// it ends cleanly with the widget).
+class _AutoPickButton extends StatefulWidget {
+  const _AutoPickButton({required this.pulse, required this.onPressed});
+
+  final int pulse;
+  final VoidCallback onPressed;
+
+  @override
+  State<_AutoPickButton> createState() => _AutoPickButtonState();
+}
+
+class _AutoPickButtonState extends State<_AutoPickButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  @override
+  void didUpdateWidget(_AutoPickButton old) {
+    super.didUpdateWidget(old);
+    if (widget.pulse != old.pulse) _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final done = _c.isAnimating;
+        // A quick overshoot pop over the first 280ms.
+        final pop = done
+            ? 1.0 + 0.08 * math.sin(math.pi * (_c.value * 6.4).clamp(0.0, 1.0))
+            : 1.0;
+        return Transform.scale(
+          scale: pop,
+          child: FcmButton(
+            compact: true,
+            style: done ? FcmButtonStyle.success : FcmButtonStyle.steel,
+            icon: done ? Icons.check_circle_rounded : Icons.auto_awesome,
+            label: done ? 'Picked' : 'Auto Pick',
+            onPressed: widget.onPressed,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A one-shot "applied" flourish over [child]: a gold light sweeps across
+/// it and it breathes slightly, each time [trigger] changes.
+class _PickFlash extends StatefulWidget {
+  const _PickFlash({required this.trigger, required this.child});
+
+  final int trigger;
+  final Widget child;
+
+  @override
+  State<_PickFlash> createState() => _PickFlashState();
+}
+
+class _PickFlashState extends State<_PickFlash>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1000),
+  );
+
+  @override
+  void didUpdateWidget(_PickFlash old) {
+    super.didUpdateWidget(old);
+    if (widget.trigger != old.trigger) _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        final t = Curves.easeInOut.transform(_c.value);
+        final live = _c.isAnimating;
+        return Transform.scale(
+          scale: 1 + 0.014 * math.sin(math.pi * _c.value),
+          child: Stack(
+            children: [
+              child!,
+              if (live)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: CustomPaint(painter: _SweepPainter(t)),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SweepPainter extends CustomPainter {
+  _SweepPainter(this.t);
+
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = -0.2 + 1.4 * t;
+    double stop(double v) => v.clamp(0.0, 1.0);
+    final fade = math.sin(math.pi * t);
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: const Alignment(-1, -0.5),
+          end: const Alignment(1, 0.5),
+          colors: [
+            Colors.transparent,
+            FcmColors.goldSoft.withValues(alpha: 0.42 * fade),
+            Colors.transparent,
+          ],
+          stops: [stop(centre - 0.16), stop(centre), stop(centre + 0.16)],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SweepPainter old) => old.t != t;
 }
