@@ -132,7 +132,7 @@ class FcmMiniCard extends StatelessWidget {
                     PositionedDirectional(
                       bottom: 2,
                       start: 2,
-                      child: _UpgradableMark(size: math.max(10, width * 0.18)),
+                      child: _UpgradableMark(size: math.max(11, width * 0.21)),
                     ),
                   // The ghost draws no overall and no position — the card
                   // keeps the text slots' footprint but stays wordless.
@@ -234,11 +234,21 @@ class _UpgradableMark extends StatelessWidget {
     return Semantics(
       label: 'Upgradable',
       child: Container(
-        padding: EdgeInsets.all(size * 0.18),
+        padding: EdgeInsets.all(size * 0.16),
         decoration: BoxDecoration(
-          color: FcmColors.gold.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(size * 0.45),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.35)),
+          color: FcmColors.gold,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.85),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Icon(
           Icons.upload_rounded,

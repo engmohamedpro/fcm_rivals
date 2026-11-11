@@ -79,7 +79,27 @@ class SquadScreen extends ConsumerWidget {
             if (e.key < Formation.startingXiSize + Formation.benchSize)
               e.value.ownedId,
         };
-        final reserves = [...?collection]..sort((a, b) {
+        // One card per PLAYER: extra copies of the same base player are
+        // upgrade fodder (the gold upgrade mark says so), not extra
+        // players — they neither show as separate cards nor count in the
+        // pool total. The card that stands for him is the copy already in
+        // the XI / bench when there is one, otherwise the strongest copy.
+        bool standsFor(PlayerCard a, PlayerCard b) {
+          final aIn = inSquad.contains(a.ownedId);
+          final bIn = inSquad.contains(b.ownedId);
+          if (aIn != bIn) return aIn;
+          if (a.overall != b.overall) return a.overall > b.overall;
+          return a.ownedId < b.ownedId;
+        }
+
+        final onePerPlayer = <int, PlayerCard>{};
+        for (final c in collection ?? const <PlayerCard>[]) {
+          final current = onePerPlayer[c.base.playerId];
+          if (current == null || standsFor(c, current)) {
+            onePerPlayer[c.base.playerId] = c;
+          }
+        }
+        final reserves = [...onePerPlayer.values]..sort((a, b) {
           final byOverall = b.overall.compareTo(a.overall);
           if (byOverall != 0) return byOverall;
           return a.ownedId.compareTo(b.ownedId);
