@@ -2,11 +2,11 @@
 id: T-0112
 title: Titles & badges showcase + equipped title — the prestige layer on the Profile tab
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0111]
 created: 2026-11-10
-completed:
+completed: 2026-11-11
 ---
 
 # T-0112: Titles & badges showcase + equipped title — the prestige layer on the Profile tab
@@ -35,9 +35,9 @@ The Profile tab gains its prestige section: the full badge cabinet (every catalo
 - Any coin flow — prestige is free by design.
 
 ## Acceptance Criteria
-- [ ] Full cabinet + gallery from real data; the two-way ownership rule tested both ways; unknown-id fallback tested.
-- [ ] Equip persists and surfaces on both headers; unequip works.
-- [ ] EN/AR + RTL; `flutter analyze` zero warnings; full `flutter test` green.
+- [x] Full cabinet + gallery from real data; the two-way ownership rule tested both ways; unknown-id fallback tested.
+- [x] Equip persists and surfaces on both headers; unequip works.
+- [x] EN/AR + RTL; `flutter analyze` zero warnings; full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -129,3 +129,10 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-11, attempt 1: PASS
+- Ran: `flutter analyze` (the same 2 pre-existing baseline issues only — zero new), `flutter test test/features/profile/ + test/features/achievements/` (55/55 green — titles_badges 6 + profile screen 6 + achievements family).
+- AC verified independently: (1) The two-way ownership rule lives in ONE domain function `resolveTitleCabinet` (title_domain.dart) and is tested BOTH ways: achievement title owned IFF the source tier was CLAIMED (claimed rung 4 → title1 owned with sourceArg 4; zero claims → NO achievement title owned), division title owned IFF the metrics say CHAMPION (owned by season outcome ALONE — zero claims). (2) The fallback ladder is tested: unknown equipped id → unequipped (null, never a crash); known-but-unowned → setting kept, chip hidden; owned → worn. (3) The equip flow persists through the REAL repository (setEquippedTitle → provider invalidation → chip flips to Worn; unequip → null restored) — in-memory db round-trip asserted. (4) BOTH headers went live via the one domain-resolved EquippedTitleChip (Profile identity + Achievements hub; the previous per-surface switch implementations DELETED — no duplicated logic). (5) Cabinet/gallery render from real data: earned full-colour painter art + glow, unearned engraved silhouettes at 0.35 opacity with progress hints, unowned titles greyed with earning conditions (aspirational visibility), RepaintBoundary per cell. (6) 7 new l10n key pairs EN/AR in the football register (ارتدِ / مُرتدى / أنهِ الأول في الدرجة).
+- Diff scope clean: title_domain + title_badge_showcase + title_showcase_providers (new), the two header screens switched to the shared chip (the deletions verified in the diff), l10n + gen outputs, the test file. No match-context wiring, no catalog edits, no coin flow.
+- Notification protocol: Telegram unavailable (placeholder token, no destination) — recorded per the fallback clause; review proceeded (read-mostly, safe).
+- Notes: the reusable EquippedTitleChip (compact mode) is exported for later match surfaces per the task's export-not-scatter rule — verified present.
