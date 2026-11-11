@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../core/database/app_database.dart';
+import '../core/domain/crest.dart' show CrestSpec;
 import '../features/ads/ad_store.dart';
 import '../features/collection/campus_store.dart';
 import '../features/collection/club_store.dart';
@@ -210,6 +211,16 @@ final seasonSummaryProvider = FutureProvider<SeasonSummary?>((ref) async {
 final standingsProvider = FutureProvider<List<StandingEntry>>((ref) async {
   final store = await ref.watch(seasonStoreProvider.future);
   return store.getStandings();
+});
+
+/// Every club's crest by club id (the standings table's badge column).
+/// Re-reads whenever the standings refresh, so a new season's freshly
+/// generated AI crests show up with it.
+final standingCrestsProvider = FutureProvider<Map<int, CrestSpec>>((ref) async {
+  await ref.watch(standingsProvider.future);
+  final db = await ref.watch(databaseProvider.future);
+  final clubs = await db.select(db.clubs).get();
+  return {for (final c in clubs) c.id: CollectionStore.crestOf(c)};
 });
 
 /// The user's next fixture, null when idle or done.

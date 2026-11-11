@@ -5,6 +5,8 @@ import '../../l10n/app_localizations.dart';
 
 import '../../app/providers.dart';
 import '../../app/routes.dart';
+import '../../core/domain/crest.dart';
+import '../../core/ui/fcm_crest.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../match/tactics.dart' show MatchPepTalk;
@@ -241,6 +243,8 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     final theme = Theme.of(context);
     final summary = ref.watch(seasonSummaryProvider).valueOrNull;
     final standings = ref.watch(standingsProvider).valueOrNull;
+    final crests =
+        ref.watch(standingCrestsProvider).valueOrNull ?? const <int, CrestSpec>{};
     final next = ref.watch(nextFixtureProvider).valueOrNull;
     final clubName = ref.watch(clubProvider).valueOrNull?.name;
 
@@ -558,6 +562,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                   child: Row(
                     children: [
                       SizedBox(width: 34, child: _Hdr('#')),
+                      SizedBox(width: 30),
                       Expanded(child: _Hdr('Club')),
                       SizedBox(width: 34, child: _Hdr('P', end: true)),
                       SizedBox(width: 38, child: _Hdr('GD', end: true)),
@@ -574,6 +579,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                     maxStaggered: 12,
                     child: _StandingRow(
                       entry: e,
+                      crest: crests[e.clubId],
                       isUser: clubName != null && e.name == clubName,
                     ),
                   ),
@@ -606,9 +612,17 @@ class _Hdr extends StatelessWidget {
 
 /// One table row: zone-coloured position badge, club, played, GD, points.
 class _StandingRow extends StatelessWidget {
-  const _StandingRow({required this.entry, required this.isUser});
+  const _StandingRow({
+    required this.entry,
+    required this.isUser,
+    this.crest,
+  });
 
   final StandingEntry entry;
+
+  /// The club's crest; null while the crest map loads (the column then
+  /// holds an empty slot so rows never shift).
+  final CrestSpec? crest;
   final bool isUser;
 
   @override
@@ -655,6 +669,15 @@ class _StandingRow extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          SizedBox(
+            width: 30,
+            child: crest == null
+                ? null
+                : Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: FcmCrest(spec: crest!, width: 24),
+                  ),
           ),
           Expanded(
             child: FitText(
