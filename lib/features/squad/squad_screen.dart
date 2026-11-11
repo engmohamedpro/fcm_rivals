@@ -138,6 +138,7 @@ class SquadScreen extends ConsumerWidget {
               onMentality: (m) =>
                   _changeTactics(context, ref, mentality: m.name),
               onAutoPick: () => _autoPick(context, ref),
+              onClear: () => _clearSquad(ref),
               // The saved setup is about identity — match-day fitness
               // (stamina) and the per-card stat rows belong to the
               // pre-match phase only.
@@ -259,6 +260,14 @@ class SquadScreen extends ConsumerWidget {
     // Natural positions only: a slot nobody can play naturally stays
     // empty rather than taking an out-of-position filler. No snackbar.
     await store.autoPickSquad(excludeInjured: false, naturalOnly: true);
+    ref.invalidate(squadProvider);
+  }
+
+  /// Empties the saved squad — XI, bench and reserves. No snackbar: the
+  /// pitch and strips visibly empty.
+  Future<void> _clearSquad(WidgetRef ref) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.saveSquad(const {});
     ref.invalidate(squadProvider);
   }
 

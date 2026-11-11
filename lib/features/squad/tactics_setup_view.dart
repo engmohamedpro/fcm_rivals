@@ -42,6 +42,7 @@ class TacticsSetupView extends StatelessWidget {
     required this.onTactics,
     required this.onMentality,
     this.onAutoPick,
+    this.onClear,
     this.showStamina = true,
     this.showStats = true,
     this.showCondition = true,
@@ -75,6 +76,10 @@ class TacticsSetupView extends StatelessWidget {
   /// Shows the Auto Pick button (GDD 6.3) when non-null — the Team tab
   /// persists a re-picked squad; pre-match hides it.
   final VoidCallback? onAutoPick;
+
+  /// Shows the Clear button beside Auto Pick: empties the whole saved
+  /// squad (XI, bench and reserves). Null hides it.
+  final VoidCallback? onClear;
 
   /// Whether cards carry their stamina bar. The pre-match and live
   /// tactics surfaces show match-day fitness; the Team tab hides it —
@@ -135,6 +140,7 @@ class TacticsSetupView extends StatelessWidget {
         FcmEntrance(
           child: _ControlCard(
             pickPulse: pulse,
+            onClear: onClear,
             teamRating: teamRating,
             formationCode: formationCode,
             tactics: tactics,
@@ -241,7 +247,10 @@ class _ControlCard extends StatelessWidget {
     this.onAutoPick,
     this.showSetupSummary = true,
     this.pickPulse = 0,
+    this.onClear,
   });
+
+  final VoidCallback? onClear;
 
   /// Bumps on every Auto Pick tap — drives the button's "done" state.
   final int pickPulse;
@@ -290,28 +299,24 @@ class _ControlCard extends StatelessWidget {
           // The formation picker, directly on the setup card: the closed
           // field shows the live shape ('4-3-3'), tapping lists every
           // formation — no detour into the tactic options sheet.
-          FcmDropdown<String>(
-            icon: Icons.grid_on_rounded,
-            items: [
-              for (final f in formations)
-                FcmDropdownItem(value: f.code, label: f.name),
-            ],
-            selected: formation.code,
-            onChanged: onFormation,
-          ),
-          const SizedBox(height: 8),
+          // Formation picker with the TACTICS button beside it.
           Row(
             children: [
-              if (onAutoPick != null) ...[
-                Expanded(
-                  child: _AutoPickButton(
-                    pulse: pickPulse,
-                    onPressed: onAutoPick!,
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
               Expanded(
+                flex: 5,
+                child: FcmDropdown<String>(
+                  icon: Icons.grid_on_rounded,
+                  items: [
+                    for (final f in formations)
+                      FcmDropdownItem(value: f.code, label: f.name),
+                  ],
+                  selected: formation.code,
+                  onChanged: onFormation,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 4,
                 child: FcmButton(
                   compact: true,
                   icon: Icons.tune_rounded,
@@ -321,6 +326,32 @@ class _ControlCard extends StatelessWidget {
               ),
             ],
           ),
+          if (onAutoPick != null) ...[
+            const SizedBox(height: 8),
+            // Clear first, Auto Pick second.
+            Row(
+              children: [
+                if (onClear != null) ...[
+                  Expanded(
+                    child: FcmButton(
+                      compact: true,
+                      style: FcmButtonStyle.ghost,
+                      icon: Icons.layers_clear_rounded,
+                      label: 'Clear',
+                      onPressed: onClear,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: _AutoPickButton(
+                    pulse: pickPulse,
+                    onPressed: onAutoPick!,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
