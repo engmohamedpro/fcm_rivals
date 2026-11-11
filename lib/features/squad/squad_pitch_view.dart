@@ -263,7 +263,12 @@ class SquadCardRow extends StatelessWidget {
     this.onPlayerTap,
     this.upgradable,
     this.wrap = false,
+    this.selectedIds = const {},
   });
+
+  /// Owned ids already placed in the XI / bench: drawn faded with a
+  /// check so the all-players pool still lists them, visibly chosen.
+  final Set<int> selectedIds;
 
   /// Lays the cards out as a wrapping grid instead of a one-line strip
   /// (the Team tab's all-players pool).
@@ -320,7 +325,7 @@ class SquadCardRow extends StatelessWidget {
           }
           final c = cards[i];
           final injured = showCondition && c.injuryMatchesRemaining > 0;
-          return FcmEntrance(
+          final item = FcmEntrance(
             index: wrap ? 0 : i,
             dx: 20,
             dy: 0,
@@ -376,6 +381,9 @@ class SquadCardRow extends StatelessWidget {
                     ),
                   ),
           );
+          return selectedIds.contains(c.ownedId)
+              ? _selectedMark(item)
+              : item;
     }
 
     final count = cards.length + emptySlots;
@@ -404,6 +412,28 @@ class SquadCardRow extends StatelessWidget {
     );
   }
 }
+
+/// Fades a card and pins a gold check on it: "already picked".
+Widget _selectedMark(Widget card) => Stack(
+  clipBehavior: Clip.none,
+  children: [
+    Opacity(opacity: 0.4, child: card),
+    Positioned(
+      top: 2,
+      right: 2,
+      child: IgnorePointer(
+        child: Container(
+          padding: const EdgeInsets.all(1),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: FcmColors.gold,
+          ),
+          child: const Icon(Icons.check_rounded, size: 12, color: FcmColors.ink),
+        ),
+      ),
+    ),
+  ],
+);
 
 /// The card that follows the finger while a player is dragged: the plain
 /// mini card (no stamina bar or stat row), the same size as on the page.

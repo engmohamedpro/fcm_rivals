@@ -44,6 +44,7 @@ class TacticsSetupView extends StatelessWidget {
     this.onAutoPick,
     this.onClear,
     this.poolTitle,
+    this.poolSelectedIds = const {},
     this.showStamina = true,
     this.showStats = true,
     this.showCondition = true,
@@ -87,6 +88,10 @@ class TacticsSetupView extends StatelessWidget {
   /// shown as a wrapping grid under this title, and doubles as the drop
   /// zone that takes a player out of the squad.
   final String? poolTitle;
+
+  /// Owned ids already in the XI / bench: shown faded with a check in the
+  /// pool strip.
+  final Set<int> poolSelectedIds;
 
   /// Whether cards carry their stamina bar. The pre-match and live
   /// tactics surfaces show match-day fitness; the Team tab hides it —
@@ -219,7 +224,7 @@ class TacticsSetupView extends StatelessWidget {
                     // still be dropped into it.
                     emptySlots: reserves.isEmpty ? 1 : 0,
                     zone: SquadZone.reserves,
-                    wrap: true,
+                    selectedIds: poolSelectedIds,
                     showStamina: showStamina,
                     showStats: showStats,
                     onPlayerTap: onPlayerTap,

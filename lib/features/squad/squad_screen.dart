@@ -72,17 +72,14 @@ class SquadScreen extends ConsumerWidget {
           if (byOverall != 0) return byOverall;
           return a.ownedId.compareTo(b.ownedId);
         });
-        // The pool: EVERY owned card that is not in the XI or on the
-        // bench (so after Clear it is the whole collection), best-first.
+        // The pool: EVERY owned card, best-first. Cards already in the XI
+        // or on the bench stay in it, drawn faded with a check.
         final inSquad = {
           for (final e in squad.entries)
             if (e.key < Formation.startingXiSize + Formation.benchSize)
               e.value.ownedId,
         };
-        final reserves = [
-          for (final c in collection ?? const <PlayerCard>[])
-            if (!inSquad.contains(c.ownedId)) c,
-        ]..sort((a, b) {
+        final reserves = [...?collection]..sort((a, b) {
           final byOverall = b.overall.compareTo(a.overall);
           if (byOverall != 0) return byOverall;
           return a.ownedId.compareTo(b.ownedId);
@@ -112,6 +109,7 @@ class SquadScreen extends ConsumerWidget {
               onAutoPick: () => _autoPick(context, ref),
               onClear: () => _clearSquad(ref),
               poolTitle: 'All players',
+              poolSelectedIds: inSquad,
               // The saved setup is about identity — match-day fitness
               // (stamina) and the per-card stat rows belong to the
               // pre-match phase only.
