@@ -132,8 +132,11 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$e'.replaceFirst('CollectionException: ', '')),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _opening = false);
@@ -360,6 +363,23 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   /// affordability check up front); the store still validates atomically.
   /// YES buys the pack and opens it straight into the reveal cinematic.
   Future<void> _buy(BuildContext context, StorePackOffer offer) async {
+    // A full squad cannot open the pack, so it is not sold either: say so
+    // before the price dialog instead of after the coins moved.
+    final capacity = await ref.read(squadCapacityProvider.future);
+    if (!context.mounted) return;
+    if (capacity.isFull) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Your squad is full (${capacity.owned}/${capacity.capacity} '
+              'players) — buy more slots on the Team tab.',
+            ),
+          ),
+        );
+      return;
+    }
     final coins = ref.read(clubProvider).valueOrNull?.coins;
     final canAfford = coins == null || coins >= offer.price;
     final confirmed = await showDialog<bool>(

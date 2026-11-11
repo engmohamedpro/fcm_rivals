@@ -78,6 +78,40 @@ class StorePackOffer {
   final int eligibleCount;
 }
 
+/// How full the club's squad is: distinct players owned against the
+/// slots it has (base capacity + bought blocks), and what the next block
+/// of slots costs. Extra copies of one player count as ONE player.
+class SquadCapacity {
+  const SquadCapacity({
+    required this.owned,
+    required this.capacity,
+    required this.blocksBought,
+    required this.nextBlockSlots,
+    required this.nextBlockPrice,
+  });
+
+  /// Distinct players owned.
+  final int owned;
+
+  /// Slots available (base + every bought block).
+  final int capacity;
+
+  /// Blocks of extra slots bought so far.
+  final int blocksBought;
+
+  /// Slots the next purchase adds.
+  final int nextBlockSlots;
+
+  /// Coins the next purchase costs.
+  final int nextBlockPrice;
+
+  /// No room left: packs can neither be bought nor opened.
+  bool get isFull => owned >= capacity;
+
+  /// Free slots left.
+  int get free => capacity > owned ? capacity - owned : 0;
+}
+
 /// Players sold back to the system with the total credit.
 class SaleResult {
   const SaleResult({required this.soldOwnedIds, required this.credit});

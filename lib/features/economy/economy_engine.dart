@@ -48,6 +48,19 @@ class EconomyConfig {
     this.matchRewardLossFactor = 0.90,
     this.matchRewardWinFactor = 1.24,
     this.startingCoins = 25_000,
+    // Squad capacity: a club may own at most this many DISTINCT players
+    // (extra copies of one player are upgrade fodder and count once).
+    this.baseSquadCapacity = 30,
+    // Slots are sold in blocks. Calibrated against the §30 simulation
+    // numbers: a par match pays ~1.9k Coins and a store pack costs
+    // ~15-25k, so the first block (8k ≈ 4 matches ≈ 1.6k per slot) is a
+    // light, early sink, and each later block costs 4k more — the 10th
+    // block is 44k (~9k per slot, still under half a pack per slot) —
+    // so growing the club stays a steady coin sink without ever
+    // out-pricing the packs that fill the slots.
+    this.squadSlotsPerPurchase = 5,
+    this.squadSlotBasePrice = 8_000,
+    this.squadSlotPriceStep = 4_000,
   });
 
   /// Stable reference market value so imports don't shift every player's
@@ -89,6 +102,17 @@ class EconomyConfig {
 
   /// Coins granted to a newly created club (GDD 3 starting state).
   final int startingCoins;
+
+  /// Distinct players a club can own before buying more slots.
+  final int baseSquadCapacity;
+
+  /// Slots one purchase adds.
+  final int squadSlotsPerPurchase;
+
+  /// Price of the first block of slots, and the extra Coins every
+  /// further block costs on top of the previous one.
+  final int squadSlotBasePrice;
+  final int squadSlotPriceStep;
 }
 
 const EconomyConfig defaultEconomyConfig = EconomyConfig();
@@ -131,6 +155,16 @@ class EconomyEngine {
     final upgraded = ev * (1 + 0.10 * upgradeLevel);
     return (upgraded * config.sellingPercentage).round();
   }
+
+  /// How many distinct players a club may own after buying
+  /// [blocksBought] blocks of extra slots.
+  int squadCapacity(int blocksBought) =>
+      config.baseSquadCapacity + blocksBought * config.squadSlotsPerPurchase;
+
+  /// Price of the NEXT block of slots when [blocksBought] were already
+  /// bought: linear, so every purchase costs one step more than the last.
+  int squadSlotBlockPrice(int blocksBought) =>
+      config.squadSlotBasePrice + blocksBought * config.squadSlotPriceStep;
 
   /// Match reward in Coins (GDD 17.6): a goals-scored baseline (par),
   /// then the result multiplier — losses hold something back (80–90% of

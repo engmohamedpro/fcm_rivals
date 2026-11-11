@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../ads/ad_engine.dart' show AdEngine, AdRewardKind;
 import '../collection/card_merge_animation.dart' show showCardMergeAnimation;
+import '../collection/collection_results.dart' show SquadCapacity;
 import '../economy/economy_engine.dart'
     show EconomyEngine, formatCoins;
 import '../match/tactics.dart';
@@ -12,6 +13,7 @@ import 'formations.dart';
 import 'player_card_reveal.dart';
 import 'squad_drag.dart' show SquadSwapping;
 import 'squad_engine.dart' show PlayerCard;
+import 'squad_slots_button.dart';
 import 'squad_swap.dart';
 import 'squad_view.dart';
 
@@ -38,6 +40,9 @@ class SquadScreen extends ConsumerWidget {
     // plain count is the truth; watching the provider means a merge or
     // sale on the Collection tab re-derives the marks on the next build.
     final collection = ref.watch(collectionProvider).valueOrNull;
+    // Squad capacity: the pool title shows N/capacity and the button
+    // beside it buys the next block of slots.
+    final capacity = ref.watch(squadCapacityProvider).valueOrNull;
     final ownedCounts = <int, int>{};
     for (final c in collection ?? const <PlayerCard>[]) {
       ownedCounts.update(
@@ -130,6 +135,16 @@ class SquadScreen extends ConsumerWidget {
               onClear: () => _clearSquad(ref),
               poolTitle: 'All players',
               poolSelectedIds: inSquad,
+              poolCapacity: capacity?.capacity,
+              poolTrailing: capacity == null
+                  ? null
+                  : SquadSlotsButton(
+                      slots: capacity.nextBlockSlots,
+                      price: capacity.nextBlockPrice,
+                      canAfford:
+                          club == null || club.coins >= capacity.nextBlockPrice,
+                      onTap: () => _buySlots(context, ref, capacity),
+                    ),
               // The saved setup is about identity — match-day fitness
               // (stamina) and the per-card stat rows belong to the
               // pre-match phase only.
@@ -193,6 +208,37 @@ class SquadScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  /// Buys the next block of squad slots: confirmed first (price and
+  /// affordability up front), then charged atomically by the store. The
+  /// capacity provider is refreshed so the title and the next price move.
+  Future<void> _buySlots(
+    BuildContext context,
+    WidgetRef ref,
+    SquadCapacity capacity,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    void say(String message) => messenger
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
+
+    final coins = ref.read(clubProvider).valueOrNull?.coins;
+    final confirmed = await showBuySquadSlotsDialog(
+      context,
+      slots: capacity.nextBlockSlots,
+      price: capacity.nextBlockPrice,
+      coins: coins,
+    );
+    if (confirmed != true) return;
+    try {
+      final store = await ref.read(collectionStoreProvider.future);
+      final next = await store.buySquadSlots();
+      ref.invalidate(squadCapacityProvider);
+      say('Your squad now holds ${next.capacity} players.');
+    } catch (e) {
+      say('$e'.replaceFirst('CollectionException: ', ''));
+    }
   }
 
   /// Applies a drag-and-drop swap: validated once more against the squad

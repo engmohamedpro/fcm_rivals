@@ -45,6 +45,8 @@ class TacticsSetupView extends StatelessWidget {
     this.onClear,
     this.poolTitle,
     this.poolSelectedIds = const {},
+    this.poolCapacity,
+    this.poolTrailing,
     this.showStamina = true,
     this.showStats = true,
     this.showCondition = true,
@@ -92,6 +94,13 @@ class TacticsSetupView extends StatelessWidget {
   /// Owned ids already in the XI / bench: shown faded with a check in the
   /// pool strip.
   final Set<int> poolSelectedIds;
+
+  /// The club's squad capacity: the pool title then reads
+  /// 'All players (N/capacity)' instead of the bare count.
+  final int? poolCapacity;
+
+  /// Sits at the end of the pool title row (the buy-slots button).
+  final Widget? poolTrailing;
 
   /// Whether cards carry their stamina bar. The pre-match and live
   /// tactics surfaces show match-day fitness; the Team tab hides it —
@@ -215,7 +224,12 @@ class TacticsSetupView extends StatelessWidget {
                 upgradable: upgradable,
               ),
               if (showReserves && poolTitle != null) ...[
-                FcmSectionTitle('$poolTitle (${reserves.length})'),
+                FcmSectionTitle(
+                  poolCapacity == null
+                      ? '$poolTitle (${reserves.length})'
+                      : '$poolTitle (${reserves.length}/$poolCapacity)',
+                  trailing: poolTrailing,
+                ),
                 SquadDropZone(
                   target: const SquadDropTarget.emptyIn(SquadZone.reserves),
                   child: SquadCardRow(

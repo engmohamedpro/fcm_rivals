@@ -182,6 +182,16 @@ final collectionProvider = FutureProvider<List<PlayerCard>>((ref) async {
   return store.getCollection();
 });
 
+/// Squad capacity: distinct players owned vs. the slots the club has, and
+/// the price of the next block of slots. Re-derived whenever the
+/// collection changes (a pack opened, a player sold); a slot purchase
+/// invalidates it directly.
+final squadCapacityProvider = FutureProvider<SquadCapacity>((ref) async {
+  ref.watch(collectionProvider);
+  final store = await ref.watch(collectionStoreProvider.future);
+  return store.getSquadCapacity();
+});
+
 /// Persisted squad assignment: slot → card.
 final squadProvider = FutureProvider<Map<int, PlayerCard>>((ref) async {
   final store = await ref.watch(collectionStoreProvider.future);

@@ -51,6 +51,7 @@ class CollectionStore {
     this.upgrades = const UpgradeEngine(),
     this.squad = const SquadEngine(),
     this.adStore,
+    this.enforceSquadCapacity = true,
   })  : _club = ClubStore(db: db),
         _squadStore = SquadStore(db: db, squad: squad),
         _campus = CampusStore(db: db);
@@ -72,6 +73,17 @@ class CollectionStore {
   /// multiplier. Optional — when absent, all ad boosts are simply
   /// inactive and the coin paths charge full price.
   final AdStore? adStore;
+
+  /// Whether packs are refused once the club owns as many distinct
+  /// players as it has slots (see [getSquadCapacity]). On in the app;
+  /// the economy simulator turns it off because it measures the raw
+  /// pack economy, not a player who also manages slots.
+  final bool enforceSquadCapacity;
+
+  /// Ledger reason of a slot purchase. The number of such rows IS the
+  /// number of blocks bought — the append-only ledger doubles as the
+  /// record, so no schema change is needed.
+  static const String squadSlotsLedgerReason = 'squad_slots_purchase';
 
   /// Packs draw from the in-memory registry mirrored into SQLite; kept in
   /// sync by [applyDatasetUpdate] and lazily loaded on first use.
@@ -214,6 +226,7 @@ class CollectionStore {
     if (pack == null || pack.opened) {
       throw const CollectionException('Pack not available');
     }
+    await _requireSquadRoom(pack.clubId);
 
     final category = PackCategory.values.firstWhere(
       (c) => c.name == pack.category,
@@ -355,6 +368,8 @@ class CollectionStore {
     if (userClub == null) {
       throw const CollectionException('No club');
     }
+    // A pack that cannot be opened must not be sold either.
+    await _requireSquadRoom(userClub.id);
     final registry = await _ensureRegistry();
     final scope = PackScope(
       category: category,
@@ -412,6 +427,98 @@ class CollectionStore {
     return (await (db.select(
       db.packs,
     )..where((p) => p.id.equals(id))).getSingle());
+  }
+
+  // ---------------------------------------------------------------------------
+  // Squad capacity
+  // ---------------------------------------------------------------------------
+
+  /// Blocks of extra slots the club has bought: one ledger row each.
+  Future<int> _squadSlotBlocks(int clubId) async {
+    final count = db.coinTransactions.id.count();
+    final row =
+        await (db.selectOnly(db.coinTransactions)
+              ..addColumns([count])
+              ..where(
+                db.coinTransactions.clubId.equals(clubId) &
+                    db.coinTransactions.reason.equals(squadSlotsLedgerReason),
+              ))
+            .getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  Future<SquadCapacity> _squadCapacityOf(int clubId) async {
+    final blocks = await _squadSlotBlocks(clubId);
+    // Distinct players: extra copies of one player count once.
+    final owned = (await _ownedPlayerIds(clubId)).length;
+    return SquadCapacity(
+      owned: owned,
+      capacity: economy.squadCapacity(blocks),
+      blocksBought: blocks,
+      nextBlockSlots: economy.config.squadSlotsPerPurchase,
+      nextBlockPrice: economy.squadSlotBlockPrice(blocks),
+    );
+  }
+
+  /// The club's squad capacity: distinct players owned vs. slots, and
+  /// the price of the next block. Before a club exists it reads as an
+  /// empty club with the base capacity.
+  Future<SquadCapacity> getSquadCapacity() async {
+    final club = await getClub();
+    if (club == null) {
+      return SquadCapacity(
+        owned: 0,
+        capacity: economy.squadCapacity(0),
+        blocksBought: 0,
+        nextBlockSlots: economy.config.squadSlotsPerPurchase,
+        nextBlockPrice: economy.squadSlotBlockPrice(0),
+      );
+    }
+    return _squadCapacityOf(club.id);
+  }
+
+  /// Refuses a pack buy / open when every slot is taken by a distinct
+  /// player (a pack adds at most one new player, so the count can never
+  /// pass the capacity).
+  Future<void> _requireSquadRoom(int clubId) async {
+    if (!enforceSquadCapacity) return;
+    final cap = await _squadCapacityOf(clubId);
+    if (cap.isFull) {
+      throw CollectionException(
+        'Your squad is full (${cap.owned}/${cap.capacity} players) — '
+        'buy more slots on the Team tab.',
+      );
+    }
+  }
+
+  /// Buys the next block of squad slots with Coins: the price comes from
+  /// the Economy Engine and rises with every block already bought. The
+  /// debit and its ledger row (which is what counts the block) are one
+  /// atomic step. Returns the new capacity.
+  Future<SquadCapacity> buySquadSlots() async {
+    final club = await getClub();
+    if (club == null) {
+      throw const CollectionException('No club');
+    }
+    await db.transaction(() async {
+      // Re-read inside the transaction so the price always matches the
+      // number of blocks really bought.
+      final before = await _squadCapacityOf(club.id);
+      try {
+        await db.spendCoins(
+          club.id,
+          before.nextBlockPrice,
+          reason: squadSlotsLedgerReason,
+          detail:
+              'Bought ${before.nextBlockSlots} squad slots '
+              '(${before.capacity} -> '
+              '${before.capacity + before.nextBlockSlots})',
+        );
+      } on InsufficientFundsException {
+        throw const CollectionException('Not enough coins');
+      }
+    });
+    return _squadCapacityOf(club.id);
   }
 
   // ---------------------------------------------------------------------------

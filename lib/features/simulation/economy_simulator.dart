@@ -166,7 +166,9 @@ class EconomySimulator {
         size: datasetSize,
         random: math.Random(_random.nextInt(1 << 31)),
       );
-      final collection = CollectionStore(db: db);
+      // The squad-slot cap is off: this harness measures the raw pack
+      // economy, not a player who also buys slots.
+      final collection = CollectionStore(db: db, enforceSquadCapacity: false);
       await collection.applyDatasetUpdate(
         PlayerDataset.fromJson(dataset.toJson()),
       );
