@@ -359,7 +359,6 @@ class _CrestBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -389,7 +388,6 @@ class _CrestBuilder extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        _PickerLabel(l.crestShapeLabel),
         _ScrollRow(
           children: [
             for (final shape in CrestShape.values)
@@ -401,8 +399,6 @@ class _CrestBuilder extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 12),
-        _PickerLabel(l.crestPatternLabel),
         _ScrollRow(
           children: [
             for (final pattern in CrestPattern.values)
@@ -415,22 +411,16 @@ class _CrestBuilder extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 12),
-        _PickerLabel(l.crestPrimaryLabel),
         _ColorRow(
           colors: colors,
           selected: spec.primaryIndex,
           onTap: onPrimary,
         ),
-        const SizedBox(height: 12),
-        _PickerLabel(l.crestSecondaryLabel),
         _ColorRow(
           colors: colors,
           selected: spec.secondaryIndex,
           onTap: onSecondary,
         ),
-        const SizedBox(height: 12),
-        _PickerLabel(l.crestIconLabel),
         _ScrollRow(
           children: [
             for (final icon in CrestIcon.values)
@@ -474,31 +464,6 @@ class _ScrollRow extends StatelessWidget {
               Center(child: children[i]),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One section label of the builder — the same quiet caps style the
-/// form's other section headings use.
-class _PickerLabel extends StatelessWidget {
-  const _PickerLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
-      child: Text(
-        text.toUpperCase(),
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: FcmColors.textDim,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 2,
         ),
       ),
     );

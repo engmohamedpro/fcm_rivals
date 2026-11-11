@@ -275,12 +275,8 @@ void main() {
       addTearDown(tester.view.reset);
       await pumpCreation(tester, const Locale('en'));
 
-      // The builder: preview + the four picker sections render.
-      expect(find.text('SHAPE'), findsOneWidget);
-      expect(find.text('PRIMARY COLOUR'), findsOneWidget);
-      expect(find.text('SECONDARY COLOUR'), findsOneWidget);
-      expect(find.text('ICON'), findsOneWidget);
-      expect(find.text('PATTERN'), findsOneWidget);
+      // The builder: preview + the picker rows render (no titles).
+      expect(find.text('SHAPE'), findsNothing);
       expect(find.byIcon(Icons.casino_rounded), findsOneWidget,
           reason: 'the randomize action');
       // The live preview is a real crest: the default shield/star.
@@ -429,11 +425,6 @@ void main() {
       addTearDown(tester.view.reset);
       await pumpCreation(tester, const Locale('ar'));
 
-      expect(find.text('الشكل'), findsOneWidget);
-      expect(find.text('اللون الأساسي'), findsOneWidget);
-      expect(find.text('اللون الثانوي'), findsOneWidget);
-      expect(find.text('الرمز'), findsOneWidget);
-      expect(find.text('النقش'), findsOneWidget);
       expect(find.byIcon(Icons.casino_rounded), findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'no RTL overflow');
     },
