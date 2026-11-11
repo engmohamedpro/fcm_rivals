@@ -2,11 +2,11 @@
 id: T-0115
 title: Normalized chance edge + sigmoid re-anchor — the dimensionless strength response (T-0082's core swap)
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: [T-0114]
 created: 2026-11-10
-completed:
+completed: 2026-11-11
 ---
 
 # T-0115: Normalized chance edge + sigmoid re-anchor — the dimensionless strength response
@@ -35,9 +35,9 @@ The production swap T-0082 originally specified: the chance-creation logistic co
 - Any band edit; any economy/UI/l10n/save change.
 
 ## Acceptance Criteria
-- [ ] Every ladder rung (gaps 0/4/8/12/16/20) inside its existing band, margin ≥0.03, n≥800, zero band edits.
-- [ ] SYM sweep flat: normalized edge drift ≤0.01 across +0/+10/+25/+50 (measured on the axis), even-strength bands green.
-- [ ] Snapshot regenerated deliberately, green with REGEN_SNAPSHOT unset; the reason + scope recorded.
+- [x] Every ladder rung (gaps 0/4/8/12/16/20) inside its existing band, margin ≥0.03, n≥800, zero band edits.
+- [x] SYM sweep flat: normalized edge drift ≤0.01 across +0/+10/+25/+50 (measured on the axis), even-strength bands green.
+- [x] Snapshot regenerated deliberately, green with REGEN_SNAPSHOT unset; the reason + scope recorded.
 - [ ] The T-0073 lock state documented (pass/fail as measured, no edit); everything else green; analyze clean.
 
 ## How to Verify
