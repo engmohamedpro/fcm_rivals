@@ -2,11 +2,10 @@
 id: T-0116
 title: The ceiling lock, both directions — turn on the income layer and re-lock the ladder (closes T-0082)
 priority: high
-status: done
+status: needs-review
 attempts: 1
 depends_on: [T-0114, T-0115]
 created: 2026-11-10
-completed: 2026-11-10
 ---
 
 # T-0116: The ceiling lock, both directions — turn on the income layer and re-lock the ladder
@@ -118,3 +117,19 @@ flutter test                                                  # full suite once,
   SYM, phase-0 win/draw, home-advantage group — all green.
 
 ## Review Log
+<!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-11, attempt 1: REJECTED — returned to needs-review (was placed in 0-done without independent review)
+- VERDICT: the umbrella's engineering is largely excellent, but the shipped combined state carries real, partially-documented regressions and the AC list is NOT met. Rejected as done; returned for one bounded re-land round (the fix list below is small and the notes already contain most of the measurements).
+- EVIDENCE (all reviewer-executed in this environment):
+  1. engine_calibration_test was 24/24 GREEN pre-umbrella (verified at 4b94310~1) and now fails 4 assertions BADLY, not by hairs: avg goals 3.161 vs <2.9 (+9%), 6+ goal thrillers 0.0965 vs <0.075 (+29%), big chances 2.2615 vs <1.9, low-scoring share 0.1615 vs >0.18. The Developer Notes document the phase-0 even-goals band 2.86 (in-band) — but engine_calibration is a DIFFERENT suite measuring the same property through the real pipeline, and it is not mentioned once.
+  2. compatibility_gate ×2 (ratings stability: elite 6.1196 vs mid 6.1253 — the ELITE average now reads BELOW the mid average on this suite's seeds; forecast sanity: 55 vs >55 knife-edge) — neither failure appears anywhere in the Developer Notes.
+  3. AC #1 (both-directions ≤0.88) is missed: 0.891 / 0.948 — BLOCKED is a legitimate protocol outcome, but the task also claims 'full suite green once' and 'balance twice', which do not hold in the current state (5 balance + 4 calibration failures).
+  4. The documented hairs (away-win 0.2803, gegenpress 0.9089, press ratio 0.909) are honestly measured and I accept them as engineering trade-offs — they are NOT part of this rejection.
+- THE BOUNDED FIX LIST (ranked by user impact):
+  1. (High) Re-re-anchor the combined state so engine_calibration's real-football bands hold again (goals 2.4–2.9, 6+ <0.075, big chances 1.3–1.9, low-scoring >0.18). The conversion re-anchor constants (onTargetBase 0.326 / onTargetScale 0.18 / goalDiffScale 0.36) and setPieceIncome 0.045 are the levers; the notes' own sweep methodology (measure on the failing tests' OWN seeds) is the right tool — it just was not pointed at this suite.
+  2. (High) Investigate compatibility_gate's ratings stability (elite < mid is a red flag for the normalization's interaction with the rating distribution, not noise — the margin is small but systematic across the suite's 200-seed battery).
+  3. (Medium) Re-decide the 0.88 ceiling: either land the blocked-decision with the owner (accept the documented 0.891/0.948 with a task edit) or extend the fallback lever list — but the decision must be explicit and in the file, not implied by placement in 0-done.
+  4. (Low) The knife-edge assertion style (boundary equality with zero tolerance) in compatibility_gate/phase-0 is a flakiness recipe — recommend tolerance margins when re-locking.
+- WHAT PASSED (credit where due, verified): SYM drift 0.003 (vs 0.518 old — the scale-free property is real); underdog lift 0.33→0.61 (the mechanism works); upgrade_ladder re-lock 9/9 with the stomp-dead assertion; set_piece_income gate 4/4 re-pointed at the shipped state; snapshot regen deliberate and green; umbrella diff discipline (only the two sanctioned test files).
+- NOTIFICATION PROTOCOL: Telegram unavailable (placeholder token, no destination) — recorded per the fallback clause. The review is read-mostly + task-file bookkeeping; safe to proceed.
