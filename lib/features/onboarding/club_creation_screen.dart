@@ -440,12 +440,14 @@ class _ScrollRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 64,
+      height: 68,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
+        // Hard clip: items scroll UNDER the card's edge instead of
+        // spilling out of it.
+        clipBehavior: Clip.hardEdge,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: Row(
           children: [
             for (var i = 0; i < children.length; i++) ...[
