@@ -2,11 +2,11 @@
 id: T-0105
 title: Typed achievement catalog + economy-safe endless reward config (pure Dart, no UI)
 priority: high
-status: needs-review
+status: done
 attempts: 1
 depends_on: []
 created: 2026-11-10
-completed:
+completed: 2026-11-11
 ---
 
 # T-0105: Typed achievement catalog + economy-safe endless reward config (pure Dart, no UI)
@@ -37,10 +37,10 @@ The achievements feature gets its single source of truth: a typed, config-driven
 - Measuring/locking the actual coin numbers against the economy sweep (T-0109 re-pins them; the values you seed are pre-balance placeholders in the EconomyConfig tradition).
 
 ## Acceptance Criteria
-- [ ] Catalog + config compile with `flutter analyze` zero warnings; no magic numbers outside the config files.
-- [ ] ≥10 categories, ≥40 definitions, ≥12 titles; every string localized EN+AR with real Arabic.
-- [ ] The asymptote property and the derived-ceiling-vs-catalog consistency are locked by tests that FAIL if someone later adds a linear-growth coin ladder (the regression this task exists to prevent).
-- [ ] Catalog test + full `flutter test` green.
+- [x] Catalog + config compile with `flutter analyze` zero warnings; no magic numbers outside the config files.
+- [x] ≥10 categories, ≥40 definitions, ≥12 titles; every string localized EN+AR with real Arabic.
+- [x] The asymptote property and the derived-ceiling-vs-catalog consistency are locked by tests that FAIL if someone later adds a linear-growth coin ladder (the regression this task exists to prevent).
+- [x] Catalog test + full `flutter test` green.
 
 ## How to Verify
 ```bash
@@ -140,3 +140,10 @@ flutter test
 
 ## Review Log
 <!-- Reviewer agent appends one entry per review. Never delete old entries. -->
+
+### Review 2026-11-11, attempt 1: PASS
+- Ran: `flutter analyze` (2 issues — both pre-existing: fcm_crest.dart:269 from a39f10a, tactic_slider_row.dart:16; both older than T-0105's c7c9131), `flutter test test/features/achievements/catalog_test.dart` (15/15 green), full `flutter test` (963+ passed, 16 failed — ALL verified non-T-0105: 9 pre-existing on the pre-T-0105 tree db628d6 (T-0064 slider family, tactic_slider Arabic ×2, season live-flow), 7 from the T-0082 engine umbrella commits 4b94310/57b3322/899b480 documented in T-0116's BLOCK record — match_engine_balance ×2 + engine_calibration ×4 + 1 uncaught-error shutdown line). T-0105's diff touches zero engine/economy files.
+- AC verified independently: 10 categories / 42 definitions (40+2) / 22 achievement titles + 5 division titles seeded; ladder ctor asserts ratio≥2 + endless/finiteness + base≥1 (a linear ladder IS a type error); `totalCatalogCoinCeiling()` DERIVED from the catalog (getter sums milestones + flat×reachable-tiers, never stored); the asymptote test real (never-rise + strict-fall past the base=1 tie + ≥1.9 effort doubling at tier 19→20 — a linear coin ladder fails it); EN/AR arb parity exact (291 = 291 keys, zero diff both directions); Arabic in real football register (القناص، مقفل الشباك، باني الإمبراطورية) not machine-literal.
+- Out of scope respected: no DB/repository/provider/UI; the only non-feature edits are 2 test-file lint cleanups (injured_inert_test, team_tab_purity_test) documented in Developer Notes.
+- Notification protocol: Telegram unavailable (TELEGRAM_NOTIFICATIONS.md token is a documented placeholder, no configured destination) — failure recorded here per the protocol's fallback clause; review proceeded as safe (read-mostly).
+- Notes: pre-balance coin placeholders are by design (GDD rule 14, T-0109 re-pins); the 7 T-0082-era engine failures belong to the BLOCK record trail, not this task.
