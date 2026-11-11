@@ -301,12 +301,15 @@ class FcmPlayerCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(height: h * 0.02),
+                  // Identity stack: one rhythm — a w*0.03 gap between
+                  // position, flag and crest, with the crest (the club
+                  // identity) reading larger than the flag.
+                  SizedBox(height: w * 0.03),
                   Text(
                     flagEmojiFor(player.nationality),
-                    style: TextStyle(fontSize: w * 0.095),
+                    style: TextStyle(fontSize: w * 0.09),
                   ),
-                  SizedBox(height: w * 0.015),
+                  SizedBox(height: w * 0.03),
                   // Club crest under the flag (dataset v3) — always
                   // visible like the flag itself (the walkout already
                   // told the country). The nationality name is the
@@ -318,7 +321,7 @@ class FcmPlayerCard extends StatelessWidget {
                           width: w * 0.30,
                           child: Image.network(
                             player.clubCrestUrl,
-                            height: w * 0.15,
+                            height: w * 0.16,
                             fit: BoxFit.contain,
                             filterQuality: FilterQuality.medium,
                             gaplessPlayback: true,
