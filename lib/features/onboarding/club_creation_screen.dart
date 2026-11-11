@@ -24,6 +24,10 @@ class ClubCreationScreen extends ConsumerStatefulWidget {
   ConsumerState<ClubCreationScreen> createState() => _ClubCreationScreenState();
 }
 
+/// Horizontal inset of the card's ordinary content; the crest pickers
+/// bypass it so their scroll rows run edge to edge.
+const _kCardGutter = EdgeInsets.symmetric(horizontal: 18);
+
 class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _clubName = TextEditingController();
@@ -165,11 +169,13 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                     FcmEntrance(
                       index: 2,
                       child: FcmPanel(
-                        padding: const EdgeInsets.all(18),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            TextFormField(
+                            Padding(
+ padding: _kCardGutter,
+ child: TextFormField(
                               controller: _clubName,
                               textInputAction: TextInputAction.next,
                               textCapitalization: TextCapitalization.words,
@@ -185,8 +191,11 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                                       )!.fieldRequired
                                   : null,
                             ),
+),
                             const SizedBox(height: 14),
-                            TextFormField(
+                            Padding(
+ padding: _kCardGutter,
+ child: TextFormField(
                               controller: _managerName,
                               textInputAction: TextInputAction.done,
                               textCapitalization: TextCapitalization.words,
@@ -202,8 +211,11 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                                       )!.fieldRequired
                                   : null,
                             ),
+),
                             const SizedBox(height: 22),
-                            Text(
+                            Padding(
+ padding: _kCardGutter,
+ child: Text(
                               AppLocalizations.of(
                                 context,
                               )!.clubCrestSection,
@@ -214,6 +226,7 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                                 letterSpacing: 2,
                               ),
                             ),
+),
                             const SizedBox(height: 12),
                             _CrestBuilder(
                               spec: _crestSpec,
@@ -239,7 +252,9 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               onRandomize: _randomizeCrest,
                             ),
                             const SizedBox(height: 22),
-                            Text(
+                            Padding(
+ padding: _kCardGutter,
+ child: Text(
                               AppLocalizations.of(
                                 context,
                               )!.starterFormationSection,
@@ -250,11 +265,14 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                                 letterSpacing: 2,
                               ),
                             ),
+),
                             const SizedBox(height: 10),
                             // The same picker the Team tab uses: the
                             // closed field shows the live shape, tapping
                             // lists every formation by name.
-                            FcmDropdown<String>(
+                            Padding(
+ padding: _kCardGutter,
+ child: FcmDropdown<String>(
                               icon: Icons.grid_on_rounded,
                               items: [
                                 for (final f in formations)
@@ -267,6 +285,7 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                               onChanged: (code) =>
                                   setState(() => _formationCode = code),
                             ),
+),
                           ],
                         ),
                       ),
@@ -447,7 +466,7 @@ class _ScrollRow extends StatelessWidget {
         // spilling out of it.
         clipBehavior: Clip.hardEdge,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         child: Row(
           children: [
             for (var i = 0; i < children.length; i++) ...[
@@ -471,7 +490,7 @@ class _PickerLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
       child: Text(
         text.toUpperCase(),
         textAlign: TextAlign.center,
