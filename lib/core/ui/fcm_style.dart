@@ -87,7 +87,7 @@ class FcmColors {
 
   /// Crest swatches the manager picks from at club creation: the brand's
   /// warm metals (champagne, bronze, ember, olive, steel, oxblood) then
-  /// ten vivid club colours.
+  /// eighteen vivid club colours.
   /// Shared by the creation picker and everywhere the club's colour is
   /// shown live (e.g. the match momentum bar's user side spikes).
   static const List<Color> crestPalette = [
@@ -109,6 +109,14 @@ class FcmColors {
     Color(0xFFF4F1EA), // ivory white
     Color(0xFF14203B), // midnight navy
     Color(0xFF138E92), // teal
+    Color(0xFF7B1730), // burgundy
+    Color(0xFF0F5132), // forest
+    Color(0xFF2B2F8F), // indigo
+    Color(0xFF2EC4D6), // cyan
+    Color(0xFFE0508C), // pink
+    Color(0xFFF26B5B), // coral
+    Color(0xFF8CCB2B), // lime
+    Color(0xFF0B0B0D), // black
   ];
 
   /// The club's crest colour by saved [crestIndex] — clamped so a stale

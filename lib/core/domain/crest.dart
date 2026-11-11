@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 
 import '../ui/fcm_style.dart' show FcmColors;
 
-/// The crest's silhouette (GDD 3.4 'Crest') — at least four shapes;
+/// The crest's silhouette (GDD 3.4 'Crest') — ten shapes;
 /// rendered symmetric so the same spec reads identically LTR/RTL.
 enum CrestShape {
   /// Classic football shield — flat top, pointed bottom.
@@ -33,7 +33,19 @@ enum CrestShape {
   heater('heater'),
 
   /// Pointy-top hexagon — the badge.
-  hexagon('hexagon');
+  hexagon('hexagon'),
+
+  /// Rounded square — the tile.
+  rounded('rounded'),
+
+  /// Round-topped doorway arch.
+  arch('arch'),
+
+  /// Eight-sided stop-sign badge.
+  octagon('octagon'),
+
+  /// Tall kite with a high shoulder.
+  kite('kite');
 
   const CrestShape(this.json);
 
@@ -47,7 +59,7 @@ enum CrestShape {
       .firstWhere((s) => s.json == json, orElse: () => CrestShape.shield);
 }
 
-/// The centered glyph on the crest's field — at least six icons.
+/// The centered glyph on the crest's field — sixteen of them.
 enum CrestIcon {
   star('star'),
   ball('ball'),
@@ -58,7 +70,13 @@ enum CrestIcon {
   sun('sun'),
   tower('tower'),
   sword('sword'),
-  moon('moon');
+  moon('moon'),
+  heart('heart'),
+  gem('gem'),
+  mountain('mountain'),
+  trophy('trophy'),
+  paw('paw'),
+  sparkle('sparkle');
 
   const CrestIcon(this.json);
 
@@ -70,9 +88,9 @@ enum CrestIcon {
 }
 
 /// How the crest's field is divided between the primary and secondary
-/// colours. Every pattern is mirror-symmetric except [diagonal] (a
-/// classic bend) — it still reads the same LTR and RTL because the
-/// painter never flips on text direction.
+/// colours. Some patterns ([diagonal], [slashes], [split]) are
+/// deliberately asymmetric; they still read the same LTR and RTL because
+/// the painter never flips on text direction.
 enum CrestPattern {
   /// Solid primary field.
   plain('plain'),
@@ -92,11 +110,26 @@ enum CrestPattern {
   /// A downward chevron.
   chevron('chevron'),
 
-  /// A cross through the field.
-  cross('cross'),
-
   /// Four quarters, opposite corners matching.
-  quarters('quarters');
+  quarters('quarters'),
+
+  /// Left and right halves.
+  split('split'),
+
+  /// Top and bottom halves.
+  splitH('splitH'),
+
+  /// A chequerboard.
+  checker('checker'),
+
+  /// Rays fanning out from the centre.
+  sunburst('sunburst'),
+
+  /// A field of dots.
+  dots('dots'),
+
+  /// Repeated diagonal slashes.
+  slashes('slashes');
 
   const CrestPattern(this.json);
 

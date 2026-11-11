@@ -160,6 +160,42 @@ Path _shapePath(CrestShape shape, Rect r) {
       p.lineTo(u(0.06, 0.73).dx, u(0.06, 0.73).dy);
       p.lineTo(u(0.06, 0.27).dx, u(0.06, 0.27).dy);
       p.close();
+    case CrestShape.rounded:
+      p.addRRect(RRect.fromRectAndRadius(
+        r.deflate(r.width * 0.06),
+        Radius.circular(r.width * 0.26),
+      ));
+    case CrestShape.arch:
+      p.moveTo(u(0.12, 0.96).dx, u(0.12, 0.96).dy);
+      p.lineTo(u(0.12, 0.42).dx, u(0.12, 0.42).dy);
+      p.cubicTo(
+        u(0.12, 0.16).dx, u(0.12, 0.16).dy,
+        u(0.30, 0.04).dx, u(0.30, 0.04).dy,
+        u(0.50, 0.04).dx, u(0.50, 0.04).dy,
+      );
+      p.cubicTo(
+        u(0.70, 0.04).dx, u(0.70, 0.04).dy,
+        u(0.88, 0.16).dx, u(0.88, 0.16).dy,
+        u(0.88, 0.42).dx, u(0.88, 0.42).dy,
+      );
+      p.lineTo(u(0.88, 0.96).dx, u(0.88, 0.96).dy);
+      p.close();
+    case CrestShape.octagon:
+      final o = <List<double>>[
+        [0.30, 0.04], [0.70, 0.04], [0.96, 0.30], [0.96, 0.70],
+        [0.70, 0.96], [0.30, 0.96], [0.04, 0.70], [0.04, 0.30],
+      ];
+      p.moveTo(u(o[0][0], o[0][1]).dx, u(o[0][0], o[0][1]).dy);
+      for (var i = 1; i < o.length; i++) {
+        p.lineTo(u(o[i][0], o[i][1]).dx, u(o[i][0], o[i][1]).dy);
+      }
+      p.close();
+    case CrestShape.kite:
+      p.moveTo(u(0.50, 0.03).dx, u(0.50, 0.03).dy);
+      p.lineTo(u(0.92, 0.36).dx, u(0.92, 0.36).dy);
+      p.lineTo(u(0.50, 0.97).dx, u(0.50, 0.97).dy);
+      p.lineTo(u(0.08, 0.36).dx, u(0.08, 0.36).dy);
+      p.close();
   }
   return p;
 }
@@ -173,6 +209,10 @@ double _glyphCentreY(CrestShape shape) => switch (shape) {
   CrestShape.round => 0.50,
   CrestShape.diamond => 0.50,
   CrestShape.hexagon => 0.50,
+  CrestShape.rounded => 0.50,
+  CrestShape.arch => 0.52,
+  CrestShape.octagon => 0.50,
+  CrestShape.kite => 0.40,
 };
 
 /// Glyph size as a fraction of the field width.
@@ -180,6 +220,7 @@ double _glyphScale(CrestShape shape) => switch (shape) {
   CrestShape.diamond => 0.34,
   CrestShape.pennant => 0.40,
   CrestShape.shield => 0.44,
+  CrestShape.kite => 0.36,
   _ => 0.46,
 };
 
@@ -237,22 +278,63 @@ void _paintPattern(Canvas canvas, Rect r, CrestPattern pattern, Color color) {
           ..close(),
         paint,
       );
-    case CrestPattern.cross:
-      canvas.drawRect(
-        Rect.fromCenter(center: r.center, width: w * 0.24, height: h),
-        paint,
-      );
-      canvas.drawRect(
-        Rect.fromCenter(
-          center: Offset(r.center.dx, r.top + h * 0.42),
-          width: w,
-          height: h * 0.24,
-        ),
-        paint,
-      );
     case CrestPattern.quarters:
       canvas.drawRect(Rect.fromLTRB(r.left, r.top, r.center.dx, r.center.dy), paint);
       canvas.drawRect(Rect.fromLTRB(r.center.dx, r.center.dy, r.right, r.bottom), paint);
+    case CrestPattern.split:
+      canvas.drawRect(Rect.fromLTRB(r.center.dx, r.top, r.right, r.bottom), paint);
+    case CrestPattern.splitH:
+      canvas.drawRect(Rect.fromLTRB(r.left, r.center.dy, r.right, r.bottom), paint);
+    case CrestPattern.checker:
+      final cw = w / 4;
+      final ch = h / 4;
+      for (var i = 0; i < 4; i++) {
+        for (var j = 0; j < 4; j++) {
+          if ((i + j).isOdd) {
+            canvas.drawRect(
+              Rect.fromLTWH(r.left + cw * i, r.top + ch * j, cw, ch),
+              paint,
+            );
+          }
+        }
+      }
+    case CrestPattern.sunburst:
+      final reach = math.max(w, h);
+      final c0 = r.center;
+      for (var i = 0; i < 12; i += 2) {
+        final a0 = i * math.pi / 6;
+        final a1 = (i + 1) * math.pi / 6;
+        canvas.drawPath(
+          Path()
+            ..moveTo(c0.dx, c0.dy)
+            ..lineTo(c0.dx + reach * math.cos(a0), c0.dy + reach * math.sin(a0))
+            ..lineTo(c0.dx + reach * math.cos(a1), c0.dy + reach * math.sin(a1))
+            ..close(),
+          paint,
+        );
+      }
+    case CrestPattern.dots:
+      final dotR = math.min(w, h) * 0.075;
+      for (var j = 0; j < 5; j++) {
+        for (var i = 0; i < 5; i++) {
+          final off = j.isOdd ? 0.5 : 0.0;
+          canvas.drawCircle(
+            Offset(r.left + w * (i + off) / 4.0, r.top + h * j / 4.0),
+            dotR,
+            paint,
+          );
+        }
+      }
+    case CrestPattern.slashes:
+      final sp = w * 0.36;
+      final stroke = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = sp * 0.45;
+      for (var k = 0; k < 6; k++) {
+        final x = r.left + k * sp - h * 0.5;
+        canvas.drawLine(Offset(x, r.bottom), Offset(x + h, r.top), stroke);
+      }
   }
 }
 
@@ -451,10 +533,14 @@ class _PatternChipPainter extends CustomPainter {
 /// One glyph's geometry: a filled [body] and optional [detail] strokes /
 /// fills drawn in the contrast colour on top of it.
 class _Glyph {
-  const _Glyph(this.body, [this.detail]);
+  const _Glyph(this.body, [this.detail, this.fillDetail = true]);
 
   final Path body;
   final Path? detail;
+
+  /// Whether [detail] is also filled (closed shapes) or stroked only
+  /// (open facet lines).
+  final bool fillDetail;
 }
 
 Path _poly(Rect c, List<List<double>> pts) {
@@ -661,6 +747,94 @@ _Glyph _glyphFor(CrestIcon icon, Rect c) {
         ..moveTo(c.left + c.width * 0.5, c.top + c.height * 0.12)
         ..lineTo(c.left + c.width * 0.5, c.top + c.height * 0.60);
       return _Glyph(body, fuller);
+    case CrestIcon.heart:
+      return _Glyph(_cubics(c, const [0.50, 0.94], const [
+        [0.08, 0.64, 0.0, 0.30, 0.22, 0.14],
+        [0.36, 0.02, 0.50, 0.12, 0.50, 0.28],
+        [0.50, 0.12, 0.64, 0.02, 0.78, 0.14],
+        [1.0, 0.30, 0.92, 0.64, 0.50, 0.94],
+      ]));
+    case CrestIcon.gem:
+      final facets = Path()
+        ..moveTo(c.left, c.top + c.height * 0.38)
+        ..lineTo(c.right, c.top + c.height * 0.38)
+        ..moveTo(c.left + c.width * 0.25, c.top + c.height * 0.10)
+        ..lineTo(c.left + c.width * 0.38, c.top + c.height * 0.38)
+        ..lineTo(c.left + c.width * 0.50, c.top + c.height * 0.95)
+        ..moveTo(c.left + c.width * 0.75, c.top + c.height * 0.10)
+        ..lineTo(c.left + c.width * 0.62, c.top + c.height * 0.38)
+        ..lineTo(c.left + c.width * 0.50, c.top + c.height * 0.95);
+      return _Glyph(
+        _poly(c, const [
+          [0.25, 0.10],
+          [0.75, 0.10],
+          [1.0, 0.38],
+          [0.50, 0.95],
+          [0.0, 0.38],
+        ]),
+        facets,
+        false,
+      );
+    case CrestIcon.mountain:
+      return _Glyph(_poly(c, const [
+        [0.0, 0.94],
+        [0.34, 0.30],
+        [0.48, 0.52],
+        [0.66, 0.12],
+        [1.0, 0.94],
+      ]));
+    case CrestIcon.trophy:
+      final cup = _cubics(c, const [0.24, 0.04], const [
+        [0.24, 0.04, 0.76, 0.04, 0.76, 0.04],
+        [0.76, 0.34, 0.68, 0.56, 0.50, 0.60],
+        [0.32, 0.56, 0.24, 0.34, 0.24, 0.04],
+      ]);
+      Path ring(double cx) => Path.combine(
+        PathOperation.difference,
+        _disc(c, cx, 0.22, 0.16),
+        _disc(c, cx, 0.22, 0.085),
+      );
+      cup.addPath(ring(0.17), Offset.zero);
+      cup.addPath(ring(0.83), Offset.zero);
+      cup.addPath(
+        _poly(c, const [
+          [0.44, 0.56],
+          [0.56, 0.56],
+          [0.56, 0.78],
+          [0.44, 0.78],
+        ]),
+        Offset.zero,
+      );
+      cup.addPath(
+        _poly(c, const [
+          [0.30, 0.78],
+          [0.70, 0.78],
+          [0.76, 0.96],
+          [0.24, 0.96],
+        ]),
+        Offset.zero,
+      );
+      return _Glyph(cup);
+    case CrestIcon.paw:
+      Path oval(double l, double t, double r, double b) => Path()
+        ..addOval(Rect.fromLTRB(
+          c.left + l * c.width,
+          c.top + t * c.height,
+          c.left + r * c.width,
+          c.top + b * c.height,
+        ));
+      final paw = oval(0.24, 0.50, 0.76, 0.96);
+      paw.addPath(_disc(c, 0.12, 0.42, 0.10), Offset.zero);
+      paw.addPath(_disc(c, 0.36, 0.20, 0.115), Offset.zero);
+      paw.addPath(_disc(c, 0.64, 0.20, 0.115), Offset.zero);
+      paw.addPath(_disc(c, 0.88, 0.42, 0.10), Offset.zero);
+      return _Glyph(paw);
+    case CrestIcon.sparkle:
+      return _Glyph(Path()
+        ..addPolygon([
+          for (var i = 0; i < 8; i++)
+            polar(0.5, 0.5, i.isEven ? 0.52 : 0.13, -math.pi / 2 + i * math.pi / 4),
+        ], true));
     case CrestIcon.moon:
       return _Glyph(
         Path.combine(
@@ -691,7 +865,7 @@ void _paintGlyph(Canvas canvas, CrestIcon icon, Rect cell, Color fill) {
   canvas.drawPath(g.body, Paint()..color = fill);
   final detail = g.detail;
   if (detail != null) {
-    canvas.drawPath(detail, Paint()..color = contrast);
+    if (g.fillDetail) canvas.drawPath(detail, Paint()..color = contrast);
     canvas.drawPath(
       detail,
       Paint()

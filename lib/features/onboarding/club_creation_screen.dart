@@ -371,10 +371,7 @@ class _CrestBuilder extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _PickerLabel(l.crestShapeLabel),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.center,
+        _ScrollRow(
           children: [
             for (final shape in CrestShape.values)
               _ShapeOption(
@@ -387,10 +384,7 @@ class _CrestBuilder extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _PickerLabel(l.crestPatternLabel),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.center,
+        _ScrollRow(
           children: [
             for (final pattern in CrestPattern.values)
               _PatternOption(
@@ -418,10 +412,7 @@ class _CrestBuilder extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _PickerLabel(l.crestIconLabel),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.center,
+        _ScrollRow(
           children: [
             for (final icon in CrestIcon.values)
               _IconOption(
@@ -432,6 +423,38 @@ class _CrestBuilder extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// One picker row: a single line that scrolls sideways, so a long
+/// option list never wraps into a tall block. Items keep their
+/// pop-scale room (vertical padding) and the row follows the text
+/// direction.
+class _ScrollRow extends StatelessWidget {
+  const _ScrollRow({required this.children, this.gap = 8});
+
+  final List<Widget> children;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 64,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        child: Row(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) SizedBox(width: gap),
+              Center(child: children[i]),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -528,10 +551,8 @@ class _ColorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      alignment: WrapAlignment.center,
+    return _ScrollRow(
+      gap: 10,
       children: [
         for (var i = 0; i < colors.length; i++)
           _CrestOption(
