@@ -99,6 +99,17 @@ int? firstFreeSlot(Map<int, PlayerCard> squad, SquadZone zone) {
   return null;
 }
 
+/// The one real restriction: whoever lands in a starting slot must have
+/// that slot's position. Null when [p] fits [slot] (every non-starting
+/// slot fits anybody).
+String? _misfit(Formation formation, PlayerCard p, int slot) {
+  if (slot >= Formation.startingXiSize) return null;
+  final need = formation.slots[slot].position;
+  if (p.position == need) return null;
+  return '${_surname(p)} is a ${p.position.code} — a starting '
+      '${need.code} place needs a ${need.code}.';
+}
+
 /// Moves the player in [fromSlot] to [toSlot], swapping with whoever is
 /// there (an empty [toSlot] is a plain move). See the library rules.
 SquadSwapOutcome swapSquadSlots({
@@ -127,18 +138,9 @@ SquadSwapOutcome swapSquadSlots({
     );
   }
 
-  // The one real restriction: whoever lands in a starting slot must have
-  // that slot's position.
-  String? misfit(PlayerCard p, int slot) {
-    if (slot >= Formation.startingXiSize) return null;
-    final need = formation.slots[slot].position;
-    if (p.position == need) return null;
-    return '${_surname(p)} is a ${p.position.code} — a starting '
-        '${need.code} place needs a ${need.code}.';
-  }
-
   final bad =
-      misfit(mover, toSlot) ?? (other == null ? null : misfit(other, fromSlot));
+      _misfit(formation, mover, toSlot) ??
+      (other == null ? null : _misfit(formation, other, fromSlot));
   if (bad != null) return SquadSwapOutcome.rejected(bad);
 
   final assignment = <int, int>{
@@ -153,32 +155,92 @@ SquadSwapOutcome swapSquadSlots({
   return SquadSwapOutcome.accepted(assignment);
 }
 
-/// Resolves a UI drop ([dragged] onto [target]) into slot indices and
-/// applies [swapSquadSlots]. [squad] is the persisted slot → card map.
+/// Resolves a UI drop ([dragged] onto [target]) into the new squad.
+/// [squad] is the persisted slot → card map.
+///
+/// The Team tab's lower strip is the POOL — every owned card that is not
+/// in the XI or on the bench — so a drop can also come FROM the pool
+/// (onto a pitch slot, a bench place or a placed player, who then goes
+/// back to the pool) or go TO the pool (the strip's [SquadZone.reserves]
+/// zone, or a pool card, which takes the dragged player's place). Cards
+/// parked in the legacy reserve slots count as pool cards.
 SquadSwapOutcome planSquadDrop({
   required Formation formation,
   required Map<int, PlayerCard> squad,
   required PlayerCard dragged,
   required SquadDropTarget target,
 }) {
+  const firstPoolSlot = Formation.startingXiSize + Formation.benchSize;
+  // The squad that counts: XI + bench.
+  final live = <int, PlayerCard>{
+    for (final e in squad.entries)
+      if (e.key < firstPoolSlot) e.key: e.value,
+  };
   int? slotOf(PlayerCard c) {
-    for (final e in squad.entries) {
+    for (final e in live.entries) {
       if (e.value.ownedId == c.ownedId) return e.key;
     }
     return null;
   }
 
+  Map<int, int> ids() => {
+    for (final e in live.entries) e.key: e.value.ownedId,
+  };
+
   final from = slotOf(dragged);
+  final targetCardSlot = target.card == null ? null : slotOf(target.card!);
+  final toPool =
+      target.zone == SquadZone.reserves ||
+      (target.card != null && targetCardSlot == null);
+
+  // From the pool onto the pitch / bench.
   if (from == null) {
-    return const SquadSwapOutcome.rejected('He is not in your squad.');
+    if (toPool) {
+      return const SquadSwapOutcome.rejected(
+        'He is already in the pool — drop him on the pitch or the bench.',
+      );
+    }
+    final int? to;
+    if (target.card != null) {
+      to = targetCardSlot;
+    } else if (target.slot != null) {
+      to = target.slot;
+    } else if (target.zone != null) {
+      to = firstFreeSlot(live, target.zone!);
+    } else {
+      to = null;
+    }
+    if (to == null || to < 0 || to >= firstPoolSlot) {
+      return const SquadSwapOutcome.rejected('There is no free place there.');
+    }
+    final bad = _misfit(formation, dragged, to);
+    if (bad != null) return SquadSwapOutcome.rejected(bad);
+    // Whoever held the place simply goes back to the pool.
+    return SquadSwapOutcome.accepted(ids()..[to] = dragged.ownedId);
   }
+
+  // From the squad to the pool.
+  if (toPool) {
+    final assignment = ids();
+    final back = target.card;
+    if (back != null) {
+      final bad = _misfit(formation, back, from);
+      if (bad != null) return SquadSwapOutcome.rejected(bad);
+      assignment[from] = back.ownedId;
+    } else {
+      assignment.remove(from);
+    }
+    return SquadSwapOutcome.accepted(assignment);
+  }
+
+  // Within the squad.
   final int? to;
   if (target.card != null) {
-    to = slotOf(target.card!);
+    to = targetCardSlot;
   } else if (target.slot != null) {
     to = target.slot;
   } else if (target.zone != null) {
-    to = firstFreeSlot(squad, target.zone!);
+    to = firstFreeSlot(live, target.zone!);
   } else {
     to = null;
   }
@@ -187,7 +249,7 @@ SquadSwapOutcome planSquadDrop({
   }
   return swapSquadSlots(
     formation: formation,
-    squad: squad,
+    squad: live,
     fromSlot: from,
     toSlot: to,
   );

@@ -303,16 +303,18 @@ void main() {
 
     test('resolves an empty zone to its first free place', () {
       final squad = _squad()
-        ..remove(19)
-        ..remove(21);
+        ..remove(13)
+        ..remove(15);
+      // A pool player (id 19 sits in a legacy reserve slot) onto the
+      // bench zone takes the first free bench place.
       final out = planSquadDrop(
         formation: _f433,
         squad: squad,
-        dragged: squad[12]!,
-        target: const SquadDropTarget.emptyIn(SquadZone.reserves),
+        dragged: squad[19]!,
+        target: const SquadDropTarget.emptyIn(SquadZone.bench),
       );
       expect(out.isAccepted, isTrue, reason: out.rejection);
-      expect(out.assignment![19], 12, reason: 'first free reserves place');
+      expect(out.assignment![13], 19, reason: 'first free bench place');
     });
 
     test('an empty xi slot target is used as is', () {
@@ -327,26 +329,106 @@ void main() {
       expect(out.assignment![9], 15);
     });
 
-    test('a full zone has no free place', () {
+    test('a full bench has no free place for a pool player', () {
       final squad = _squad();
       final out = planSquadDrop(
         formation: _f433,
         squad: squad,
-        dragged: squad[12]!,
-        target: const SquadDropTarget.emptyIn(SquadZone.reserves),
+        dragged: squad[19]!,
+        target: const SquadDropTarget.emptyIn(SquadZone.bench),
       );
       expect(out.isAccepted, isFalse);
     });
 
-    test('a player outside the squad cannot be dragged', () {
-      final squad = _squad();
-      final out = planSquadDrop(
-        formation: _f433,
-        squad: squad,
-        dragged: _card(99, Position.st),
-        target: SquadDropTarget.player(squad[9]!),
-      );
-      expect(out.isAccepted, isFalse);
+    group('the all-players pool', () {
+      test('a pool player replaces a starter of his position; the starter '
+          'goes back to the pool', () {
+        final squad = _squad();
+        final out = planSquadDrop(
+          formation: _f433,
+          squad: squad,
+          dragged: _card(99, Position.st),
+          target: SquadDropTarget.player(squad[9]!),
+        );
+        expect(out.isAccepted, isTrue, reason: out.rejection);
+        expect(out.assignment![9], 99);
+        expect(out.assignment!.values, isNot(contains(9)));
+      });
+
+      test('a pool player of the wrong position cannot take a starting '
+          'slot', () {
+        final squad = _squad();
+        final out = planSquadDrop(
+          formation: _f433,
+          squad: squad,
+          dragged: _card(99, Position.cb),
+          target: SquadDropTarget.player(squad[9]!),
+        );
+        expect(out.isAccepted, isFalse);
+        expect(out.rejection, contains('needs a ST'));
+      });
+
+      test('a pool player takes a bench place whatever his position', () {
+        final squad = _squad();
+        final out = planSquadDrop(
+          formation: _f433,
+          squad: squad,
+          dragged: _card(99, Position.cb),
+          target: SquadDropTarget.player(squad[15]!),
+        );
+        expect(out.isAccepted, isTrue, reason: out.rejection);
+        expect(out.assignment![15], 99);
+      });
+
+      test('dropping a bench player on the pool takes him out of the '
+          'squad', () {
+        final squad = _squad();
+        final out = planSquadDrop(
+          formation: _f433,
+          squad: squad,
+          dragged: squad[15]!,
+          target: const SquadDropTarget.emptyIn(SquadZone.reserves),
+        );
+        expect(out.isAccepted, isTrue, reason: out.rejection);
+        expect(out.assignment!.containsKey(15), isFalse);
+        expect(out.assignment!.values, isNot(contains(15)));
+      });
+
+      test('a starter can be dropped on a pool card of his position', () {
+        final squad = _squad();
+        final pool = _card(99, Position.st);
+        final out = planSquadDrop(
+          formation: _f433,
+          squad: squad,
+          dragged: squad[9]!,
+          target: SquadDropTarget.player(pool),
+        );
+        expect(out.isAccepted, isTrue, reason: out.rejection);
+        expect(out.assignment![9], 99);
+      });
+
+      test('the legacy reserve slots are dropped from the saved squad', () {
+        final squad = _squad();
+        final out = planSquadDrop(
+          formation: _f433,
+          squad: squad,
+          dragged: squad[19]!,
+          target: SquadDropTarget.player(squad[15]!),
+        );
+        expect(out.isAccepted, isTrue, reason: out.rejection);
+        expect(out.assignment!.keys.every((k) => k < 18), isTrue);
+      });
+
+      test('a pool player dropped on a pool card is refused', () {
+        final squad = _squad();
+        final out = planSquadDrop(
+          formation: _f433,
+          squad: squad,
+          dragged: _card(98, Position.st),
+          target: SquadDropTarget.player(_card(99, Position.st)),
+        );
+        expect(out.isAccepted, isFalse);
+      });
     });
   });
 

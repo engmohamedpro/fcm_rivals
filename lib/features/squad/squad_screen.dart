@@ -60,26 +60,34 @@ class SquadScreen extends ConsumerWidget {
           for (final e in squad.entries)
             if (e.key < Formation.startingXiSize) e.key: e.value,
         };
-        // Bench then reserves in slot order, each strip re-sorted
-        // best-first by overall: the strips always read highest → lowest
-        // whatever order the map or the database hands back.
-        List<PlayerCard> strip(int from, int to) =>
-            [
-              for (var slot = from; slot < to; slot++)
-                if (squad.containsKey(slot)) squad[slot]!,
-            ]..sort((a, b) {
-              final byOverall = b.overall.compareTo(a.overall);
-              if (byOverall != 0) return byOverall;
-              return a.ownedId.compareTo(b.ownedId);
-            });
-        final bench = strip(
-          Formation.startingXiSize,
-          Formation.startingXiSize + Formation.benchSize,
-        );
-        final reserves = strip(
-          Formation.startingXiSize + Formation.benchSize,
-          Formation.squadSize,
-        );
+        // The bench in slot order, re-sorted best-first by overall: the
+        // strip always reads highest → lowest whatever order the map or
+        // the database hands back.
+        final bench = [
+          for (var slot = Formation.startingXiSize;
+              slot < Formation.startingXiSize + Formation.benchSize;
+              slot++)
+            if (squad.containsKey(slot)) squad[slot]!,
+        ]..sort((a, b) {
+          final byOverall = b.overall.compareTo(a.overall);
+          if (byOverall != 0) return byOverall;
+          return a.ownedId.compareTo(b.ownedId);
+        });
+        // The pool: EVERY owned card that is not in the XI or on the
+        // bench (so after Clear it is the whole collection), best-first.
+        final inSquad = {
+          for (final e in squad.entries)
+            if (e.key < Formation.startingXiSize + Formation.benchSize)
+              e.value.ownedId,
+        };
+        final reserves = [
+          for (final c in collection ?? const <PlayerCard>[])
+            if (!inSquad.contains(c.ownedId)) c,
+        ]..sort((a, b) {
+          final byOverall = b.overall.compareTo(a.overall);
+          if (byOverall != 0) return byOverall;
+          return a.ownedId.compareTo(b.ownedId);
+        });
         final tactics = tacticsFromDbPayload(club?.tactics);
         final mentality = Mentality.values.firstWhere(
           (m) => m.name == club?.mentality,
@@ -104,6 +112,7 @@ class SquadScreen extends ConsumerWidget {
                   _changeTactics(context, ref, mentality: m.name),
               onAutoPick: () => _autoPick(context, ref),
               onClear: () => _clearSquad(ref),
+              poolTitle: 'All players',
               // The saved setup is about identity — match-day fitness
               // (stamina) and the per-card stat rows belong to the
               // pre-match phase only.

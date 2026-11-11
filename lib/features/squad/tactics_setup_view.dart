@@ -43,6 +43,7 @@ class TacticsSetupView extends StatelessWidget {
     required this.onMentality,
     this.onAutoPick,
     this.onClear,
+    this.poolTitle,
     this.showStamina = true,
     this.showStats = true,
     this.showCondition = true,
@@ -80,6 +81,12 @@ class TacticsSetupView extends StatelessWidget {
   /// Shows the Clear button beside Auto Pick: empties the whole saved
   /// squad (XI, bench and reserves). Null hides it.
   final VoidCallback? onClear;
+
+  /// When non-null the lower strip is the ALL-PLAYERS POOL (Team tab):
+  /// [reserves] then holds every owned card outside the XI and bench,
+  /// shown as a wrapping grid under this title, and doubles as the drop
+  /// zone that takes a player out of the squad.
+  final String? poolTitle;
 
   /// Whether cards carry their stamina bar. The pre-match and live
   /// tactics surfaces show match-day fitness; the Team tab hides it —
@@ -202,7 +209,24 @@ class TacticsSetupView extends StatelessWidget {
                 onPlayerTap: onPlayerTap,
                 upgradable: upgradable,
               ),
-              if (showReserves) ...[
+              if (showReserves && poolTitle != null) ...[
+                FcmSectionTitle('$poolTitle (${reserves.length})'),
+                SquadDropZone(
+                  target: const SquadDropTarget.emptyIn(SquadZone.reserves),
+                  child: SquadCardRow(
+                    cards: reserves,
+                    // An empty pool keeps one ghost place so a player can
+                    // still be dropped into it.
+                    emptySlots: reserves.isEmpty ? 1 : 0,
+                    zone: SquadZone.reserves,
+                    wrap: true,
+                    showStamina: showStamina,
+                    showStats: showStats,
+                    onPlayerTap: onPlayerTap,
+                    upgradable: upgradable,
+                  ),
+                ),
+              ] else if (showReserves) ...[
                 FcmSectionTitle(
                   'Reserves (${reserves.length}/${Formation.reservesSize})',
                 ),

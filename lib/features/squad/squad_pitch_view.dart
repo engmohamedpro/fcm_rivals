@@ -262,7 +262,12 @@ class SquadCardRow extends StatelessWidget {
     this.showCondition = true,
     this.onPlayerTap,
     this.upgradable,
+    this.wrap = false,
   });
+
+  /// Lays the cards out as a wrapping grid instead of a one-line strip
+  /// (the Team tab's all-players pool).
+  final bool wrap;
 
   final List<PlayerCard> cards;
 
@@ -303,13 +308,7 @@ class SquadCardRow extends StatelessWidget {
         20 +
         (showStats ? 22 : 0) +
         (showStamina ? 8 : 0);
-    return SizedBox(
-      height: stripHeight,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: cards.length + emptySlots,
-        separatorBuilder: (_, _) => const SizedBox(width: 6),
-        itemBuilder: (context, i) {
+    Widget itemAt(BuildContext context, int i) {
           if (i >= cards.length) {
             final z = zone;
             return z == null
@@ -322,7 +321,7 @@ class SquadCardRow extends StatelessWidget {
           final c = cards[i];
           final injured = showCondition && c.injuryMatchesRemaining > 0;
           return FcmEntrance(
-            index: i,
+            index: wrap ? 0 : i,
             dx: 20,
             dy: 0,
             child: injured
@@ -377,7 +376,30 @@ class SquadCardRow extends StatelessWidget {
                     ),
                   ),
           );
-        },
+    }
+
+    final count = cards.length + emptySlots;
+    if (wrap) {
+      return Wrap(
+        spacing: 6,
+        runSpacing: 8,
+        children: [
+          for (var i = 0; i < count; i++)
+            SizedBox(
+              width: cardWidth,
+              height: stripHeight,
+              child: itemAt(context, i),
+            ),
+        ],
+      );
+    }
+    return SizedBox(
+      height: stripHeight,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: count,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: itemAt,
       ),
     );
   }
