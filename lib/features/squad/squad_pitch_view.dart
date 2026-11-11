@@ -325,6 +325,10 @@ class SquadCardRow extends StatelessWidget {
           }
           final c = cards[i];
           final injured = showCondition && c.injuryMatchesRemaining > 0;
+          // Already placed in the XI / bench (drawn faded with the gold
+          // check): it cannot be picked up again from this strip — move
+          // him from the pitch or the bench instead.
+          final picked = selectedIds.contains(c.ownedId);
           final item = FcmEntrance(
             index: wrap ? 0 : i,
             dx: 20,
@@ -351,14 +355,8 @@ class SquadCardRow extends StatelessWidget {
                   )
                 : SquadDropZone(
                     target: SquadDropTarget.player(c),
-                    child: SquadDraggable(
-                      card: c,
-                      feedbackSize: Size(
-                        cardWidth + 12,
-                        cardWidth / kPlayerCardAspect + 20,
-                      ),
-                      feedback: _dragFeedback(c, cardWidth),
-                      child: FcmPressable(
+                    child: () {
+                      final tappable = FcmPressable(
                         onTap: onPlayerTap == null
                             ? null
                             : () => onPlayerTap!(c),
@@ -377,13 +375,23 @@ class SquadCardRow extends StatelessWidget {
                           upgradable: upgradable?.call(c.base.playerId) ??
                               false,
                         ),
-                      ),
-                    ),
+                      );
+                      // A picked card keeps its tap (detail sheet) but has
+                      // no pickup.
+                      if (picked) return tappable;
+                      return SquadDraggable(
+                        card: c,
+                        feedbackSize: Size(
+                          cardWidth + 12,
+                          cardWidth / kPlayerCardAspect + 20,
+                        ),
+                        feedback: _dragFeedback(c, cardWidth),
+                        child: tappable,
+                      );
+                    }(),
                   ),
           );
-          return selectedIds.contains(c.ownedId)
-              ? _selectedMark(item)
-              : item;
+          return picked ? _selectedMark(item) : item;
     }
 
     final count = cards.length + emptySlots;

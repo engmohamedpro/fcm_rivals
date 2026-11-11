@@ -10,10 +10,10 @@
 ///  * the ONLY restriction: a player landing in a STARTING slot must have
 ///    that slot's position — a CB cannot take a ST slot, an LB cannot
 ///    take an RB slot. Moving a starter OUT (to the bench or reserves) is
-///    always allowed, as long as the player coming in fits his slot;
-///  * the starting XI can never be left with a hole: a starter cannot be
-///    moved onto an EMPTY bench or reserves place — swap him with a
-///    player instead.
+///    always allowed, as long as the player coming in fits his slot — and
+///    it may leave a hole in the XI (a starter can be moved onto an EMPTY
+///    bench or reserves place, or back to the pool). The XI only has to be
+///    full when a match kicks off, which the season store guards.
 library;
 
 import 'formations.dart';
@@ -126,17 +126,6 @@ SquadSwapOutcome swapSquadSlots({
     return const SquadSwapOutcome.rejected('Pick another place for him.');
   }
   final other = squad[toSlot];
-
-  // A starter must never be left without a replacement: the XI has to
-  // stay full.
-  if (other == null &&
-      fromSlot < Formation.startingXiSize &&
-      toSlot >= Formation.startingXiSize) {
-    return const SquadSwapOutcome.rejected(
-      'The starting XI must stay full — drop a bench player on him '
-      'instead.',
-    );
-  }
 
   final bad =
       _misfit(formation, mover, toSlot) ??

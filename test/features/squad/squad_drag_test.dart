@@ -144,6 +144,39 @@ void main() {
     );
   });
 
+  testWidgets('a pool card already placed (gold check) cannot be picked up', (
+    WidgetTester tester,
+  ) async {
+    bigScreen(tester);
+    final squad = _squad();
+    final cards = [squad[0]!, squad[1]!, squad[2]!];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SquadDragHost(
+            swapping: SquadSwapping(
+              rejection: (_, _) => null,
+              onSwap: (_, _) {},
+            ),
+            child: SquadCardRow(
+              cards: cards,
+              selectedIds: {cards[0].ownedId, cards[1].ownedId},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 2));
+    // Only the one card that is not placed yet can be held.
+    expect(find.byType(LongPressDraggable<PlayerCard>), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is SquadDraggable && w.card.ownedId == cards[2].ownedId,
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('without swapping there is nothing to drag', (
     WidgetTester tester,
   ) async {

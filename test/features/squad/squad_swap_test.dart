@@ -195,7 +195,8 @@ void main() {
       },
     );
 
-    test('a starter cannot be dropped on an empty bench place', () {
+    test('a starter can be dropped on an empty bench place, leaving his '
+        'slot empty', () {
       final squad = _squad()..remove(17); // an empty bench slot
       final out = swapSquadSlots(
         formation: _f433,
@@ -203,8 +204,13 @@ void main() {
         fromSlot: 9,
         toSlot: 17,
       );
-      expect(out.isAccepted, isFalse);
-      expect(out.rejection, contains('must stay full'));
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment![17], squad[9]!.ownedId);
+      expect(
+        out.assignment!.containsKey(9),
+        isFalse,
+        reason: 'the XI may have a hole until kick-off',
+      );
     });
 
     test('a bench player moves into an empty reserves place', () {
