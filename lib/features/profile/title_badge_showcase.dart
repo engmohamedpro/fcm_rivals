@@ -35,6 +35,7 @@ class TitleBadgeShowcase extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cabinet = ref.watch(titleCabinetProvider);
     final metrics = ref.watch(ach.careerMetricsProvider);
+    final claims = ref.watch(ach.claimsProvider);
     final l10n = l10nOf(context);
 
     return cabinet.when(
@@ -46,39 +47,42 @@ class TitleBadgeShowcase extends ConsumerWidget {
       ),
       data: (cab) => metrics.maybeWhen(
         orElse: () => const SliverToBoxAdapter(child: SizedBox()),
-        data: (m) => SliverMainAxisGroup(
-          slivers: [
-            // ---- The badge cabinet -----------------------------------
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
-              sliver: SliverToBoxAdapter(
-                child: Text(
-                  l10n.badgeCabinetTitle,
-                  style: const TextStyle(
-                    color: FcmColors.goldSoft,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
+        data: (m) => claims.maybeWhen(
+          orElse: () => const SliverToBoxAdapter(child: SizedBox()),
+          data: (claimed) => SliverMainAxisGroup(
+            slivers: [
+              // ---- The badge cabinet (claimed badges only) ---------
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    l10n.badgeCabinetTitle,
+                    style: const TextStyle(
+                      color: FcmColors.goldSoft,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),
-            ),
-            _BadgeCabinet(metrics: m),
-            // ---- The titles gallery ----------------------------------
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
-              sliver: SliverToBoxAdapter(
-                child: Text(
-                  l10n.titlesGalleryTitle,
-                  style: const TextStyle(
-                    color: FcmColors.goldSoft,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
+              _BadgeCabinet(metrics: m, claimedKeys: claimed),
+              // ---- The titles gallery (owned titles only) ----------
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    l10n.titlesGalleryTitle,
+                    style: const TextStyle(
+                      color: FcmColors.goldSoft,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),
-            ),
-            _TitlesGallery(cabinet: cab),
-          ],
+              _TitlesGallery(cabinet: cab),
+            ],
+          ),
         ),
       ),
     );
@@ -89,9 +93,13 @@ class TitleBadgeShowcase extends ConsumerWidget {
 /// — earned in colour, unearned engraved. One RepaintBoundary per
 /// cell (the cabinet grows with the catalog).
 class _BadgeCabinet extends StatelessWidget {
-  const _BadgeCabinet({required this.metrics});
+  const _BadgeCabinet({required this.metrics, required this.claimedKeys});
 
   final dynamic metrics;
+
+  /// The club's claimed tier keys — the profile shows ONLY claimed
+  /// badges (the full ladder lives in the achievements tab).
+  final Set<String> claimedKeys;
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +113,18 @@ class _BadgeCabinet extends StatelessWidget {
         itemBuilder: (context, i) {
           final def = defs[i];
           final progress = metrics.progressFor(def.metricId) ?? 0;
+          // Only the tiers actually CLAIMED render a badge cell —
+          // the profile is the showcase of what the player took, not
+          // the ladder of what is left.
+          final claimedTiers = [
+            for (final tier in def.tiers(AchievementCatalog.economy))
+              if (claimedKeys.contains('${def.id}:${tier.threshold}')) tier,
+          ];
+          if (claimedTiers.isEmpty) {
+            // Definition with nothing claimed yet: no cabinet row at
+            // all (an empty panel reads as a broken list).
+            return const SizedBox.shrink();
+          }
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: RepaintBoundary(
@@ -126,12 +146,11 @@ class _BadgeCabinet extends StatelessWidget {
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         children: [
-                          for (final tier
-                              in def.tiers(AchievementCatalog.economy))
+                          for (final tier in claimedTiers)
                             RepaintBoundary(
                               child: _BadgeCell(
                                 metal: tier.badgeMetal,
-                                earned: progress >= tier.threshold,
+                                earned: true,
                                 label: 'T${tier.index}',
                                 progress: '$progress/${tier.threshold}',
                               ),
@@ -217,34 +236,34 @@ class _TitlesGallery extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = l10nOf(context);
+    // The profile shows only what the player actually HAS — locked
+    // titles belong to the achievements tab's ladder, not here.
+    final ownedTitles = [
+      ...cabinet.achievementTitles.where((t) => t.owned),
+      ...cabinet.divisionTitles.where((t) => t.owned),
+    ];
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       sliver: SliverList.builder(
-        itemCount: cabinet.achievementTitles.length +
-            cabinet.divisionTitles.length,
+        itemCount: ownedTitles.length,
         itemBuilder: (context, i) {
-          final achCount = cabinet.achievementTitles.length;
-          final isAch = i < achCount;
-          final title = isAch
-              ? cabinet.achievementTitles[i]
-              : cabinet.divisionTitles[i - achCount];
+          final title = ownedTitles[i];
+          final isAch = cabinet.achievementTitles.any((t) => t.id == title.id);
           final equipped = cabinet.equippedId == title.id;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: RepaintBoundary(
               child: FcmPanel(
-                accent: title.owned ? FcmColors.gold : null,
+                accent: FcmColors.gold,
                 child: Row(
                   children: [
                     Icon(
                       isAch
                           ? Icons.military_tech_rounded
                           : Icons.emoji_events_rounded,
-                      color: title.owned
-                          ? FcmColors.gold
-                          : FcmColors.textDim,
+                      color: FcmColors.gold,
                       size: 22,
                     ),
                     const SizedBox(width: 12),
@@ -252,17 +271,12 @@ class _TitlesGallery extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Opacity(
-                            opacity: title.owned ? 1.0 : 0.55,
-                            child: Text(
-                              _titleText(l10n, title),
-                              style: TextStyle(
-                                color: title.owned
-                                    ? FcmColors.goldSoft
-                                    : FcmColors.textDim,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
+                          Text(
+                            _titleText(l10n, title),
+                            style: const TextStyle(
+                              color: FcmColors.goldSoft,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -276,21 +290,14 @@ class _TitlesGallery extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    if (title.owned)
-                      // Direct manipulation (the repo's favour): tap
-                      // toggles equip/unequip — no dialog, instant.
-                      _EquipToggle(
-                        equipped: equipped,
-                        onTap: () => ref
-                            .read(equipTitleProvider)
-                            (equipped ? null : title.id),
-                      )
-                    else
-                      Icon(
-                        Icons.lock_outline_rounded,
-                        color: FcmColors.textDim.withValues(alpha: 0.6),
-                        size: 18,
-                      ),
+                    // Direct manipulation (the repo's favour): tap
+                    // toggles equip/unequip — no dialog, instant.
+                    _EquipToggle(
+                      equipped: equipped,
+                      onTap: () => ref
+                          .read(equipTitleProvider)
+                          (equipped ? null : title.id),
+                    ),
                   ],
                 ),
               ),

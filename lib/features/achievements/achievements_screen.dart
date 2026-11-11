@@ -32,6 +32,7 @@ import 'achievement_catalog_data.dart';
 import 'achievement_progress.dart' show CareerMetrics;
 import 'achievements_badge_painter.dart';
 import 'achievements_providers.dart';
+import '../economy/streak_card.dart' show StreakCard;
 import '../profile/title_badge_showcase.dart'
     show EquippedTitleChip;
 
@@ -59,6 +60,15 @@ class AchievementsScreen extends ConsumerWidget {
                   metrics: m,
                   claimedKeys: claimed,
                 ),
+              ),
+            ),
+            // The daily rewards streak — moved from the profile (the
+            // achievements tab is the rewards hub now, so the claim
+            // surface lives beside the claimable cards).
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(14, 6, 14, 0),
+              sliver: SliverToBoxAdapter(
+                child: RepaintBoundary(child: StreakCard()),
               ),
             ),
             ...[

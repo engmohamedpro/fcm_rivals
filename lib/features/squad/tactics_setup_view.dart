@@ -235,9 +235,11 @@ class TacticsSetupView extends StatelessWidget {
                   target: const SquadDropTarget.emptyIn(SquadZone.reserves),
                   child: SquadCardRow(
                     cards: reserves,
-                    // An empty pool keeps one ghost place so a player can
-                    // still be dropped into it.
-                    emptySlots: reserves.isEmpty ? 1 : 0,
+                    // The pool pads with ghost places up to the club's
+                    // capacity (or one when the capacity is unknown),
+                    // so an emptied pool still invites a drop and the
+                    // strip shows the real number of slots owned.
+                    emptySlots: _poolGhosts(reserves.length, poolCapacity),
                     zone: SquadZone.reserves,
                     selectedIds: poolSelectedIds,
                     showStamina: showStamina,
@@ -271,6 +273,12 @@ class TacticsSetupView extends StatelessWidget {
   Widget _maybeSwapScope(Widget child) => swapping == null
       ? child
       : SquadDragHost(swapping: swapping!, child: child);
+
+  /// Ghost places for the All-players pool: enough to fill the club's
+  /// capacity when known, otherwise the single inviting drop slot.
+  int _poolGhosts(int players, int? capacity) => capacity == null
+      ? (players == 0 ? 1 : 0)
+      : (capacity - players).clamp(0, capacity);
 }
 
 /// The single control card of the tactics screen. Its top row carries

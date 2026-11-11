@@ -335,6 +335,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     // The opponent's current table position, shown on the next-fixture
     // card (null while standings load or if the club is somehow absent).
     int? opponentPos;
+    CrestSpec? opponentCrest;
     if (next != null) {
       for (final e in standings ?? const <StandingEntry>[]) {
         if (e.clubId == next.opponentClubId) {
@@ -342,6 +343,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
           break;
         }
       }
+      opponentCrest = crests[next.opponentClubId];
     }
 
     // Top padding matches the sides, so the header card sits in even
@@ -477,38 +479,47 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  // The opponent and their current table position on one
-                  // shrinking line, so long club names never overflow.
+                  // The opponent's crest and name (home/away already
+                  // shown in the card's top-end pill) with their
+                  // current table position as #N — one shrinking line
+                  // so long club names never overflow.
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: next.isHome
-                                ? 'vs ${next.opponentName} (home)'
-                                : 'at ${next.opponentName} (away)',
-                          ),
-                          if (opponentPos != null)
-                            TextSpan(
-                              text:
-                                  '  ·  ${ordinalOf(opponentPos)} in the table',
-                              style: const TextStyle(
-                                color: FcmColors.goldSoft,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (opponentCrest != null) ...[
+                          FcmCrest(spec: opponentCrest, width: 22),
+                          const SizedBox(width: 7),
                         ],
-                      ),
-                      maxLines: 1,
-                      softWrap: false,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        height: 1.15,
-                      ),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: next.opponentName,
+                              ),
+                              if (opponentPos != null)
+                                TextSpan(
+                                  text: '  ·  #$opponentPos',
+                                  style: const TextStyle(
+                                    color: FcmColors.goldSoft,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          maxLines: 1,
+                          softWrap: false,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            height: 1.15,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 8),

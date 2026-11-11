@@ -84,10 +84,11 @@ void main() {
         .getSingle();
     expect(healthy.injuryMatchesRemaining, 0);
     expect(healthy.injuryKind, isNull);
-    // T-0097 bumped the schema to 13 (clubs.crest); T-0106 bumps to
-    // 14 (achievement_claims + equipped_title) — the injury columns
-    // this fixture exercises are untouched by both.
-    expect(database.schemaVersion, 14);
+    // T-0097 bumped the schema to 13 (clubs.crest); T-0106 to
+    // 14 (achievement_claims + equipped_title); the daily rewards
+    // streak bumped it to 15 (daily_streak_claims) — the injury
+    // columns this fixture exercises are untouched by all three.
+    expect(database.schemaVersion, 15);
     await database.close();
   });
 
@@ -196,7 +197,7 @@ void main() {
           .first['injury_matches_remaining'],
       2,
     );
-    expect(reopened.select('PRAGMA user_version').first['user_version'], 14);
+    expect(reopened.select('PRAGMA user_version').first['user_version'], 15);
     reopened.dispose();
   });
 }

@@ -198,8 +198,14 @@ void main() {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
-    // T-0097 bumped the schema to 13 (the clubs.crest column).
-    expect(db.schemaVersion, 14);
+    // T-0097 bumped the schema to 13 (the clubs.crest column);
+    // T-0106 to 14 (claims + equipped title); the daily rewards
+    // streak (d392228) bumped it to 15 (daily_streak_claims).
+    expect(db.schemaVersion, 15);
+    expect(
+      (await columnsOf(db, 'daily_streak_claims')).contains('streak_day'),
+      isTrue,
+    );
     expect((await columnsOf(db, 'ai_players')).contains('real_player_id'),
         isTrue);
     expect((await columnsOf(db, 'user_settings')).contains('locale'), isTrue);
