@@ -128,6 +128,8 @@ class AiSquadPlayer {
     required this.goalkeeping,
     required this.stamina,
     this.nationality = '',
+    this.clubId = 0,
+    this.clubName = '',
   });
 
   final int? realPlayerId;
@@ -141,6 +143,12 @@ class AiSquadPlayer {
   /// Nationality of the dataset player ('' for the synthetic fallback) —
   /// feeds the engine's on-pitch chemistry (owner spec 2026-11-09).
   final String nationality;
+
+  /// Real-world club of the dataset player (0 / '' for the synthetic
+  /// fallback) — feeds the club half of the chemistry (owner request
+  /// 2026-11-11).
+  final int clubId;
+  final String clubName;
 
   /// Current condition 0..100.
   final double stamina;

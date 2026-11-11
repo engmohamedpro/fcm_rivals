@@ -585,9 +585,10 @@ class _StrengthCard extends StatelessWidget {
             f.userTotals.goalkeeping,
             f.opponentTotals.goalkeeping,
           ),
-          // Chemistry comparison (T-0069): the engine applies +N% to
-          // both sides' totals, so the pre-match sheet shows it beside
-          // them — '+N%' per side, same row shape.
+          // Chemistry comparison (T-0069; nationality + club since
+          // 2026-11-11): the engine applies +N% to both sides' totals,
+          // so the pre-match sheet shows it beside them — '+N%' per
+          // side, same row shape.
           row(
             l10nOf(context).teamChemistry.toUpperCase(),
             f.userChemistry.toDouble(),

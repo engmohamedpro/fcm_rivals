@@ -355,6 +355,8 @@ class MatchSession {
                 (1 + fractions.goalkeeping))
             .round(),
     nationality: card.base.nationality,
+    clubId: card.base.clubId,
+    clubName: card.base.clubName,
     stamina: card.staminaPercent.toDouble(),
   );
 

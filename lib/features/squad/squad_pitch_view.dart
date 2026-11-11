@@ -16,6 +16,7 @@ import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart';
 import '../collection/player_detail_sheet.dart' show rarityOf;
+import '../match/chemistry.dart' show clubChemistryKeyOf;
 import '../match/chemistry_links.dart';
 import 'formations.dart';
 import 'pitch_layout.dart';
@@ -62,8 +63,10 @@ class SquadPitch extends StatelessWidget {
   /// Slot index → card for the starting XI.
   final Map<int, PlayerCard> assignments;
 
-  /// Draws a line between same-nationality players of the XI. The
-  /// chemistry reading itself lives on the control card above the pitch.
+  /// Draws a line between players sharing a nationality or a club
+  /// (owner request 2026-11-11): white when the pair shares ONE
+  /// chemistry type, golden when it shares both. The chemistry reading
+  /// itself lives on the control card above the pitch.
   final bool showChemistryLinks;
 
   /// Whether cards carry their stamina bar (hidden in the Team tab).
@@ -125,10 +128,10 @@ class SquadPitch extends StatelessWidget {
                   const Positioned.fill(
                     child: CustomPaint(painter: _PitchPainter()),
                   ),
-                  // Chemistry links: a line between every pair of
-                  // same-nationality neighbours, drawn UNDER the cards so
-                  // they read as threads running from card to card. Only
-                  // on surfaces that show the chemistry reading.
+                  // Chemistry links: a line between players sharing a
+                  // nationality or a club, drawn UNDER the cards so
+                  // they read as threads running from card to card.
+                  // Only on surfaces that show the chemistry reading.
                   if (showChemistryLinks)
                     Positioned.fill(
                       child: IgnorePointer(
@@ -137,6 +140,14 @@ class SquadPitch extends StatelessWidget {
                             for (final e in assignments.entries)
                               if (e.key < formation.slots.length)
                                 e.key: e.value.base.nationality,
+                          },
+                          clubs: {
+                            for (final e in assignments.entries)
+                              if (e.key < formation.slots.length)
+                                e.key: clubChemistryKeyOf(
+                                  e.value.base.clubId,
+                                  e.value.base.clubName,
+                                ),
                           },
                           centres: {
                             for (final e in assignments.entries)
@@ -522,27 +533,26 @@ class _EmptyBenchCard extends StatelessWidget {
   }
 }
 
-/// Palette for the chemistry lines — bright tones that read on the
-/// grass; one per nationality group, assigned in nationality order.
-const List<Color> _kLinkColors = [
-  Color(0xFFFFD54F),
-  Color(0xFF4FC3F7),
-  Color(0xFFFF8A65),
-  Color(0xFFBA68C8),
-  Color(0xFFF06292),
-  Color(0xFFFFFFFF),
-];
+/// Palette for the chemistry lines (owner request 2026-11-11): a pair
+/// sharing ONE chemistry type (nationality or club) is joined by a
+/// white line, a pair sharing BOTH by a golden line. The dark grass
+/// bands keep both readable with the shared dark under-stroke.
+const Color _kSingleTypeLinkColor = Color(0xFFFFFFFF);
+const Color _kDoubleTypeLinkColor = Color(0xFFFFD54F);
 
-/// Draws the chemistry lines (same-nationality links) under the cards.
-/// When the formation changes the cards glide to their new spots, and the
-/// line ends follow them with the same curve and duration.
+/// Draws the chemistry lines (same-nationality / same-club links) under
+/// the cards. When the formation changes the cards glide to their new
+/// spots, and the line ends follow them with the same curve and
+/// duration.
 class _ChemistryLinksLayer extends StatefulWidget {
   const _ChemistryLinksLayer({
     required this.nationalities,
+    required this.clubs,
     required this.centres,
   });
 
   final Map<int, String?> nationalities;
+  final Map<int, String?> clubs;
   final Map<int, Offset> centres;
 
   @override
@@ -594,23 +604,17 @@ class _ChemistryLinksLayerState extends State<_ChemistryLinksLayer>
   Widget build(BuildContext context) {
     final links = chemistryLinks(
       nationalities: widget.nationalities,
+      clubs: widget.clubs,
       centres: {
         for (final e in _to.entries) e.key: (x: e.value.dx, y: e.value.dy),
       },
     );
-    final linked = <String>{for (final l in links) l.nationality}.toList()
-      ..sort();
-    final colorOf = <String, Color>{
-      for (var i = 0; i < linked.length; i++)
-        linked[i]: _kLinkColors[i % _kLinkColors.length],
-    };
     return AnimatedBuilder(
       animation: _glide,
       builder: (context, _) => CustomPaint(
         painter: _ChemistryLinksPainter(
           links: links,
           centres: _current(),
-          colorOf: colorOf,
         ),
       ),
     );
@@ -618,15 +622,10 @@ class _ChemistryLinksLayerState extends State<_ChemistryLinksLayer>
 }
 
 class _ChemistryLinksPainter extends CustomPainter {
-  const _ChemistryLinksPainter({
-    required this.links,
-    required this.centres,
-    required this.colorOf,
-  });
+  const _ChemistryLinksPainter({required this.links, required this.centres});
 
   final List<ChemistryLink> links;
   final Map<int, Offset> centres;
-  final Map<String, Color> colorOf;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -634,6 +633,13 @@ class _ChemistryLinksPainter extends CustomPainter {
       final a = centres[link.a];
       final b = centres[link.b];
       if (a == null || b == null) continue;
+      // Owner request 2026-11-11: one shared chemistry type → white,
+      // both types (nationality AND club) → golden. The kind set is
+      // the pair's relationship, so the colour is stable even when
+      // only one dimension's tree drew the edge.
+      final color = link.kinds.length >= 2
+          ? _kDoubleTypeLinkColor
+          : _kSingleTypeLinkColor;
       // A dark under-stroke keeps the colour legible on the grass bands.
       canvas.drawLine(
         a,
@@ -649,7 +655,7 @@ class _ChemistryLinksPainter extends CustomPainter {
         Paint()
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round
-          ..color = colorOf[link.nationality] ?? Colors.white,
+          ..color = color,
       );
     }
   }

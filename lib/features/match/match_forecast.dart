@@ -175,16 +175,17 @@ MatchForecast forecastMatch({
   final userTotals = squadQualityTotals(input.userSquad);
   final opponentTotals = squadQualityTotals(input.opponentSquad);
 
-  // Starting-XI chemistry (T-0069): the first 11 of each squad list are
-  // the starters (slot order — same convention as the totals wiring).
+  // Starting-XI chemistry (T-0069; club half added 2026-11-11): the
+  // first 11 of each squad list are the starters (slot order — same
+  // convention as the totals wiring).
   List<MatchPlayer> startersOf(List<MatchPlayer> squad) =>
       squad.take(11).toList();
-  final userChemistry = chemistryPercentOf([
-    for (final p in startersOf(input.userSquad)) p.nationality,
-  ]);
-  final opponentChemistry = chemistryPercentOf([
-    for (final p in startersOf(input.opponentSquad)) p.nationality,
-  ]);
+  int chemistryOf(List<MatchPlayer> starters) => totalChemistryPercentOf(
+    nationalities: [for (final p in starters) p.nationality],
+    clubs: [for (final p in starters) clubChemistryKeyOf(p.clubId, p.clubName)],
+  );
+  final userChemistry = chemistryOf(startersOf(input.userSquad));
+  final opponentChemistry = chemistryOf(startersOf(input.opponentSquad));
 
   var wins = 0, draws = 0, losses = 0;
   var userGoals = 0, opponentGoals = 0, cleanSheets = 0;

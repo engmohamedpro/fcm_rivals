@@ -25,9 +25,15 @@ extension SeasonOpponentOps on SeasonStore {
     // Nationality for chemistry (owner spec 2026-11-09): looked up from
     // the dataset's Players table by realPlayerId; synthetic fallback
     // rows (null realPlayerId) stay '' — they never form a group.
+    // Club for the club half (owner request 2026-11-11): same lookup.
     final nationalities = <int, String>{
       for (final p in await db.select(db.players).get())
         if (p.nationality.isNotEmpty) p.playerId: p.nationality,
+    };
+    final clubs = <int, (int, String)>{
+      for (final p in await db.select(db.players).get())
+        if (p.clubId != 0 || p.clubName.isNotEmpty)
+          p.playerId: (p.clubId, p.clubName),
     };
     if (rows.isEmpty) {
       throw const SeasonException('AI club has no squad');
@@ -63,6 +69,10 @@ extension SeasonOpponentOps on SeasonStore {
           nationality: r.realPlayerId == null
               ? ''
               : (nationalities[r.realPlayerId!] ?? ''),
+          clubId: r.realPlayerId == null ? 0 : (clubs[r.realPlayerId!]?.$1 ?? 0),
+          clubName: r.realPlayerId == null
+              ? ''
+              : (clubs[r.realPlayerId!]?.$2 ?? ''),
           stamina: r.staminaPercent.toDouble(),
         ),
     ];
@@ -80,6 +90,8 @@ extension SeasonOpponentOps on SeasonStore {
             defence: p.defence,
             goalkeeping: p.goalkeeping,
             nationality: p.nationality,
+            clubId: p.clubId,
+            clubName: p.clubName,
             stamina: p.stamina,
           ),
       ],
@@ -94,6 +106,8 @@ extension SeasonOpponentOps on SeasonStore {
             defence: p.defence,
             goalkeeping: p.goalkeeping,
             nationality: p.nationality,
+            clubId: p.clubId,
+            clubName: p.clubName,
             stamina: p.stamina,
           ),
       ],

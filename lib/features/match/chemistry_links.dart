@@ -1,45 +1,90 @@
-/// FCM Rivals — chemistry links between same-nationality players.
+/// FCM Rivals — chemistry links between players sharing a nationality
+/// or a club (owner request 2026-11-11).
 ///
-/// The pitch draws a line between players of the same nationality. Each
-/// nationality group of n ≥ 2 is joined by exactly n − 1 lines (a minimum
-/// spanning tree over the card positions), which is also exactly the
-/// number of chemistry points the group is worth (see `chemistry.dart`) —
-/// so the lines on the pitch always add up to the percentage shown.
+/// The pitch draws a line between linked players: one line per group
+/// member minus one per dimension (a minimum spanning tree over the
+/// card positions), which is also exactly the chemistry points the
+/// group is worth (see `chemistry.dart`). A pair linked by BOTH
+/// dimensions is drawn once, not twice.
+///
+/// The line's colour tells the pair's relationship (owner request
+/// 2026-11-11): the pair shares ONE chemistry type (nationality or
+/// club) → white; it shares BOTH → golden. The kind set is read from
+/// the pair's attributes, not from which tree produced the edge, so a
+/// pair sharing both is golden even when only one dimension's tree
+/// happened to pick it.
 ///
 /// Pure Dart, no Flutter imports (house pattern).
 library;
 
 import 'dart:math' as math;
 
-/// One link between two slots that share a nationality.
+/// A chemistry dimension a link can join two players through.
+enum ChemistryLinkKind { nationality, club }
+
+/// One link between two slots that share at least one chemistry type.
 class ChemistryLink {
-  const ChemistryLink(this.a, this.b, this.nationality);
+  const ChemistryLink(this.a, this.b, this.kinds);
 
   /// Slot indices of the two linked players (a < b).
   final int a;
   final int b;
-  final String nationality;
+
+  /// Chemistry types the linked PAIR shares — one entry reads as a
+  /// white line, both as a golden line. Always non-empty: an edge only
+  /// forms inside a group of a shared dimension.
+  final Set<ChemistryLinkKind> kinds;
 }
 
-/// Links between the players in [nationalities] (slot → nationality) that
-/// share a nationality, laid out over [centres] (slot → card centre).
-/// `null` / empty nationalities and slots without a centre are ignored.
-/// The result is deterministic: groups in nationality order, edges in
-/// the order Prim's algorithm adds them.
+/// Links between the players in [nationalities] / [clubs] (slot →
+/// grouping key per dimension) that share that dimension's key, laid
+/// out over [centres] (slot → card centre). `null` / empty keys and
+/// slots without a centre are ignored. The result is deterministic:
+/// pairs in (a, b) order, kinds in enum order.
 List<ChemistryLink> chemistryLinks({
   required Map<int, String?> nationalities,
+  required Map<int, String?> clubs,
   required Map<int, ({double x, double y})> centres,
 }) {
+  // One spanning tree per dimension; the pair union is the link set.
+  final pairs = <(int, int)>{
+    ..._treePairs(nationalities, centres),
+    ..._treePairs(clubs, centres),
+  };
+  final sorted = pairs.toList()
+    ..sort(
+      (p, q) =>
+          p.$1 != q.$1 ? p.$1.compareTo(q.$1) : p.$2.compareTo(q.$2),
+    );
+  return [
+    for (final (a, b) in sorted)
+      ChemistryLink(a, b, {
+        if (_sameKey(nationalities[a], nationalities[b]))
+          ChemistryLinkKind.nationality,
+        if (_sameKey(clubs[a], clubs[b])) ChemistryLinkKind.club,
+      }),
+  ];
+}
+
+bool _sameKey(String? x, String? y) =>
+    x != null && x.isNotEmpty && x == y;
+
+/// The (a, b) pairs (a < b) of one dimension's spanning trees: every
+/// group of n ≥ 2 equal keys joined by n − 1 shortest edges (Prim).
+List<(int, int)> _treePairs(
+  Map<int, String?> keys,
+  Map<int, ({double x, double y})> centres,
+) {
   final groups = <String, List<int>>{};
-  for (final entry in nationalities.entries) {
-    final nationality = entry.value;
-    if (nationality == null || nationality.isEmpty) continue;
+  for (final entry in keys.entries) {
+    final key = entry.value;
+    if (key == null || key.isEmpty) continue;
     if (!centres.containsKey(entry.key)) continue;
-    groups.putIfAbsent(nationality, () => <int>[]).add(entry.key);
+    groups.putIfAbsent(key, () => <int>[]).add(entry.key);
   }
 
   final names = groups.keys.toList()..sort();
-  final links = <ChemistryLink>[];
+  final pairs = <(int, int)>[];
   for (final name in names) {
     final slots = groups[name]!..sort();
     if (slots.length < 2) continue;
@@ -70,16 +115,10 @@ List<ChemistryLink> chemistryLinks({
           }
         }
       }
-      links.add(
-        ChemistryLink(
-          math.min(bestFrom!, bestTo!),
-          math.max(bestFrom, bestTo),
-          name,
-        ),
-      );
+      pairs.add((math.min(bestFrom!, bestTo!), math.max(bestFrom, bestTo)));
       inTree.add(bestTo);
       outside.remove(bestTo);
     }
   }
-  return links;
+  return pairs;
 }

@@ -97,6 +97,8 @@ class MatchPlayer {
     required this.defence,
     required this.goalkeeping,
     this.nationality = '',
+    this.clubId = 0,
+    this.clubName = '',
     this.stamina = 100,
   });
 
@@ -119,6 +121,13 @@ class MatchPlayer {
   /// the pitch earn a chemistry bonus — see `chemistry.dart`.
   final String nationality;
 
+  /// Real-world club as imported from the dataset (0 / '' for
+  /// engine-level fixtures and synthetic squads). Players sharing a
+  /// club earn the club half of the chemistry bonus (owner request
+  /// 2026-11-11) — see `chemistry.dart`.
+  final int clubId;
+  final String clubName;
+
   /// Current stamina 0..100 (GDD 11.1). Mutated by the engine.
   double stamina;
 
@@ -138,6 +147,8 @@ class MatchPlayer {
           defence: defence,
           goalkeeping: goalkeeping,
           nationality: nationality,
+          clubId: clubId,
+          clubName: clubName,
           stamina: stamina,
         )
         ..minutesPlayed = minutesPlayed

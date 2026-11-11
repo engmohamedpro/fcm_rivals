@@ -213,14 +213,22 @@ class _TeamRuntime {
         pepTalkModifiers.defence;
     final goalkeeping =
         gkEff * mentalityFx.defence * tactics.modifiers.defence;
-    // Nationality chemistry (owner spec 2026-11-09): every shared
-    // nationality group of n ≥ 2 on-pitch players adds (n − 1) points,
-    // and the sum multiplies all four totals. Computed from the live
-    // onPitch list each turn, so substitutions and red cards re-evaluate
-    // it automatically; nationality-less fixtures stay at exactly 1.0.
-    final chemistryPercent = chemistryPercentOf([
-      for (final player in onPitch) player?.nationality,
-    ]);
+    // Chemistry (owner spec 2026-11-09, club half added 2026-11-11):
+    // every shared nationality group AND every shared club group of
+    // n ≥ 2 on-pitch players adds (n − 1) points, and the combined sum
+    // (capped at 10, T-0068 gate) multiplies all four totals. Computed
+    // from the live onPitch list each turn, so substitutions and red
+    // cards re-evaluate it automatically; nationality-less and
+    // club-less fixtures stay at exactly 1.0.
+    final chemistryPercent = totalChemistryPercentOf(
+      nationalities: [for (final player in onPitch) player?.nationality],
+      clubs: [
+        for (final player in onPitch)
+          player == null
+              ? ''
+              : clubChemistryKeyOf(player.clubId, player.clubName),
+      ],
+    );
     final chemistryFactor = 1 + chemistryPercent / 100;
     final homeFactor = isHome ? homeAdvantage : 1.0;
     return TeamTotals(

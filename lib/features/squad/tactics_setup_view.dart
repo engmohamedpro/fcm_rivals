@@ -147,12 +147,20 @@ class TacticsSetupView extends StatelessWidget {
     final teamRating = xi.isEmpty
         ? 0
         : (xi.values.fold<int>(0, (a, c) => a + c.overall) / xi.length).round();
-    // The XI's nationality chemistry (T-0067 formula, T-0069 display,
-    // T-0080 moved to the pitch badge): the starting slots only —
-    // bench/reserves never count.
-    final chemistry = chemistryPercentOf([
-      for (var slot = 0; slot < 11; slot++) xi[slot]?.base.nationality,
-    ]);
+    // The XI's chemistry (T-0067 formula, T-0069 display, T-0080 moved
+    // to the pitch badge; club half added 2026-11-11): the starting
+    // slots only — bench/reserves never count.
+    final chemistry = totalChemistryPercentOf(
+      nationalities: [
+        for (var slot = 0; slot < 11; slot++) xi[slot]?.base.nationality,
+      ],
+      clubs: [
+        for (var slot = 0; slot < 11; slot++)
+          if (xi[slot] != null)
+            clubChemistryKeyOf(xi[slot]!.base.clubId, xi[slot]!.base.clubName)
+          else '',
+      ],
+    );
 
     return _PickScope(
       builder: (context, pulse, bump) => Column(

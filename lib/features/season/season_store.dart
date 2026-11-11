@@ -397,6 +397,8 @@ class SeasonStore {
     defence: card.attribute(PlayerAttribute.defence),
     goalkeeping: card.attribute(PlayerAttribute.goalkeeping),
     nationality: card.base.nationality,
+    clubId: card.base.clubId,
+    clubName: card.base.clubName,
     stamina: card.staminaPercent.toDouble(),
   );
 
