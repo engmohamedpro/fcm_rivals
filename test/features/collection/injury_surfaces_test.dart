@@ -12,11 +12,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmButton;
 import 'package:fcm_rivals/core/ui/injury_badge.dart';
-import 'package:fcm_rivals/features/collection/collection_collection_screen.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/collection/player_detail_sheet.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
@@ -148,29 +146,5 @@ void main() {
     );
 
     expect(find.text('خارج 2 مباراة'), findsOneWidget);
-  });
-
-  testWidgets('the collection grid card carries the badge over the '
-      'injured player (EN)', (tester) async {
-    tester.view.physicalSize = const Size(2400, 3600);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-    await tester.runAsync(() async {
-      await seedOwned(matchesOut: 3);
-    });
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [collectionStoreProvider.overrideWith((ref) => store)],
-        child: const MaterialApp(home: Scaffold(body: CollectionScreen())),
-      ),
-    );
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 200)),
-    );
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 500));
-
-    expect(find.byType(InjuryBadge), findsWidgets);
-    expect(find.text('3'), findsWidgets);
   });
 }

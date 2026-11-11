@@ -87,14 +87,14 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // The hint explains how to fill the squad…
-    expect(
-      find.text('Open packs to collect players, then tap Auto Pick.'),
-      findsOneWidget,
-    );
-    // …but the setup itself is fully present: control card with the
+    // The setup is fully present with no placeholder cards above it:
+    // control card with the
     // team rating and the default 4-3-3, and the pitch with eleven
     // empty slots.
+    expect(
+      find.text('Open packs to collect players, then tap Auto Pick.'),
+      findsNothing,
+    );
     expect(find.byType(TacticsSetupView), findsOneWidget);
     expect(find.byType(SquadPitch), findsOneWidget);
     expect(find.text('4-3-3'), findsWidgets);
