@@ -9,7 +9,6 @@
 // premium, T-0047 measured 493 gold) and any small curve retune, while a
 // mis-wired partition (off-by-one threshold, wrong band order) blows
 // straight through them.
-import 'dart:io' as io;
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -18,8 +17,9 @@ import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_rarity.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import '../../tm_bundle_io.dart'
+    show loadTmDataset;
 
-const String _datasetPath = 'assets/data/players_v1.json';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,10 +28,11 @@ void main() {
     late List<int> overalls;
 
     setUpAll(() async {
-      final source = await TestWidgetsFlutterBinding.ensureInitialized()
-          .runAsync(() => io.File(_datasetPath).readAsString());
+      // Loaded on the platform thread: runAsync needs a Future-returning
+      // closure and the bundle read is fast enough here.
+      final dataset = loadTmDataset();
       final registry = PlayerDatabase();
-      registry.importDatasetFromJson(source!);
+      registry.importDataset(dataset);
       overalls = [
         for (final p in registry.all) p.baseStats.overall,
       ];

@@ -48,6 +48,7 @@ class PlayerDatasetRow {
     this.leagueName = '',
     this.leagueLogoUrl = '',
     this.imageUrl = '',
+    this.isIcon = false,
   });
 
   factory PlayerDatasetRow.fromList(
@@ -70,6 +71,7 @@ class PlayerDatasetRow {
       leagueName: league?.name ?? '',
       leagueLogoUrl: league?.logoUrl ?? '',
       imageUrl: row.length > 6 ? row[6] as String : '',
+      isIcon: row.length > 11 ? row[11] as bool : false,
     );
   }
 
@@ -87,6 +89,11 @@ class PlayerDatasetRow {
   final String leagueName;
   final String leagueLogoUrl;
   final String imageUrl;
+
+  /// Icon players (owner request 2026-11-12): true for the rows rebuilt
+  /// from `tm-icons.json`. Rows from the legacy v3 compact format keep
+  /// the false default, so persisted reimports stay stable.
+  final bool isIcon;
 }
 
 /// A parsed player dataset file. Validation (including duplicate ids) is
@@ -168,6 +175,152 @@ class PlayerDataset {
       leagues: leagues,
     );
   }
+
+  /// Parses the shipped tm-file bundle (owner request 2026-11-12): the
+  /// four `tm-*.json` assets as sent — players, icons, clubs and
+  /// leagues — into the same [PlayerDataset] the whole game already
+  /// consumes. The FILES are never rewritten; every adaptation happens
+  /// here:
+  /// - Transfermarkt long position names map onto the game's codes
+  ///   ('Centre-Forward' → ST, 'Sweeper' → CB, …); rows with any other
+  ///   position are dropped, as are rows without a name, a nationality
+  ///   or a usable market value — the v3 pipeline's validation rules,
+  ///   applied at parse so [PlayerDatabase.validate] never sees them.
+  /// - String ids become ints; club/league presentation facts resolve
+  ///   through the clubs/leagues maps (logo links carry a `?lm=`
+  ///   timestamp — kept verbatim, they stay valid CDN URLs).
+  /// - Icon rows (tm-icons.json, no clubId) import with [isIcon] true;
+  ///   the five ids that appear in BOTH files (Messi, Ronaldo, Neymar,
+  ///   Modrić, Suárez) resolve to their icon row — the legend wins over
+  ///   the active player.
+  ///
+  /// Pure parsing, no validation: [PlayerDatabase.importDataset] keeps
+  /// its single validation path for every source.
+  static PlayerDataset fromTmBundle({
+    required String playersJson,
+    required String iconsJson,
+    required String clubsJson,
+    required String leaguesJson,
+  }) {
+    final clubs = <String, PlayerDatasetClub>{};
+    for (final c in (json.decode(clubsJson) as List)) {
+      final m = c as Map<String, dynamic>;
+      final id = '${m['id']}';
+      clubs[id] = (
+        name: '${m['title']}',
+        crestUrl: '${m['logo']}',
+        leagueCode: '${m['leagueId'] ?? ''}',
+      );
+    }
+    final leagues = <String, PlayerDatasetLeague>{};
+    for (final l in (json.decode(leaguesJson) as List)) {
+      final m = l as Map<String, dynamic>;
+      leagues['${m['id']}'] = (
+        name: '${m['title']}',
+        logoUrl: '${m['logo']}',
+      );
+    }
+
+    final rows = <PlayerDatasetRow>[];
+    final iconIds = <int>{};
+    for (final p in (json.decode(iconsJson) as List)) {
+      final m = p as Map<String, dynamic>;
+      final position = _tmPosition('${m['position'] ?? ''}');
+      if (position == null) continue;
+      final marketValue = m['marketValue'];
+      final value = marketValue is int ? marketValue : null;
+      final name = '${m['name'] ?? ''}'.trim();
+      final nationality = '${m['nationality'] ?? ''}'.trim();
+      if (name.isEmpty || nationality.isEmpty || value == null || value <= 0) {
+        continue;
+      }
+      final id = int.tryParse('${m['id']}');
+      if (id == null) continue;
+      iconIds.add(id);
+      rows.add(PlayerDatasetRow(
+        playerId: id,
+        name: name,
+        position: position,
+        nationality: nationality,
+        marketValueEur: value,
+        clubId: 0,
+        clubName: '',
+        clubCrestUrl: '',
+        leagueName: '',
+        leagueLogoUrl: '',
+        imageUrl: '${m['image'] ?? ''}',
+        isIcon: true,
+      ));
+    }
+
+    for (final p in (json.decode(playersJson) as List)) {
+      final m = p as Map<String, dynamic>;
+      final id = int.tryParse('${m['id']}');
+      if (id == null || iconIds.contains(id)) continue;
+      final position = _tmPosition('${m['position'] ?? ''}');
+      if (position == null) continue;
+      final marketValue = m['marketValue'];
+      final value = marketValue is int ? marketValue : null;
+      final name = '${m['name'] ?? ''}'.trim();
+      final nationality = '${m['nationality'] ?? ''}'.trim();
+      if (name.isEmpty || nationality.isEmpty || value == null || value <= 0) {
+        continue;
+      }
+      final clubId = int.tryParse('${m['clubId'] ?? ''}') ?? 0;
+      final club = clubs['$clubId'];
+      final league = leagues[club?.leagueCode ?? ''];
+      rows.add(PlayerDatasetRow(
+        playerId: id,
+        name: name,
+        position: position,
+        nationality: nationality,
+        marketValueEur: value,
+        clubId: clubId,
+        clubName: club?.name ?? '',
+        clubCrestUrl: club?.crestUrl ?? '',
+        leagueName: league?.name ?? '',
+        leagueLogoUrl: league?.logoUrl ?? '',
+        imageUrl: '${m['image'] ?? ''}',
+      ));
+    }
+
+    return PlayerDataset(
+      version: tmBundleVersion,
+      asOf: '2026-11-12',
+      digest: 'tm-bundle-2026-11-12',
+      rows: rows,
+      clubs: clubs,
+      leagues: leagues,
+    );
+  }
+
+  /// The dataset bundle version shipped since the 2026-11-12 tm-files
+  /// swap: version 4 re-imports over any install still holding the v3
+  /// compact file (players_v1.json is GONE — `importBundledDataset`
+  /// skips only when the persisted version is >= this one).
+  static const int tmBundleVersion = 4;
+
+  /// Transfermarkt long position names → the game's [Position] codes.
+  /// Returns null for anything else (null positions, 'Mittelfeld' and
+  /// other umbrella labels) — those rows are dropped, exactly the rows
+  /// the v3 validation rejected.
+  static Position? _tmPosition(String tm) => switch (tm) {
+    'Goalkeeper' => Position.gk,
+    'Centre-Back' => Position.cb,
+    'Sweeper' => Position.cb,
+    'Left-Back' => Position.lb,
+    'Right-Back' => Position.rb,
+    'Defensive Midfield' => Position.cdm,
+    'Central Midfield' => Position.cm,
+    'Attacking Midfield' => Position.cam,
+    'Left Midfield' => Position.lm,
+    'Right Midfield' => Position.rm,
+    'Left Winger' => Position.lw,
+    'Right Winger' => Position.rw,
+    'Centre-Forward' => Position.st,
+    'Second Striker' => Position.st,
+    _ => null,
+  };
 }
 
 /// Outcome of applying a dataset: new records, updated records, regenerated
@@ -305,6 +458,7 @@ class PlayerDatabase {
           leagueName: row.leagueName,
           leagueLogoUrl: row.leagueLogoUrl,
           imageUrl: row.imageUrl,
+          isIcon: row.isIcon,
         );
         _players[row.playerId] = player;
         updated.add(player);
@@ -336,7 +490,8 @@ class PlayerDatabase {
 
   /// Presentation facts (name, nationality, club/league identity, image)
   /// update in place; they never regenerate Base Stats — only Market Value
-  /// or Position do (GDD 4.6).
+  /// or Position do (GDD 4.6). The icon flag rides along: it is a fact of
+  /// the dataset the row came from, not a mutable player fact.
   bool _mutableFactsChanged(BasePlayer existing, PlayerDatasetRow row) =>
       existing.name != row.name ||
       existing.nationality != row.nationality ||
@@ -345,7 +500,8 @@ class PlayerDatabase {
       existing.clubCrestUrl != row.clubCrestUrl ||
       existing.leagueName != row.leagueName ||
       existing.leagueLogoUrl != row.leagueLogoUrl ||
-      existing.imageUrl != row.imageUrl;
+      existing.imageUrl != row.imageUrl ||
+      existing.isIcon != row.isIcon;
 
   BasePlayer _toPlayer(PlayerDatasetRow row, BaseStats stats) => BasePlayer(
     playerId: row.playerId,
@@ -360,5 +516,6 @@ class PlayerDatabase {
     leagueName: row.leagueName,
     leagueLogoUrl: row.leagueLogoUrl,
     imageUrl: row.imageUrl,
+    isIcon: row.isIcon,
   );
 }

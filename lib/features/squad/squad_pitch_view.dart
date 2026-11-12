@@ -149,6 +149,11 @@ class SquadPitch extends StatelessWidget {
                                   e.value.base.clubName,
                                 ),
                           },
+                          icons: {
+                            for (final e in assignments.entries)
+                              if (e.key < formation.slots.length)
+                                e.key: e.value.base.isIcon,
+                          },
                           centres: {
                             for (final e in assignments.entries)
                               if (e.key < formation.slots.length)
@@ -203,6 +208,7 @@ class SquadPitch extends StatelessWidget {
                                   clubCrestUrl: card.base.clubCrestUrl,
                                   name: card.base.name,
                                   rarity: rarityOf(card),
+                                  isIcon: card.base.isIcon,
                                   width: cardW,
                                   warn: fs.position != card.position,
                                   stamina: showStamina
@@ -240,6 +246,7 @@ class SquadPitch extends StatelessWidget {
                                       clubCrestUrl: card.base.clubCrestUrl,
                                       name: card.base.name,
                                       rarity: rarityOf(card),
+                                      isIcon: card.base.isIcon,
                                       width: cardW,
                                       warn: fs.position != card.position,
                                       stamina: showStamina
@@ -397,6 +404,7 @@ class SquadCardRow extends StatelessWidget {
                           clubCrestUrl: c.base.clubCrestUrl,
                           name: c.base.name,
                           rarity: rarityOf(c),
+                          isIcon: c.base.isIcon,
                           width: cardWidth,
                           stamina: showStamina ? c.staminaPercent : null,
                           stats: showStats ? statsOf(c) : null,
@@ -485,6 +493,7 @@ Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
   clubCrestUrl: card.base.clubCrestUrl,
   name: card.base.name,
   rarity: rarityOf(card),
+  isIcon: card.base.isIcon,
   width: width,
   upgradeLevel: card.upgradeLevel,
 );
@@ -556,11 +565,16 @@ class _ChemistryLinksLayer extends StatefulWidget {
     required this.nationalities,
     required this.clubs,
     required this.centres,
+    this.icons = const {},
   });
 
   final Map<int, String?> nationalities;
   final Map<int, String?> clubs;
   final Map<int, Offset> centres;
+
+  /// Icon-player slots (owner request 2026-11-12): wildcards linking to
+  /// every other slot in BOTH chemistry kinds.
+  final Map<int, bool> icons;
 
   @override
   State<_ChemistryLinksLayer> createState() => _ChemistryLinksLayerState();
@@ -615,6 +629,7 @@ class _ChemistryLinksLayerState extends State<_ChemistryLinksLayer>
       centres: {
         for (final e in _to.entries) e.key: (x: e.value.dx, y: e.value.dy),
       },
+      icons: widget.icons,
     );
     return AnimatedBuilder(
       animation: _glide,

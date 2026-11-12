@@ -128,6 +128,7 @@ class BasePlayer {
     this.leagueName = '',
     this.leagueLogoUrl = '',
     this.imageUrl = '',
+    this.isIcon = false,
   });
 
   /// Permanent unique identifier — the Transfermarkt player id.
@@ -160,6 +161,14 @@ class BasePlayer {
   /// fallback for those).
   final String imageUrl;
 
+  /// Icon players (owner request 2026-11-12): the legends of the game —
+  /// the 73 rows of `tm-icons.json`. Icons are drawn exclusively from
+  /// the store's three Icon packs (never from position packs), render
+  /// with the holo `PlayerCardRarity.icon` treatment, and on the pitch
+  /// they are chemistry WILDCARDS: an icon groups with every player in
+  /// BOTH dimensions (nationality and club) — see `chemistry.dart`.
+  final bool isIcon;
+
   BasePlayer copyWith({
     String? name,
     Position? position,
@@ -172,6 +181,7 @@ class BasePlayer {
     String? leagueName,
     String? leagueLogoUrl,
     String? imageUrl,
+    bool? isIcon,
   }) => BasePlayer(
     playerId: playerId,
     name: name ?? this.name,
@@ -185,6 +195,7 @@ class BasePlayer {
     leagueName: leagueName ?? this.leagueName,
     leagueLogoUrl: leagueLogoUrl ?? this.leagueLogoUrl,
     imageUrl: imageUrl ?? this.imageUrl,
+    isIcon: isIcon ?? this.isIcon,
   );
 
   @override

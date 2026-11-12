@@ -89,7 +89,7 @@ void main() {
     // streak bumped it to 15 (daily_streak_claims); dataset v3's
     // presentation columns to 16 — the injury columns this fixture
     // exercises are untouched by all four.
-    expect(database.schemaVersion, 16);
+    expect(database.schemaVersion, 17);
     await database.close();
   });
 
@@ -198,7 +198,10 @@ void main() {
           .first['injury_matches_remaining'],
       2,
     );
-    expect(reopened.select('PRAGMA user_version').first['user_version'], 15);
+    // The upgrade lands on the CURRENT schema version (17 since the
+    // 2026-11-12 icon column) — the injury columns this fixture
+    // exercises are untouched by every later step.
+    expect(reopened.select('PRAGMA user_version').first['user_version'], 17);
     reopened.dispose();
   });
 }

@@ -27,6 +27,11 @@ List<StorePackOffer> storeOffersFor(PlayerDatabase registry, EconomyEngine econo
       PackTier.rare => CardRarity.rare,
       PackTier.epic => CardRarity.epic,
       PackTier.legendary => CardRarity.legendary,
+      // Icon tiers draw regulars of the epic/legendary/premium bands —
+      // the shelf's rarity check reads the same three classes.
+      PackTier.iconEpic => CardRarity.epic,
+      PackTier.iconLegendary => CardRarity.legendary,
+      PackTier.iconSupreme => CardRarity.legendary,
     };
 
     StorePackOffer? offerFor(
@@ -62,8 +67,43 @@ List<StorePackOffer> storeOffersFor(PlayerDatabase registry, EconomyEngine econo
     }
 
     final offers = <StorePackOffer>[];
+
+    // The Icon section (owner request 2026-11-12): three packs ABOVE
+    // the ST packs — pack 1 epic + icons, pack 2 epic/legendary +
+    // icons, pack 3 epic/legendary/premium + icons, each carrying its
+    // tier's tiny icon chance. Shelves only when the registry actually
+    // holds icons (the tm-bundle dataset); an icon-less registry keeps
+    // the store exactly as it was.
+    final hasIcons = pool.any((p) => p.isIcon);
+    if (hasIcons) {
+      const iconTiers = [
+        PackTier.iconEpic,
+        PackTier.iconLegendary,
+        PackTier.iconSupreme,
+      ];
+      for (final tier in iconTiers) {
+        final scope = PackScope(category: PackCategory.icon, tier: tier);
+        final eligible = pool.where(scope.matches).toList(growable: false);
+        if (eligible.isEmpty) continue;
+        offers.add(StorePackOffer(
+          category: PackCategory.icon,
+          title: '${tier.label} Pack',
+          scopeValue: null,
+          tier: tier,
+          price: PackEngine(
+            random: math.Random(0),
+            economy: economy,
+          ).packPriceFor(scope, eligible),
+          eligibleCount: eligible.length,
+        ));
+      }
+    }
+
     for (final position in Position.values) {
       for (final tier in PackTier.values) {
+        if (tier.isIconTier) {
+          continue; // icon tiers shelf in their own section
+        }
         final offer = offerFor(
           PackCategory.position,
           position.code,

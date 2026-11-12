@@ -114,9 +114,7 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _clubIdMeta = const VerificationMeta(
-    'clubId',
-  );
+  static const VerificationMeta _clubIdMeta = const VerificationMeta('clubId');
   @override
   late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
     'club_id',
@@ -186,6 +184,19 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _isIconMeta = const VerificationMeta('isIcon');
+  @override
+  late final GeneratedColumn<bool> isIcon = GeneratedColumn<bool>(
+    'is_icon',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_icon" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     playerId,
@@ -204,6 +215,7 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     leagueName,
     leagueLogoUrl,
     imageUrl,
+    isIcon,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -328,10 +340,7 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     if (data.containsKey('league_name')) {
       context.handle(
         _leagueNameMeta,
-        leagueName.isAcceptableOrUnknown(
-          data['league_name']!,
-          _leagueNameMeta,
-        ),
+        leagueName.isAcceptableOrUnknown(data['league_name']!, _leagueNameMeta),
       );
     }
     if (data.containsKey('league_logo_url')) {
@@ -347,6 +356,12 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
       context.handle(
         _imageUrlMeta,
         imageUrl.isAcceptableOrUnknown(data['image_url']!, _imageUrlMeta),
+      );
+    }
+    if (data.containsKey('is_icon')) {
+      context.handle(
+        _isIconMeta,
+        isIcon.isAcceptableOrUnknown(data['is_icon']!, _isIconMeta),
       );
     }
     return context;
@@ -422,6 +437,10 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
         DriftSqlType.string,
         data['${effectivePrefix}image_url'],
       )!,
+      isIcon: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_icon'],
+      )!,
     );
   }
 
@@ -442,12 +461,25 @@ class Player extends DataClass implements Insertable<Player> {
   final int support;
   final int defence;
   final int goalkeeping;
+
+  /// The player's real-world club on Transfermarkt (0 = untracked, e.g.
+  /// free agents); denormalized name + crest link ('' when unknown).
   final int clubId;
   final String clubName;
   final String clubCrestUrl;
+
+  /// Domestic league display name ('' when the club carries no league in
+  /// the source) and its logo link.
   final String leagueName;
   final String leagueLogoUrl;
+
+  /// Transfermarkt portrait link ('' for players with no real photo).
   final String imageUrl;
+
+  /// Icon players (owner request 2026-11-12): the legends imported from
+  /// `tm-icons.json`. Regular rows keep the false default; the column is
+  /// additive (schema v17) so old installs migrate without a rebuild.
+  final bool isIcon;
   const Player({
     required this.playerId,
     required this.name,
@@ -465,6 +497,7 @@ class Player extends DataClass implements Insertable<Player> {
     required this.leagueName,
     required this.leagueLogoUrl,
     required this.imageUrl,
+    required this.isIcon,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -485,6 +518,7 @@ class Player extends DataClass implements Insertable<Player> {
     map['league_name'] = Variable<String>(leagueName);
     map['league_logo_url'] = Variable<String>(leagueLogoUrl);
     map['image_url'] = Variable<String>(imageUrl);
+    map['is_icon'] = Variable<bool>(isIcon);
     return map;
   }
 
@@ -506,6 +540,7 @@ class Player extends DataClass implements Insertable<Player> {
       leagueName: Value(leagueName),
       leagueLogoUrl: Value(leagueLogoUrl),
       imageUrl: Value(imageUrl),
+      isIcon: Value(isIcon),
     );
   }
 
@@ -531,6 +566,7 @@ class Player extends DataClass implements Insertable<Player> {
       leagueName: serializer.fromJson<String>(json['leagueName']),
       leagueLogoUrl: serializer.fromJson<String>(json['leagueLogoUrl']),
       imageUrl: serializer.fromJson<String>(json['imageUrl']),
+      isIcon: serializer.fromJson<bool>(json['isIcon']),
     );
   }
   @override
@@ -553,6 +589,7 @@ class Player extends DataClass implements Insertable<Player> {
       'leagueName': serializer.toJson<String>(leagueName),
       'leagueLogoUrl': serializer.toJson<String>(leagueLogoUrl),
       'imageUrl': serializer.toJson<String>(imageUrl),
+      'isIcon': serializer.toJson<bool>(isIcon),
     };
   }
 
@@ -573,6 +610,7 @@ class Player extends DataClass implements Insertable<Player> {
     String? leagueName,
     String? leagueLogoUrl,
     String? imageUrl,
+    bool? isIcon,
   }) => Player(
     playerId: playerId ?? this.playerId,
     name: name ?? this.name,
@@ -590,6 +628,7 @@ class Player extends DataClass implements Insertable<Player> {
     leagueName: leagueName ?? this.leagueName,
     leagueLogoUrl: leagueLogoUrl ?? this.leagueLogoUrl,
     imageUrl: imageUrl ?? this.imageUrl,
+    isIcon: isIcon ?? this.isIcon,
   );
   Player copyWithCompanion(PlayersCompanion data) {
     return Player(
@@ -621,6 +660,7 @@ class Player extends DataClass implements Insertable<Player> {
           ? data.leagueLogoUrl.value
           : this.leagueLogoUrl,
       imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
+      isIcon: data.isIcon.present ? data.isIcon.value : this.isIcon,
     );
   }
 
@@ -642,7 +682,8 @@ class Player extends DataClass implements Insertable<Player> {
           ..write('clubCrestUrl: $clubCrestUrl, ')
           ..write('leagueName: $leagueName, ')
           ..write('leagueLogoUrl: $leagueLogoUrl, ')
-          ..write('imageUrl: $imageUrl')
+          ..write('imageUrl: $imageUrl, ')
+          ..write('isIcon: $isIcon')
           ..write(')'))
         .toString();
   }
@@ -665,6 +706,7 @@ class Player extends DataClass implements Insertable<Player> {
     leagueName,
     leagueLogoUrl,
     imageUrl,
+    isIcon,
   );
   @override
   bool operator ==(Object other) =>
@@ -685,7 +727,8 @@ class Player extends DataClass implements Insertable<Player> {
           other.clubCrestUrl == this.clubCrestUrl &&
           other.leagueName == this.leagueName &&
           other.leagueLogoUrl == this.leagueLogoUrl &&
-          other.imageUrl == this.imageUrl);
+          other.imageUrl == this.imageUrl &&
+          other.isIcon == this.isIcon);
 }
 
 class PlayersCompanion extends UpdateCompanion<Player> {
@@ -705,6 +748,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
   final Value<String> leagueName;
   final Value<String> leagueLogoUrl;
   final Value<String> imageUrl;
+  final Value<bool> isIcon;
   const PlayersCompanion({
     this.playerId = const Value.absent(),
     this.name = const Value.absent(),
@@ -722,6 +766,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     this.leagueName = const Value.absent(),
     this.leagueLogoUrl = const Value.absent(),
     this.imageUrl = const Value.absent(),
+    this.isIcon = const Value.absent(),
   });
   PlayersCompanion.insert({
     this.playerId = const Value.absent(),
@@ -740,6 +785,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     this.leagueName = const Value.absent(),
     this.leagueLogoUrl = const Value.absent(),
     this.imageUrl = const Value.absent(),
+    this.isIcon = const Value.absent(),
   }) : name = Value(name),
        position = Value(position),
        nationality = Value(nationality),
@@ -766,6 +812,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     Expression<String>? leagueName,
     Expression<String>? leagueLogoUrl,
     Expression<String>? imageUrl,
+    Expression<bool>? isIcon,
   }) {
     return RawValuesInsertable({
       if (playerId != null) 'player_id': playerId,
@@ -784,6 +831,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
       if (leagueName != null) 'league_name': leagueName,
       if (leagueLogoUrl != null) 'league_logo_url': leagueLogoUrl,
       if (imageUrl != null) 'image_url': imageUrl,
+      if (isIcon != null) 'is_icon': isIcon,
     });
   }
 
@@ -804,6 +852,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     Value<String>? leagueName,
     Value<String>? leagueLogoUrl,
     Value<String>? imageUrl,
+    Value<bool>? isIcon,
   }) {
     return PlayersCompanion(
       playerId: playerId ?? this.playerId,
@@ -822,6 +871,7 @@ class PlayersCompanion extends UpdateCompanion<Player> {
       leagueName: leagueName ?? this.leagueName,
       leagueLogoUrl: leagueLogoUrl ?? this.leagueLogoUrl,
       imageUrl: imageUrl ?? this.imageUrl,
+      isIcon: isIcon ?? this.isIcon,
     );
   }
 
@@ -876,6 +926,9 @@ class PlayersCompanion extends UpdateCompanion<Player> {
     if (imageUrl.present) {
       map['image_url'] = Variable<String>(imageUrl.value);
     }
+    if (isIcon.present) {
+      map['is_icon'] = Variable<bool>(isIcon.value);
+    }
     return map;
   }
 
@@ -897,7 +950,8 @@ class PlayersCompanion extends UpdateCompanion<Player> {
           ..write('clubCrestUrl: $clubCrestUrl, ')
           ..write('leagueName: $leagueName, ')
           ..write('leagueLogoUrl: $leagueLogoUrl, ')
-          ..write('imageUrl: $imageUrl')
+          ..write('imageUrl: $imageUrl, ')
+          ..write('isIcon: $isIcon')
           ..write(')'))
         .toString();
   }
@@ -8601,6 +8655,13 @@ typedef $$PlayersTableCreateCompanionBuilder =
       required int support,
       required int defence,
       required int goalkeeping,
+      Value<int> clubId,
+      Value<String> clubName,
+      Value<String> clubCrestUrl,
+      Value<String> leagueName,
+      Value<String> leagueLogoUrl,
+      Value<String> imageUrl,
+      Value<bool> isIcon,
     });
 typedef $$PlayersTableUpdateCompanionBuilder =
     PlayersCompanion Function({
@@ -8614,6 +8675,13 @@ typedef $$PlayersTableUpdateCompanionBuilder =
       Value<int> support,
       Value<int> defence,
       Value<int> goalkeeping,
+      Value<int> clubId,
+      Value<String> clubName,
+      Value<String> clubCrestUrl,
+      Value<String> leagueName,
+      Value<String> leagueLogoUrl,
+      Value<String> imageUrl,
+      Value<bool> isIcon,
     });
 
 class $$PlayersTableFilterComposer
@@ -8672,6 +8740,41 @@ class $$PlayersTableFilterComposer
 
   ColumnFilters<int> get goalkeeping => $composableBuilder(
     column: $table.goalkeeping,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clubName => $composableBuilder(
+    column: $table.clubName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clubCrestUrl => $composableBuilder(
+    column: $table.clubCrestUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get leagueName => $composableBuilder(
+    column: $table.leagueName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get leagueLogoUrl => $composableBuilder(
+    column: $table.leagueLogoUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imageUrl => $composableBuilder(
+    column: $table.imageUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isIcon => $composableBuilder(
+    column: $table.isIcon,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8734,6 +8837,41 @@ class $$PlayersTableOrderingComposer
     column: $table.goalkeeping,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clubName => $composableBuilder(
+    column: $table.clubName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clubCrestUrl => $composableBuilder(
+    column: $table.clubCrestUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get leagueName => $composableBuilder(
+    column: $table.leagueName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get leagueLogoUrl => $composableBuilder(
+    column: $table.leagueLogoUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get imageUrl => $composableBuilder(
+    column: $table.imageUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isIcon => $composableBuilder(
+    column: $table.isIcon,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PlayersTableAnnotationComposer
@@ -8780,6 +8918,33 @@ class $$PlayersTableAnnotationComposer
     column: $table.goalkeeping,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get clubId =>
+      $composableBuilder(column: $table.clubId, builder: (column) => column);
+
+  GeneratedColumn<String> get clubName =>
+      $composableBuilder(column: $table.clubName, builder: (column) => column);
+
+  GeneratedColumn<String> get clubCrestUrl => $composableBuilder(
+    column: $table.clubCrestUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get leagueName => $composableBuilder(
+    column: $table.leagueName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get leagueLogoUrl => $composableBuilder(
+    column: $table.leagueLogoUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get imageUrl =>
+      $composableBuilder(column: $table.imageUrl, builder: (column) => column);
+
+  GeneratedColumn<bool> get isIcon =>
+      $composableBuilder(column: $table.isIcon, builder: (column) => column);
 }
 
 class $$PlayersTableTableManager
@@ -8820,6 +8985,13 @@ class $$PlayersTableTableManager
                 Value<int> support = const Value.absent(),
                 Value<int> defence = const Value.absent(),
                 Value<int> goalkeeping = const Value.absent(),
+                Value<int> clubId = const Value.absent(),
+                Value<String> clubName = const Value.absent(),
+                Value<String> clubCrestUrl = const Value.absent(),
+                Value<String> leagueName = const Value.absent(),
+                Value<String> leagueLogoUrl = const Value.absent(),
+                Value<String> imageUrl = const Value.absent(),
+                Value<bool> isIcon = const Value.absent(),
               }) => PlayersCompanion(
                 playerId: playerId,
                 name: name,
@@ -8831,6 +9003,13 @@ class $$PlayersTableTableManager
                 support: support,
                 defence: defence,
                 goalkeeping: goalkeeping,
+                clubId: clubId,
+                clubName: clubName,
+                clubCrestUrl: clubCrestUrl,
+                leagueName: leagueName,
+                leagueLogoUrl: leagueLogoUrl,
+                imageUrl: imageUrl,
+                isIcon: isIcon,
               ),
           createCompanionCallback:
               ({
@@ -8844,6 +9023,13 @@ class $$PlayersTableTableManager
                 required int support,
                 required int defence,
                 required int goalkeeping,
+                Value<int> clubId = const Value.absent(),
+                Value<String> clubName = const Value.absent(),
+                Value<String> clubCrestUrl = const Value.absent(),
+                Value<String> leagueName = const Value.absent(),
+                Value<String> leagueLogoUrl = const Value.absent(),
+                Value<String> imageUrl = const Value.absent(),
+                Value<bool> isIcon = const Value.absent(),
               }) => PlayersCompanion.insert(
                 playerId: playerId,
                 name: name,
@@ -8855,6 +9041,13 @@ class $$PlayersTableTableManager
                 support: support,
                 defence: defence,
                 goalkeeping: goalkeeping,
+                clubId: clubId,
+                clubName: clubName,
+                clubCrestUrl: clubCrestUrl,
+                leagueName: leagueName,
+                leagueLogoUrl: leagueLogoUrl,
+                imageUrl: imageUrl,
+                isIcon: isIcon,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

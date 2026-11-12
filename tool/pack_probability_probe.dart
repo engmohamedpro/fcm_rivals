@@ -37,11 +37,21 @@ import 'package:fcm_rivals/features/player_database/player_database.dart';
 /// match (base 1,500 + 250/goal, ×0.90 loss / ×1.24 win).
 const int parIncomePerMatch = 1858;
 
-const _datasetPath = 'assets/data/players_v1.json';
+const _playersPath = 'assets/data/tm-players.json';
+const _iconsPath = 'assets/data/tm-icons.json';
+const _clubsPath = 'assets/data/tm-clubs.json';
+const _leaguesPath = 'assets/data/tm-leagues.json';
 
 List<BasePlayer> loadPool() {
   final db = PlayerDatabase();
-  db.importDatasetFromJson(File(_datasetPath).readAsStringSync());
+  db.importDataset(
+    PlayerDataset.fromTmBundle(
+      playersJson: File(_playersPath).readAsStringSync(),
+      iconsJson: File(_iconsPath).readAsStringSync(),
+      clubsJson: File(_clubsPath).readAsStringSync(),
+      leaguesJson: File(_leaguesPath).readAsStringSync(),
+    ),
+  );
   return db.all.toList(growable: false);
 }
 
@@ -211,7 +221,7 @@ void main(List<String> args) {
 
   stdout.writeln('FCM Rivals — pack probability transparency probe');
   stdout.writeln(
-    'dataset: $_datasetPath (${pool.length} players) · '
+    'dataset: tm-bundle (${pool.length} players) · '
     'packs: $packs · seed: $seed · exponent: '
     '${oddsConfig.marketValueExponent}',
   );

@@ -93,6 +93,27 @@ class PackOddsConfig {
       legendary: 0.43,
       premium: 0.02,
     ),
+    this.iconEpicPack = (
+      rare: 0.30,
+      epic: 0.70,
+      legendary: 0.0,
+      premium: 0.0,
+    ),
+    this.iconLegendaryPack = (
+      rare: 0.00,
+      epic: 0.55,
+      legendary: 0.45,
+      premium: 0.0,
+    ),
+    this.iconSupremePack = (
+      rare: 0.00,
+      epic: 0.55,
+      legendary: 0.43,
+      premium: 0.02,
+    ),
+    this.iconEpicChance = 0.005,
+    this.iconLegendaryChance = 0.010,
+    this.iconSupremeChance = 0.015,
     this.marketValueExponent = 1.5,
     this.pityGuaranteedRarityPulls,
   }) : assert(epicMinOverall < legendaryMinOverall),
@@ -116,6 +137,32 @@ class PackOddsConfig {
   final PackRarityOdds epicPack;
   final PackRarityOdds legendaryPack;
 
+  /// The three icon-pack tables (owner request 2026-11-12, "very very
+  /// very tiny chance"): the band shares of the ICON TIER's regular
+  /// draws. The icon chance itself lives beside them
+  /// ([iconEpicChance] etc.): stage 1 first rolls the tiny icon chance,
+  /// and only when it misses does the rolled band of THIS table decide
+  /// the regular player — so each table still sums to 1 on its own and
+  /// the effective per-band probabilities the player sees rescale by
+  /// (1 − iconChance).
+  ///
+  /// - ICON EPIC pack: 30/70/0/0 — epic-weighted regulars, no gold.
+  /// - ICON LEGENDARY pack: 0/55/45/0 — the legendary pack's shape with
+  ///   premium folded into the icon chance.
+  /// - ICON SUPREME pack: 0/55/43/2 — premium regulars reachable, same
+  ///   shape as the classic legendary pack.
+  final PackRarityOdds iconEpicPack;
+  final PackRarityOdds iconLegendaryPack;
+  final PackRarityOdds iconSupremePack;
+
+  /// The tiny icon chance of each icon tier (owner request 2026-11-12):
+  /// the probability a pack's single player is an ICON (a legend from
+  /// tm-icons.json) instead of a regular of the rolled band. 0.5% /
+  /// 1.0% / 1.5% — deliberately minuscule: icons are the chase.
+  final double iconEpicChance;
+  final double iconLegendaryChance;
+  final double iconSupremeChance;
+
   /// The draw stage's value-weighting exponent: stage-2 candidate weight
   /// is `(poolMinMv / mv)^exponent` ([weightFor]) — higher values flatten
   /// the in-band distribution toward the pool floor (owner default 1.5).
@@ -132,6 +179,17 @@ class PackOddsConfig {
     PackTier.rare => rarePack,
     PackTier.epic => epicPack,
     PackTier.legendary => legendaryPack,
+    PackTier.iconEpic => iconEpicPack,
+    PackTier.iconLegendary => iconLegendaryPack,
+    PackTier.iconSupreme => iconSupremePack,
+  };
+
+  /// The tiny icon chance of [tier]; 0 for every regular tier.
+  double iconChanceOf(PackTier tier) => switch (tier) {
+    PackTier.iconEpic => iconEpicChance,
+    PackTier.iconLegendary => iconLegendaryChance,
+    PackTier.iconSupreme => iconSupremeChance,
+    _ => 0.0,
   };
 
   /// Validation of one table. The const constructor cannot call methods
@@ -158,6 +216,17 @@ class PackOddsConfig {
           '${tier.name}Pack',
           'each weight must be in [0, 1] and the four must sum to 1 '
               '(±1e-9); got ${t.rare}/${t.epic}/${t.legendary}/${t.premium}',
+        );
+      }
+    }
+    for (final tier in PackTier.values) {
+      final chance = iconChanceOf(tier);
+      if (!(chance >= 0.0 && chance <= 0.05)) {
+        throw ArgumentError.value(
+          chance,
+          '${tier.name} icon chance',
+          'the icon chance must stay tiny (≤ 0.05) — owner spec '
+              '"very very very tiny chance"',
         );
       }
     }

@@ -127,14 +127,22 @@ class _ScopeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sort the section's tiers into store order: rare, epic, legendary.
+    // Sort the section's tiers into store order: rare, epic, legendary —
+    // and iconEpic, iconLegendary, iconSupreme inside the Icon section
+    // (the Icon offers are FIRST in the catalog's list, so the Icon
+    // section shelves ABOVE the ST packs — owner request 2026-11-12).
     final byTier = {for (final o in offers) o.tier: o};
     final ordered = [
-      for (final t in PackTier.values)
+      for (final t in PackTier.shelfOrder)
         if (byTier.containsKey(t)) byTier[t]!,
     ];
     final head = ordered.first;
-    final scopeLabel = '${head.scopeValue} Pack';
+    // The Icon section's title reads 'Icon Pack' (owner request
+    // 2026-11-12): the icon offers carry no scope value, so the label
+    // falls back to the section's category name instead of 'null Pack'.
+    final scopeLabel = head.scopeValue != null
+        ? '${head.scopeValue} Pack'
+        : '${head.category.label}';
 
     // One visual group: title, players icon entry and the tier cells
     // share a single raised surface, so what belongs together reads as

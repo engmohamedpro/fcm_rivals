@@ -54,6 +54,11 @@ class Players extends Table {
   /// Transfermarkt portrait link ('' for players with no real photo).
   TextColumn get imageUrl => text().withDefault(const Constant(''))();
 
+  /// Icon players (owner request 2026-11-12): the legends imported from
+  /// `tm-icons.json`. Regular rows keep the false default; the column is
+  /// additive (schema v17) so old installs migrate without a rebuild.
+  BoolColumn get isIcon => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {playerId};
 }
@@ -393,7 +398,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -543,17 +548,46 @@ class AppDatabase extends _$AppDatabase {
         // additions, no rebuild; every existing row keeps its values
         // byte-for-byte and reads the ''/0 defaults. The existence
         // guard mirrors the v13-v15 steps against rewound fixtures.
-        final hasImageUrl = (await customSelect(
-          'PRAGMA table_info(players)',
-        ).get())
-            .any((row) => row.read<String>('name') == 'image_url');
-        if (!hasImageUrl) {
+        // PRAGMA on a MISSING table returns an empty list (a faithful
+        // v11 database predates the players table entirely — the
+        // dataset arrived with v12-era builds), so guard on the table
+        // itself before reading its columns: the fixture in
+        // schema_v12_migration_test caught this (5c60e2c shipped the
+        // ALTER unguarded).
+        final playersTable = (await customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'players'",
+        ).get());
+        final hasImageUrl = playersTable.isNotEmpty &&
+            (await customSelect(
+              'PRAGMA table_info(players)',
+            ).get())
+                .any((row) => row.read<String>('name') == 'image_url');
+        if (playersTable.isNotEmpty && !hasImageUrl) {
           await m.addColumn(players, players.clubId);
           await m.addColumn(players, players.clubName);
           await m.addColumn(players, players.clubCrestUrl);
           await m.addColumn(players, players.leagueName);
           await m.addColumn(players, players.leagueLogoUrl);
           await m.addColumn(players, players.imageUrl);
+        }
+      }
+      if (from < 17) {
+        // Icon players (owner request 2026-11-12): one additive column,
+        // same guard pattern — every pre-existing row keeps the false
+        // default (regular player). Same missing-table guard as v16: a
+        // database older than the players table itself skips the step.
+        final playersTable = (await customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'players'",
+        ).get());
+        final hasIsIcon = playersTable.isNotEmpty &&
+            (await customSelect(
+              'PRAGMA table_info(players)',
+            ).get())
+                .any((row) => row.read<String>('name') == 'is_icon');
+        if (playersTable.isNotEmpty && !hasIsIcon) {
+          await m.addColumn(players, players.isIcon);
         }
       }
     },

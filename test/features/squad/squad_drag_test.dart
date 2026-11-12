@@ -197,7 +197,7 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
 
     // Bench striker (id 15) onto the starting striker (id 9).
-    await _drag(tester, find.text('SURN15'), find.text('SURN9'));
+    await _drag(tester, find.text('F. Surn15'), find.text('F. Surn9'));
     expect(drops, hasLength(1));
     expect(drops.single.dragged.ownedId, 15);
     expect(drops.single.target.card?.ownedId, 9);
@@ -212,7 +212,7 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
 
     // Reserve striker (id 18) onto the starting striker (id 9).
-    await _drag(tester, find.text('SURN18'), find.text('SURN9'));
+    await _drag(tester, find.text('F. Surn18'), find.text('F. Surn9'));
     expect(drops.single.dragged.ownedId, 18);
     expect(drops.single.target.card?.ownedId, 9);
   });
@@ -227,7 +227,7 @@ void main() {
 
     // Bench CB (id 12) onto the starting striker (id 9): refused by the
     // rules, but the owner is told so it can show the reason.
-    await _drag(tester, find.text('SURN12'), find.text('SURN9'));
+    await _drag(tester, find.text('F. Surn12'), find.text('F. Surn9'));
     expect(drops, hasLength(1));
     final verdict = planSquadDrop(
       formation: _f433,
@@ -246,7 +246,7 @@ void main() {
     final drops = <_Drop>[];
     await tester.pumpWidget(_host(_squad(), drops: drops));
     await tester.pump(const Duration(seconds: 2));
-    await _drag(tester, find.text('SURN15'), find.text('SURN15'));
+    await _drag(tester, find.text('F. Surn15'), find.text('F. Surn15'));
     expect(drops, isEmpty);
   });
 
@@ -284,7 +284,7 @@ void main() {
       ),
     );
     await tester.pump(const Duration(seconds: 2));
-    await tester.tap(find.text('SURN15'));
+    await tester.tap(find.text('F. Surn15'));
     await tester.pump(const Duration(milliseconds: 100));
     expect(tapped, [15]);
     expect(drops, isEmpty);

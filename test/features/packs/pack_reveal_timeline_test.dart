@@ -17,6 +17,8 @@ import 'package:fcm_rivals/features/packs/pack_tier_colors.dart';
 import 'package:fcm_rivals/features/packs/pack_reveal_timeline.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/l10n/app_localizations_en.dart';
+import '../../tm_bundle_io.dart'
+    show tmPlayersPath;
 
 RevealTimeline timelineFor(int overall) => RevealTimeline.revealTimelineFor(
   CardRarity.fromOverall(overall),
@@ -167,7 +169,7 @@ void main() {
         'timeline; the drawn rarity ladder prints', () {
       final db = PlayerDatabase();
       db.importDatasetFromJson(
-        io.File('assets/data/players_v1.json').readAsStringSync(),
+        io.File(tmPlayersPath).readAsStringSync(),
       );
       final players = db.all.toList();
       expect(players, isNotEmpty);

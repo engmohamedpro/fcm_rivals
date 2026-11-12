@@ -18,6 +18,8 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_rarity.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import '../../tm_bundle_io.dart'
+    show tmPlayersPath;
 
 /// The same import path the game (and the other dataset-backed tests)
 /// use — band counts therefore reflect the shipped OVRs exactly, and a
@@ -25,7 +27,7 @@ import 'package:fcm_rivals/features/player_database/player_database.dart';
 List<BasePlayer> _loadDataset() {
   final db = PlayerDatabase();
   db.importDatasetFromJson(
-    io.File('assets/data/players_v1.json').readAsStringSync(),
+    io.File(tmPlayersPath).readAsStringSync(),
   );
   return db.all.toList(growable: false);
 }

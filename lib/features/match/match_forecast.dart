@@ -183,6 +183,7 @@ MatchForecast forecastMatch({
   int chemistryOf(List<MatchPlayer> starters) => totalChemistryPercentOf(
     nationalities: [for (final p in starters) p.nationality],
     clubs: [for (final p in starters) clubChemistryKeyOf(p.clubId, p.clubName)],
+    icons: [for (final p in starters) p.isIcon],
   );
   final userChemistry = chemistryOf(startersOf(input.userSquad));
   final opponentChemistry = chemistryOf(startersOf(input.opponentSquad));

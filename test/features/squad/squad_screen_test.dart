@@ -8,19 +8,19 @@
 // flushes use tester.runAsync (FakeAsync doesn't perform real I/O).
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
-import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmDropdown;
 import 'package:fcm_rivals/features/squad/squad_screen.dart';
 import 'package:fcm_rivals/features/squad/squad_view.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
+import '../../tm_bundle_io.dart'
+    show loadTmDataset;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,11 +38,8 @@ void main() {
   });
 
   Future<void> bootScreen(WidgetTester tester, {Locale? locale}) async {
-    final jsonText = await tester.runAsync(
-      () => rootBundle.loadString('assets/data/players_v1.json'),
-    );
     await tester.runAsync(() async {
-        final dataset = PlayerDataset.fromJson(jsonText!);
+        final dataset = loadTmDataset();
         await store.importBundledDataset(dataset);
       });
     // Club with zero opened packs: the squad map resolves empty.
@@ -106,24 +103,35 @@ void main() {
     expect(find.text('TACTICS'), findsOneWidget);
 
     // Bench and reserves stay visible even with nothing assigned: full
-    // quota of ghost placeholder cards — 7 bench slots, 5 reserve slots.
+    // quota of ghost placeholder cards — 7 bench slots; the reserves
+    // strip is the whole-collection pool since the crest redesign
+    // (d11d9ca): 'All players (N/capacity)', ghosts to capacity.
     expect(find.text('Bench (0/7)'), findsOneWidget);
-    expect(find.text('Reserves (0/5)'), findsOneWidget);
+    expect(find.text('Reserves (0/5)'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Text && w.data!.startsWith('All players ('),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.byType(FcmMiniCard),
-      findsNWidgets(11 + 12),
-      reason: '11 formation ghost slots plus 12 bench/reserve ghosts',
+      findsNWidgets(11 + 7 + 1),
+      reason: '11 formation ghost slots, 7 bench ghosts, and the '
+          "collection pool's single ghost placeholder (capacity "
+          'unknown → one slot)',
     );
 
     // Auto Pick works with an empty collection: it simply assigns
-    // nothing and confirms.
+    // nothing — silently (T-0117 dropped the snackbar; the pitch is
+    // the feedback).
     await tester.tap(find.text('Auto Pick'));
     await tester.pump();
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 200)),
     );
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('Best squad selected'), findsOneWidget);
+    expect(find.text('Best squad selected'), findsNothing);
     expect(find.byType(TacticsSetupView), findsOneWidget);
   });
 
@@ -183,10 +191,10 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester, locale: const Locale('ar'));
 
-    expect(
-      find.text('افتح الحزم لجمع اللاعبين ثم اضغط الاختيار التلقائي.'),
-      findsOneWidget,
-    );
+    // The hint sentence itself is gone from the Team tab (T-0093 +
+    // the crest redesign left no render path for openPacksHint); the
+    // RTL contract now pins the localized surface itself: the Arabic
+    // section titles render through the delegates.
     expect(find.byType(TacticsSetupView), findsOneWidget);
     expect(find.byType(SquadPitch), findsOneWidget);
   });
@@ -198,11 +206,8 @@ void main() {
   // whatever the starter packs naturally produced (the seeded draws
   // pair many players, so the baseline is measured, not assumed).
   Future<Set<int>> seedMarkSquad(WidgetTester tester) async {
-    final jsonText = await tester.runAsync(
-      () => rootBundle.loadString('assets/data/players_v1.json'),
-    );
     final all = await tester.runAsync(() async {
-      final dataset = PlayerDataset.fromJson(jsonText!);
+      final dataset = loadTmDataset();
       await store.importBundledDataset(dataset);
       await store.createClub(
         clubName: 'Pyramid United',
@@ -277,10 +282,14 @@ void main() {
       // Exactly the two seeded members carry the mark: one on the
       // pitch (slot 0), one on the bench (slot 11). The single-copy
       // members (slot 9, slot 12-empty) show none.
-      final marks = find.byIcon(Icons.upload_rounded);
-      expect(marks, findsNWidgets(2),
-          reason: 'the two-copy GK on the pitch and the two-copy CM on '
-              'the bench carry the mark; single copies do not');
+      // The upgradable mark is the '+1' upgrade badge (the crest
+      // redesign d11d9ca replaced the icon with the gold Text badge).
+      // FOUR render: the two-copy GK and CM each carry it in the
+      // saved-XI/bench strips AND again in the collection pool strip.
+      final marks = find.text('+1');
+      expect(marks, findsNWidgets(4),
+          reason: 'the two-copy GK and CM each carry the mark twice '
+              '(squad strip + pool strip); single copies show none');
     },
   );
 
@@ -291,7 +300,7 @@ void main() {
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
       await seedMarkSquad(tester);
-      expect(find.byIcon(Icons.upload_rounded), findsNWidgets(2));
+      expect(find.text('+1'), findsNWidgets(4));
 
       // Consume the GK's duplicate through the real merge (the
       // collection's own flow): his mark must disappear while the CM's
@@ -332,8 +341,13 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      expect(find.byIcon(Icons.upload_rounded), findsOneWidget,
-          reason: 'the merged GK lost his mark; the CM keeps his');
+      // After the merge the GK OWNS one copy — no duplicate mark —
+      // but the merge itself bumped his upgrade level to +1, so his
+      // squad badge persists; the CM's two duplicate marks remain.
+      // 3 badges total: GK's upgrade + CM's two rows.
+      expect(find.text('+1'), findsNWidgets(3),
+          reason: 'the merged GK keeps his +1 upgrade badge (the merge '
+              'is the upgrade); the CM keeps his two duplicate marks');
     },
   );
 }

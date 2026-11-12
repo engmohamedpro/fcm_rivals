@@ -6,15 +6,15 @@
 // collection store provider with an in-memory AppDatabase.
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
-import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/main.dart';
+import 'tm_bundle_io.dart'
+    show loadTmDataset;
 
 /// The shell has always-on ambient animations (animated backdrop), so
 /// pumpAndSettle would never return; pump a bounded run of frames instead.
@@ -66,11 +66,8 @@ void main() {
 
       final db = AppDatabase(NativeDatabase.memory());
       final store = CollectionStore(db: db);
-      final jsonText = await tester.runAsync(
-        () => rootBundle.loadString('assets/data/players_v1.json'),
-      );
       await tester.runAsync(() async {
-        final dataset = PlayerDataset.fromJson(jsonText!);
+        final dataset = loadTmDataset();
         await store.importBundledDataset(dataset);
       });
 
@@ -80,6 +77,23 @@ void main() {
             // The production providers use path_provider which is unavailable
             // in tests; this override injects the in-memory database store.
             collectionStoreProvider.overrideWith((ref) => store),
+            // The shell's derived providers (career metrics, claims)
+            // watch databaseProvider DIRECTLY — without this override
+            // their path_provider call throws MissingPluginException in
+            // the test environment and the Achievements/Profile tabs
+            // sit in error state forever. Hand them the same database.
+            databaseProvider.overrideWith((ref) async {
+              ref.onDispose(db.close);
+              return db;
+            }),
+            // The production bootstrap loads the tm bundle through
+            // rootBundle + Isolate.run; isolates do not spawn inside
+            // the test binding, so the provider would never resolve and
+            // the Season tab would sit on its loading marker forever
+            // (the blocking overlay then absorbs every nav tap). The
+            // seed above already imported the same dataset through the
+            // real parser — nothing left to bootstrap.
+            datasetBootstrapProvider.overrideWith((ref) async {}),
           ],
           child: const FcmRivalsApp(),
         ),
@@ -100,17 +114,17 @@ void main() {
       );
       await tester.enterText(find.byType(TextFormField).at(1), 'Mohamed');
       // T-0098's crest builder grows the form — the submit button sits
-      // below the fold, so drag it into view and re-settle before the
-      // tap (ensureVisible alone leaves the entrance animations
-      // mid-flight and the tap lands off-target).
-      await tester.dragUntilVisible(
-        find.text('Start managing'),
-        find.byType(Scrollable).first,
-        const Offset(0, -200),
-      );
+      // below the fold on small surfaces, so scroll it into view when a
+      // scrollable exists and re-settle before the tap (the drag's
+      // Scrollable lookup crashes when the portrait surface fits the
+      // whole form — the crest redesign d11d9ca left this pre-existing
+      // smoke test broken there; ensureVisible handles both layouts).
+      // The submit label is the shared 'Start' copy since the crest
+      // redesign (d11d9ca) — tap the onboarding form's FcmButton.
+      await tester.ensureVisible(find.text('Start'));
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.tap(find.text('Start managing'));
+      await tester.tap(find.text('Start'));
       await tester.pump();
 
       // Club creation + provider invalidation run real async work —
@@ -136,8 +150,19 @@ void main() {
       expect(find.text('Start your first season'), findsOneWidget);
 
       // T-0113: the two new surfaces' first paint under the real shell.
-      // The Achievements hub renders from the live derivation.
-      await tester.tap(find.text('Achievements'));
+      // The Achievements hub renders from the live derivation. The
+      // bottom-nav label can sit in the scroll cache area on the
+      // portrait surface (the tap's centre lands off-screen), so drag
+      // the nav into the live viewport before tapping (T-0104's poll
+      // pattern with a visible-finder guard).
+      // Tap the nav button by its ICON rect centre — the icon glyph
+      // sits squarely inside the FcmPressable's hit box (the badge
+      // overlay can shadow the label's centre, and the pressable's
+      // entrance scale shifts text centres out of the box).
+      final achIcon = find.byIcon(Icons.military_tech_rounded).first;
+      await tester.ensureVisible(achIcon);
+      await tester.tapAt(tester.getCenter(achIcon));
+      await tester.pump(const Duration(milliseconds: 300));
       await pumpUntilFound(tester, find.text('The Trophy Room'));
       expect(find.text('The Trophy Room'), findsOneWidget);
       expect(find.text('Claim'), findsNothing,

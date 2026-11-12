@@ -8,7 +8,6 @@
 /// from a Legendary pack. Premium (90+) is exclusive to Legendary packs.
 library;
 
-import 'dart:io' as io;
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -20,12 +19,13 @@ import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_rarity.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import '../../tm_bundle_io.dart'
+    show loadTmDataset;
 
-const _datasetPath = 'assets/data/players_v1.json';
 
 List<BasePlayer> _loadPool() {
   final db = PlayerDatabase();
-  db.importDatasetFromJson(io.File(_datasetPath).readAsStringSync());
+  db.importDataset(loadTmDataset());
   return db.all.toList(growable: false);
 }
 
@@ -58,9 +58,7 @@ void main() {
     test('store shelves: every previously-golden position pool stays '
         'shelved and can only grow', () {
       final registry = PlayerDatabase();
-      registry.importDatasetFromJson(
-        io.File(_datasetPath).readAsStringSync(),
-      );
+      registry.importDataset(loadTmDataset());
       final offers = storeOffersFor(registry, const EconomyEngine());
       final legendaryShelf = <String, int>{
         for (final o in offers)

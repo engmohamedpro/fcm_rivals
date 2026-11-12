@@ -11,7 +11,6 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart' show NativeDatabase;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,9 +18,10 @@ import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart' show FcmPill;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
-import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/facilities/campus_screen.dart';
 import 'package:fcm_rivals/features/facilities/facilities.dart';
+import '../../tm_bundle_io.dart'
+    show loadTmDataset;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,11 +39,8 @@ void main() {
   });
 
   Future<void> seedStore(WidgetTester tester, {int coins = 50_000}) async {
-    final jsonText = await tester.runAsync(
-      () => rootBundle.loadString('assets/data/players_v1.json'),
-    );
     await tester.runAsync(() async {
-        final dataset = PlayerDataset.fromJson(jsonText!);
+        final dataset = loadTmDataset();
         await store.importBundledDataset(dataset);
       });
     await tester.runAsync(

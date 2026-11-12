@@ -1,4 +1,3 @@
-import 'dart:io' as io;
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/core/domain/base_stats_generator.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import '../../tm_bundle_io.dart'
+    show loadTmDataset;
 
 void main() {
   const gen = BaseStatsGenerator();
@@ -746,9 +747,7 @@ void main() {
     test('the real dataset reaches attribute 99 in attack, defence and '
         'goalkeeping', () {
       final db = PlayerDatabase();
-      db.importDatasetFromJson(
-        io.File('assets/data/players_v1.json').readAsStringSync(),
-      );
+      db.importDataset(loadTmDataset());
       var maxAttack = 0, maxDefence = 0, maxGoalkeeping = 0;
       for (final p in db.all) {
         maxAttack = math.max(maxAttack, p.baseStats.attack);

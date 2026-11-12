@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""FCM Rivals — player dataset refresh pipeline (players_v1.json, format v3).
+"""DEPRECATED 2026-11-12: the app now ships the owner-supplied tm-*.json
+bundle verbatim (tm-players/tm-icons/tm-clubs/tm-leagues). This script
+built the retired players_v1.json v3 file; kept for history only.
+--
+FCM Rivals — player dataset refresh pipeline (players_v1.json, format v3).
 
 Rebuilds `assets/data/players_v1.json` from the open Transfermarkt-derived
 player-scores dataset (originally by dcaribou, mirrored on HuggingFace at

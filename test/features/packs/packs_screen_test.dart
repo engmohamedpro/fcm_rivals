@@ -9,7 +9,6 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart' show NativeDatabase;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,7 +18,6 @@ import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
     show FcmButton, FcmCoinChip, FcmCoinGlyph;
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
-import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/packs/pack_contents_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart'
@@ -28,6 +26,7 @@ import 'package:fcm_rivals/features/packs/pack_rarity.dart'
     show defaultPackOddsConfig;
 import 'package:fcm_rivals/features/packs/packs_screen.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
+import '../../tm_bundle_io.dart' show loadTmDataset;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -47,13 +46,12 @@ void main() {
   /// Dataset + club, no widgets yet — tests that need a doctored club
   /// state can adjust the database between this and [pumpScreen].
   Future<void> seedStore(WidgetTester tester) async {
-    final jsonText = await tester.runAsync(
-      () => rootBundle.loadString('assets/data/players_v1.json'),
-    );
+    // The shipped tm bundle (owner request 2026-11-12) through the
+    // shared loader — the four files the app ships, parsed by the real
+    // bundle parser.
     await tester.runAsync(() async {
-        final dataset = PlayerDataset.fromJson(jsonText!);
-        await store.importBundledDataset(dataset);
-      });
+      await store.importBundledDataset(loadTmDataset());
+    });
     await tester.runAsync(
       () => store.createClub(
         clubName: 'Pyramid United',

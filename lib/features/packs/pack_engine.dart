@@ -26,7 +26,8 @@ import 'pack_rarity.dart';
 enum PackCategory {
   global('Global Pack'),
   nationality('Nationality Pack'),
-  position('Position Pack');
+  position('Position Pack'),
+  icon('Icon Pack');
 
   const PackCategory(this.label);
   final String label;
@@ -41,10 +42,31 @@ enum PackCategory {
 enum PackTier {
   rare('Rare'),
   epic('Epic'),
-  legendary('Legendary');
+  legendary('Legendary'),
+  iconEpic('Icon Epic'),
+  iconLegendary('Icon Legendary'),
+  iconSupreme('Icon Supreme');
 
   const PackTier(this.label);
   final String label;
+
+  /// The store shelf's display order: the three regular tiers of a
+  /// position section, then the icon tiers of the Icon section.
+  static const List<PackTier> shelfOrder = [
+    rare,
+    epic,
+    legendary,
+    iconEpic,
+    iconLegendary,
+    iconSupreme,
+  ];
+
+  /// The icon tiers (owner request 2026-11-12): these rolls carry the
+  /// icon tiers' tiny icon chance over a regulars+icons pool.
+  bool get isIconTier =>
+      this == PackTier.iconEpic ||
+      this == PackTier.iconLegendary ||
+      this == PackTier.iconSupreme;
 
   /// Parses a persisted tier name. Rows written before the rarity
   /// renaming stored the medal metals ('bronze'/'silver'/'gold'); they
@@ -52,6 +74,9 @@ enum PackTier {
   static PackTier fromName(String? name) => switch (name) {
     'epic' || 'silver' => PackTier.epic,
     'legendary' || 'gold' => PackTier.legendary,
+    'iconEpic' => PackTier.iconEpic,
+    'iconLegendary' => PackTier.iconLegendary,
+    'iconSupreme' => PackTier.iconSupreme,
     _ => PackTier.rare, // 'rare', legacy 'bronze', anything else
   };
 }
@@ -80,11 +105,24 @@ class PackScope {
   bool matches(BasePlayer p) {
     switch (category) {
       case PackCategory.global:
-        return true;
+        // Icons draw only from icon packs (owner request 2026-11-12):
+        // a global pack never hands out a legend card.
+        return !p.isIcon;
       case PackCategory.nationality:
-        return nationality != null && p.nationality == nationality;
+        return nationality != null &&
+            !p.isIcon &&
+            p.nationality == nationality;
       case PackCategory.position:
-        return position != null && p.position == position;
+        // ST packs and every other position scope draw regulars only —
+        // the ST packs stay exactly what they were; the icon tiers
+        // shelf as their own section beside them.
+        return position != null && !p.isIcon && p.position == position;
+      case PackCategory.icon:
+        // Icon packs draw from the full pool: REGULARS of the rolled
+        // band plus the icons — pack 1 epic, pack 2 epic/legendary,
+        // pack 3 epic/legendary/premium (the odds table decides the
+        // band, the tiny icon chance decides the legend).
+        return true;
     }
   }
 
@@ -114,6 +152,15 @@ class PackDraw {
   /// — the same band the odds display and EV booked the pull under.
   final int tier;
 }
+
+/// The number of rarity bands the engine partitions pools into: the
+/// four OVR bands PLUS the icon band (index 4) — the icon tiers' tiny
+/// chance draws from it (owner request 2026-11-12).
+const int kPackBandCount = 5;
+
+/// The index of the icon band inside the engine's band lists (0-3 are
+/// the [PackRarity] indices; 4 holds the icon players).
+const int kIconBandIndex = 4;
 
 /// Cached per-pool draw structure for ONE rarity band: the value-sorted
 /// eligible players of that band with their stage-2 weights
@@ -211,9 +258,9 @@ class PackEngine {
 
   final Map<_CacheKey, List<_PoolDrawInfo?>> _poolCache = {};
 
-  /// Returns the four rarity-band draw infos for [scope] over [pool]
-  /// (index = [PackRarity] index; null = empty band), building and
-  /// caching them on first use.
+  /// Returns the rarity-band draw infos for [scope] over [pool]
+  /// (index = [PackRarity] index, plus index 4 = the icon band; null =
+  /// empty band), building and caching them on first use.
   List<_PoolDrawInfo?> _poolsFor(PackScope scope, List<BasePlayer> pool) {
     final exponent = oddsConfig.marketValueExponent;
     if (_poolCache.length >= _maxCachedEntries) _poolCache.clear();
@@ -224,7 +271,8 @@ class PackEngine {
   }
 
   /// Computes the uncached draw infos: filter by scope, partition by the
-  /// OVR bands, sort each band by value, then weight each player.
+  /// OVR bands (icons land in their OWN band 4 — never in the regular
+  /// bands), sort each band by value, then weight each player.
   List<_PoolDrawInfo?> _buildPools(
     PackScope scope,
     List<BasePlayer> pool,
@@ -232,16 +280,21 @@ class PackEngine {
   ) {
     final eligible = pool.where(scope.matches).toList()..sort(_byValue);
     final bands = <List<BasePlayer>>[
-      for (final _ in PackRarity.values) <BasePlayer>[],
+      for (var i = 0; i < kPackBandCount; i++) <BasePlayer>[],
     ];
     for (final p in eligible) {
-      bands[PackRarity.fromOverall(
-        p.baseStats.overall,
-        config: oddsConfig,
-      ).index].add(p);
+      if (p.isIcon) {
+        bands[kIconBandIndex].add(p);
+      } else {
+        bands[PackRarity.fromOverall(
+          p.baseStats.overall,
+          config: oddsConfig,
+        ).index].add(p);
+      }
     }
     return [
-      for (final band in bands) band.isEmpty ? null : _weightBand(band, exponent),
+      for (final band in bands)
+        band.isEmpty ? null : _weightBand(band, exponent),
     ];
   }
 
@@ -299,12 +352,22 @@ class PackEngine {
   /// -1 when every band is empty. Empty bands are REAL (RM has no
   /// legendary rows, GK no premium rows): the fallback keeps every roll
   /// answerable and books the draw under the rolled band's probability
-  /// share — the documented safe-empty answer, never a pool mix.
+  /// share — the documented safe-empty answer, never a pool mix. The
+  /// icon band (index 4) is deliberately NOT a fallback target of the
+  /// regular bands: icons never leak into regular rolls (owner request
+  /// 2026-11-12), and regular bands never bleed into an icon hit.
   int _fallbackIndex(List<_PoolDrawInfo?> pools, int index) {
     if (pools[index] != null) return index;
+    if (index == kIconBandIndex) {
+      // An icon hit with an empty icon band has no fallback: open()
+      // re-rolls as a regular draw instead of arriving here.
+      return -1;
+    }
     for (final delta in const [1, -1, 2, -2, 3, -3]) {
       final i = index + delta;
-      if (i >= 0 && i < pools.length && pools[i] != null) return i;
+      if (i >= 0 && i < PackRarity.values.length && pools[i] != null) {
+        return i;
+      }
     }
     return -1;
   }
@@ -348,11 +411,26 @@ class PackEngine {
   List<PackDraw> open(PackScope scope, List<BasePlayer> pool) {
     final pools = _poolsFor(scope, pool);
     if (pools.every((b) => b == null)) return const [];
-    final rarityIndex = _rollRarity(oddsConfig.oddsFor(scope.rollTier(this)));
+    final tier = scope.rollTier(this);
+    if (tier.isIconTier) {
+      final iconChance = oddsConfig.iconChanceOf(tier);
+      if (iconChance > 0 &&
+          pools[kIconBandIndex] != null &&
+          random.nextDouble() < iconChance) {
+        final icon = _drawFromPool(pools[kIconBandIndex]!);
+        if (icon != null) {
+          return [PackDraw(player: icon, tier: kIconBandIndex)];
+        }
+      }
+    }
+    final rarityIndex = _rollRarity(oddsConfig.oddsFor(tier));
     final drawIndex = _fallbackIndex(pools, rarityIndex);
     if (drawIndex < 0) return const [];
     final player = _drawFromPool(pools[drawIndex]!);
     if (player == null) return const [];
+    // Icon-tier misses roll inside the (1 − iconChance) remainder: the
+    // stage-0 roll consumed its share, the regular table is uniform
+    // over its own 1, so the per-band pick needs no rescaling.
     return [PackDraw(player: player, tier: rarityIndex)];
   }
 
@@ -376,9 +454,12 @@ class PackEngine {
   /// the rolled band's share — exactly what [open] draws.
   Map<int, Map<int, double>> oddsFor(PackScope scope, List<BasePlayer> pool) {
     final pools = _poolsFor(scope, pool);
-    final odds = oddsConfig.oddsFor(scope.rollTier(this));
+    final tier = scope.rollTier(this);
+    final odds = oddsConfig.oddsFor(tier);
     final total = odds.rare + odds.epic + odds.legendary + odds.premium;
     final shares = [odds.rare, odds.epic, odds.legendary, odds.premium];
+    final iconChance = tier.isIconTier ? oddsConfig.iconChanceOf(tier) : 0.0;
+    final regularShare = 1.0 - iconChance;
     final result = <int, Map<int, double>>{};
     for (var r = 0; r < PackRarity.values.length; r++) {
       final poolIndex = _fallbackIndex(pools, r);
@@ -388,13 +469,24 @@ class PackEngine {
       }
       final info = pools[poolIndex]!;
       // Per-player probability = P(rarity roll) × P(player | rarity).
-      final share = shares[r] / total;
+      final share = shares[r] / total * regularShare;
       final probs = <int, double>{};
       for (var i = 0; i < info.players.length; i++) {
         probs[info.players[i].playerId] =
             info.total > 0 ? share * info.weights[i] / info.total : 0;
       }
       result[r] = probs;
+    }
+    if (iconChance > 0) {
+      final icons = pools[kIconBandIndex];
+      final probs = <int, double>{};
+      if (icons != null && icons.total > 0) {
+        for (var i = 0; i < icons.players.length; i++) {
+          probs[icons.players[i].playerId] =
+              iconChance * icons.weights[i] / icons.total;
+        }
+      }
+      result[kIconBandIndex] = probs;
     }
     return result;
   }
@@ -407,12 +499,15 @@ class PackEngine {
   /// same pool, and a table retune re-prices the shelf automatically.
   int expectedPackValue(PackScope scope, List<BasePlayer> pool) {
     final pools = _poolsFor(scope, pool);
-    final odds = oddsConfig.oddsFor(scope.rollTier(this));
+    final tier = scope.rollTier(this);
+    final odds = oddsConfig.oddsFor(tier);
     final total = odds.rare + odds.epic + odds.legendary + odds.premium;
     final shares = [odds.rare, odds.epic, odds.legendary, odds.premium];
+    final iconChance = tier.isIconTier ? oddsConfig.iconChanceOf(tier) : 0.0;
+    final regularShare = 1.0 - iconChance;
     var value = 0.0;
     for (var r = 0; r < PackRarity.values.length; r++) {
-      final share = total > 0 ? shares[r] / total : 0.0;
+      final share = total > 0 ? shares[r] / total * regularShare : 0.0;
       if (share == 0) continue;
       final poolIndex = _fallbackIndex(pools, r);
       if (poolIndex < 0) continue;
@@ -435,6 +530,24 @@ class PackEngine {
       }
       value += share * bandEv;
     }
+    if (iconChance > 0) {
+      final icons = pools[kIconBandIndex];
+      if (icons != null && icons.players.isNotEmpty) {
+        var iconEv = 0.0;
+        if (icons.players.length == 1) {
+          iconEv = economy
+              .economicValueOf(icons.players.single.marketValueEur)
+              .toDouble();
+        } else {
+          for (var i = 0; i < icons.players.length; i++) {
+            iconEv +=
+                economy.economicValueOf(icons.players[i].marketValueEur) *
+                    (icons.weights[i] / icons.total);
+          }
+        }
+        value += iconChance * iconEv;
+      }
+    }
     return value.round();
   }
 
@@ -450,7 +563,8 @@ class PackEngine {
   /// and the compact readout maps to it 1:1 (26k). Rounding goes DOWN
   /// so the charged price can never exceed the margin-implied one.
   int packPriceFor(PackScope scope, List<BasePlayer> pool) {
-    final margin = scope.rollTier(this) == PackTier.legendary
+    final tier = scope.rollTier(this);
+    final margin = tier == PackTier.legendary || tier.isIconTier
         ? economy.config.legendaryPackMarginMultiplier
         : economy.config.packMarginMultiplier;
     final raw = expectedPackValue(scope, pool) * margin;

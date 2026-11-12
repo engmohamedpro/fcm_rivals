@@ -407,8 +407,10 @@ class SeasonStore {
   /// is loaded yet — generation then falls back to synthetic players.
   Future<List<AiPoolPlayer>> _realPlayerPool() async {
     final rows = await db.select(db.players).get();
+    // Icons (owner request 2026-11-12) never join AI squads: they are
+    // the store's icon-pack exclusivity, user-side only.
     return [
-      for (final r in rows)
+      for (final r in rows.where((row) => !row.isIcon))
         AiPoolPlayer(
           playerId: r.playerId,
           name: r.name,

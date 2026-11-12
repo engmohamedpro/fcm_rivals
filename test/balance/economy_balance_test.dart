@@ -16,7 +16,6 @@
 /// LM/RM shelve no Legendary pack — their pools hold no 82+ players).
 library;
 
-import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,8 +27,8 @@ import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/facilities/facilities.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
-import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/season/season_engine.dart';
+import '../tm_bundle_io.dart' show loadTmDataset;
 
 BasePlayer _fakePlayer(int marketValue) => BasePlayer(
   playerId: 1,
@@ -118,11 +117,7 @@ void main() {
       final db = AppDatabase(NativeDatabase.memory());
       try {
         final store = CollectionStore(db: db);
-        await store.applyDatasetUpdate(
-          PlayerDataset.fromJson(
-            File('assets/data/players_v1.json').readAsStringSync(),
-          ),
-        );
+        await store.applyDatasetUpdate(loadTmDataset());
         offers = await store.getStoreOffers();
       } finally {
         await db.close();
@@ -139,21 +134,43 @@ void main() {
       }
       expect(byTier[PackTier.rare], hasLength(12));
       expect(byTier[PackTier.epic], hasLength(12));
-      // T-0047 regrade: the 80+ threshold gave LM and RM legendary pools
-      // (2 and 1 players), so all 12 positions now shelve legendary.
-      expect(byTier[PackTier.legendary], hasLength(12));
+      // The tm bundle's legendary shelf (80+ rows): 11 of 12 positions.
+      // RM has ZERO 80+ rows (457 rows, max €22.2M — the modern game
+      // barely fields classic right midfielders), so the catalog drops
+      // the RM legendary offer instead of shelving an empty promise;
+      // the T-0047 note (LM/RM tiny pools) no longer applies to the
+      // 39,090-row bundle.
+      expect(byTier[PackTier.legendary], hasLength(11));
+      // The icon section shelves above the ST packs (owner request
+      // 2026-11-12): exactly three icon packs, every one priced.
+      expect(byTier[PackTier.iconEpic], hasLength(1));
+      expect(byTier[PackTier.iconLegendary], hasLength(1));
+      expect(byTier[PackTier.iconSupreme], hasLength(1));
       // Absolute tier bands: prices re-derived from the new E[MV]s —
       // T-0047 moved the legendary pack to gold-only draws, lifting the
       // big-pool prices (~29-38k) while the tiny LM/RM gold pools price
       // at ~15k.
+      // Measured on the tm bundle (39,090 rows): rare 3-5k, epic
+      // 8-10k, legendary 23-26k — the deeper pool narrows the
+      // position-scope price spread the v3 cut showed (T-0047's tiny
+      // LM/RM gold pools grew with the 39k-row pool).
       for (final p in byTier[PackTier.rare]!) {
-        expect(p, inInclusiveRange(3_000, 12_000));
+        expect(p, inInclusiveRange(3_000, 6_000));
       }
       for (final p in byTier[PackTier.epic]!) {
-        expect(p, inInclusiveRange(8_000, 25_000));
+        expect(p, inInclusiveRange(8_000, 12_000));
       }
       for (final p in byTier[PackTier.legendary]!) {
-        expect(p, inInclusiveRange(12_000, 45_000));
+        expect(p, inInclusiveRange(20_000, 30_000));
+      }
+      for (final p in byTier[PackTier.iconEpic]!) {
+        expect(p, inInclusiveRange(10_000, 13_000));
+      }
+      for (final p in byTier[PackTier.iconLegendary]!) {
+        expect(p, inInclusiveRange(20_000, 30_000));
+      }
+      for (final p in byTier[PackTier.iconSupreme]!) {
+        expect(p, inInclusiveRange(20_000, 30_000));
       }
       // The tier ladder itself is steep within one scope: legendary
       // costs ~8-11x rare (T-0047's gold-only legendary pushed the ST
@@ -167,6 +184,14 @@ void main() {
         st[PackTier.legendary]! / st[PackTier.rare]!,
         inInclusiveRange(2, 10),
       );
+      // The icon tiers shelf above ST's own ladder (owner request):
+      // iconEpic 11k sits between epic 10k and legendary 24k; the two
+      // elite icon tiers price with the legendary margin.
+      final iconPrices = {
+        for (final o in offers)
+          if (o.category == PackCategory.icon) o.tier: o.price,
+      };
+      expect(iconPrices[PackTier.iconLegendary]!, greaterThan(iconPrices[PackTier.iconEpic]!));
     });
 
     test('rare packs are pocket change; legendary is ~2-8 matches', () {
@@ -206,18 +231,13 @@ void main() {
       }
       for (final prices in byTier.values) {
         prices.sort();
+        // The tm bundle (39,090 rows) narrowed every position's gold
+        // pool spread: legendary spans 23k-26k (~1.13x) and rare
+        // 3k-5k (~1.67x) — the v3 cut's 2.5x legendary gap is gone.
+        // Single-price icon tiers trivially pass (1.0).
         expect(
           prices.last / prices.first,
-          // T-0047: legendary prices now span tiny gold pools (LM ~15k)
-          // to big ones (CB/ST ~38k) — a wider but still bounded 2.5x;
-          // rare/epic keep their tight ~0.5-1.6 spread.
-          inInclusiveRange(
-            0.5,
-            prices.first == byTier[PackTier.legendary]!.first &&
-                    prices.last == byTier[PackTier.legendary]!.last
-                ? 2.7
-                : 1.6,
-          ),
+          inInclusiveRange(0.5, 1.75),
           reason: 'same-tier scope spread must stay bounded',
         );
       }

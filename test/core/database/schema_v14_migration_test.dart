@@ -49,7 +49,7 @@ void main() {
     // The daily rewards streak bumped the schema to 15 and dataset v3's
     // presentation columns to 16 — this fixture's v14 columns are
     // untouched by both.
-    expect(database.schemaVersion, 16);
+    expect(database.schemaVersion, 17);
 
     // The claims table exists and enforces its UNIQUE key.
     await database.into(database.achievementClaims).insert(
@@ -141,7 +141,7 @@ void main() {
     final database = AppDatabase(NativeDatabase(file));
     // Migrates all the way to the current schema (16) — the v14
     // columns this fixture exercises survive every later step.
-    expect(database.schemaVersion, 16);
+    expect(database.schemaVersion, 17);
 
     // The pre-existing settings row kept its values and gained null
     // title (the new column's additive default).

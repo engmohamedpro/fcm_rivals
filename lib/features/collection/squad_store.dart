@@ -226,6 +226,7 @@ class SquadStore {
           leagueName: base.leagueName,
           leagueLogoUrl: base.leagueLogoUrl,
           imageUrl: base.imageUrl,
+          isIcon: base.isIcon,
           baseStats: BaseStats(
             overall: base.overall,
             attack: base.attack,

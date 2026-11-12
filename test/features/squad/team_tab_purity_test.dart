@@ -60,10 +60,27 @@ void main() {
   /// Same shape as injured_inert_test.dart's seedSquad: a club with
   /// three owned players, the first one INJURED (slot 0).
   Future<void> seedSquad({required int injuredMatchesOut}) async {
-    final jsonText = await rootBundle.loadString(
-      'assets/data/players_v1.json',
+    // The shipped tm bundle (owner request 2026-11-12): loaded from
+    // disk inside runAsync — rootBundle has no asset to serve in the
+    // plain test environment.
+    final playersText = await rootBundle.loadString(
+      'assets/data/tm-players.json',
     );
-    await store.importBundledDataset(PlayerDataset.fromJson(jsonText));
+    final iconsText = await rootBundle.loadString(
+      'assets/data/tm-icons.json',
+    );
+    final clubsText = await rootBundle.loadString('assets/data/tm-clubs.json');
+    final leaguesText = await rootBundle.loadString(
+      'assets/data/tm-leagues.json',
+    );
+    await store.importBundledDataset(
+      PlayerDataset.fromTmBundle(
+        playersJson: playersText,
+        iconsJson: iconsText,
+        clubsJson: clubsText,
+        leaguesJson: leaguesText,
+      ),
+    );
     final clubId = await store.createClub(
       clubName: 'Pyramid United',
       managerName: 'Mohamed',

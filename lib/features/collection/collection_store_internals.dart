@@ -9,7 +9,8 @@ part of 'collection_store.dart';
 extension _RowMapping on CollectionStore {
   /// Adapts a persisted player row to the domain model. The presentation
   /// facts (portrait, club/league) ride along so owned cards keep them
-  /// after the registry warm-up and across restarts (schema v16).
+  /// after the registry warm-up and across restarts (schema v16), and
+  /// the icon flag since the tm-bundle dataset (schema v17).
   BasePlayer _toBasePlayer(Player row) => BasePlayer(
     playerId: row.playerId,
     name: row.name,
@@ -22,6 +23,7 @@ extension _RowMapping on CollectionStore {
     leagueName: row.leagueName,
     leagueLogoUrl: row.leagueLogoUrl,
     imageUrl: row.imageUrl,
+    isIcon: row.isIcon,
     baseStats: BaseStats(
       overall: row.overall,
       attack: row.attack,

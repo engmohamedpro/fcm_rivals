@@ -179,6 +179,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
 
   BasePlayer get _player => widget.players[_index];
 
+  /// Icon pull (owner request 2026-11-12): a legend from tm-icons.json.
+  bool get _isIcon => _player.isIcon;
+
   /// The presentation-level class axis (T-0049): a 90+ pull is premium.
   CardClass get _cardClass =>
       CardClass.fromOverall(_player.baseStats.overall);
@@ -186,13 +189,22 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
   bool get _isPremium => _cardClass == CardClass.premium;
 
   /// The reveal-show intensity (T-0050): premium escalates one notch
-  /// above the legendary 2.0 through the same mechanisms.
-  double get _intensity =>
-      _isPremium ? kPremiumRevealIntensity : _rarity.intensity;
+  /// above the legendary 2.0 through the same mechanisms. An icon pull
+  /// runs the premium-adjacent 2.6: the legend reveal is the biggest
+  /// regular show (icons are 90+ cards underneath).
+  double get _intensity => (_isPremium || _isIcon)
+      ? kPremiumRevealIntensity
+      : _rarity.intensity;
 
   /// The effective accent: the premium red for 90+ pulls, the rarity's
   /// jewel otherwise — one colour source for charge, rays and sparks.
-  Color get _accent => _isPremium ? _cardClass.accent : _rarity.accent;
+  /// An icon pull carries the icon family's holo silver-gold accent.
+  Color get _accent =>
+      _isIcon
+          ? const Color(0xFFDDE4EF)
+          : _isPremium
+          ? _cardClass.accent
+          : _rarity.accent;
 
   /// The timeline the current player runs on: premium (90+) gets the red
   /// escalation, legendary (80-89) the golden one, rare/epic the

@@ -100,6 +100,7 @@ class MatchPlayer {
     this.clubId = 0,
     this.clubName = '',
     this.stamina = 100,
+    this.isIcon = false,
   });
 
   final int playerId;
@@ -128,6 +129,11 @@ class MatchPlayer {
   final int clubId;
   final String clubName;
 
+  /// Icon players (owner request 2026-11-12): chemistry wildcards in
+  /// BOTH dimensions — an icon groups with every on-pitch player's
+  /// nationality AND club. False for fixtures and synthetic squads.
+  final bool isIcon;
+
   /// Current stamina 0..100 (GDD 11.1). Mutated by the engine.
   double stamina;
 
@@ -150,6 +156,7 @@ class MatchPlayer {
           clubId: clubId,
           clubName: clubName,
           stamina: stamina,
+          isIcon: isIcon,
         )
         ..minutesPlayed = minutesPlayed
         ..yellowCards = yellowCards

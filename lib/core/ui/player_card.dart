@@ -1244,6 +1244,10 @@ class FcmPlayerCard extends StatelessWidget {
   }
 
   PlayerCardRarity _mapRarity(domain.CardRarity rarity, int overall) {
+    // Icons (owner request 2026-11-12) render the holo icon treatment
+    // FIRST: a legend card reads white-silver-gold everywhere, whatever
+    // band its OVR would otherwise paint.
+    if (player.isIcon) return PlayerCardRarity.icon;
     if (overall >= 90) return PlayerCardRarity.premium;
     if (overall >= 80 || rarity == domain.CardRarity.legendary) return PlayerCardRarity.legendary;
     if (overall >= 70 || rarity == domain.CardRarity.epic) return PlayerCardRarity.epic;

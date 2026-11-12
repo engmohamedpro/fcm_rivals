@@ -80,6 +80,13 @@ void main() {
           'value': true,
         });
       }
+      // The continuous-match audio redesign (d11d9ca) polls the
+      // position around every action; the plugin casts the platform
+      // answer to int (millis), so a null return throws
+      // MissingPluginException through the messenger. Answer zero.
+      if (call.method == 'getCurrentPosition') {
+        return 0;
+      }
       return null;
     });
 

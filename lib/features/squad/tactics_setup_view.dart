@@ -160,6 +160,9 @@ class TacticsSetupView extends StatelessWidget {
             clubChemistryKeyOf(xi[slot]!.base.clubId, xi[slot]!.base.clubName)
           else '',
       ],
+      icons: [
+        for (var slot = 0; slot < 11; slot++) xi[slot]?.base.isIcon ?? false,
+      ],
     );
 
     return _PickScope(

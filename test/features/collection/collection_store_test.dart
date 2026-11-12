@@ -56,6 +56,11 @@ final List<List<dynamic>> seedRows = [
   // above the 82 legendary line. Every other position tops out in the
   // epic band, so their Legendary packs stay off the shelf.
   [999, 'Legend Striker', 'ST', 'Egypt', 40_000_000],
+  // One ICON row (owner request 2026-11-12): no icon packs shelf with
+  // a single-icon pool? They DO — the icon section shelves whenever
+  // the registry holds any icon, so the seed carries one legend and
+  // the icon offer count locks below.
+  [1000, 'The Icon', 'ST', 'Brazil', 80_000_000, 0, '', '', '', '', '', true],
 ];
 
 Future<CollectionStore> seededStore(AppDatabase db) async {
@@ -591,15 +596,28 @@ void main() {
     test('position sections only, tiers shelved when the pool has the '
         'rarity — 24 offers', () async {
       final offers = await store.getStoreOffers();
-      // The global pack is gone: every offer is position-scoped.
+      // The global pack is gone: every POSITION offer is scoped; the
+      // icon offers (owner request 2026-11-12) carry no scope value.
       expect(offers.any((o) => o.category == PackCategory.global), isFalse);
-      expect(offers.every((o) => o.scopeValue != null), isTrue);
+      expect(
+        offers
+            .where((o) => o.category == PackCategory.position)
+            .every((o) => o.scopeValue != null),
+        isTrue,
+      );
       // Every position holds rare and epic players, so 12 sections × 2
       // tiers; only ST (with its €40M legend) also shelves Legendary.
-      expect(offers.length, 12 * 2 + 1);
+      // The seeded icon (owner request 2026-11-12) shelves the three
+      // icon packs above them: 12 × 2 + 1 + 3 = 28 offers.
+      expect(offers.length, 12 * 2 + 1 + 3);
       expect(
         offers.where((o) => o.scopeValue == 'ST').map((o) => o.tier).toSet(),
-        PackTier.values.toSet(),
+        {PackTier.rare, PackTier.epic, PackTier.legendary},
+      );
+      // The icon section: exactly the three icon tiers, position-free.
+      expect(
+        offers.where((o) => o.category == PackCategory.icon).map((o) => o.tier).toSet(),
+        {PackTier.iconEpic, PackTier.iconLegendary, PackTier.iconSupreme},
       );
       // A position without legendary players shelves no Legendary pack.
       expect(

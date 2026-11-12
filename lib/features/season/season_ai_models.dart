@@ -130,6 +130,7 @@ class AiSquadPlayer {
     this.nationality = '',
     this.clubId = 0,
     this.clubName = '',
+    this.isIcon = false,
   });
 
   final int? realPlayerId;
@@ -149,6 +150,11 @@ class AiSquadPlayer {
   /// 2026-11-11).
   final int clubId;
   final String clubName;
+
+  /// Icon players (owner request 2026-11-12): chemistry wildcards in
+  /// both dimensions — see `chemistry.dart`. AI clubs never SIGN icons
+  /// (the pool excludes them), but the flag rides for completeness.
+  final bool isIcon;
 
   /// Current condition 0..100.
   final double stamina;

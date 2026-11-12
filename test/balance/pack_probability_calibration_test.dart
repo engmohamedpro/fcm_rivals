@@ -18,7 +18,6 @@
 library;
 // ignore_for_file: avoid_print — band-locked calibration numbers must print.
 
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -28,8 +27,9 @@ import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_rarity.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import '../tm_bundle_io.dart'
+    show loadTmDataset;
 
-const _datasetPath = 'assets/data/players_v1.json';
 
 /// Par team income per match in coins — the affordability denominator
 /// (probe-measured long-run average of the shipped reward model:
@@ -38,7 +38,7 @@ const int parIncomePerMatch = 1858;
 
 List<BasePlayer> loadRealPool() {
   final db = PlayerDatabase();
-  db.importDatasetFromJson(File(_datasetPath).readAsStringSync());
+  db.importDataset(loadTmDataset());
   return db.all.toList(growable: false);
 }
 

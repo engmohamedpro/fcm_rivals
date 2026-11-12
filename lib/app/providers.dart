@@ -81,16 +81,31 @@ extension _DbLifetimeSink on AppDatabase {
 /// Imports the bundled dataset on first launch; skips when the persisted
 /// version is already current.
 ///
-/// The 1 MB, 20,876-row JSON is decoded on a background isolate
-/// (Isolate.run) so the first-launch frame budget is not spent on
-/// jsonDecode — the UI thread only awaits the parsed dataset and hands
-/// it to the store, which batches the inserts (see
+/// The shipped bundle is the four tm-files (owner request 2026-11-12:
+/// `tm-players.json`, `tm-icons.json`, `tm-clubs.json`,
+/// `tm-leagues.json` — as sent, never rewritten; see
+/// `PlayerDataset.fromTmBundle`): ~12 MB of JSON decoded on a background
+/// isolate (Isolate.run) so the first-launch frame budget is not spent
+/// on jsonDecode — the UI thread only awaits the parsed dataset and
+/// hands it to the store, which batches the inserts (see
 /// CollectionStore.applyDatasetUpdate).
 final datasetBootstrapProvider = FutureProvider<void>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   final store = CollectionStore(db: db);
-  final jsonText = await rootBundle.loadString('assets/data/players_v1.json');
-  final dataset = await Isolate.run(() => PlayerDataset.fromJson(jsonText));
+  final playersText = await rootBundle
+      .loadString('assets/data/tm-players.json');
+  final iconsText = await rootBundle.loadString('assets/data/tm-icons.json');
+  final clubsText = await rootBundle.loadString('assets/data/tm-clubs.json');
+  final leaguesText = await rootBundle
+      .loadString('assets/data/tm-leagues.json');
+  final dataset = await Isolate.run(
+    () => PlayerDataset.fromTmBundle(
+      playersJson: playersText,
+      iconsJson: iconsText,
+      clubsJson: clubsText,
+      leaguesJson: leaguesText,
+    ),
+  );
   await store.importBundledDataset(dataset);
 });
 

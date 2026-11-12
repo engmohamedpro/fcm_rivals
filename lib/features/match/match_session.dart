@@ -358,6 +358,7 @@ class MatchSession {
     clubId: card.base.clubId,
     clubName: card.base.clubName,
     stamina: card.staminaPercent.toDouble(),
+    isIcon: card.base.isIcon,
   );
 
   /// The next best available player for [slotIndex] when a saved squad

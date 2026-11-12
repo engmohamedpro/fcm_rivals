@@ -307,6 +307,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
             flag: flagEmojiFor(base.nationality),
             imageUrl: base.imageUrl,
             clubCrestUrl: base.clubCrestUrl,
+            isIcon: base.isIcon,
           ),
         );
       });

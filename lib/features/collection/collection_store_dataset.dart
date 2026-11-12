@@ -34,6 +34,7 @@ extension DatasetImportOps on CollectionStore {
               leagueName: r.leagueName,
               leagueLogoUrl: r.leagueLogoUrl,
               imageUrl: r.imageUrl,
+              isIcon: r.isIcon,
             ),
         ],
       );
@@ -96,6 +97,7 @@ extension DatasetImportOps on CollectionStore {
                 leagueName: Value(player.leagueName),
                 leagueLogoUrl: Value(player.leagueLogoUrl),
                 imageUrl: Value(player.imageUrl),
+                isIcon: Value(player.isIcon),
               ),
           ],
           mode: InsertMode.insertOrReplace,

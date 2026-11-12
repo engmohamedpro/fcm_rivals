@@ -213,6 +213,7 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
               clubCrestUrl: p.clubCrestUrl,
               name: p.name,
               rarity: rarity,
+              isIcon: p.isIcon,
               width: 92,
             ),
           ),

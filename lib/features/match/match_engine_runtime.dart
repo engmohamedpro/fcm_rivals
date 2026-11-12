@@ -228,6 +228,7 @@ class _TeamRuntime {
               ? ''
               : clubChemistryKeyOf(player.clubId, player.clubName),
       ],
+      icons: [for (final player in onPitch) player?.isIcon ?? false],
     );
     final chemistryFactor = 1 + chemistryPercent / 100;
     final homeFactor = isHome ? homeAdvantage : 1.0;

@@ -47,6 +47,7 @@ class GoalScorerCard {
     this.flag = '⚽',
     this.imageUrl = '',
     this.clubCrestUrl = '',
+    this.isIcon = false,
   });
 
   /// Overall rating shown top-left on the card (also picks the rarity).
@@ -63,10 +64,16 @@ class GoalScorerCard {
 
   /// Real-world club logo link ('' → the FCM logo).
   final String clubCrestUrl;
+
+  /// Icon players (owner request 2026-11-12): the scorer card paints the
+  /// holo icon treatment regardless of the rating band.
+  final bool isIcon;
 }
 
-/// Same thresholds as the mini cards on the pitch and bench.
-PlayerCardRarity _rarityOf(int overall) {
+/// Same thresholds as the mini cards on the pitch and bench. An icon
+/// scorer (owner request 2026-11-12) reads holo white-silver-gold.
+PlayerCardRarity _rarityOf(int overall, {bool isIcon = false}) {
+  if (isIcon) return PlayerCardRarity.icon;
   if (overall >= 90) return PlayerCardRarity.premium;
   if (overall >= 80) return PlayerCardRarity.legendary;
   if (overall >= 70) return PlayerCardRarity.epic;
@@ -269,7 +276,7 @@ class _GoalBannerState extends State<GoalBanner>
   Widget _scorerCard(GoalScorerCard card, Color color, double intensity) {
     final cardW = widget.isUserGoal ? 120.0 : 100.0;
     final cardH = cardW / kPlayerCardAspect;
-    final rarity = _rarityOf(card.rating);
+    final rarity = _rarityOf(card.rating, isIcon: card.isIcon);
     final flip = _flip.value;
     // 1 → 0: back-facing at the start (rotateY pi), front at the end.
     final angle = math.pi * (1 - flip.clamp(0.0, 1.2));

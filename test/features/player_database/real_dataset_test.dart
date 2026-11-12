@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -8,12 +6,13 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
+import '../../tm_bundle_io.dart'
+    show loadTmDataset;
 
 void main() {
-  // The dataset asset is checked into the repo; load it from disk directly so
-  // this test exercises the exact shipped file.
-  final file = File('assets/data/players_v1.json');
-  final jsonText = file.readAsStringSync();
+  // The shipped tm bundle (owner request 2026-11-12) through the shared
+  // loader — the exact files the app ships.
+  final dataset = loadTmDataset();
 
   late PlayerDatabase db;
 
@@ -22,23 +21,22 @@ void main() {
   });
 
   test('FR-002: real dataset validates and imports cleanly', () {
-    final result = db.importDatasetFromJson(jsonText);
-    expect(db.count, greaterThan(20_000));
+    final result = db.importDataset(dataset);
+    expect(db.count, 39_090); // 39,017 regulars + 73 icons
     expect(result.added.length, db.count);
     expect(result.removed, isEmpty);
   });
 
   test('dataset metadata is present', () {
-    final map = json.decode(jsonText) as Map<String, dynamic>;
-    expect(map['format'], 'fcm-rivals-players');
-    expect(map['version'], isPositive);
-    expect(map['asOf'], isNotEmpty);
-    expect(map['digest'], isNotEmpty);
-    // The trimmed file carries no derived 'count'/'source' keys: the
-    // loader never reads them and the row count is the players' length.
-    expect(map.containsKey('count'), isFalse);
-    expect(map.containsKey('source'), isFalse);
-    expect((map['players'] as List).length, db.count);
+    // The tm bundle (owner request 2026-11-12): the parser stamps the
+    // version/asOf/digest the loader consumes; the row count is the
+    // parsed rows' length.
+    expect(dataset.version, isPositive);
+    expect(dataset.asOf, isNotEmpty);
+    expect(dataset.digest, isNotEmpty);
+    expect(dataset.rows.length, db.count);
+    expect(dataset.rows.length, 39_090);
+    expect(dataset.rows.where((r) => r.isIcon).length, 73);
   });
 
   test('known real players resolve by stable Transfermarkt id', () {
@@ -140,7 +138,7 @@ void main() {
 
   test('GDD 4.6/4.7: re-import identical dataset changes nothing', () {
     final before = {for (final p in db.all) p.playerId: p.baseStats};
-    final result = db.importDatasetFromJson(jsonText);
+    final result = db.importDataset(dataset);
     expect(result.added, isEmpty);
     expect(result.removed, isEmpty);
     expect(result.regenerated, isEmpty);
@@ -156,16 +154,33 @@ void main() {
     const ownedUpgradeLevel = 3;
 
     // Dataset update with a new market value for Haaland (id unchanged).
-    final map = json.decode(jsonText) as Map<String, dynamic>;
-    final rows = (map['players'] as List)
-        .map((r) => List<dynamic>.from(r as List))
-        .toList();
-    final haalandRow = rows.firstWhere((r) => r[0] == 418560);
-    final oldMv = haalandRow[4] as int;
-    haalandRow[4] = oldMv + 20_000_000; // value change => regenerate stats
-    map['players'] = rows;
+    final rows = [
+      for (final r in dataset.rows)
+        r.playerId == 418560
+            ? PlayerDatasetRow(
+                playerId: r.playerId,
+                name: r.name,
+                position: r.position,
+                nationality: r.nationality,
+                marketValueEur: r.marketValueEur + 20_000_000,
+                clubId: r.clubId,
+                clubName: r.clubName,
+                clubCrestUrl: r.clubCrestUrl,
+                leagueName: r.leagueName,
+                leagueLogoUrl: r.leagueLogoUrl,
+                imageUrl: r.imageUrl,
+                isIcon: r.isIcon,
+              )
+            : r,
+    ];
 
-    final result = db.importDataset(PlayerDataset.fromJson(json.encode(map)));
+    final result = db.importDataset(
+      PlayerDataset(
+        version: dataset.version + 1,
+        asOf: dataset.asOf,
+        rows: rows,
+      ),
+    );
 
     final haalandAfter = db[418560]!;
     expect(result.regenerated.any((p) => p.playerId == 418560), isTrue);

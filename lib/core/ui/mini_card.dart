@@ -31,6 +31,7 @@ class FcmMiniCard extends StatelessWidget {
     this.injuryMatchesOut,
     this.upgradable = false,
     this.upgradeLevel = 0,
+    this.isIcon = false,
   });
 
   final int overall;
@@ -38,6 +39,10 @@ class FcmMiniCard extends StatelessWidget {
   final String name;
   final CardRarity rarity;
   final double width;
+
+  /// Icon players (owner request 2026-11-12): the mini card paints the
+  /// holo icon treatment regardless of the OVR band.
+  final bool isIcon;
 
   /// Country flag emoji (T-0066).
   final String? flag;
@@ -59,13 +64,15 @@ class FcmMiniCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final h = width / kPlayerCardAspect;
-    final playerCardRarity = overall >= 90
-        ? PlayerCardRarity.premium
-        : (overall >= 80 || rarity == CardRarity.legendary
-            ? PlayerCardRarity.legendary
-            : (overall >= 70 || rarity == CardRarity.epic
-                ? PlayerCardRarity.epic
-                : PlayerCardRarity.rare));
+    final playerCardRarity = isIcon
+        ? PlayerCardRarity.icon
+        : (overall >= 90
+            ? PlayerCardRarity.premium
+            : (overall >= 80 || rarity == CardRarity.legendary
+                ? PlayerCardRarity.legendary
+                : (overall >= 70 || rarity == CardRarity.epic
+                    ? PlayerCardRarity.epic
+                    : PlayerCardRarity.rare)));
 
     final effectiveUpgrade = upgradeLevel > 0 ? upgradeLevel : (upgradable ? 1 : 0);
 

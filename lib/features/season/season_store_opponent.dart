@@ -35,6 +35,10 @@ extension SeasonOpponentOps on SeasonStore {
         if (p.clubId != 0 || p.clubName.isNotEmpty)
           p.playerId: (p.clubId, p.clubName),
     };
+    final iconIds = <int>{
+      for (final p in await db.select(db.players).get())
+        if (p.isIcon) p.playerId,
+    };
     if (rows.isEmpty) {
       throw const SeasonException('AI club has no squad');
     }
@@ -73,6 +77,7 @@ extension SeasonOpponentOps on SeasonStore {
           clubName: r.realPlayerId == null
               ? ''
               : (clubs[r.realPlayerId!]?.$2 ?? ''),
+          isIcon: r.realPlayerId != null && iconIds.contains(r.realPlayerId!),
           stamina: r.staminaPercent.toDouble(),
         ),
     ];
@@ -92,6 +97,7 @@ extension SeasonOpponentOps on SeasonStore {
             nationality: p.nationality,
             clubId: p.clubId,
             clubName: p.clubName,
+            isIcon: p.isIcon,
             stamina: p.stamina,
           ),
       ],
@@ -108,6 +114,7 @@ extension SeasonOpponentOps on SeasonStore {
             nationality: p.nationality,
             clubId: p.clubId,
             clubName: p.clubName,
+            isIcon: p.isIcon,
             stamina: p.stamina,
           ),
       ],
