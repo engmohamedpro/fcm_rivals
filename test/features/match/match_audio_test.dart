@@ -110,6 +110,8 @@ void main() {
       final asset = <String, List<int>>{
         'assets/audio/live_match.mp3': List.filled(64, 0x01),
         'assets/audio/goal_cheers.mp3': List.filled(64, 0x02),
+        'assets/audio/start_whistle.mp3': List.filled(64, 0x03),
+        'assets/audio/end_whistle.mp3': List.filled(64, 0x04),
       }[key];
       if (asset == null) throw StateError('missing asset $key');
       return const StandardMessageCodec().encodeMessage(
@@ -308,7 +310,7 @@ void main() {
     );
 
     test(
-      'half time ends the ambience for the break, then it returns',
+      'half time plays end whistle and ambience continues playing',
       () async {
         final audio = MatchAudio();
         await audio.start();
@@ -317,135 +319,38 @@ void main() {
         calls.clear();
         playerCalls.clear();
 
-        // The half-time whistle: the bed goes silent for the break.
         await audio.halfTimeBreak();
 
         final stoppedIds = playerCalls
             .where((c) => c.method == 'stop')
             .map((c) => c.playerId)
             .toSet();
-        expect(stoppedIds, {
-          ambienceId,
-        }, reason: 'half time stops the bed, and nothing else');
+        expect(stoppedIds, isEmpty, reason: 'half time does not stop the ambience bed');
 
-        // The break ends: the second-half kick-off brings the bed back on
-        // the SAME player, from the top of its loop.
-        calls.clear();
-        playerCalls.clear();
         await audio.secondHalfKickOff();
-
-        expect(
-          calls,
-          containsAllInOrder([
-            matches(RegExp(r'setReleaseMode:.*loop')),
-            matches(RegExp(r'setVolume:.*0\.5')),
-            matches(RegExp(r'setSourceUrl:.*live_match\.mp3')),
-            matches(RegExp(r'resume:')),
-          ]),
-          reason: 'the second half loops the ambience again in full setup',
-        );
         await audio.dispose();
       },
     );
 
     test(
-      'a duplicated second-half event does not stack a second loop',
+      'pause and resume actions do not affect continuous ambience',
       () async {
         final audio = MatchAudio();
         await audio.start();
-        await audio.halfTimeBreak();
-        await audio.secondHalfKickOff();
-        calls.clear();
-
-        // A repeated kickoff event while already playing: ignored, the
-        // bed must not re-issue loop mode or resume.
-        await audio.secondHalfKickOff();
-
-        expect(
-          calls
-              .where(
-                (c) =>
-                    c.startsWith('setReleaseMode:') ||
-                    c.startsWith('setSourceUrl:') ||
-                    c.startsWith('resume:'),
-              )
-              .isEmpty,
-          isTrue,
-          reason: 'a repeated kick-off must not restart the loop',
-        );
-        await audio.dispose();
-      },
-    );
-
-    test(
-      'the pause button holds the bed mid-loop, resume releases it',
-      () async {
-        final audio = MatchAudio();
-        await audio.start();
-        final ambienceId = _idOfFirst('setSourceUrl', 'live_match');
         calls.clear();
         playerCalls.clear();
 
-        // The user holds the match: the bed holds with it — pause, not
-        // stop, so it picks up where it was held.
         await audio.pause();
-        expect(
-          playerCalls.where((c) => c.method == 'pause').map((c) => c.playerId),
-          contains(ambienceId),
-          reason: 'a held match holds the ambience mid-loop',
-        );
-        // Nothing was stopped or re-sourced while held.
-        expect(
-          playerCalls.where((c) => c.method == 'stop').isEmpty,
-          isTrue,
-          reason: 'a hold is not a stop',
-        );
-
-        // The user releases the match: the bed continues.
-        calls.clear();
-        playerCalls.clear();
         await audio.resume();
+
         expect(
-          playerCalls.where((c) => c.method == 'resume').map((c) => c.playerId),
-          contains(ambienceId),
-          reason: 'the released match releases the ambience',
-        );
-        // And it keeps looping over the release — no re-source, no new
-        // loop setup, no stop.
-        expect(
-          playerCalls
-              .where(
-                (c) =>
-                    c.method == 'setSourceUrl' ||
-                    c.method == 'setReleaseMode' ||
-                    c.method == 'stop',
-              )
-              .isEmpty,
-          isTrue,
-          reason: 'a resume continues the held loop where it stood',
+          playerCalls.where((c) => c.method == 'pause' || c.method == 'resume'),
+          isEmpty,
+          reason: 'ambience is not paused or resumed by user actions',
         );
         await audio.dispose();
       },
     );
-
-    test('pause during the break or after full time is ignored', () async {
-      final audio = MatchAudio();
-      await audio.start();
-      await audio.halfTimeBreak();
-      calls.clear();
-      playerCalls.clear();
-
-      // The user taps hold while the bed is already silent for the
-      // break: nothing sounds, nothing to hold — ignored.
-      await audio.pause();
-      await audio.resume();
-      expect(
-        playerCalls.where((c) => c.method == 'pause' || c.method == 'resume'),
-        isEmpty,
-        reason: 'the bed only follows the button while a half plays',
-      );
-      await audio.dispose();
-    });
 
     test('stop before kick-off still consumes player errors', () async {
       final audio = MatchAudio();

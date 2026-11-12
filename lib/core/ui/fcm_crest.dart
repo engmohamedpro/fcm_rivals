@@ -454,9 +454,8 @@ class _CrestPainter extends CustomPainter {
         ..color = _darken(secondary, 0.62).withValues(alpha: 0.9),
     );
 
-    // 5. The glyph — solid, haloed, cream or ink by the field's tone.
-    final lum = (primary.computeLuminance() + secondary.computeLuminance()) / 2;
-    final fill = lum > 0.55 ? const Color(0xFF1A1612) : const Color(0xFFF8F3E6);
+    // 5. The glyph — solid, haloed, in chosen icon colour.
+    final fill = spec.iconColor;
     final side = fieldRect.width * _glyphScale(spec.shape);
     final cell = Rect.fromCenter(
       center: Offset(

@@ -13,8 +13,6 @@
 /// on a tap) with the final value — persist there, not on every tick.
 library;
 
-import 'dart:ui' show FontFeature;
-
 import 'package:flutter/material.dart';
 
 import '../../core/ui/fcm_scale_slider.dart';

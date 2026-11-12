@@ -106,6 +106,25 @@ class _BadgeCabinet extends StatelessWidget {
     final l10n = l10nOf(context);
     final defs = AchievementCatalog.definitions;
 
+    final hasAnyClaimed = defs.any((def) {
+      return def.tiers(AchievementCatalog.economy).any(
+        (tier) => claimedKeys.contains('${def.id}:${tier.threshold}'),
+      );
+    });
+
+    if (!hasAnyClaimed) {
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        sliver: SliverToBoxAdapter(
+          child: const _EmptyShowcaseCard(
+            icon: Icons.military_tech_outlined,
+            title: 'Badge Cabinet Empty',
+            subtitle: 'Complete achievements and milestones to earn and display your metal badges here.',
+          ),
+        ),
+      );
+    }
+
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       sliver: SliverList.builder(
@@ -242,6 +261,19 @@ class _TitlesGallery extends ConsumerWidget {
       ...cabinet.achievementTitles.where((t) => t.owned),
       ...cabinet.divisionTitles.where((t) => t.owned),
     ];
+
+    if (ownedTitles.isEmpty) {
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        sliver: SliverToBoxAdapter(
+          child: const _EmptyShowcaseCard(
+            icon: Icons.workspace_premium_rounded,
+            title: 'No Titles Unlocked',
+            subtitle: 'Win league divisions or complete achievements to unlock prestige manager titles.',
+          ),
+        ),
+      );
+    }
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -547,3 +579,69 @@ String _plainKey(AppLocalizations l10n, String key) =>
       'achTitleMastermind2' => l10n.achTitleMastermind2,
       _ => key,
     };
+
+/// A premium empty-state card when the cabinet or titles gallery has nothing yet.
+class _EmptyShowcaseCard extends StatelessWidget {
+  const _EmptyShowcaseCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPanel(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: FcmColors.gold.withValues(alpha: 0.1),
+                border: Border.all(
+                  color: FcmColors.gold.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Icon(
+                icon,
+                color: FcmColors.goldSoft,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: FcmColors.textDim,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

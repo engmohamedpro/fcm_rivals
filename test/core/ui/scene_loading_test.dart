@@ -158,21 +158,5 @@ void main() {
     // No infinite loop: pumpAndSettle would time out if one were running.
     await tester.pumpAndSettle();
     expect(find.byType(Image), findsOneWidget);
-    // Not dismissable without a callback: no close button.
-    expect(find.byIcon(Icons.close_rounded), findsNothing);
-  });
-
-  testWidgets('the close button calls onDismiss', (tester) async {
-    var dismissed = 0;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SceneLoadingTransition(onDismiss: () => dismissed++),
-      ),
-    );
-    await tester.pump(const Duration(seconds: 2));
-    await tester.tap(find.byIcon(Icons.close_rounded));
-    expect(dismissed, 1);
-
-    await tester.pumpWidget(const SizedBox.shrink());
   });
 }

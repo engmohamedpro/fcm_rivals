@@ -175,22 +175,8 @@ class _NavButton extends StatelessWidget {
             curve: Curves.easeOutCubic,
             margin: const EdgeInsets.symmetric(horizontal: 2),
             padding: const EdgeInsets.only(top: 7, bottom: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              // Borderless: the selected tab is lit, not boxed. The wash is
-              // stronger than before so the active tab reads at a glance,
-              // and a short gold bar on its top edge backs it up for users
-              // who cannot rely on the colour change alone.
-              gradient: selected
-                  ? LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        FcmColors.gold.withValues(alpha: 0.28),
-                        FcmColors.gold.withValues(alpha: 0.08),
-                      ],
-                    )
-                  : null,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.all(Radius.circular(14)),
             ),
             child: Stack(
               clipBehavior: Clip.none,

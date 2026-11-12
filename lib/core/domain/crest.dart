@@ -154,13 +154,15 @@ class CrestSpec {
     required this.secondaryIndex,
     required this.icon,
     this.pattern = CrestPattern.halves,
-  });
+    int? iconIndex,
+  }) : iconIndex = iconIndex ?? secondaryIndex;
 
   final CrestShape shape;
   final int primaryIndex;
   final int secondaryIndex;
   final CrestIcon icon;
   final CrestPattern pattern;
+  final int iconIndex;
 
   /// The resolved field colour for consumers like the momentum bar's
   /// user half tint — the exact same palette + clamp as today's
@@ -169,6 +171,9 @@ class CrestSpec {
 
   /// The resolved outline/glyph-accent colour.
   Color get secondaryColor => FcmColors.crestColor(secondaryIndex);
+
+  /// The resolved icon/glyph colour.
+  Color get iconColor => FcmColors.crestColor(iconIndex);
 
   /// JSON wire format for the `clubs.crest` column: flat, lowercase
   /// keys, round-trip safe with [fromJson] (a null or invalid payload
@@ -179,6 +184,7 @@ class CrestSpec {
     'secondary': secondaryIndex,
     'icon': icon.json,
     'pattern': pattern.json,
+    'iconColor': iconIndex,
   };
 
   /// Parses a stored spec; `null` for null/invalid input — the
@@ -188,12 +194,14 @@ class CrestSpec {
     final primary = json['primary'];
     final secondary = json['secondary'];
     if (primary is! int || secondary is! int) return null;
+    final iconColor = json['iconColor'] ?? json['icon_color'];
     return CrestSpec(
       shape: CrestShape.fromJson(json['shape'] as String?),
       primaryIndex: primary,
       secondaryIndex: secondary,
       icon: CrestIcon.fromJson(json['icon'] as String?),
       pattern: CrestPattern.fromJson(json['pattern'] as String?),
+      iconIndex: iconColor is int ? iconColor : secondary,
     );
   }
 

@@ -13,7 +13,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fcm_rivals/core/domain/crest.dart';
 import 'package:fcm_rivals/core/ui/fcm_crest.dart';
-import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/app/providers.dart';
@@ -240,7 +239,7 @@ void main() {
       final store = await pumpCreation(tester, const Locale('en'));
 
       // Validation fires on empty fields (form still wired).
-      final submit = find.text('Start managing');
+      final submit = find.text('Start');
       expect(submit, findsOneWidget);
       await tester.tap(submit);
       await tester.pump();
@@ -277,8 +276,6 @@ void main() {
 
       // The builder: preview + the picker rows render (no titles).
       expect(find.text('SHAPE'), findsNothing);
-      expect(find.byIcon(Icons.casino_rounded), findsOneWidget,
-          reason: 'the randomize action');
       // The live preview is a real crest: the default shield/star.
       expect(
         find.byWidgetPredicate(
@@ -352,7 +349,7 @@ void main() {
       expect(diamonds.length, 2,
           reason: 'the swatch + the live preview are both diamonds now');
 
-      final submit = find.text('Start managing');
+      final submit = find.text('Start');
       await tester.ensureVisible(submit);
       await tester.tap(submit);
       await tester.pump();
@@ -368,55 +365,6 @@ void main() {
   );
 
   testWidgets(
-    'T-0098: randomize lands on a valid spec and the defaults save',
-    (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-      final store = await pumpCreation(tester, const Locale('en'));
-
-      // Defaults ARE valid (shield/0/3/star) and save cleanly.
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Club name'),
-        'FC Rivals',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Manager name'),
-        'Mohamed',
-      );
-      await tester.tap(find.byIcon(Icons.casino_rounded));
-      await tester.pump();
-
-      // The randomized preview is a VALID spec: primary != secondary,
-      // every field well-formed — read it straight off the preview.
-      final preview = find
-          .byWidgetPredicate((w) => w is FcmCrest && w.width == 88)
-          .evaluate();
-      expect(preview, isNotEmpty, reason: 'the big preview exists');
-      final crest =
-          preview.first.widget as FcmCrest;
-      expect(crest.spec.primaryIndex, isNot(crest.spec.secondaryIndex),
-          reason: 'randomize never collides the two colours');
-      expect(crest.spec.primaryIndex, inInclusiveRange(0, FcmColors.crestPalette.length - 1));
-      expect(crest.spec.secondaryIndex, inInclusiveRange(0, FcmColors.crestPalette.length - 1));
-
-      // Submit the randomized spec — the store round-trips it exactly.
-      final submit = find.text('Start managing');
-      await tester.ensureVisible(submit);
-      await tester.tap(submit);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 800));
-      final club = await store.getClub();
-      final spec = CrestSpec.fromJsonString(club!.crest);
-      expect(spec, isNotNull);
-      expect(spec!.primaryIndex, isNot(spec.secondaryIndex));
-      expect(spec.shape, crest.spec.shape);
-      expect(spec.icon, crest.spec.icon);
-      expect(spec.primaryIndex, crest.spec.primaryIndex);
-    },
-  );
-
-  testWidgets(
     'T-0098: Arabic renders every builder label mirrored without '
     'overflow',
     (WidgetTester tester) async {
@@ -425,7 +373,6 @@ void main() {
       addTearDown(tester.view.reset);
       await pumpCreation(tester, const Locale('ar'));
 
-      expect(find.byIcon(Icons.casino_rounded), findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'no RTL overflow');
     },
   );

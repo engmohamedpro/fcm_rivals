@@ -22,7 +22,7 @@ import '../../core/ui/player_card.dart' show FcmPlayerCard, pulse;
 import '../../l10n/l10n_context.dart';
 import '../collection/player_detail_sheet.dart' show cardStatsOf, rarityOf;
 import '../packs/pack_effects.dart'
-    show LightRaysPainter, ParticleBurstPainter, Spark;
+    show ParticleBurstPainter, Spark;
 import 'squad_engine.dart' show PlayerCard;
 
 /// Haptics are garnish: a platform failure must never break the view.

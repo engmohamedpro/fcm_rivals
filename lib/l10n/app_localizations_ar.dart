@@ -133,6 +133,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get startManaging => 'ابدأ الإدارة';
 
   @override
+  String get start => 'ابدأ';
+
+  @override
   String get fieldRequired => 'مطلوب';
 
   @override

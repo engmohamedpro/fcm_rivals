@@ -326,6 +326,12 @@ abstract class AppLocalizations {
   /// **'Start managing'**
   String get startManaging;
 
+  /// No description provided for @start.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get start;
+
   /// No description provided for @fieldRequired.
   ///
   /// In en, this message translates to:

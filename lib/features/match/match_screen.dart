@@ -331,6 +331,19 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         keyEventsOnly: true,
         injuryText: injuryCommentaryLocalizer(l10nOf(context)),
       );
+      // Every event in the minute just simulated drives its sound. Each
+      // goal rings out its own cheer over the bed — home goals at the
+      // home crowd's volume, away goals much quieter — and the whistle
+      // events play the referee whistles instantly.
+      for (final event in events) {
+        if (event.type == MatchEventType.goal) {
+          unawaited(_audio.goalCheer(isHome: event.side == MatchSide.home));
+        } else if (event.type == MatchEventType.kickoff &&
+            event.metadata['secondHalf'] == true) {
+          unawaited(_audio.secondHalfKickOff());
+        }
+      }
+
       // One rebuild per minute: the ticker and the momentum bar swap
       // together.
       setState(() {
@@ -399,22 +412,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
           );
         }
       });
-      // Every event in the minute just simulated drives its sound. Each
-      // goal rings out its own cheer over the bed — home goals at the
-      // home crowd's volume, away goals much quieter — and the whistle
-      // events park the bed: half time ends it for the break, the
-      // second-half kick-off brings it back. Full time ends it for good
-      // below, with the report flow.
-      for (final event in events) {
-        if (event.type == MatchEventType.goal) {
-          unawaited(_audio.goalCheer(isHome: event.side == MatchSide.home));
-        } else if (event.type == MatchEventType.halfTime) {
-          unawaited(_audio.halfTimeBreak());
-        } else if (event.type == MatchEventType.kickoff &&
-            event.metadata['secondHalf'] == true) {
-          unawaited(_audio.secondHalfKickOff());
-        }
-      }
     }
     _maybeOfferHalfTimeTalk();
     if (session.isFinished) {
@@ -443,6 +440,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// up, so the match waits for the decision; effects apply from the
   /// second-half kick-off, ad-free like every pep talk (FR-043).
   void _showHalfTimeTalk() {
+    unawaited(_audio.halfTimeBreak());
     setState(() {
       _sheetOpen = true;
       _halfTimeCardUp = true;

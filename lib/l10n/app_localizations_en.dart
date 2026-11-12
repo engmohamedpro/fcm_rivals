@@ -133,6 +133,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startManaging => 'Start managing';
 
   @override
+  String get start => 'Start';
+
+  @override
   String get fieldRequired => 'Required';
 
   @override

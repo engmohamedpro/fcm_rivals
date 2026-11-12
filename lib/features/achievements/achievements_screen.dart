@@ -502,36 +502,37 @@ class _AchievementCard extends ConsumerWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 56,
-            height: 56,
+            width: 44,
+            height: 44,
             child: CustomPaint(
               painter: FcmBadgePainter(metal: tier.badgeMetal),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _defText(l10n, definition.titleKey),
                   style: const TextStyle(
                     color: FcmColors.goldSoft,
                     fontWeight: FontWeight.w800,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   _defText(l10n, definition.descriptionKey),
                   style: const TextStyle(
                     color: FcmColors.textDim,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Expanded(
@@ -541,14 +542,14 @@ class _AchievementCard extends ConsumerWidget {
                       ),
                     ),
                     if (claimedRungs > 0) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+                          horizontal: 6,
+                          vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color: FcmColors.success.withValues(alpha: 0.55),
                           ),
@@ -559,14 +560,14 @@ class _AchievementCard extends ConsumerWidget {
                             Icon(
                               Icons.check_circle_rounded,
                               color: FcmColors.success,
-                              size: 12,
+                              size: 10,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 3),
                             Text(
                               l10n.achClaimedRungs(claimedRungs),
                               style: const TextStyle(
                                 color: FcmColors.success,
-                                fontSize: 10,
+                                fontSize: 9.5,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -579,7 +580,7 @@ class _AchievementCard extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           _ClaimColumn(
             tier: tier,
             claimed: claimed,
@@ -605,29 +606,30 @@ class _ProgressBar extends StatelessWidget {
         ? 0.0
         : (value / threshold).clamp(0.0, 1.0);
     final complete = value >= threshold;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: SizedBox(
-            height: 8,
-            child: LinearProgressIndicator(
-              value: ratio,
-              minHeight: 8,
-              backgroundColor: FcmColors.ember.withValues(alpha: 0.8),
-              valueColor: AlwaysStoppedAnimation(
-                complete ? FcmColors.success : FcmColors.gold,
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: SizedBox(
+              height: 6,
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 6,
+                backgroundColor: FcmColors.ember.withValues(alpha: 0.8),
+                valueColor: AlwaysStoppedAnimation(
+                  complete ? FcmColors.success : FcmColors.gold,
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(width: 8),
         Text(
           '$value / $threshold',
           style: TextStyle(
             color: complete ? FcmColors.success : FcmColors.textDim,
-            fontSize: 11,
+            fontSize: 10.5,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -636,8 +638,8 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
-/// The right column: reward chip + claim / claimed / locked states.
-class _ClaimColumn extends ConsumerWidget {
+/// The right column: reward chip + claim / claimed / locked states with scale-in claim feedback.
+class _ClaimColumn extends ConsumerStatefulWidget {
   const _ClaimColumn({
     required this.tier,
     required this.claimed,
@@ -651,46 +653,66 @@ class _ClaimColumn extends ConsumerWidget {
   final AchievementDefinition definition;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ClaimColumn> createState() => _ClaimColumnState();
+}
+
+class _ClaimColumnState extends ConsumerState<_ClaimColumn>
+    with SingleTickerProviderStateMixin {
+  bool _justClaimed = false;
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 350),
+  )..value = 1.0;
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = l10nOf(context);
-    if (claimed) {
-      // FROM THE CLAIMS TABLE — the live watch, no local flag.
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.check_circle_rounded,
-              color: FcmColors.success, size: 22),
-          const SizedBox(height: 2),
-          Text(
-            l10n.achClaimedLabel,
-            style: const TextStyle(
-              color: FcmColors.success,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
+    if (widget.claimed || _justClaimed) {
+      return ScaleTransition(
+        scale: Tween<double>(begin: 0.7, end: 1.0).animate(
+          CurvedAnimation(parent: _anim, curve: Curves.easeOutBack),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle_rounded,
+                color: FcmColors.success, size: 22),
+            const SizedBox(height: 2),
+            Text(
+              l10n.achClaimedLabel,
+              style: const TextStyle(
+                color: FcmColors.success,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       );
     }
-    if (!eligible) {
-      // Locked tiers: reward chip only — no claim action (the
-      // contract).
-      return FcmCoinChip(coins: tier.coinReward);
+    if (!widget.eligible) {
+      return FcmCoinChip(coins: widget.tier.coinReward);
     }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FcmCoinChip(coins: tier.coinReward),
-        const SizedBox(height: 8),
+        FcmCoinChip(coins: widget.tier.coinReward),
+        const SizedBox(height: 6),
         FcmButton(
           label: l10n.achClaimAction,
           compact: true,
           onPressed: () async {
-            // The atomic pipeline (T-0108); the claims watch re-renders
-            // the row, the metrics re-derive for the coin side.
+            setState(() => _justClaimed = true);
+            _anim.forward(from: 0.0);
             await ref.read(
               claimTierProvider(
-                ClaimArgs(definition.id, tier.threshold.toString()),
+                ClaimArgs(widget.definition.id, widget.tier.threshold.toString()),
               ).future,
             );
             refreshAchievements(ref);

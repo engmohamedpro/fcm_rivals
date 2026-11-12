@@ -11,7 +11,6 @@ import '../../core/ui/fcm_widgets.dart';
 import '../squad/formations.dart';
 import '../../core/domain/crest.dart';
 import '../../core/ui/fcm_crest.dart';
-import 'dart:math' as math;
 
 /// Club creation (GDD 3, FR-001): club name, crest, manager name and
 /// the STARTER FORMATION — the squad's initial shape, picked the same
@@ -43,6 +42,7 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
   var _crestShape = CrestShape.shield;
   var _crestPrimary = 7; // royal blue
   var _crestSecondary = 13; // ivory
+  var _crestIconColor = 13; // icon color
   var _crestIcon = CrestIcon.star;
   var _crestPattern = CrestPattern.halves;
 
@@ -53,20 +53,8 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
     secondaryIndex: _crestSecondary,
     icon: _crestIcon,
     pattern: _crestPattern,
+    iconIndex: _crestIconColor,
   );
-
-  /// Randomize: one tap, a fresh crest drawn by the SAME generator the
-  /// AI clubs use ([CrestSpec.random]) — every option of the builder.
-  void _randomizeCrest() {
-    final spec = CrestSpec.random(math.Random());
-    setState(() {
-      _crestShape = spec.shape;
-      _crestIcon = spec.icon;
-      _crestPattern = spec.pattern;
-      _crestPrimary = spec.primaryIndex;
-      _crestSecondary = spec.secondaryIndex;
-    });
-  }
 
   /// Crest swatches live in the shared brand palette
   /// ([FcmColors.crestPalette]) — the same colours show up live wherever
@@ -118,7 +106,7 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(22),
+              padding: const EdgeInsets.symmetric(vertical: 22),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -174,82 +162,65 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Padding(
- padding: _kCardGutter,
- child: TextFormField(
-                              controller: _clubName,
-                              textInputAction: TextInputAction.next,
-                              textCapitalization: TextCapitalization.words,
-                              decoration: _field(
-                                AppLocalizations.of(
-                                  context,
-                                )!.clubNameLabel,
-                                Icons.shield_outlined,
-                              ),
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? AppLocalizations.of(
-                                        context,
-                                      )!.fieldRequired
-                                  : null,
-                            ),
-),
-                            const SizedBox(height: 14),
-                            Padding(
- padding: _kCardGutter,
- child: TextFormField(
-                              controller: _managerName,
-                              textInputAction: TextInputAction.done,
-                              textCapitalization: TextCapitalization.words,
-                              decoration: _field(
-                                AppLocalizations.of(
-                                  context,
-                                )!.managerNameLabel,
-                                Icons.person_outline,
-                              ),
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? AppLocalizations.of(
-                                        context,
-                                      )!.fieldRequired
-                                  : null,
-                            ),
-),
-                            const SizedBox(height: 22),
-                            Padding(
- padding: _kCardGutter,
- child: Text(
-                              AppLocalizations.of(
-                                context,
-                              )!.clubCrestSection,
-                              style: TextStyle(
-                                color: FcmColors.textDim,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 2,
+                              padding: _kCardGutter,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  FcmCrest(spec: _crestSpec, width: 62),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        TextFormField(
+                                          controller: _clubName,
+                                          textInputAction: TextInputAction.next,
+                                          textCapitalization: TextCapitalization.words,
+                                          decoration: _field(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.clubNameLabel,
+                                            Icons.shield_outlined,
+                                          ),
+                                          validator: (v) => (v == null || v.trim().isEmpty)
+                                              ? AppLocalizations.of(
+                                                    context,
+                                                  )!.fieldRequired
+                                              : null,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        TextFormField(
+                                          controller: _managerName,
+                                          textInputAction: TextInputAction.done,
+                                          textCapitalization: TextCapitalization.words,
+                                          decoration: _field(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.managerNameLabel,
+                                            Icons.person_outline,
+                                          ),
+                                          validator: (v) => (v == null || v.trim().isEmpty)
+                                              ? AppLocalizations.of(
+                                                    context,
+                                                  )!.fieldRequired
+                                              : null,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 18),
                             _CrestBuilder(
                               spec: _crestSpec,
                               colors: _crestColors,
                               onShape: (s) => setState(() => _crestShape = s),
-                              onPrimary: (i) => setState(() {
-                                _crestPrimary = i;
-                                if (_crestSecondary == i) {
-                                  _crestSecondary =
-                                      (i + 1) % _crestColors.length;
-                                }
-                              }),
-                              onSecondary: (i) => setState(() {
-                                _crestSecondary = i;
-                                if (_crestPrimary == i) {
-                                  _crestPrimary =
-                                      (i + 1) % _crestColors.length;
-                                }
-                              }),
+                              onPrimary: (i) => setState(() => _crestPrimary = i),
+                              onSecondary: (i) => setState(() => _crestSecondary = i),
+                              onIconColor: (i) => setState(() => _crestIconColor = i),
                               onIcon: (ic) => setState(() => _crestIcon = ic),
                               onPattern: (pt) =>
                                   setState(() => _crestPattern = pt),
-                              onRandomize: _randomizeCrest,
                             ),
                             const SizedBox(height: 22),
                             Padding(
@@ -286,18 +257,17 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
                                   setState(() => _formationCode = code),
                             ),
 ),
+                            const SizedBox(height: 22),
+                            Padding(
+                              padding: _kCardGutter,
+                              child: FcmButton(
+                                label: AppLocalizations.of(context)!.start,
+                                loading: _submitting,
+                                onPressed: _submitting ? null : _submit,
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    FcmEntrance(
-                      index: 3,
-                      child: FcmButton(
-                        label: AppLocalizations.of(context)!.startManaging,
-                        icon: Icons.arrow_forward_rounded,
-                        loading: _submitting,
-                        onPressed: _submitting ? null : _submit,
                       ),
                     ),
                   ],
@@ -343,9 +313,9 @@ class _CrestBuilder extends StatelessWidget {
     required this.onShape,
     required this.onPrimary,
     required this.onSecondary,
+    required this.onIconColor,
     required this.onIcon,
     required this.onPattern,
-    required this.onRandomize,
   });
 
   final CrestSpec spec;
@@ -353,42 +323,27 @@ class _CrestBuilder extends StatelessWidget {
   final ValueChanged<CrestShape> onShape;
   final ValueChanged<int> onPrimary;
   final ValueChanged<int> onSecondary;
+  final ValueChanged<int> onIconColor;
   final ValueChanged<CrestIcon> onIcon;
   final ValueChanged<CrestPattern> onPattern;
-  final VoidCallback onRandomize;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // The live preview — exactly what _submit will save.
-            FcmCrest(spec: spec, width: 88),
-            const SizedBox(width: 18),
-            // Randomize: one tap, a fresh valid combination.
-            FcmPressable(
-              onTap: onRandomize,
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: FcmColors.gold.withValues(alpha: 0.14),
-                  border: Border.all(color: FcmColors.gold.withValues(alpha: 0.6)),
-                ),
-                child: const Icon(
-                  Icons.casino_rounded,
-                  color: FcmColors.goldSoft,
-                  size: 22,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
+        // Row 1: Primary color button switcher + Shapes
         _ScrollRow(
+          leading: _ColorButtonSwitcher(
+            color: colors[spec.primaryIndex],
+            onTap: () {
+              var next = (spec.primaryIndex + 1) % colors.length;
+              if (next == spec.secondaryIndex) {
+                next = (next + 1) % colors.length;
+              }
+              onPrimary(next);
+            },
+          ),
           children: [
             for (final shape in CrestShape.values)
               _ShapeOption(
@@ -399,7 +354,18 @@ class _CrestBuilder extends StatelessWidget {
               ),
           ],
         ),
+        // Row 2: Secondary color button switcher + Patterns
         _ScrollRow(
+          leading: _ColorButtonSwitcher(
+            color: colors[spec.secondaryIndex],
+            onTap: () {
+              var next = (spec.secondaryIndex + 1) % colors.length;
+              if (next == spec.primaryIndex) {
+                next = (next + 1) % colors.length;
+              }
+              onSecondary(next);
+            },
+          ),
           children: [
             for (final pattern in CrestPattern.values)
               _PatternOption(
@@ -411,17 +377,15 @@ class _CrestBuilder extends StatelessWidget {
               ),
           ],
         ),
-        _ColorRow(
-          colors: colors,
-          selected: spec.primaryIndex,
-          onTap: onPrimary,
-        ),
-        _ColorRow(
-          colors: colors,
-          selected: spec.secondaryIndex,
-          onTap: onSecondary,
-        ),
+        // Row 3: Icon color button switcher + Icons
         _ScrollRow(
+          leading: _ColorButtonSwitcher(
+            color: colors[spec.iconIndex],
+            onTap: () {
+              var next = (spec.iconIndex + 1) % colors.length;
+              onIconColor(next);
+            },
+          ),
           children: [
             for (final icon in CrestIcon.values)
               _IconOption(
@@ -441,29 +405,81 @@ class _CrestBuilder extends StatelessWidget {
 /// pop-scale room (vertical padding) and the row follows the text
 /// direction.
 class _ScrollRow extends StatelessWidget {
-  const _ScrollRow({required this.children, this.gap = 8});
+  const _ScrollRow({required this.children, this.leading});
 
   final List<Widget> children;
-  final double gap;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
+    const gap = 8.0;
     return SizedBox(
       height: 68,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        // Hard clip: items scroll UNDER the card's edge instead of
-        // spilling out of it.
         clipBehavior: Clip.hardEdge,
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         child: Row(
           children: [
+            if (leading != null) ...[
+              Center(child: leading!),
+              const SizedBox(width: gap + 4),
+            ],
             for (var i = 0; i < children.length; i++) ...[
-              if (i > 0) SizedBox(width: gap),
+              if (i > 0) const SizedBox(width: gap),
               Center(child: children[i]),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A color button switcher at the start of each row.
+class _ColorButtonSwitcher extends StatelessWidget {
+  const _ColorButtonSwitcher({
+    required this.color,
+    required this.onTap,
+  });
+
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPressable(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(color, Colors.white, 0.28)!,
+              color,
+              Color.lerp(color, Colors.black, 0.3)!,
+            ],
+          ),
+          border: Border.all(
+            color: FcmColors.gold,
+            width: 2.5,
+          ),
+          boxShadow: [
+            BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 10),
+          ],
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.palette_rounded,
+            size: 16,
+            color: Colors.white70,
+          ),
         ),
       ),
     );
@@ -522,35 +538,6 @@ class _ShapeOption extends StatelessWidget {
   }
 }
 
-/// A colour swatch row — the same shield-pop behaviour the old picker
-/// had, one row per role.
-class _ColorRow extends StatelessWidget {
-  const _ColorRow({
-    required this.colors,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final List<Color> colors;
-  final int selected;
-  final ValueChanged<int> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _ScrollRow(
-      gap: 10,
-      children: [
-        for (var i = 0; i < colors.length; i++)
-          _CrestOption(
-            color: colors[i],
-            selected: i == selected,
-            onTap: () => onTap(i),
-          ),
-      ],
-    );
-  }
-}
-
 /// An icon swatch: the glyph in a gold-rimmed chip.
 class _IconOption extends StatelessWidget {
   const _IconOption({
@@ -594,56 +581,6 @@ class _IconOption extends StatelessWidget {
             icon: icon,
             color: selected ? FcmColors.goldSoft : Colors.white70,
             size: 24,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A round colour swatch; the selected one pops with a gold ring.
-class _CrestOption extends StatelessWidget {
-  const _CrestOption({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return FcmPressable(
-      onTap: onTap,
-      child: AnimatedScale(
-        scale: selected ? 1.15 : 1.0,
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutBack,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.lerp(color, Colors.white, 0.28)!,
-                color,
-                Color.lerp(color, Colors.black, 0.3)!,
-              ],
-            ),
-            border: Border.all(
-              color: selected ? FcmColors.gold : Colors.white24,
-              width: selected ? 3 : 1.5,
-            ),
-            boxShadow: [
-              if (selected)
-                BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 14),
-            ],
           ),
         ),
       ),

@@ -64,36 +64,6 @@ extension _PackRevealViews on _PackOpeningScreenState {
     );
   }
 
-  /// The legendary silhouette: a black card with a breathing rarity
-  /// outline and a "?" — it rises (overshooting a little) as the dark
-  /// closes in, and melts into the flip when the card turns.
-  Widget _buildMystery(double t, double cardWidth, CardRarity rarity, RevealTimeline tl) {
-    final rise = tl.mysteryIn!.transform(t);
-    final fadeOut =
-        1 - Interval(tl.flip.begin, tl.flip.begin + 0.03).transform(t);
-    final opacity = (rise.clamp(0.0, 1.0) * fadeOut).clamp(0.0, 1.0);
-    final scale = 0.7 + 0.3 * rise;
-    return Opacity(
-      opacity: opacity,
-      child: Transform.translate(
-        offset: Offset(0, (1 - rise.clamp(0.0, 1.0)) * 60),
-        child: Transform.scale(
-          scale: scale,
-          child: SizedBox(
-            width: cardWidth,
-            height: cardWidth / kPlayerCardAspect,
-            child: CustomPaint(
-              painter: MysteryPainter(
-                accent: rarity.accent,
-                breath: pulse(_idle.value),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildWalkout(double t, CardRarity rarity, RevealTimeline tl) {
     final p = _player;
     final flag = tl.flagIn.transform(t);
@@ -146,7 +116,7 @@ extension _PackRevealViews on _PackOpeningScreenState {
                   ? Image.network(
                       p.clubCrestUrl,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.shield, color: Colors.white70, size: 40),
+                      errorBuilder: (_, _, _) => const Icon(Icons.shield, color: Colors.white70, size: 40),
                     )
                   : const Icon(Icons.shield, color: Colors.white70, size: 40),
             ),

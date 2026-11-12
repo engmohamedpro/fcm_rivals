@@ -644,9 +644,10 @@ class _ChemistryLinksPainter extends CustomPainter {
       // both types (nationality AND club) → golden. The kind set is
       // the pair's relationship, so the colour is stable even when
       // only one dimension's tree drew the edge.
-      final color = link.kinds.length >= 2
+      final baseColor = link.kinds.length >= 2
           ? _kDoubleTypeLinkColor
           : _kSingleTypeLinkColor;
+      final color = baseColor.withValues(alpha: 0.7);
       // A dark under-stroke keeps the colour legible on the grass bands.
       canvas.drawLine(
         a,

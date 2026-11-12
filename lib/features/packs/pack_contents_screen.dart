@@ -14,11 +14,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/domain/players.dart' show BasePlayer;
 import '../../core/ui/country_flag.dart' show flagEmojiFor;
-import '../../core/ui/fcm_motion.dart' show FcmPressable;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/player_card.dart' show FcmMiniCard;
-import '../../l10n/card_class_l10n.dart';
 import '../../l10n/l10n_context.dart';
 import '../collection/player_detail_sheet.dart' show showPlayerDetail;
 import '../squad/squad_engine.dart' show PlayerCard;

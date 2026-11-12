@@ -13,6 +13,9 @@ import 'core/ui/fcm_logo.dart';
 import 'core/ui/fcm_style.dart';
 import 'core/ui/fcm_language_toggle.dart';
 import 'core/ui/fcm_widgets.dart';
+import 'features/achievements/achievement_catalog_data.dart';
+import 'features/achievements/achievements_providers.dart';
+import 'features/achievements/achievement_progress.dart';
 import 'features/achievements/achievements_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/facilities/campus_screen.dart';
@@ -147,6 +150,21 @@ class _EntryGateState extends ConsumerState<_EntryGate> {
 /// 13/16); the Team tab holds the squad, formation and tactical setup;
 /// the Campus tab is the club's facility upgrade project (GDD 3.5).
 ///
+int _countClaimable(CareerMetrics metrics, Set<String> claimedKeys) {
+  var count = 0;
+  for (final def in AchievementCatalog.definitions) {
+    final progress = metrics.progressFor(def.metricId) ?? 0;
+    final tiers = def.tiers(AchievementCatalog.economy);
+    for (final t in tiers) {
+      final claimed = claimedKeys.contains('${def.id}:${t.threshold}');
+      if (progress >= t.threshold && !claimed) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
+
 /// Only the selected tab is built; the others are disposed, so hidden
 /// screens hold no memory, timers or listeners. Scroll position is not kept
 /// across switches. The Store item carries a badge with the number of
@@ -157,11 +175,19 @@ class GameShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final packs = ref.watch(availablePacksProvider).valueOrNull?.length ?? 0;
+    final metrics = ref.watch(careerMetricsProvider).valueOrNull;
+    final claimed = ref.watch(claimsProvider).valueOrNull ?? const <String>{};
+    final claimableCount = metrics != null ? _countClaimable(metrics, claimed) : 0;
+
     final l10n = AppLocalizations.of(context)!;
     final items = [
       FcmNavItem(l10n.navSeason, Icons.emoji_events_rounded),
       FcmNavItem(l10n.navTeam, Icons.shield_rounded),
-      FcmNavItem(l10n.navAchievements, Icons.military_tech_rounded),
+      FcmNavItem(
+        l10n.navAchievements,
+        Icons.military_tech_rounded,
+        badge: claimableCount > 0 ? claimableCount : null,
+      ),
       FcmNavItem(l10n.navCampus, Icons.apartment_rounded),
       FcmNavItem(l10n.navStore, Icons.storefront_rounded, badge: packs),
       // T-0111: the self destination closes the row — the mid-session

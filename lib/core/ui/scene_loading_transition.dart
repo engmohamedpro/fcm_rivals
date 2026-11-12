@@ -1,6 +1,6 @@
 /// FCM Rivals — the scene-loading transition (visuals).
 ///
-/// A full-screen, dismissable overlay that plays the brand logo in a
+/// A full-screen overlay that plays the brand logo in a
 /// premium infinite loop while the next scene loads — the way a console
 /// football game shows its animated league crest between scenes. It is
 /// what makes a load read as a *game* beat instead of an app spinner.
@@ -18,7 +18,7 @@
 ///  4. orbiting sparks on the far side of the logo,
 ///  5. the logo itself — breathing, floating, with a light sweep,
 ///  6. orbiting sparks on the near side (depth),
-///  7. a gold progress shimmer under the crest, and a quiet close button.
+///  7. a gold progress shimmer under the crest.
 library;
 
 import 'dart:math' as math;
@@ -32,8 +32,7 @@ const double _tau = math.pi * 2;
 
 /// The full-screen scene-loading overlay.
 ///
-/// Tapping anywhere, or the close button, calls [onDismiss]. With
-/// `MediaQuery.disableAnimations` (reduce motion) the logo is shown
+/// With `MediaQuery.disableAnimations` (reduce motion) the logo is shown
 /// still, with no looping layers.
 class SceneLoadingTransition extends StatefulWidget {
   const SceneLoadingTransition({
@@ -42,8 +41,7 @@ class SceneLoadingTransition extends StatefulWidget {
     this.loopDuration = const Duration(milliseconds: 6000),
   });
 
-  /// Called when the person dismisses the overlay (tap or close button).
-  /// Null makes the overlay non-dismissable and hides the close button.
+  /// Called when the person dismisses the overlay (tap).
   final VoidCallback? onDismiss;
 
   /// One full loop of every layer. Faster layers run an integer number of
@@ -140,16 +138,6 @@ class _SceneLoadingTransitionState extends State<SceneLoadingTransition>
                         ),
                       ),
                     ),
-                    if (widget.onDismiss != null)
-                      SafeArea(
-                        child: Align(
-                          alignment: AlignmentDirectional.topEnd,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: _CloseButton(onTap: widget.onDismiss!),
-                          ),
-                        ),
-                      ),
                   ],
                 );
               },
@@ -372,7 +360,7 @@ class _SparkPainter extends CustomPainter {
 }
 
 // -----------------------------------------------------------------------------
-// Progress shimmer + close button
+// Progress shimmer
 // -----------------------------------------------------------------------------
 
 /// An indeterminate gold shimmer sliding along a faint track.
@@ -413,39 +401,4 @@ class _BarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BarPainter old) => old.t != t;
-}
-
-/// Quiet, always-reachable dismiss control. Fades in a moment after the
-/// overlay so it never competes with the logo's entrance.
-class _CloseButton extends StatelessWidget {
-  const _CloseButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1400),
-      curve: const Interval(0.55, 1.0, curve: Curves.easeOut),
-      builder: (context, v, child) => Opacity(opacity: v, child: child),
-      child: Semantics(
-        button: true,
-        label: MaterialLocalizations.of(context).closeButtonLabel,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: Icon(
-              Icons.close_rounded,
-              size: 22,
-              color: FcmColors.silver.withValues(alpha: 0.7),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

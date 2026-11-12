@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import '../domain/players.dart';
 import 'card_rarity.dart' as domain;
 import 'country_flag.dart';
-import 'fcm_logo.dart' show kFcmFullLogoAsset;
+import 'fcm_logo.dart' show kFcmWordmarkAsset;
 
 export 'card_rarity.dart';
 export 'mini_card.dart';
@@ -660,7 +660,7 @@ class PlayerCardWidget extends StatelessWidget {
                       width: w * .42,
                       height: h * .50,
                       child: _PlayerImage(
-                          image: playerImage, hasBackground: imageHasBackground, pal: pal),
+                          image: playerImage, hasBackground: imageHasBackground, pal: pal, isSmall: true),
                     ),
                     // Bottom: Flag and team logo side by side, moved up a bit (top: h * .52), with identical equal box sizing
                     Positioned(
@@ -699,7 +699,7 @@ class PlayerCardWidget extends StatelessWidget {
                                 image: teamLogo,
                                 fit: BoxFit.contain,
                                 filterQuality: FilterQuality.high,
-                                errorBuilder: (_, __, ___) => nationalityFallback,
+                                errorBuilder: (_, _, _) => nationalityFallback,
                               ),
                             ),
                           ),
@@ -772,7 +772,7 @@ class PlayerCardWidget extends StatelessWidget {
             height: logoS,
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
-            errorBuilder: (_, __, ___) => nationalityFallback,
+            errorBuilder: (_, _, _) => nationalityFallback,
           ),
         ],
       ),
@@ -784,7 +784,7 @@ class PlayerCardWidget extends StatelessWidget {
       top: h * .055,
       height: h * .575,
       child: _PlayerImage(
-          image: playerImage, hasBackground: imageHasBackground, pal: pal),
+          image: playerImage, hasBackground: imageHasBackground, pal: pal, isSmall: false),
     );
 
     final shownStats = stats.take(3).toList();
@@ -924,11 +924,13 @@ class _PlayerImage extends StatefulWidget {
     required this.image,
     required this.hasBackground,
     required this.pal,
+    this.isSmall = false,
   });
 
   final ImageProvider? image;
   final bool? hasBackground;
   final _Palette pal;
+  final bool isSmall;
 
   @override
   State<_PlayerImage> createState() => _PlayerImageState();
@@ -980,9 +982,24 @@ class _PlayerImageState extends State<_PlayerImage> {
   @override
   Widget build(BuildContext context) {
     final pal = widget.pal;
-    final fallback = SizedBox.expand(
-      child: CustomPaint(painter: _SilhouettePainter(pal)),
-    );
+    Widget playerPng() => LayoutBuilder(
+          builder: (context, constraints) {
+            final shift = constraints.maxHeight * (widget.isSmall ? 0.35 : 0.22);
+            return Transform.translate(
+              offset: Offset(0, -shift),
+              child: Image.asset(
+                'assets/images/player.png',
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomCenter,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, _, _) =>
+                    CustomPaint(painter: _SilhouettePainter(pal)),
+              ),
+            );
+          },
+        );
+
+    final fallback = SizedBox.expand(child: playerPng());
     if (widget.image == null) return fallback;
     final hasBg = _bg;
     if (hasBg == null) return const SizedBox.expand();
@@ -994,7 +1011,7 @@ class _PlayerImageState extends State<_PlayerImage> {
       filterQuality: FilterQuality.high,
       color: hasBg ? pal.base.withValues(alpha: .18) : null,
       colorBlendMode: hasBg ? BlendMode.softLight : null,
-      errorBuilder: (_, __, ___) => fallback,
+      errorBuilder: (_, _, _) => playerPng(),
     );
 
     return AnimatedSwitcher(
@@ -1063,7 +1080,7 @@ class PlayerCardBackWidget extends StatelessWidget {
     required this.rarity,
     this.size = CardSize.big,
     this.width,
-    this.logoAsset = 'assets/images/logo_full.webp',
+    this.logoAsset = kFcmWordmarkAsset,
     this.shimmer = .35,
   });
 
@@ -1102,7 +1119,7 @@ class PlayerCardBackWidget extends StatelessWidget {
                   logoAsset,
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
                 ),
               ),
             ),
@@ -1152,7 +1169,7 @@ class _FlippablePlayerCardState extends State<FlippablePlayerCard>
       onTap: _toggle,
       child: AnimatedBuilder(
         animation: _curve,
-        builder: (_, __) {
+        builder: (_, _) {
           final angle = _curve.value * math.pi;
           final showBack = angle > math.pi / 2;
           return Transform(
@@ -1272,13 +1289,10 @@ class FcmPlayerCardBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    for (final rarity in [PlayerCardRarity.legendary]) {
-      // no-op
-    }
     return PlayerCardBackWidget(
       rarity: PlayerCardRarity.legendary,
       width: width,
-      logoAsset: kFcmFullLogoAsset,
+      logoAsset: kFcmWordmarkAsset,
     );
   }
 }

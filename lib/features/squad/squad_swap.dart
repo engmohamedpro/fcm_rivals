@@ -104,6 +104,9 @@ int? firstFreeSlot(Map<int, PlayerCard> squad, SquadZone zone) {
 /// slot fits anybody).
 String? _misfit(Formation formation, PlayerCard p, int slot) {
   if (slot >= Formation.startingXiSize) return null;
+  if (p.isInjured) {
+    return '${_surname(p)} is injured and cannot play in the starting XI.';
+  }
   final need = formation.slots[slot].position;
   if (p.position == need) return null;
   return '${_surname(p)} is a ${p.position.code} — a starting '

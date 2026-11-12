@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/ui/country_flag.dart' show flagEmojiFor;
-import 'package:fcm_rivals/core/ui/fcm_style.dart';
 import 'package:fcm_rivals/core/ui/player_card.dart';
 
 Widget _host(Widget child) => MaterialApp(

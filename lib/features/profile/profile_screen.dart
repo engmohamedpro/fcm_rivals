@@ -6,14 +6,7 @@
 /// goals, clean sheets, streak records), silverware (titles grouped by
 /// division) and the season history list (ordinal, division, final
 /// position, outcome in the standings' colour language). Every number
-/// COMPOSES from T-0107's one derivation — the screen never re-queries
-/// (a missing stat is a derivation change, not a private query).
-///
-/// The career grows forever: the history is sliver-based (60fps at any
-/// depth), the header and stat panel live in RepaintBoundarys (the
-/// ambient animation's hot-path isolation). RTL mirrors through
-/// directional insets; numbers format locale-aware (win rate one
-/// decimal, percent through the locale — never a hardcoded '%').
+/// COMPOSES from T-0107's one derivation — the screen never re-queries.
 library;
 
 import 'package:flutter/material.dart';
@@ -50,7 +43,6 @@ class ProfileScreen extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
               sliver: SliverToBoxAdapter(
-                // The identity header: static after load — isolate it.
                 child: RepaintBoundary(
                   child: _IdentityHeader(
                     clubName: clubRow?.name,
@@ -65,8 +57,6 @@ class ProfileScreen extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
               sliver: SliverToBoxAdapter(
-                // The stat panel: numbers that never move while
-                // browsing — isolate the painters.
                 child: RepaintBoundary(child: _StatPanel(metrics: m)),
               ),
             ),
@@ -76,13 +66,8 @@ class ProfileScreen extends ConsumerWidget {
                 child: _Silverware(metrics: m),
               ),
             ),
-            // The history: grows forever — sliver list, 60fps at any
-            // career depth.
             const _SeasonHistory(),
-            // T-0112: the prestige layer — the badge cabinet + the
-            // titles gallery with the equip flow.
             const TitleBadgeShowcase(),
-            // Bottom breathing room above the nav bar.
             const SliverPadding(
               padding: EdgeInsets.only(bottom: 24),
               sliver: SliverToBoxAdapter(child: SizedBox(height: 8)),
@@ -94,7 +79,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-/// The identity header: crest, names, joined date, equipped title.
+/// The identity header: crest, names, joined date, equipped title with premium card styling.
 class _IdentityHeader extends StatelessWidget {
   const _IdentityHeader({
     required this.clubName,
@@ -117,63 +102,80 @@ class _IdentityHeader extends StatelessWidget {
         CrestSpec.legacy(crestIndex);
     final joined = joinedAt;
 
-    return FcmPanel(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            FcmColors.surface,
+            FcmColors.night.withValues(alpha: 0.95),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: FcmColors.gold.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: FcmColors.gold.withValues(alpha: 0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         children: [
-          FcmCrest(spec: spec, width: 64),
-          const SizedBox(width: 14),
+          FcmCrest(spec: spec, width: 68),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  coachName ?? l10n.profileUnsetName,
-                  style: const TextStyle(
-                    color: FcmColors.goldSoft,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
                   clubName ?? l10n.profileUnsetClub,
                   style: const TextStyle(
-                    color: FcmColors.textDim,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  coachName ?? l10n.profileUnsetName,
+                  style: TextStyle(
+                    color: FcmColors.goldSoft.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(
-                  children: [
-                    // The shared chip: domain-resolved (unknown ids
-                    // vanish instead of rendering raw), live on equip.
-                    const EquippedTitleChip(compact: true),
-                    if (joined != null) ...[
-                      const SizedBox(width: 8),
+                const EquippedTitleChip(compact: true),
+                if (joined != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Icon(
-                        Icons.cake_rounded,
+                        Icons.calendar_today_rounded,
                         color: FcmColors.textDim.withValues(alpha: 0.7),
-                        size: 14,
+                        size: 12,
                       ),
                       const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          l10n.profileJoined(
-                            joined.year,
-                            joined.month,
-                            joined.day,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: FcmColors.textDim,
-                            fontSize: 11,
-                          ),
+                      Text(
+                        'Founded: ${joined.year}-${joined.month.toString().padLeft(2, '0')}-${joined.day.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          color: FcmColors.textDim,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -183,7 +185,7 @@ class _IdentityHeader extends StatelessWidget {
   }
 }
 
-/// The career stat panel: the numbers the owner listed.
+/// The career stat panel with themed compact stat cards and icons.
 class _StatPanel extends StatelessWidget {
   const _StatPanel({required this.metrics});
 
@@ -193,93 +195,115 @@ class _StatPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = l10nOf(context);
     final matches = metrics.matchesManaged;
-    // Win rate: locale-aware, one decimal, no hardcoded '%' — the
-    // fresh save shows the inviting zero copy, never NaN.
     final hasMatches = matches > 0;
-    final winRate = hasMatches ? metrics.wins / matches : 0.0;
+    final winRateVal = hasMatches
+        ? double.parse(((metrics.wins / matches) * 100).toStringAsFixed(1))
+        : 0.0;
 
     return FcmPanel(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              const Icon(Icons.bar_chart_rounded, color: FcmColors.goldSoft, size: 16),
+              const SizedBox(width: 8),
+              const Text(
+                'CAREER STATISTICS',
+                style: TextStyle(
+                  color: FcmColors.goldSoft,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: _StatTile(
                   label: l10n.profileStatMatches,
-                  value: _fmt(context, matches),
+                  value: '$matches',
+                  icon: Icons.sports_soccer_rounded,
                 ),
               ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _StatTile(
+                  label: l10n.profileStatWins,
+                  value: '${metrics.wins}',
+                  accent: FcmColors.success,
+                  icon: Icons.trending_up_rounded,
+                ),
+              ),
+              const SizedBox(width: 6),
               Expanded(
                 child: _StatTile(
                   label: l10n.profileStatWinRate,
                   value: hasMatches
-                      ? l10n.profilePercent(winRate * 100)
+                      ? l10n.profilePercent(winRateVal)
                       : l10n.profileNoMatches,
+                  icon: Icons.pie_chart_rounded,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
                 child: _StatTile(
-                  label: l10n.profileStatWins,
-                  value: _fmt(context, metrics.wins),
-                  accent: FcmColors.success,
-                ),
-              ),
-              Expanded(
-                child: _StatTile(
                   label: l10n.profileStatDraws,
-                  value: _fmt(context, metrics.draws),
+                  value: '${metrics.draws}',
+                  icon: Icons.drag_handle_rounded,
                 ),
               ),
+              const SizedBox(width: 6),
               Expanded(
                 child: _StatTile(
                   label: l10n.profileStatLosses,
-                  value: _fmt(context, metrics.losses),
+                  value: '${metrics.losses}',
                   accent: FcmColors.danger,
+                  icon: Icons.trending_down_rounded,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _StatTile(
+                  label: l10n.profileStatCleanSheets,
+                  value: '${metrics.cleanSheets}',
+                  icon: Icons.security_rounded,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
                 child: _StatTile(
                   label: l10n.profileStatGoalsFor,
-                  value: _fmt(context, metrics.goalsFor),
+                  value: '${metrics.goalsFor}',
+                  icon: Icons.sports_score_rounded,
                 ),
               ),
+              const SizedBox(width: 6),
               Expanded(
                 child: _StatTile(
                   label: l10n.profileStatGoalsAgainst,
-                  value: _fmt(context, metrics.goalsAgainst),
+                  value: '${metrics.goalsAgainst}',
+                  icon: Icons.shield_outlined,
                 ),
               ),
-              Expanded(
-                child: _StatTile(
-                  label: l10n.profileStatCleanSheets,
-                  value: _fmt(context, metrics.cleanSheets),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
+              const SizedBox(width: 6),
               Expanded(
                 child: _StatTile(
                   label: l10n.profileStatWinStreak,
-                  value: _fmt(context, metrics.longestWinStreak),
-                ),
-              ),
-              Expanded(
-                child: _StatTile(
-                  label: l10n.profileStatUnbeaten,
-                  value: _fmt(context, metrics.longestUnbeatenStreak),
+                  value: '${metrics.longestWinStreak}',
+                  icon: Icons.local_fire_department_rounded,
+                  accent: FcmColors.gold,
                 ),
               ),
             ],
@@ -288,53 +312,62 @@ class _StatPanel extends StatelessWidget {
       ),
     );
   }
-
-  String _fmt(BuildContext context, int v) {
-    // The HUD convention: Western digits for values, the locale owns
-    // the wording — NumberFormat through the l10n's own helpers when
-    // the repo gains one; today the plain readout (matches the
-    // coin chip's digits).
-    return '$v';
-  }
 }
 
-/// One stat tile.
+/// One compact stat tile with icon and card container.
 class _StatTile extends StatelessWidget {
   const _StatTile({
     required this.label,
     required this.value,
     this.accent,
+    this.icon,
   });
 
   final String label;
   final String value;
   final Color? accent;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            color: accent ?? FcmColors.goldSoft,
-            fontWeight: FontWeight.w900,
-            fontSize: 17,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      decoration: BoxDecoration(
+        color: FcmColors.night.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: (accent ?? FcmColors.silver).withValues(alpha: 0.15),
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: FcmColors.textDim,
-            fontSize: 10.5,
-            fontWeight: FontWeight.w600,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: accent ?? FcmColors.goldSoft),
+            const SizedBox(height: 2),
+          ],
+          Text(
+            value,
+            style: TextStyle(
+              color: accent ?? FcmColors.goldSoft,
+              fontWeight: FontWeight.w900,
+              fontSize: 15,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 1),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: FcmColors.textDim,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -358,52 +391,78 @@ class _Silverware extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.emoji_events_rounded,
-                color: total > 0 ? FcmColors.gold : FcmColors.textDim,
-                size: 18,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: (total > 0 ? FcmColors.gold : FcmColors.textDim).withValues(alpha: 0.15),
+                ),
+                child: Icon(
+                  Icons.emoji_events_rounded,
+                  color: total > 0 ? FcmColors.gold : FcmColors.textDim,
+                  size: 20,
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  total > 0
-                      ? l10n.profileTitlesCount(total)
-                      : l10n.profileNoTitles,
-                  style: const TextStyle(
-                    color: FcmColors.goldSoft,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SILVERWARE & TROPHIES',
+                      style: TextStyle(
+                        color: FcmColors.goldSoft,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      total > 0
+                          ? l10n.profileTitlesCount(total)
+                          : l10n.profileNoTitles,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           if (titles.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                // Sorted by division: the career's reading order.
                 for (final div in (titles.keys.toList()..sort()))
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                      horizontal: 12,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: FcmColors.gold.withValues(alpha: 0.55),
+                        color: FcmColors.gold.withValues(alpha: 0.6),
                       ),
-                      color: FcmColors.gold.withValues(alpha: 0.10),
+                      gradient: LinearGradient(
+                        colors: [
+                          FcmColors.gold.withValues(alpha: 0.18),
+                          FcmColors.gold.withValues(alpha: 0.05),
+                        ],
+                      ),
                     ),
                     child: Text(
                       l10n.profileDivisionPlate(div, titles[div]!),
                       style: const TextStyle(
                         color: FcmColors.goldSoft,
                         fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
@@ -436,11 +495,12 @@ class _SeasonHistory extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
             sliver: SliverToBoxAdapter(
               child: Text(
-                l10n.profileSeasonHistory,
+                l10n.profileSeasonHistory.toUpperCase(),
                 style: const TextStyle(
                   color: FcmColors.goldSoft,
                   fontWeight: FontWeight.w800,
-                  fontSize: 15,
+                  fontSize: 12,
+                  letterSpacing: 1.2,
                 ),
               ),
             ),
@@ -450,12 +510,37 @@ class _SeasonHistory extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               sliver: SliverToBoxAdapter(
                 child: FcmPanel(
-                  child: Text(
-                    l10n.profileNoSeasons,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: FcmColors.textDim,
-                      fontSize: 12,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: FcmColors.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: FcmColors.silver.withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.history_rounded,
+                            color: FcmColors.textDim,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            l10n.profileNoSeasons,
+                            style: const TextStyle(
+                              color: FcmColors.textDim,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -478,8 +563,7 @@ class _SeasonHistory extends ConsumerWidget {
   }
 }
 
-/// One season row: ordinal, division, final position, outcome — the
-/// standings' colour language (green promoted / red relegated).
+/// One season row: ordinal, division, final position, outcome.
 class _SeasonRow extends StatelessWidget {
   const _SeasonRow({required this.season});
 
@@ -510,6 +594,20 @@ class _SeasonRow extends StatelessWidget {
       accent: season.finalPosition == 1 ? FcmColors.gold : null,
       child: Row(
         children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: (season.finalPosition == 1 ? FcmColors.gold : FcmColors.surface)
+                  .withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              season.finalPosition == 1 ? Icons.emoji_events_rounded : Icons.sports_soccer_rounded,
+              color: season.finalPosition == 1 ? FcmColors.gold : FcmColors.silver,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,30 +615,44 @@ class _SeasonRow extends StatelessWidget {
                 Text(
                   l10n.profileSeasonTitle(season.ordinal, season.division),
                   style: const TextStyle(
-                    color: FcmColors.goldSoft,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13.5,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   l10n.profileFinalPosition(season.finalPosition ?? 0),
                   style: const TextStyle(
                     color: FcmColors.textDim,
                     fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(outcomeIcon, color: outcomeColor, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            outcomeLabel,
-            style: TextStyle(
-              color: outcomeColor,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: outcomeColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: outcomeColor.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(outcomeIcon, color: outcomeColor, size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  outcomeLabel,
+                  style: TextStyle(
+                    color: outcomeColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
