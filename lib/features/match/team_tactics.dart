@@ -79,6 +79,11 @@ class TeamTactics {
   /// The composed bundle the engine consumes at its hook points. Today
   /// every group contributes the identity; each phase multiplies in its
   /// own non-identity axes.
+  ///
+  /// Perf pass 2026-11-12: callers in per-segment loops hoist this once
+  /// per segment instead of re-reading per hook point (each read
+  /// allocates 2 fresh `TacticModifiers`). It cannot be memoized here:
+  /// the const constructor requires all-final fields.
   TacticModifiers get modifiers =>
       inPossession.modifiers *
       outOfPossession.modifiers *

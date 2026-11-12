@@ -46,6 +46,35 @@ class SeasonStore {
   final SeasonEngine engine;
   final math.Random _random;
 
+  /// Memoized single-pass facts of the players table (perf pass
+  /// 2026-11-12): nationality/club lookups and the icon id set for AI
+  /// squads. The players table only changes on a dataset import — which
+  /// cannot happen mid-match/mid-season — so one scan per store lifetime
+  /// replaces the three full 50k-row reads loadOpponent used to pay per
+  /// call (× 2 clubs × ~9-19 AI fixtures per committed user match).
+  _PlayerFacts? _playerFactsCache;
+
+  /// The memoized [loadOpponent] facts — see [_playerFactsCache].
+  Future<_PlayerFacts> _playerFacts() async {
+    final cached = _playerFactsCache;
+    if (cached != null) return cached;
+    final nationalities = <int, String>{};
+    final clubs = <int, (int, String)>{};
+    final iconIds = <int>{};
+    for (final p in await db.select(db.players).get()) {
+      if (p.nationality.isNotEmpty) nationalities[p.playerId] = p.nationality;
+      if (p.clubId != 0 || p.clubName.isNotEmpty) {
+        clubs[p.playerId] = (p.clubId, p.clubName);
+      }
+      if (p.isIcon) iconIds.add(p.playerId);
+    }
+    return _playerFactsCache = _PlayerFacts(
+      nationalities: nationalities,
+      clubs: clubs,
+      iconIds: iconIds,
+    );
+  }
+
   /// Starts a new season in [division] for the user club (FR-035/FR-036):
   /// creates the season row, 19 AI clubs with persisted squads (FR-039),
   /// league team rows and the 38-round fixture list.
@@ -451,4 +480,18 @@ class SeasonStore {
     (m) => m.name == name,
     orElse: () => Mentality.balanced,
   );
+}
+
+/// Single-pass lookup facts of the players table for AI squads (perf
+/// pass 2026-11-12) — see [SeasonStore._playerFacts].
+class _PlayerFacts {
+  const _PlayerFacts({
+    required this.nationalities,
+    required this.clubs,
+    required this.iconIds,
+  });
+
+  final Map<int, String> nationalities;
+  final Map<int, (int, String)> clubs;
+  final Set<int> iconIds;
 }

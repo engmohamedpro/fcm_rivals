@@ -41,6 +41,9 @@ extension DatasetImportOps on CollectionStore {
       _registry.importDataset(dataset);
     }
     _registryLoaded = true;
+    // The pool snapshot may be stale or absent — rebuild lazily on the
+    // next engine use.
+    _invalidatePackCache();
     return _registry;
   }
 
@@ -59,6 +62,9 @@ extension DatasetImportOps on CollectionStore {
   Future<DatasetUpdateReport> applyDatasetUpdate(PlayerDataset dataset) async {
     await _ensureRegistry();
     final importResult = _registry.importDataset(dataset);
+    // Registry contents changed: the engine's identity-keyed band caches
+    // must never outlive them.
+    _invalidatePackCache();
 
     final club = await (db.select(
       db.clubs,

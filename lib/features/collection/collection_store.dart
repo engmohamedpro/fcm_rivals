@@ -90,6 +90,39 @@ class CollectionStore {
   final PlayerDatabase _registry = PlayerDatabase();
   bool _registryLoaded = false;
 
+  /// Long-lived pack engine (perf pass 2026-11-12): its `_poolCache` is
+  /// keyed by pool IDENTITY, so a fresh engine per call — what
+  /// [openPack]/[buyPack]/`storeOffersFor` used to build — made every
+  /// open, buy and shelf offer re-filter and re-sort the full 40k-player
+  /// registry. One engine + one stored pool snapshot (below) keeps the
+  /// cache hot: the first call per scope pays the build, the rest hit.
+  PackEngine? _packEngine;
+
+  /// The pool list handed to the engine — the SAME instance every call
+  /// so the identity-keyed cache recognises it. Rebuilt only when the
+  /// registry actually changes ([applyDatasetUpdate] bumps the epoch).
+  List<BasePlayer> _packPool = const [];
+  int _poolEpoch = 0;
+
+  PackEngine _engineFor() {
+    // Registry must be warm: `_ensureRegistry` sets _registryLoaded; the
+    // pool snapshot is rebuilt whenever the epoch moves.
+    assert(
+      _registryLoaded,
+      'call _ensureRegistry() before _engineFor()',
+    );
+    final engine = _packEngine;
+    if (engine != null && _poolEpoch == _poolEpochBuilt) return engine;
+    _packPool = _registry.all.toList(growable: false);
+    _poolEpochBuilt = _poolEpoch;
+    return _packEngine = PackEngine(economy: economy);
+  }
+
+  /// Bumped by dataset imports so the cached engine's pool snapshot (and
+  /// its band caches) are rebuilt over the new registry contents.
+  void _invalidatePackCache() => _poolEpoch++;
+  int _poolEpochBuilt = -1;
+
   static const int startingPacksPerPosition = 2;
 
   /// Positions whose packs are the cheapest in the store — kept for the
@@ -101,9 +134,9 @@ class CollectionStore {
   /// packs, derived from the current dataset's Bronze-tier position-pack
   /// prices (cheapest pools first, ties by pool size).
   Future<List<Position>> cheapestPackPositions() async {
-    final registry = await _ensureRegistry();
-    final pool = registry.all.toList(growable: false);
-    final engine = PackEngine(random: math.Random(0), economy: economy);
+    await _ensureRegistry();
+    final engine = _engineFor();
+    final pool = _packPool;
     final priced =
         [
           for (final position in Position.values)
@@ -219,7 +252,7 @@ class CollectionStore {
     required int packId,
     required math.Random random,
   }) async {
-    final registry = await _ensureRegistry();
+    await _ensureRegistry();
     final pack = await (db.select(
       db.packs,
     )..where((p) => p.id.equals(packId))).getSingleOrNull();
@@ -239,9 +272,8 @@ class CollectionStore {
           : null,
       tier: PackTier.fromName(pack.tier),
     );
-    final pool = registry.all.toList(growable: false);
-    final engine = PackEngine(random: random, economy: economy);
-    final draws = engine.open(scope, pool);
+    final engine = _engineFor();
+    final draws = engine.open(scope, _packPool, random: random);
     if (draws.isEmpty) {
       throw const CollectionException('No eligible players for this pack');
     }
@@ -326,7 +358,11 @@ class CollectionStore {
     String? scopeValue,
     required PackTier tier,
   }) async {
-    final registry = await _ensureRegistry();
+    await _ensureRegistry();
+    // Build/refresh the shared pool snapshot first (see _engineFor) —
+    // reading _packPool without this would see the pre-seed empty list
+    // when this is the first engine-adjacent call of the session.
+    _engineFor();
     final scope = PackScope(
       category: category,
       position: category == PackCategory.position && scopeValue != null
@@ -334,7 +370,12 @@ class CollectionStore {
           : null,
       tier: tier,
     );
-    final eligible = registry.all.where(scope.matches).toList(growable: false);
+    // Perf pass 2026-11-12: this feeds the pack-contents screen (rating
+    // ladder over the full eligible pool). Filter the STOREED pool
+    // snapshot (one list identity, no full-registry copies) and sort the
+    // narrowed result — same output as before, no per-call 40k re-copy.
+    final eligible =
+        _packPool.where(scope.matches).toList(growable: false);
     eligible.sort((a, b) {
       final byOverall = b.baseStats.overall.compareTo(a.baseStats.overall);
       if (byOverall != 0) return byOverall;
@@ -351,8 +392,17 @@ class CollectionStore {
       db.packs,
     )..where((p) => p.clubId.equals(club.id) & p.opened.equals(false))).get();
   }
-  Future<List<StorePackOffer>> getStoreOffers() async =>
-      storeOffersFor(await _ensureRegistry(), economy);
+  Future<List<StorePackOffer>> getStoreOffers() async {
+    await _ensureRegistry();
+    // Perf pass 2026-11-12: inject the long-lived engine + stored pool so
+    // the ~39 shelf offers share one hot band cache (see _engineFor).
+    return storeOffersFor(
+      _registry,
+      economy,
+      engine: _engineFor(),
+      pool: _packPool,
+    );
+  }
 
   /// Buys one pack with Coins (GDD 5.5: prices come from the Economy
   /// Engine's expected-contents formula — driven by the pack's [tier] —
@@ -370,22 +420,20 @@ class CollectionStore {
     }
     // A pack that cannot be opened must not be sold either.
     await _requireSquadRoom(userClub.id);
-    final registry = await _ensureRegistry();
+    await _ensureRegistry();
     final scope = PackScope(
       category: category,
       nationality: nationality,
       position: position,
       tier: tier,
     );
-    final pool = registry.all
-        .where((p) => scope.matches(p))
-        .toList(growable: false);
-    // A pack draws exactly one player.
-    if (pool.isEmpty) {
+    // A pack draws exactly one player — an empty eligible pool must be
+    // rejected here, before any price is quoted.
+    if (!_packPool.any(scope.matches)) {
       throw const CollectionException('Not enough eligible players');
     }
-    final engine = PackEngine(random: math.Random(0), economy: economy);
-    final price = engine.packPriceFor(scope, pool);
+    final engine = _engineFor();
+    final price = engine.packPriceFor(scope, _packPool);
     if (price <= 0) {
       throw const CollectionException('Pack price must be positive');
     }

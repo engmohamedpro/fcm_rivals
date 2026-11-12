@@ -424,16 +424,21 @@ class PlayerDatabase {
 
     for (final row in dataset.rows) {
       final existing = _players[row.playerId];
-      // Seeded with the player id: the probabilistic layer gives each
-      // player his own stat shape while regeneration stays stable across
-      // dataset updates (GDD 4.6 — same value + position rebuilds the
-      // same stats).
-      final stats = generator.generate(
-        row.position,
-        row.marketValueEur,
-        seed: row.playerId,
-      );
+      // Perf pass 2026-11-12: generate() ONLY where its result is
+      // consumed. It used to run unconditionally before the checks —
+      // a math.Random construction + ~9 draws + allocations for every
+      // one of the ~40-51k rows on EVERY warm start, even though the
+      // entire registry falls into the `unchanged` branch. Seeded with
+      // the player id either way: the probabilistic layer gives each
+      // player his own stat shape while regeneration stays stable
+      // across dataset updates (GDD 4.6 — same value + position
+      // rebuilds the same stats).
       if (existing == null) {
+        final stats = generator.generate(
+          row.position,
+          row.marketValueEur,
+          seed: row.playerId,
+        );
         final player = _toPlayer(row, stats);
         _players[row.playerId] = player;
         added.add(player);
@@ -444,6 +449,11 @@ class PlayerDatabase {
           existing.marketValueEur != row.marketValueEur ||
           existing.position != row.position;
       if (statsChanged) {
+        final stats = generator.generate(
+          row.position,
+          row.marketValueEur,
+          seed: row.playerId,
+        );
         final player = _toPlayer(row, stats);
         _players[row.playerId] = player;
         regenerated.add(player);

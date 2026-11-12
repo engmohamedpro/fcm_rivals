@@ -226,10 +226,10 @@ class PackEngine {
 
   PackEngine({
     this.tier = PackTier.rare,
-    required this.random,
+    math.Random? random,
     this.economy = const EconomyEngine(),
     this.oddsConfig = defaultPackOddsConfig,
-  }) {
+  }) : random = random ?? math.Random() {
     // Release-safe validation of the odds tables (asserts are stripped in
     // release builds) — a bad table fails fast, never draws.
     oddsConfig.validate();
@@ -238,7 +238,11 @@ class PackEngine {
   /// The engine's default store tier for scopes that carry none.
   final PackTier tier;
 
-  /// Shared RNG — callers inject a seeded generator for deterministic tests.
+  /// Shared RNG — callers inject a seeded generator for deterministic
+  /// tests. Since the perf pass (2026-11-12) the engine is long-lived and
+  /// cached (see [CollectionStore._packEngine]), so callers may instead
+  /// pass a per-draw [random] to [open]; this field then only serves
+  /// call sites that don't inject one.
   final math.Random random;
 
   final EconomyEngine economy;
@@ -381,7 +385,7 @@ class PackEngine {
   /// including at ties, but in O(log n) instead of O(n). Single-player
   /// bands return their player without consuming RNG, matching the
   /// original scan (the existing single-player contract).
-  BasePlayer? _drawFromPool(_PoolDrawInfo info) {
+  BasePlayer? _drawFromPool(_PoolDrawInfo info, {required math.Random random}) {
     if (info.players.isEmpty) return null;
     if (info.players.length == 1) return info.players.single;
     final roll = random.nextDouble() * info.total;
@@ -408,7 +412,8 @@ class PackEngine {
   /// draw list. The reported tier is the ROLLED rarity's index, matching
   /// the odds display, which also books fallback draws under the rolled
   /// band's probability share.
-  List<PackDraw> open(PackScope scope, List<BasePlayer> pool) {
+  List<PackDraw> open(PackScope scope, List<BasePlayer> pool, {math.Random? random}) {
+    final rng = random ?? (this.random);
     final pools = _poolsFor(scope, pool);
     if (pools.every((b) => b == null)) return const [];
     final tier = scope.rollTier(this);
@@ -416,17 +421,17 @@ class PackEngine {
       final iconChance = oddsConfig.iconChanceOf(tier);
       if (iconChance > 0 &&
           pools[kIconBandIndex] != null &&
-          random.nextDouble() < iconChance) {
-        final icon = _drawFromPool(pools[kIconBandIndex]!);
+          rng.nextDouble() < iconChance) {
+        final icon = _drawFromPool(pools[kIconBandIndex]!, random: rng);
         if (icon != null) {
           return [PackDraw(player: icon, tier: kIconBandIndex)];
         }
       }
     }
-    final rarityIndex = _rollRarity(oddsConfig.oddsFor(tier));
+    final rarityIndex = _rollRarity(oddsConfig.oddsFor(tier), random: rng);
     final drawIndex = _fallbackIndex(pools, rarityIndex);
     if (drawIndex < 0) return const [];
-    final player = _drawFromPool(pools[drawIndex]!);
+    final player = _drawFromPool(pools[drawIndex]!, random: rng);
     if (player == null) return const [];
     // Icon-tier misses roll inside the (1 − iconChance) remainder: the
     // stage-0 roll consumed its share, the regular table is uniform
@@ -436,7 +441,7 @@ class PackEngine {
 
   /// Stage 1: rolls which rarity band the pack's single player comes
   /// from, using the tier's configured table ([PackRarity] enum order).
-  int _rollRarity(PackRarityOdds odds) {
+  int _rollRarity(PackRarityOdds odds, {required math.Random random}) {
     final total = odds.rare + odds.epic + odds.legendary + odds.premium;
     var roll = random.nextDouble() * total;
     if ((roll -= odds.rare) <= 0) return PackRarity.rare.index;

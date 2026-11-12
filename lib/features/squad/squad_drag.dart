@@ -180,10 +180,10 @@ class SquadDraggable extends StatelessWidget {
       onDragEnd: (_) => scope.end(),
       feedback: Material(
         type: MaterialType.transparency,
-        child: Transform.scale(
-          scale: 1.15,
-          child: Opacity(opacity: 0.95, child: feedback),
-        ),
+        // Perf pass 2026-11-12: the 0.95 Opacity forced a saveLayer every
+        // drag frame for an imperceptible tint; the scale reads the same
+        // without it.
+        child: Transform.scale(scale: 1.15, child: feedback),
       ),
       childWhenDragging: Opacity(opacity: 0.25, child: child),
       child: child,

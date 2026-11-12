@@ -163,7 +163,7 @@ class MatchHeader extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const _LiveDot(),
+                const RepaintBoundary(child: _LiveDot()),
                 const SizedBox(width: 6),
                 FitText(
                   fullTime ? 'FT' : "$minute'",

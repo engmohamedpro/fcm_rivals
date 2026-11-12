@@ -123,7 +123,6 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
     with TickerProviderStateMixin {
   late final AnimationController _seq;
   late final AnimationController _idle;
-  late final AnimationController _spin;
   late List<Spark> _sparks;
   double _lastT = 0;
 
@@ -151,10 +150,9 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
       vsync: this,
       duration: const Duration(milliseconds: 2600),
     )..repeat();
-    _spin = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 24),
-    )..repeat();
+    // Perf pass 2026-11-12: the 24s `_spin` controller was merged into
+    // the AnimatedBuilder but never read by any painter — a dead 60fps
+    // ticker for the view's whole lifetime. Removed.
     _respark();
   }
 
@@ -172,7 +170,6 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
   void dispose() {
     _seq.dispose();
     _idle.dispose();
-    _spin.dispose();
     super.dispose();
   }
 
@@ -201,7 +198,7 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
         child: Material(
           type: MaterialType.transparency,
           child: AnimatedBuilder(
-            animation: Listenable.merge([_seq, _idle, _spin]),
+            animation: Listenable.merge([_seq, _idle]),
             builder: (context, _) {
               final t = _seq.value;
 

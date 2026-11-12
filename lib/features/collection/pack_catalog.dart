@@ -6,7 +6,6 @@
 /// Pure relocation of `getStoreOffers`' building logic.
 library;
 
-import 'dart:math' as math;
 
 import '../../core/domain/players.dart';
 import '../../core/ui/card_rarity.dart';
@@ -20,10 +19,25 @@ import 'collection_results.dart';
 /// tier's rarity — no legendary section for a pool that cannot draw
 /// one. Prices come from the Economy Engine's expected-contents
 /// formula via [PackEngine.packPriceFor].
-List<StorePackOffer> storeOffersFor(PlayerDatabase registry, EconomyEngine economy) {
-    final pool = registry.all.toList(growable: false);
+///
+/// Perf pass 2026-11-12: [engine] and [pool] are now INJECTED by the
+/// caller (one long-lived engine + one stored pool snapshot, see
+/// [CollectionStore._engineFor]) so the engine's identity-keyed band
+/// cache survives across the ~39 offers this builds — before, each
+/// offer constructed its own engine and filtered its own pool list,
+/// re-sorting the full registry 39x per shelf render. The optional
+/// parameters keep direct/test call sites working with a one-shot
+/// engine (their pools are small).
+List<StorePackOffer> storeOffersFor(
+  PlayerDatabase registry,
+  EconomyEngine economy, {
+  PackEngine? engine,
+  List<BasePlayer>? pool,
+}) {
+  final sharedEngine = engine ?? PackEngine(economy: economy);
+  final poolRef = pool ?? registry.all.toList(growable: false);
 
-    CardRarity rarityOf(PackTier tier) => switch (tier) {
+  CardRarity rarityOf(PackTier tier) => switch (tier) {
       PackTier.rare => CardRarity.rare,
       PackTier.epic => CardRarity.epic,
       PackTier.legendary => CardRarity.legendary,
@@ -34,37 +48,34 @@ List<StorePackOffer> storeOffersFor(PlayerDatabase registry, EconomyEngine econo
       PackTier.iconSupreme => CardRarity.legendary,
     };
 
-    StorePackOffer? offerFor(
-      PackCategory category,
-      String? scopeValue,
-      PackTier tier,
-      String baseTitle,
-    ) {
-      final scope = PackScope(
-        category: category,
-        position: category == PackCategory.position && scopeValue != null
-            ? Position.fromCode(scopeValue)
-            : null,
-        tier: tier,
-      );
-      final eligible = pool.where(scope.matches).toList(growable: false);
-      if (!eligible.any(
-        (p) => CardRarity.fromOverall(p.baseStats.overall) == rarityOf(tier),
-      )) {
-        return null;
-      }
-      return StorePackOffer(
-        category: category,
-        title: '${tier.label} $baseTitle',
-        scopeValue: scopeValue,
-        tier: tier,
-        price: PackEngine(
-          random: math.Random(0),
-          economy: economy,
-        ).packPriceFor(scope, eligible),
-        eligibleCount: eligible.length,
-      );
+  StorePackOffer? offerFor(
+    PackCategory category,
+    String? scopeValue,
+    PackTier tier,
+    String baseTitle,
+  ) {
+    final scope = PackScope(
+      category: category,
+      position: category == PackCategory.position && scopeValue != null
+          ? Position.fromCode(scopeValue)
+          : null,
+      tier: tier,
+    );
+    final eligible = poolRef.where(scope.matches).toList(growable: false);
+    if (!eligible.any(
+      (p) => CardRarity.fromOverall(p.baseStats.overall) == rarityOf(tier),
+    )) {
+      return null;
     }
+    return StorePackOffer(
+      category: category,
+      title: '${tier.label} $baseTitle',
+      scopeValue: scopeValue,
+      tier: tier,
+      price: sharedEngine.packPriceFor(scope, eligible),
+      eligibleCount: eligible.length,
+    );
+  }
 
     final offers = <StorePackOffer>[];
 
@@ -74,7 +85,7 @@ List<StorePackOffer> storeOffersFor(PlayerDatabase registry, EconomyEngine econo
     // tier's tiny icon chance. Shelves only when the registry actually
     // holds icons (the tm-bundle dataset); an icon-less registry keeps
     // the store exactly as it was.
-    final hasIcons = pool.any((p) => p.isIcon);
+    final hasIcons = poolRef.any((p) => p.isIcon);
     if (hasIcons) {
       const iconTiers = [
         PackTier.iconEpic,
@@ -83,17 +94,14 @@ List<StorePackOffer> storeOffersFor(PlayerDatabase registry, EconomyEngine econo
       ];
       for (final tier in iconTiers) {
         final scope = PackScope(category: PackCategory.icon, tier: tier);
-        final eligible = pool.where(scope.matches).toList(growable: false);
+        final eligible = poolRef.where(scope.matches).toList(growable: false);
         if (eligible.isEmpty) continue;
         offers.add(StorePackOffer(
           category: PackCategory.icon,
           title: '${tier.label} Pack',
           scopeValue: null,
           tier: tier,
-          price: PackEngine(
-            random: math.Random(0),
-            economy: economy,
-          ).packPriceFor(scope, eligible),
+          price: sharedEngine.packPriceFor(scope, eligible),
           eligibleCount: eligible.length,
         ));
       }

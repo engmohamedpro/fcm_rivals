@@ -26,19 +26,16 @@ extension SeasonOpponentOps on SeasonStore {
     // the dataset's Players table by realPlayerId; synthetic fallback
     // rows (null realPlayerId) stay '' — they never form a group.
     // Club for the club half (owner request 2026-11-11): same lookup.
-    final nationalities = <int, String>{
-      for (final p in await db.select(db.players).get())
-        if (p.nationality.isNotEmpty) p.playerId: p.nationality,
-    };
-    final clubs = <int, (int, String)>{
-      for (final p in await db.select(db.players).get())
-        if (p.clubId != 0 || p.clubName.isNotEmpty)
-          p.playerId: (p.clubId, p.clubName),
-    };
-    final iconIds = <int>{
-      for (final p in await db.select(db.players).get())
-        if (p.isIcon) p.playerId,
-    };
+    //
+    // Perf pass 2026-11-12: these used to be THREE separate full reads
+    // of the 50k-row players table per call — and loadOpponent runs
+    // twice per AI fixture, ~9-19 times per committed user match. One
+    // memoized single-pass scan (see _playerFacts) builds all three
+    // maps once per store lifetime.
+    final facts = await _playerFacts();
+    final nationalities = facts.nationalities;
+    final clubs = facts.clubs;
+    final iconIds = facts.iconIds;
     if (rows.isEmpty) {
       throw const SeasonException('AI club has no squad');
     }
@@ -172,6 +169,10 @@ extension SeasonOpponentOps on SeasonStore {
       updates: {db.aiPlayers},
       updateKind: UpdateKind.update,
     );
+    // Perf pass 2026-11-12: the per-row awaited UPDATEs (~18 round trips
+    // to the drift isolate per club, × 2 clubs × ~9 AI fixtures per
+    // committed user match) are now ONE batched statement round trip.
+    final staminaById = <int, int>{};
     for (final row in rows) {
       final match = byEngineId[-10_000 - row.id];
       final currentStamina = match?.stamina ?? row.staminaPercent.toDouble();
@@ -182,12 +183,19 @@ extension SeasonOpponentOps on SeasonStore {
         minutesPlayed: minutes,
         restDays: restDays,
       );
-      await (db.update(db.aiPlayers)..where((a) => a.id.equals(row.id))).write(
-        AiPlayersCompanion(
-          staminaPercent: Value(recovered.round().clamp(0, 100)),
-        ),
-      );
+      staminaById[row.id] = recovered.round().clamp(0, 100);
     }
+    await db.batch((batch) {
+      for (final entry in staminaById.entries) {
+        batch.update(
+          db.aiPlayers,
+          AiPlayersCompanion(
+            staminaPercent: Value(entry.value),
+          ),
+          where: (a) => a.id.equals(entry.key),
+        );
+      }
+    });
   }
 
   /// Persists an AI club's rolled injuries from a finished match

@@ -126,7 +126,11 @@ class SquadPitch extends StatelessWidget {
               return Stack(
                 children: [
                   const Positioned.fill(
-                    child: CustomPaint(painter: _PitchPainter()),
+                    // Perf pass 2026-11-12: the pitch painter is static
+                    // (shouldRepaint: false) but the 11 slot cards'
+                    // AnimatedPositioned glides used to re-record it every
+                    // frame — its own boundary keeps it rasterized.
+                    child: RepaintBoundary(child: CustomPaint(painter: _PitchPainter())),
                   ),
                   // Chemistry links: a line between players sharing a
                   // nationality or a club, drawn UNDER the cards so
