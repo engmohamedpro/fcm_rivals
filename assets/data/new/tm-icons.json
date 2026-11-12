@@ -1,0 +1,586 @@
+[
+  {
+    "id": "212779",
+    "name": "Sir Stanley Matthews",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/212779-1488882412.jpg",
+    "position": "Right Winger",
+    "marketValue": 155580180,
+    "nationality": "England"
+  },
+  {
+    "id": "135778",
+    "name": "Alfredo di Stéfano",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/135778-1465807355.jpg",
+    "position": "Second Striker",
+    "marketValue": 244483140,
+    "nationality": "Spain"
+  },
+  {
+    "id": "103092",
+    "name": "Ferenc Puskás",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/s_103092_4023_2014_03_17_1.jpg",
+    "position": "Second Striker",
+    "marketValue": 244483140,
+    "nationality": "Hungary"
+  },
+  {
+    "id": "137264",
+    "name": "Didi",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/137264-1608031367.jpg",
+    "position": "Central Midfield",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "174987",
+    "name": "Lev Yashin",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/s_174987_4023_2012_1.jpg",
+    "position": "Goalkeeper",
+    "marketValue": 111128700,
+    "nationality": "Russia"
+  },
+  {
+    "id": "170730",
+    "name": "Raymond Kopa",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/170730-1572959422.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "France"
+  },
+  {
+    "id": "151245",
+    "name": "Just Fontaine",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/151245-1592210498.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "France"
+  },
+  {
+    "id": "151263",
+    "name": "Mané Garrincha",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/151263-1600769387.jpg",
+    "position": "Right Winger",
+    "marketValue": 244483140,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "172315",
+    "name": "Luis Suárez",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/172315-1572959312.jpg",
+    "position": "Central Midfield",
+    "marketValue": 155580180,
+    "nationality": "Spain"
+  },
+  {
+    "id": "174874",
+    "name": "Sir Bobby Charlton",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/174874-1697901579.png",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "England"
+  },
+  {
+    "id": "200627",
+    "name": "Gordon Banks",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/200627-1549987833.jpg",
+    "position": "Goalkeeper",
+    "marketValue": 77790090,
+    "nationality": "England"
+  },
+  {
+    "id": "17121",
+    "name": "Pelé",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/17121-1672341199.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 305603925,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "196086",
+    "name": "Bobby Moore",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/196086-1598442308.jpg",
+    "position": "Centre-Back",
+    "marketValue": 155580180,
+    "nationality": "England"
+  },
+  {
+    "id": "89230",
+    "name": "Eusébio",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/89230-1464768840.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Portugal"
+  },
+  {
+    "id": "89229",
+    "name": "Dino Zoff",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/89229-1454935011.jpg",
+    "position": "Goalkeeper",
+    "marketValue": 83346525,
+    "nationality": "Italy"
+  },
+  {
+    "id": "145347",
+    "name": "Gianni Rivera",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/145347-1461759844.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "Italy"
+  },
+  {
+    "id": "229662",
+    "name": "Carlos Alberto Torres",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/s_229662_123_2014_03_05_1.jpg",
+    "position": "Right-Back",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "145510",
+    "name": "Jairzinho",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/s_145510_123_2014_03_18_1.jpg",
+    "position": "Right Winger",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "72347",
+    "name": "Franz Beckenbauer",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/72347-1704730756.png",
+    "position": "Sweeper",
+    "marketValue": 244483140,
+    "nationality": "Germany"
+  },
+  {
+    "id": "35604",
+    "name": "Gerd Müller",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/35604-1629028308.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 244483140,
+    "nationality": "Germany"
+  },
+  {
+    "id": "10201",
+    "name": "Rivellino",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/10201-1554713649.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "174986",
+    "name": "George Best",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/174986-1599483666.jpg",
+    "position": "Right Winger",
+    "marketValue": 155580180,
+    "nationality": "Northern Ireland"
+  },
+  {
+    "id": "8021",
+    "name": "Johan Cruyff",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/8021-1458823519.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 244483140,
+    "nationality": "Netherlands"
+  },
+  {
+    "id": "85458",
+    "name": "Kevin Keegan",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/85458-1784564967.jpg",
+    "position": "Second Striker",
+    "marketValue": 155580180,
+    "nationality": "England"
+  },
+  {
+    "id": "135269",
+    "name": "Kenny Dalglish",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/135269-1595575902.jpg",
+    "position": "Second Striker",
+    "marketValue": 155580180,
+    "nationality": "Scotland"
+  },
+  {
+    "id": "117619",
+    "name": "Zico",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/117619-1547817527.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "117633",
+    "name": "Sócrates",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/117633-1547817573.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "37264",
+    "name": "Mario Kempes",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/37264-1552559187.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Argentina"
+  },
+  {
+    "id": "88994",
+    "name": "Michel Platini",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/88994-1592212447.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 244483140,
+    "nationality": "France"
+  },
+  {
+    "id": "72343",
+    "name": "Karl-Heinz Rummenigge",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/72343-1662993469.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Germany"
+  },
+  {
+    "id": "84528",
+    "name": "Hugo Sánchez",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/84528-1415373216.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Mexico"
+  },
+  {
+    "id": "42049",
+    "name": "Franco Baresi",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/42049-1785477273.png",
+    "position": "Sweeper",
+    "marketValue": 155580180,
+    "nationality": "Italy"
+  },
+  {
+    "id": "8024",
+    "name": "Diego Maradona",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/8024-1763715267.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 305603925,
+    "nationality": "Argentina"
+  },
+  {
+    "id": "1527",
+    "name": "Lothar Matthäus",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/1527-1448894024.jpg",
+    "position": "Defensive Midfield",
+    "marketValue": 155580180,
+    "nationality": "Germany"
+  },
+  {
+    "id": "101045",
+    "name": "Ruud Gullit",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/101045-1570441290.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "Netherlands"
+  },
+  {
+    "id": "3465",
+    "name": "Peter Schmeichel",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3465-1498486411.jpg",
+    "position": "Goalkeeper",
+    "marketValue": 77790090,
+    "nationality": "Denmark"
+  },
+  {
+    "id": "8023",
+    "name": "Michael Laudrup",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/8023-1570439264.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 122241570,
+    "nationality": "Denmark"
+  },
+  {
+    "id": "74471",
+    "name": "Marco van Basten",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/74471-1590494247.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 244483140,
+    "nationality": "Netherlands"
+  },
+  {
+    "id": "7939",
+    "name": "Gheorghe Hagi",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/7939-1570438291.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "Romania"
+  },
+  {
+    "id": "7942",
+    "name": "Romário",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/7942-1464018929.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "7938",
+    "name": "Hristo Stoichkov",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/7938-1461231110.png",
+    "position": "Left Winger",
+    "marketValue": 155580180,
+    "nationality": "Bulgaria"
+  },
+  {
+    "id": "12000",
+    "name": "Éric Cantona",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/12000-1464096559.jpg",
+    "position": "Second Striker",
+    "marketValue": 155580180,
+    "nationality": "France"
+  },
+  {
+    "id": "8542",
+    "name": "George Weah",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/8542-1570439638.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Liberia"
+  },
+  {
+    "id": "4153",
+    "name": "Roberto Baggio",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/4153-1487345469.jpg",
+    "position": "Second Striker",
+    "marketValue": 155580180,
+    "nationality": "Italy"
+  },
+  {
+    "id": "5803",
+    "name": "Paolo Maldini",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/5803-1570438594.jpg",
+    "position": "Left-Back",
+    "marketValue": 155580180,
+    "nationality": "Italy"
+  },
+  {
+    "id": "5959",
+    "name": "Gabriel Batistuta",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/5959-1570439708.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Argentina"
+  },
+  {
+    "id": "3187",
+    "name": "Dennis Bergkamp",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3187-1683297206.jpg",
+    "position": "Second Striker",
+    "marketValue": 155580180,
+    "nationality": "Netherlands"
+  },
+  {
+    "id": "5937",
+    "name": "Cafu",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/5937-1590418733.jpg",
+    "position": "Right-Back",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "3110",
+    "name": "Alan Shearer",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3110-1485180006.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "England"
+  },
+  {
+    "id": "3372",
+    "name": "Rivaldo",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3372-1588239928.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "3111",
+    "name": "Zinédine Zidane",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3111-1478769687.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 244483140,
+    "nationality": "France"
+  },
+  {
+    "id": "3603",
+    "name": "Pavel Nedved",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3603-1570438744.jpg",
+    "position": "Left Midfield",
+    "marketValue": 155580180,
+    "nationality": "Czech Republic"
+  },
+  {
+    "id": "3446",
+    "name": "Luís Figo",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3446-1570440028.jpg",
+    "position": "Right Winger",
+    "marketValue": 155580180,
+    "nationality": "Portugal"
+  },
+  {
+    "id": "7518",
+    "name": "Roberto Carlos",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/7518-1726487760.jpg",
+    "position": "Left-Back",
+    "marketValue": 122241570,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "5775",
+    "name": "Fabio Cannavaro",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/5775-1454933483.jpg",
+    "position": "Centre-Back",
+    "marketValue": 155580180,
+    "nationality": "Italy"
+  },
+  {
+    "id": "3140",
+    "name": "Ronaldo",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3140-1489417571.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 244483140,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "5958",
+    "name": "Francesco Totti",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/5958-1448466835.jpg",
+    "position": "Second Striker",
+    "marketValue": 155580180,
+    "nationality": "Italy"
+  },
+  {
+    "id": "3522",
+    "name": "Andriy Shevchenko",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3522-1570438190.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Ukraine"
+  },
+  {
+    "id": "3207",
+    "name": "Thierry Henry",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3207-1683199668.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "France"
+  },
+  {
+    "id": "5023",
+    "name": "Gianluigi Buffon",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/5023-1713425275.jpg",
+    "position": "Goalkeeper",
+    "marketValue": 100015830,
+    "nationality": "Italy"
+  },
+  {
+    "id": "5817",
+    "name": "Andrea Pirlo",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/5817-1454934952.jpg",
+    "position": "Defensive Midfield",
+    "marketValue": 155580180,
+    "nationality": "Italy"
+  },
+  {
+    "id": "7607",
+    "name": "Xavi",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/7607-1476882942.jpg",
+    "position": "Central Midfield",
+    "marketValue": 155580180,
+    "nationality": "Spain"
+  },
+  {
+    "id": "3373",
+    "name": "Ronaldinho",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3373-1515762355.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 244483140,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "4257",
+    "name": "Samuel Eto'o",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/4257-1683640611.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Cameroon"
+  },
+  {
+    "id": "3979",
+    "name": "Iker Casillas",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3979-1684226777.jpeg",
+    "position": "Goalkeeper",
+    "marketValue": 88902960,
+    "nationality": "Spain"
+  },
+  {
+    "id": "3455",
+    "name": "Zlatan Ibrahimović",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3455-1579506060.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Sweden"
+  },
+  {
+    "id": "3366",
+    "name": "Kaká",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/3366-1683638749.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 155580180,
+    "nationality": "Brazil"
+  },
+  {
+    "id": "7600",
+    "name": "Andrés Iniesta",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/7600-1685447666.jpg",
+    "position": "Central Midfield",
+    "marketValue": 155580180,
+    "nationality": "Spain"
+  },
+  {
+    "id": "8198",
+    "name": "Cristiano Ronaldo",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/8198-1748102259.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 305603925,
+    "nationality": "Portugal"
+  },
+  {
+    "id": "27992",
+    "name": "Luka Modrić",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/27992-1687776160.jpg",
+    "position": "Central Midfield",
+    "marketValue": 155580180,
+    "nationality": "Croatia"
+  },
+  {
+    "id": "44352",
+    "name": "Luis Suárez",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/44352-1771695059.jpg",
+    "position": "Centre-Forward",
+    "marketValue": 155580180,
+    "nationality": "Uruguay"
+  },
+  {
+    "id": "28003",
+    "name": "Lionel Messi",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/28003-1771694720.jpg",
+    "position": "Right Winger",
+    "marketValue": 305603925,
+    "nationality": "Argentina"
+  },
+  {
+    "id": "68290",
+    "name": "Neymar",
+    "image": "https://img.a.transfermarkt.technology/portrait/big/68290-1692601435.jpg",
+    "position": "Attacking Midfield",
+    "marketValue": 244483140,
+    "nationality": "Brazil"
+  }
+]

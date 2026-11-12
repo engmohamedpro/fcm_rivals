@@ -1,0 +1,622 @@
+[
+  {
+    "id": "ALB1",
+    "title": "Kategoria Superiore",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/alb1.png?lm=1789377129"
+  },
+  {
+    "id": "ALG1",
+    "title": "Ligue 1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/alg1.png?lm=1789377142"
+  },
+  {
+    "id": "AND1",
+    "title": "Primera Divisió",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/and1.png?lm=1789378672"
+  },
+  {
+    "id": "ARG1",
+    "title": "Torneo Apertura ",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/arg1.png?lm=1789377129"
+  },
+  {
+    "id": "ARM1",
+    "title": "Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/arm1.png?lm=1789377142"
+  },
+  {
+    "id": "AUS1",
+    "title": "A-League Men",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/aus1.png?lm=1789377129"
+  },
+  {
+    "id": "A1",
+    "title": "Bundesliga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/a1.png?lm=1789377128"
+  },
+  {
+    "id": "AZ1",
+    "title": "Premyer Liqa",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/az1.png?lm=1789377142"
+  },
+  {
+    "id": "BGD1",
+    "title": "Bangladesh Football League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/bgd1.png?lm=1789897492"
+  },
+  {
+    "id": "WER1",
+    "title": "Vysheyshaya Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/wer1.png?lm=1789377137"
+  },
+  {
+    "id": "BE1",
+    "title": "Jupiler Pro League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/be1.png?lm=1789377129"
+  },
+  {
+    "id": "BZ1A",
+    "title": "Liga Premier de Belice Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/bz1a.png?lm=1789378706"
+  },
+  {
+    "id": "BH1L",
+    "title": "Bhutan Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/bh1l.png?lm=1789378701"
+  },
+  {
+    "id": "BO1A",
+    "title": "División Profesional",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/bo1a.png?lm=1789378682"
+  },
+  {
+    "id": "BOS1",
+    "title": "Premijer Liga Bosne i Hercegovine",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/bos1.png?lm=1789377129"
+  },
+  {
+    "id": "BRA1",
+    "title": "Campeonato Brasileiro Série A",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/bra1.png?lm=1789377129"
+  },
+  {
+    "id": "BSL1",
+    "title": "Brunei Super League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/bsl1.png?lm=1789378706"
+  },
+  {
+    "id": "BU1",
+    "title": "efbet Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/bu1.png?lm=1789377129"
+  },
+  {
+    "id": "KHM1",
+    "title": "Cambodian Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/khm1.png?lm=1789378694"
+  },
+  {
+    "id": "CDN1",
+    "title": "Canadian Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/cdn1.png?lm=1789378679"
+  },
+  {
+    "id": "CLPD",
+    "title": "Liga de Primera ",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/clpd.png?lm=1789378671"
+  },
+  {
+    "id": "CSL",
+    "title": "Chinese Super League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/csl.png?lm=1789377140"
+  },
+  {
+    "id": "TFPL",
+    "title": "Taiwan Football Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/tfpl.png?lm=1789378678"
+  },
+  {
+    "id": "COL1",
+    "title": "Liga Dimayor Finalización",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/col1.png?lm=1789377130"
+  },
+  {
+    "id": "COM1",
+    "title": "Championnat des Comores de D1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/com1.png?lm=1789378704"
+  },
+  {
+    "id": "CRPD",
+    "title": "Primera División Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/crpd.png?lm=1789377140"
+  },
+  {
+    "id": "KR1",
+    "title": "SuperSport HNL",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/kr1.png?lm=1789377132"
+  },
+  {
+    "id": "ZYP1",
+    "title": "Cyprus League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/zyp1.png?lm=1789377137"
+  },
+  {
+    "id": "TS1",
+    "title": "Chance Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ts1.png?lm=1789377136"
+  },
+  {
+    "id": "DK1",
+    "title": "Superliga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/dk1.png?lm=1789377130"
+  },
+  {
+    "id": "D1AP",
+    "title": "Liga Dominicana de Fútbol Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/d1ap.png?lm=1789378707"
+  },
+  {
+    "id": "EC1N",
+    "title": "LigaPro Serie A",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ec1n.png?lm=1789378675"
+  },
+  {
+    "id": "EGY1",
+    "title": "Egyptian Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/egy1.png?lm=1787423225"
+  },
+  {
+    "id": "SL1A",
+    "title": "Primera División Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/sl1a.png?lm=1789378685"
+  },
+  {
+    "id": "GB1",
+    "title": "Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/gb1.png?lm=1789377131"
+  },
+  {
+    "id": "EST1",
+    "title": "Premium Liiga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/est1.png?lm=1789377131"
+  },
+  {
+    "id": "ETP1",
+    "title": "Ethiopian Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/etp1.png?lm=1789378699"
+  },
+  {
+    "id": "FARO",
+    "title": "Meistaradeildin",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/faro.png?lm=1789377140"
+  },
+  {
+    "id": "FIJ1",
+    "title": "Fiji Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/fij1.png?lm=1789378670"
+  },
+  {
+    "id": "FI1",
+    "title": "Veikkausliiga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/fi1.png?lm=1789377131"
+  },
+  {
+    "id": "FR1",
+    "title": "Ligue 1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/fr1.png?lm=1789377131"
+  },
+  {
+    "id": "GE1N",
+    "title": "Erovnuli Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ge1n.png?lm=1789378670"
+  },
+  {
+    "id": "L1",
+    "title": "Bundesliga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/l1.png?lm=1789377132"
+  },
+  {
+    "id": "GHPL",
+    "title": "Ghana Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ghpl.png?lm=1789377144"
+  },
+  {
+    "id": "GI1",
+    "title": "Gibraltar Football League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/gi1.png?lm=1789378668"
+  },
+  {
+    "id": "GR1",
+    "title": "Super League 1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/gr1.png?lm=1789377131"
+  },
+  {
+    "id": "GU1A",
+    "title": "National League Apertura ",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/gu1a.png?lm=1789378680"
+  },
+  {
+    "id": "HO1A",
+    "title": "Liga Nacional Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ho1a.png?lm=1789378687"
+  },
+  {
+    "id": "HGKG",
+    "title": "Hong Kong Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/hgkg.png?lm=1789377140"
+  },
+  {
+    "id": "UNG1",
+    "title": "Nemzeti Bajnokság",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ung1.png?lm=1789377137"
+  },
+  {
+    "id": "IS1",
+    "title": "Besta deild",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/is1.png?lm=1789377131"
+  },
+  {
+    "id": "IND1",
+    "title": "Indian Super League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ind1.png?lm=1789378662"
+  },
+  {
+    "id": "IN1L",
+    "title": "Super League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/in1l.png?lm=1789378670"
+  },
+  {
+    "id": "IRN1",
+    "title": "Persian Gulf Pro League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/irn1.png?lm=1789377141"
+  },
+  {
+    "id": "IRQ1",
+    "title": "Iraq Stars League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/irq1.png?lm=1789378699"
+  },
+  {
+    "id": "IR1",
+    "title": "League of Ireland Premier Division",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ir1.png?lm=1789377131"
+  },
+  {
+    "id": "IT1",
+    "title": "Serie A",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/it1.png?lm=1789377132"
+  },
+  {
+    "id": "JPL1",
+    "title": "Jamaica Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/jpl1.png?lm=1789378687"
+  },
+  {
+    "id": "JAP1",
+    "title": "J1 League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/jap1.png?lm=1789377132"
+  },
+  {
+    "id": "JO1L",
+    "title": "Jordanian Pro League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/jo1l.png?lm=1789378701"
+  },
+  {
+    "id": "KAS1",
+    "title": "Premier Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/kas1.png?lm=1789377141"
+  },
+  {
+    "id": "KO1",
+    "title": "Superliga e Kosovës",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ko1.png?lm=1789378674"
+  },
+  {
+    "id": "KG1L",
+    "title": "Jogorku Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/kg1l.png?lm=1789378679"
+  },
+  {
+    "id": "LAO1",
+    "title": "Lao League 1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/lao1.png?lm=1789378680"
+  },
+  {
+    "id": "LET1",
+    "title": "Virsliga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/let1.png?lm=1789377132"
+  },
+  {
+    "id": "LIB1",
+    "title": "Lebanese Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/lib1.png?lm=1789377142"
+  },
+  {
+    "id": "LPL",
+    "title": "Libyan Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/lpl.png?lm=1789378700"
+  },
+  {
+    "id": "LI1",
+    "title": "Toplyga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/li1.png?lm=1789377132"
+  },
+  {
+    "id": "LUX1",
+    "title": "BGL Ligue",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/lux1.png?lm=1789377132"
+  },
+  {
+    "id": "MYS1",
+    "title": "Malaysia Super League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mys1.png?lm=1790861049"
+  },
+  {
+    "id": "MLD1",
+    "title": "Dhivehi Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mld1.png?lm=1789378706"
+  },
+  {
+    "id": "MT1N",
+    "title": "Premier League Opening Round",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mt1n.png?lm=1789378698"
+  },
+  {
+    "id": "MEX1",
+    "title": "Liga MX Clausura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mex1.png?lm=1789377133"
+  },
+  {
+    "id": "MO1N",
+    "title": "Super Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mo1n.png?lm=1789378670"
+  },
+  {
+    "id": "MNE1",
+    "title": "Meridianbet 1. CFL",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mne1.png?lm=1789378664"
+  },
+  {
+    "id": "MAR1",
+    "title": "Botola Pro Inwi",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mar1.png?lm=1789377142"
+  },
+  {
+    "id": "MYA1",
+    "title": "M League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mya1.png?lm=1787840312"
+  },
+  {
+    "id": "NL1",
+    "title": "Eredivisie",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/nl1.png?lm=1789377133"
+  },
+  {
+    "id": "NZNL",
+    "title": "National League Championship",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/nznl.png?lm=1789378685"
+  },
+  {
+    "id": "NC1A",
+    "title": "Liga Primera de Nicaragua Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/nc1a.png?lm=1789378692"
+  },
+  {
+    "id": "NPFL",
+    "title": "Nigeria Professional Football League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/npfl.png?lm=1790180684"
+  },
+  {
+    "id": "MAZ1",
+    "title": "Prva Makedonska Fudbalska Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/maz1.png?lm=1789377140"
+  },
+  {
+    "id": "NIR1",
+    "title": "NIFL Premiership",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/nir1.png?lm=1793506274"
+  },
+  {
+    "id": "NO1",
+    "title": "Eliteserien",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/no1.png?lm=1789377133"
+  },
+  {
+    "id": "OM1L",
+    "title": "Oman Jindal League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/om1l.png?lm=1789378695"
+  },
+  {
+    "id": "PN1A",
+    "title": "Liga Panameña de Fútbol Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/pn1a.png?lm=1789378684"
+  },
+  {
+    "id": "PR1A",
+    "title": "Primera División Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/pr1a.png?lm=1789378679"
+  },
+  {
+    "id": "TDeA",
+    "title": "Liga 1 Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/tdea.png?lm=1789377146"
+  },
+  {
+    "id": "PFL1",
+    "title": "Philippines Football League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/pfl1.png?lm=1789378671"
+  },
+  {
+    "id": "PL1",
+    "title": "Ekstraklasa",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/pl1.png?lm=1789377134"
+  },
+  {
+    "id": "PO1",
+    "title": "Liga Portugal",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/po1.png?lm=1789377134"
+  },
+  {
+    "id": "PRA1",
+    "title": "Liga Puerto Rico Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/pra1.png?lm=1789378701"
+  },
+  {
+    "id": "QSL",
+    "title": "Qatar Stars League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/qsl.png?lm=1789377140"
+  },
+  {
+    "id": "RO1",
+    "title": "SuperLiga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ro1.png?lm=1789377135"
+  },
+  {
+    "id": "RU1",
+    "title": "Premier Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ru1.png?lm=1789377135"
+  },
+  {
+    "id": "RWA1",
+    "title": "Rwanda BK Pro League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/rwa1.png?lm=1788205370"
+  },
+  {
+    "id": "SMR1",
+    "title": "Campionato Sammarinese",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/smr1.png?lm=1789378669"
+  },
+  {
+    "id": "SA1",
+    "title": "Saudi Pro League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/sa1.png?lm=1789377136"
+  },
+  {
+    "id": "SC1",
+    "title": "Scottish Premiership",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/sc1.png?lm=1789377136"
+  },
+  {
+    "id": "SEN1",
+    "title": "Ligue 1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/sen1.png?lm=1789378704"
+  },
+  {
+    "id": "SER1",
+    "title": "Super liga Srbije",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ser1.png?lm=1789377136"
+  },
+  {
+    "id": "SIN1",
+    "title": "Singapore Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/sin1.png?lm=1789377139"
+  },
+  {
+    "id": "SLO1",
+    "title": "Niké Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/slo1.png?lm=1789377136"
+  },
+  {
+    "id": "SL1",
+    "title": "Prva Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/sl1.png?lm=1789377136"
+  },
+  {
+    "id": "SFA1",
+    "title": "Betway Premiership",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/sfa1.png?lm=1789377136"
+  },
+  {
+    "id": "RSK1",
+    "title": "K League 1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/rsk1.png?lm=1789377138"
+  },
+  {
+    "id": "ES1",
+    "title": "LaLiga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/es1.png?lm=1789377130"
+  },
+  {
+    "id": "SR1L",
+    "title": "Sri Lanka Super League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/sr1l.png?lm=1789378708"
+  },
+  {
+    "id": "SE1",
+    "title": "Allsvenskan",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/se1.png?lm=1789377136"
+  },
+  {
+    "id": "C1",
+    "title": "Super League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/c1.png?lm=1789377129"
+  },
+  {
+    "id": "TAD1",
+    "title": "Vysshaya Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/tad1.png?lm=1789378679"
+  },
+  {
+    "id": "THA1",
+    "title": "Thai League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/tha1.png?lm=1789378667"
+  },
+  {
+    "id": "TLE1",
+    "title": "Liga Timorense - Primeira Divisão",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/tle1.png?lm=1789378706"
+  },
+  {
+    "id": "TUN1",
+    "title": "Ligue 1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/tun1.png?lm=1789377136"
+  },
+  {
+    "id": "TR1",
+    "title": "Süper Lig",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/tr1.png?lm=1789377136"
+  },
+  {
+    "id": "UGL1",
+    "title": "Uganda Premier League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ugl1.png?lm=1789378699"
+  },
+  {
+    "id": "UKR1",
+    "title": "Premier Liga",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/ukr1.png?lm=1789377137"
+  },
+  {
+    "id": "UAE1",
+    "title": "UAE Pro League",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/uae1.png?lm=1789378667"
+  },
+  {
+    "id": "MLS1",
+    "title": "Major League Soccer",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/mls1.png?lm=1789377133"
+  },
+  {
+    "id": "URU1",
+    "title": "Liga AUF Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/uru1.png?lm=1789377137"
+  },
+  {
+    "id": "UZ1",
+    "title": "O'zbekiston Superligasi",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/uz1.png?lm=1789378669"
+  },
+  {
+    "id": "VZ1A",
+    "title": "Liga FUTVE Apertura",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/vz1a.png?lm=1789378667"
+  },
+  {
+    "id": "VIE1",
+    "title": "V.League 1",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/vie1.png?lm=1788535976"
+  },
+  {
+    "id": "WAL1",
+    "title": "Cymru Premier",
+    "logo": "https://img.a.transfermarkt.technology/logo/medium/wal1.png?lm=1789377138"
+  }
+]
