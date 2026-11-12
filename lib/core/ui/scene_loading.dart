@@ -65,9 +65,18 @@ class SceneLoadingController extends ChangeNotifier {
   int get pending => _pending;
 
   /// A load started. Pair with [end]; prefer [track] or the marker.
-  void begin() {
+  ///
+  /// With [immediate] the overlay is raised on the next event-loop turn
+  /// instead of after [showDelay] — for deliberate scene changes (full
+  /// time → report) where the transition should always play, however
+  /// quick the work behind it is. It still honours [minVisible].
+  void begin({bool immediate = false}) {
     if (_disposed) return;
     _pending++;
+    if (immediate && !_visible) {
+      _showTimer?.cancel();
+      _showTimer = Timer(Duration.zero, _show);
+    }
     _hideTimer?.cancel();
     _hideTimer = null;
     if (_pending == 1) {
@@ -110,8 +119,8 @@ class SceneLoadingController extends ChangeNotifier {
   }
 
   /// Runs [future] as a load: the overlay shows while it is pending.
-  Future<T> track<T>(Future<T> future) {
-    begin();
+  Future<T> track<T>(Future<T> future, {bool immediate = false}) {
+    begin(immediate: immediate);
     return future.whenComplete(end);
   }
 
@@ -170,9 +179,17 @@ class SceneLoadingScope extends InheritedWidget {
 
   /// Shows the transition for as long as [future] is pending. Without a
   /// host it simply returns [future].
-  static Future<T> track<T>(BuildContext context, Future<T> future) {
+  ///
+  /// [immediate] skips the show delay; see [SceneLoadingController.begin].
+  static Future<T> track<T>(
+    BuildContext context,
+    Future<T> future, {
+    bool immediate = false,
+  }) {
     final controller = maybeOf(context);
-    return controller == null ? future : controller.track(future);
+    return controller == null
+        ? future
+        : controller.track(future, immediate: immediate);
   }
 
   // The controller instance never changes for a host's lifetime.

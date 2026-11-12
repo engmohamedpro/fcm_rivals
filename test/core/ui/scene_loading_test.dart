@@ -66,6 +66,28 @@ void main() {
     await _disposeApp(tester);
   });
 
+  testWidgets('an immediate load raises the overlay without the show delay', (
+    tester,
+  ) async {
+    final loading = ValueNotifier<bool>(false);
+    final controller = SceneLoadingController();
+    await tester.pumpWidget(_app(loading, controller: controller));
+
+    controller.begin(immediate: true);
+    // Well inside the 150 ms debounce window.
+    await tester.pump(const Duration(milliseconds: 10));
+    await tester.pump();
+    expect(find.byType(SceneLoadingTransition), findsOneWidget);
+
+    controller.end();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(SceneLoadingTransition), findsNothing);
+
+    await _disposeApp(tester);
+    controller.dispose();
+  });
+
   testWidgets('tapping the overlay dismisses it until the next load', (
     tester,
   ) async {

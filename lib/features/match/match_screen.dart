@@ -371,6 +371,12 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     final session = widget.session;
     if (_finishing) return;
     _finishing = true;
+    // Full time → report is a scene change: raise the scene-loading
+    // transition at the whistle (no debounce) and keep it up while the
+    // result is committed; it then fades over the report. Null (a no-op)
+    // when no host is mounted, e.g. in widget tests.
+    final scene = SceneLoadingScope.maybeOf(context)
+      ?..begin(immediate: true);
     try {
       // T-0100 (owner request 2026-11-09): full time goes straight to
       // the report — the post-match pep-talk / recovery chooser card
@@ -393,6 +399,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       if (mounted) setState(() => _error = '$e');
     } finally {
       _finishing = false;
+      scene?.end();
     }
   }
 
