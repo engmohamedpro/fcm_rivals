@@ -434,11 +434,12 @@ class MatchSession {
     return null;
   }
 
-  /// The dataset record behind [playerId] — portrait, rating and real
-  /// club crest for the GOAL moment's scorer card. Null for synthetic
-  /// friendly-opponent players and unknown ids.
+  /// The dataset record behind the ENGINE player [playerId] (an owned-card
+  /// id for the user's players, a synthetic id for league opponents) —
+  /// portrait, rating and real club logo for the GOAL moment's scorer
+  /// card. Null for synthetic friendly-opponent players and unknown ids.
   Future<BasePlayer?> basePlayerOf(int playerId) =>
-      _store.getBasePlayer(playerId);
+      _store.getBasePlayerForMatchPlayer(playerId);
 
   /// Squad names of the user's club for commentary.
   Map<int, String> get userPlayerNames => {

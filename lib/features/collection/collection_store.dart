@@ -574,15 +574,35 @@ class CollectionStore {
     return rows;
   }
 
-  /// One dataset player by its permanent id — the live GOAL moment uses
-  /// it to show the scorer's real portrait, rating and club crest. Null
-  /// for engine-level synthetic players (negative ids) and ids the
-  /// dataset does not carry; never throws for a missing row.
-  Future<BasePlayer?> getBasePlayer(int playerId) async {
-    if (playerId < 0) return null;
+  /// The dataset player behind an ENGINE player id — the live GOAL moment
+  /// uses it to show the scorer's real portrait, rating and club logo.
+  ///
+  /// The engine's `MatchPlayer.playerId` is not the dataset id: the user's
+  /// players carry their owned-card row id (>= 0, [OwnedPlayers.id]) and a
+  /// league opponent's carry `-10000 - AiPlayers.id`, which points at the
+  /// real dataset player through [AiPlayers.realPlayerId]. Synthetic
+  /// friendly opponents (-1000 - slot) and fallback AI rows have no dataset
+  /// player, so they return null; never throws for a missing row.
+  Future<BasePlayer?> getBasePlayerForMatchPlayer(int matchPlayerId) async {
+    int? datasetId;
+    if (matchPlayerId >= 0) {
+      final owned = await (db.select(
+        db.ownedPlayers,
+      )..where((o) => o.id.equals(matchPlayerId))).getSingleOrNull();
+      datasetId = owned?.playerId;
+    } else {
+      final aiRowId = -10000 - matchPlayerId;
+      if (aiRowId > 0) {
+        final ai = await (db.select(
+          db.aiPlayers,
+        )..where((p) => p.id.equals(aiRowId))).getSingleOrNull();
+        datasetId = ai?.realPlayerId;
+      }
+    }
+    if (datasetId == null) return null;
     final row = await (db.select(
       db.players,
-    )..where((p) => p.playerId.equals(playerId))).getSingleOrNull();
+    )..where((p) => p.playerId.equals(datasetId!))).getSingleOrNull();
     return row == null ? null : _toBasePlayer(row);
   }
 

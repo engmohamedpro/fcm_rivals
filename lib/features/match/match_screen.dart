@@ -376,7 +376,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                       flag: flagEmojiFor(livePlayer.nationality),
                     ),
             );
-            if (scorerId != null && scorerId >= 0) {
+            // The store resolves owned-card ids and league-opponent ids
+            // alike; it returns null for synthetic friendly players.
+            if (scorerId != null) {
               unawaited(_enrichGoalFlash(scorerId));
             }
             break; // one banner per minute even on a double.
