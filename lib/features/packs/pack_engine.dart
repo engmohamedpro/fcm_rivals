@@ -557,6 +557,16 @@ class PackEngine {
   /// they were the cheapest power-per-coin purchase in the store, so the
   /// elite tier now costs proportionally more than Rare/Epic.
   ///
+  /// The icon tiers pay per-tier margins (owner fix 2026-11-12: "make
+  /// price suitable so that the first is the lowest of them and the
+  /// third is the highest"): measured EVs on the shipped bundle —
+  /// Icon Epic 10,990 / Icon Legendary 17,311 / Icon Supreme 17,841 —
+  /// sit close together (the Supreme's 2% premium share ≈ the extra
+  /// icon chance in value), so one shared margin rounds II and III to
+  /// the same plate. Per-tier margins 1.40/1.60/1.80 ladder the shelf
+  /// 15k < 27k < 32k, every tier above the ST Legendary pack's 24k,
+  /// each step still economy-derived (EV × margin, no hand-set prices).
+  ///
   /// Store prices are normalized to whole thousands (26,344 → 26,000):
   /// the value the player sees on a plate is the exact value the ledger
   /// charges — no hidden rounding between the shelf and the wallet —
@@ -564,9 +574,13 @@ class PackEngine {
   /// so the charged price can never exceed the margin-implied one.
   int packPriceFor(PackScope scope, List<BasePlayer> pool) {
     final tier = scope.rollTier(this);
-    final margin = tier == PackTier.legendary || tier.isIconTier
-        ? economy.config.legendaryPackMarginMultiplier
-        : economy.config.packMarginMultiplier;
+    final margin = switch (tier) {
+      PackTier.legendary => economy.config.legendaryPackMarginMultiplier,
+      PackTier.iconEpic => economy.config.iconEpicPackMarginMultiplier,
+      PackTier.iconLegendary => economy.config.iconLegendaryPackMarginMultiplier,
+      PackTier.iconSupreme => economy.config.iconSupremePackMarginMultiplier,
+      _ => economy.config.packMarginMultiplier,
+    };
     final raw = expectedPackValue(scope, pool) * margin;
     return (raw / 1000).floor() * 1000;
   }

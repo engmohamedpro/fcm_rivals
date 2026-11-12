@@ -94,8 +94,8 @@ class PackOddsConfig {
       premium: 0.02,
     ),
     this.iconEpicPack = (
-      rare: 0.30,
-      epic: 0.70,
+      rare: 0.00,
+      epic: 1.00,
       legendary: 0.0,
       premium: 0.0,
     ),
@@ -146,11 +146,13 @@ class PackOddsConfig {
   /// the effective per-band probabilities the player sees rescale by
   /// (1 − iconChance).
   ///
-  /// - ICON EPIC pack: 30/70/0/0 — epic-weighted regulars, no gold.
-  /// - ICON LEGENDARY pack: 0/55/45/0 — the legendary pack's shape with
-  ///   premium folded into the icon chance.
-  /// - ICON SUPREME pack: 0/55/43/2 — premium regulars reachable, same
-  ///   shape as the classic legendary pack.
+  /// - ICON EPIC pack: 0/100/0/0 — EPIC regulars only, plus the tiny
+  ///   icon chance (owner fix 2026-11-12: "epic or icon players"; the
+  ///   30% rare share shipped in 5925017 is gone).
+  /// - ICON LEGENDARY pack: 0/55/45/0 — "epic or legendary or icon
+  ///   players".
+  /// - ICON SUPREME pack: 0/55/43/2 — premium regulars reachable too:
+  ///   "epic or legendary or premium or icon players".
   final PackRarityOdds iconEpicPack;
   final PackRarityOdds iconLegendaryPack;
   final PackRarityOdds iconSupremePack;

@@ -5,6 +5,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart' show Color;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
@@ -14,6 +15,7 @@ import 'package:fcm_rivals/features/match/chemistry.dart';
 import 'package:fcm_rivals/features/match/chemistry_links.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_rarity.dart';
+import 'package:fcm_rivals/features/packs/pack_tier_colors.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 
 import '../../tm_bundle_io.dart' show loadTmDataset;
@@ -229,6 +231,17 @@ void main() {
         expect(config.iconChanceOf(tier), lessThanOrEqualTo(0.05),
             reason: 'owner spec: "very very very tiny chance"');
       }
+      // Owner fix 2026-11-12 — pack contents per tier:
+      // I: epic or icon players; II: epic/legendary or icon;
+      // III: epic/legendary/premium or icon. NO rare band anywhere.
+      expect(config.iconEpicPack.rare, 0.0,
+          reason: 'pack I never hands out rare players');
+      expect(config.iconEpicPack.epic, 1.0);
+      expect(config.iconLegendaryPack.rare, 0.0);
+      expect(config.iconLegendaryPack.premium, 0.0,
+          reason: 'premium is pack III only');
+      expect(config.iconSupremePack.rare, 0.0);
+      expect(config.iconSupremePack.premium, greaterThan(0));
     });
 
     test('icon packs draw icons at the tiny chance (±4σ of 100k pulls)', () {
@@ -276,6 +289,53 @@ void main() {
                 reason: 'a $tier pack handed out an icon');
           }
         }
+      }
+    });
+
+    test('each icon pack draws EXACTLY its owner-spec composition', () {
+      // Owner fix 2026-11-12: pack I = epic or icons; pack II adds
+      // legendary; pack III adds premium. NO rare pull ever, and the
+      // bands present per pack are exactly the spec's.
+      final engine = PackEngine(
+        random: math.Random(424242),
+        economy: const EconomyEngine(),
+      );
+      final cases = [
+        (PackTier.iconEpic, 0.995, {PackRarity.epic}),
+        (PackTier.iconLegendary, 0.990,
+            {PackRarity.epic, PackRarity.legendary}),
+        (PackTier.iconSupreme, 0.985,
+            {PackRarity.epic, PackRarity.legendary, PackRarity.premium}),
+      ];
+      for (final (tier, regularShare, allowedBands) in cases) {
+        const opens = 40_000;
+        var icons = 0;
+        final bands = <PackRarity>{};
+        for (var i = 0; i < opens; i++) {
+          final draw = engine
+              .open(PackScope(category: PackCategory.icon, tier: tier), pool)
+              .single;
+          if (draw.player.isIcon) {
+            icons++;
+            continue;
+          }
+          final band = PackRarity.fromOverall(draw.player.baseStats.overall);
+          bands.add(band);
+          expect(band, isNot(PackRarity.rare),
+              reason: '$tier handed out a rare player (owner spec: no rare)');
+          expect(allowedBands, contains(band),
+              reason: '$tier drew outside its spec bands: $band');
+        }
+        // The icon share matches the tiny chance within ±4σ.
+        final p = 1 - regularShare;
+        final sigma = math.sqrt(opens * p * (1 - p));
+        expect(icons,
+            inInclusiveRange((opens * p - 4 * sigma).round(),
+                (opens * p + 4 * sigma).round()),
+            reason: '$tier: measured $icons icons of $opens vs p=$p');
+        // Every allowed band is actually reachable (no dead band).
+        expect(bands, containsAll(allowedBands),
+            reason: '$tier never drew ${allowedBands.difference(bands)}');
       }
     });
 
@@ -329,6 +389,54 @@ void main() {
         expect(o.price, greaterThan(0));
         expect(o.eligibleCount, greaterThan(0));
       }
+    });
+
+    test('icon pack prices ladder: I lowest, III highest, economy-derived', () {
+      // Owner fix 2026-11-12: "make price suitable so that the first is
+      // the lowest of them and the third is the highest" + "prices
+      // according to economy and what the pack gives". Prices stay pure
+      // EV × per-tier margin — this lock catches any margin/EV change
+      // that flattens or inverts the ladder. Pack I legitimately sits
+      // below the ST Legendary pack (its pool is epic-only); packs II
+      // and III (legendary/premium pools) sit above it.
+      final registry = PlayerDatabase();
+      registry.importDataset(loadTmDataset());
+      final offers = storeOffersFor(registry, const EconomyEngine());
+
+      final byTier = {
+        for (final o in offers.where((o) => o.category == PackCategory.icon))
+          o.tier: o.price,
+      };
+      expect(byTier.keys, containsAll(PackTier.values.where((t) => t.isIconTier)));
+      expect(byTier[PackTier.iconEpic]!, lessThan(byTier[PackTier.iconLegendary]!),
+          reason: 'pack I must be cheaper than pack II');
+      expect(byTier[PackTier.iconLegendary]!, lessThan(byTier[PackTier.iconSupreme]!),
+          reason: 'pack II must be cheaper than pack III');
+
+      final stLegendary = offers.firstWhere((o) =>
+          o.category == PackCategory.position &&
+          o.scopeValue == 'ST' &&
+          o.tier == PackTier.legendary);
+      // The premium packs (legendary/premium pools) outrank the ST
+      // Legendary price; the epic-only pack does not and must not.
+      expect(byTier[PackTier.iconLegendary]!, greaterThan(stLegendary.price));
+      expect(byTier[PackTier.iconSupreme]!, greaterThan(stLegendary.price));
+    });
+
+    test('all three icon packs tint in the icon family, not gold', () {
+      // Owner fix 2026-11-12: pack III rendered gold (0xFF9C7A28) and
+      // read as a legendary pack. All three tiers carry the SAME icon
+      // silver so the section reads as one legend product line.
+      const iconSilver = Color(0xFFDDE4EF);
+      const legendaryGold = Color(0xFFF7C948);
+      for (final t in PackTier.values.where((t) => t.isIconTier)) {
+        expect(t.accent, iconSilver, reason: '$t must carry the icon tint');
+        expect(t.accent, isNot(legendaryGold));
+      }
+      // The regular tiers keep their own tints (no collateral change).
+      expect(PackTier.legendary.accent, legendaryGold);
+      expect(PackTier.rare.accent, const Color(0xFF8B5CF6));
+      expect(PackTier.epic.accent, const Color(0xFF3B82F6));
     });
 
     test('an icon-less registry shelves exactly the old catalog', () {

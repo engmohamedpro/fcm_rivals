@@ -163,14 +163,18 @@ void main() {
       for (final p in byTier[PackTier.legendary]!) {
         expect(p, inInclusiveRange(20_000, 30_000));
       }
+      // Owner fix 2026-11-12 (ascending icon-pack prices, epic-only
+      // pack I): measured EVs 10,990 / 17,311 / 17,841 with per-tier
+      // margins 1.40/1.60/1.80 → 15k / 27k / 32k. Pack I dropped below
+      // its old band because the 30% rare share is gone from its pool.
       for (final p in byTier[PackTier.iconEpic]!) {
-        expect(p, inInclusiveRange(10_000, 13_000));
+        expect(p, inInclusiveRange(13_000, 17_000));
       }
       for (final p in byTier[PackTier.iconLegendary]!) {
-        expect(p, inInclusiveRange(20_000, 30_000));
+        expect(p, inInclusiveRange(25_000, 29_000));
       }
       for (final p in byTier[PackTier.iconSupreme]!) {
-        expect(p, inInclusiveRange(20_000, 30_000));
+        expect(p, inInclusiveRange(30_000, 34_000));
       }
       // The tier ladder itself is steep within one scope: legendary
       // costs ~8-11x rare (T-0047's gold-only legendary pushed the ST

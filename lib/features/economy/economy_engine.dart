@@ -35,6 +35,15 @@ class EconomyConfig {
     // premium. 1.40x lands it at ~4.7 matches — still the best deal per
     // pull, but no longer a dominant strategy.
     this.legendaryPackMarginMultiplier = 1.40,
+    // Icon-tier margins (owner fix 2026-11-12: ascending icon-pack
+    // prices, first lowest, third highest). Measured EVs on the shipped
+    // bundle are 10,990 / 17,311 / 17,841 — II and III sit close, so a
+    // shared margin rounds them onto the same plate. These margins
+    // ladder the shelf 15k < 27k < 32k, every tier above the ST
+    // Legendary pack (24k), each price still pure EV × margin.
+    this.iconEpicPackMarginMultiplier = 1.40,
+    this.iconLegendaryPackMarginMultiplier = 1.60,
+    this.iconSupremePackMarginMultiplier = 1.80,
     this.baseMatchReward = 1_500,
     this.matchRewardPerGoal = 250,
     // Performance-driven income spread (review
@@ -89,6 +98,14 @@ class EconomyConfig {
   /// Ch.8). Rare and Epic pay [packMarginMultiplier]; Legendary pays this
   /// higher margin so elite power scales in price faster than in odds.
   final double legendaryPackMarginMultiplier;
+
+  /// Per-tier margins of the three icon packs (owner fix 2026-11-12):
+  /// ascending prices — Icon Epic lowest, Icon Supreme highest — while
+  /// every price stays economy-derived (EV × margin). See the constructor
+  /// comment for the measured calibration.
+  final double iconEpicPackMarginMultiplier;
+  final double iconLegendaryPackMarginMultiplier;
+  final double iconSupremePackMarginMultiplier;
 
   /// Match rewards (GDD 17.6).
   final int baseMatchReward;

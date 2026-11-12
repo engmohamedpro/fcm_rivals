@@ -18,18 +18,20 @@ import 'pack_engine.dart' show PackTier;
 /// draw from these so a pack's rarity reads at a glance and matches the
 /// cards it draws.
 ///
-/// The icon tiers (owner request 2026-11-12) read in the holo
-/// silver-gold family of the icon cards: a bright silver-white gradient
-/// whose edge deepens toward the icon gold — the legend look, distinct
-/// from every regular tier at a glance.
+/// The icon tiers (owner request 2026-11-12) all read in the SAME holo
+/// silver family of the icon cards — the three packs are one legend
+/// product line, so their cells tint identically (the icon foil itself,
+/// not per-tier shades): a bright silver-white, matching the icon card
+/// palette's base. Owner fix 2026-11-12: pack III previously carried a
+/// gold accent and read as a legendary pack at a glance.
 extension PackTierColor on PackTier {
   Color get accent => switch (this) {
     PackTier.rare => const Color(0xFF8B5CF6),
     PackTier.epic => const Color(0xFF3B82F6),
     PackTier.legendary => const Color(0xFFF7C948),
     PackTier.iconEpic => const Color(0xFFDDE4EF),
-    PackTier.iconLegendary => const Color(0xFFC4CFE0),
-    PackTier.iconSupreme => const Color(0xFF9C7A28),
+    PackTier.iconLegendary => const Color(0xFFDDE4EF),
+    PackTier.iconSupreme => const Color(0xFFDDE4EF),
   };
 
   /// Rarity stars stamped on the foil: rare 3, epic 4, legendary 5 —
