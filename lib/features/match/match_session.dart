@@ -424,6 +424,30 @@ class MatchSession {
   /// Display name of the engine's away side (scoreboard, commentary).
   String get awayTeamName => _awayName;
 
+  /// Display name of [side] — the GOAL moment names the scoring team.
+  String teamNameOf(MatchSide side) =>
+      side == MatchSide.home ? _homeName : _awayName;
+
+  /// Crest of [side] (null for a side without a persisted spec).
+  CrestSpec? crestOf(MatchSide side) =>
+      side == MatchSide.home ? homeCrest : awayCrest;
+
+  /// The engine player with [playerId] on either side, or null.
+  MatchPlayer? matchPlayerById(int playerId) {
+    for (final side in MatchSide.values) {
+      for (final p in engine.playersOf(side)) {
+        if (p.playerId == playerId) return p;
+      }
+    }
+    return null;
+  }
+
+  /// The dataset record behind [playerId] — portrait, rating and real
+  /// club crest for the GOAL moment's scorer card. Null for synthetic
+  /// friendly-opponent players and unknown ids.
+  Future<BasePlayer?> basePlayerOf(int playerId) =>
+      _store.getBasePlayer(playerId);
+
   /// Squad names of the user's club for commentary.
   Map<int, String> get userPlayerNames => {
     for (final p in engine.playersOf(userSide)) p.playerId: p.name,

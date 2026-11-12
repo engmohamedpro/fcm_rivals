@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../collection/collection_store.dart' show CollectionStore;
 import '../../app/routes.dart';
+import '../../core/domain/crest.dart' show CrestSpec;
+import '../../core/domain/players.dart' show BasePlayer;
+import '../../core/ui/country_flag.dart' show flagEmojiFor;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
@@ -22,6 +25,40 @@ import 'match_report.dart';
 import 'match_report_view.dart';
 import 'match_session.dart';
 import 'tactics.dart';
+
+/// Everything the live GOAL moment shows (T-0116): the scoring team's
+/// crest and name, the scorer's small card, and the new score. [scorerId]
+/// lets the late portrait lookup confirm it still belongs to the goal on
+/// screen before it swaps the richer card in.
+typedef _GoalFlash = ({
+  String scorer,
+  int scorerId,
+  String score,
+  bool isUserGoal,
+  Color color,
+  String teamName,
+  CrestSpec? crest,
+  GoalScorerCard? card,
+});
+
+/// The card rating the player shows elsewhere in the app: the dataset
+/// overall scaled by the upgrade factor the engine already applied to the
+/// player's attributes (read off the strongest base attribute, where
+/// integer rounding costs the least).
+int _goalCardRating(BasePlayer base, MatchPlayer? live) {
+  final b = base.baseStats;
+  if (live == null) return b.overall;
+  var best = (b.attack, live.attack);
+  for (final p in [
+    (b.support, live.support),
+    (b.defence, live.defence),
+    (b.goalkeeping, live.goalkeeping),
+  ]) {
+    if (p.$1 > best.$1) best = p;
+  }
+  if (best.$1 <= 0) return b.overall;
+  return (b.overall * best.$2 / best.$1).round();
+}
 
 /// Invoked once when the match finishes and [MatchSession.finish] has
 /// persisted stamina and rewards — the league flow commits the fixture
@@ -150,7 +187,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   /// banner restarts, never queues), cleared when its animation
   /// completes — and never shown while a touchline card holds the
   /// screen (half-time talk), which the mount guard below enforces.
-  ({String scorer, String score, bool isUserGoal, Color color})? _goalFlash;
+  _GoalFlash? _goalFlash;
 
   @override
   void initState() {
@@ -248,6 +285,41 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     unawaited(_paused ? _audio.pause() : _audio.resume());
   }
 
+  /// Swaps the dataset's real portrait, rating, flag and club crest into
+  /// the GOAL moment's scorer card. Best-effort and silent: a missing row
+  /// or a slow read leaves the engine-derived card in place, and a result
+  /// that arrives after the banner moved on (a newer goal, or cleared) is
+  /// dropped instead of landing on the wrong moment.
+  Future<void> _enrichGoalFlash(int scorerId) async {
+    try {
+      final session = widget.session;
+      final base = await session.basePlayerOf(scorerId);
+      if (base == null || !mounted) return;
+      final flash = _goalFlash;
+      if (flash == null || flash.scorerId != scorerId) return;
+      setState(() {
+        _goalFlash = (
+          scorer: flash.scorer,
+          scorerId: flash.scorerId,
+          score: flash.score,
+          isUserGoal: flash.isUserGoal,
+          color: flash.color,
+          teamName: flash.teamName,
+          crest: flash.crest,
+          card: GoalScorerCard(
+            rating: _goalCardRating(base, session.matchPlayerById(scorerId)),
+            position: base.position.code,
+            flag: flagEmojiFor(base.nationality),
+            imageUrl: base.imageUrl,
+            clubCrestUrl: base.clubCrestUrl,
+          ),
+        );
+      });
+    } catch (_) {
+      // Decorative: the goal moment never depends on the lookup.
+    }
+  }
+
   void _advance() {
     final session = widget.session;
     if (session.isFinished) return;
@@ -282,12 +354,38 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
             final flashColor = event.side == session.userSide
                 ? (_userTeamColor ?? FcmColors.gold)
                 : opponentMomentumColor;
+            final scorerId = event.primaryPlayerId;
+            final livePlayer = scorerId == null
+                ? null
+                : session.matchPlayerById(scorerId);
             _goalFlash = (
-              scorer: names[event.primaryPlayerId] ?? '',
+              scorer: names[scorerId] ?? '',
+              scorerId: scorerId ?? -1,
               score: '${live.scoreHome} - ${live.scoreAway}',
               isUserGoal: event.side == session.userSide,
               color: flashColor,
+              teamName: session.teamNameOf(event.side),
+              crest: session.crestOf(event.side),
+              // Instant card from the engine's own player (always
+              // available); the dataset lookup below swaps in the real
+              // portrait and rating well before the card flips over.
+              card: livePlayer == null
+                  ? null
+                  : GoalScorerCard(
+                      rating: livePlayer.position.isGoalkeeper
+                          ? livePlayer.goalkeeping
+                          : [
+                              livePlayer.attack,
+                              livePlayer.support,
+                              livePlayer.defence,
+                            ].reduce((a, b) => a > b ? a : b),
+                      position: livePlayer.position.code,
+                      flag: flagEmojiFor(livePlayer.nationality),
+                    ),
             );
+            if (scorerId != null && scorerId >= 0) {
+              unawaited(_enrichGoalFlash(scorerId));
+            }
             break; // one banner per minute even on a double.
           }
         }
@@ -588,6 +686,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                 scoreline: _goalFlash!.score,
                                 color: _goalFlash!.color,
                                 isUserGoal: _goalFlash!.isUserGoal,
+                                teamName: _goalFlash!.teamName,
+                                crest: _goalFlash!.crest,
+                                scorerCard: _goalFlash!.card,
                                 // When the animation completes the banner
                                 // clears itself and the screen rebuilds
                                 // without it.

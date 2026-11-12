@@ -574,6 +574,18 @@ class CollectionStore {
     return rows;
   }
 
+  /// One dataset player by its permanent id — the live GOAL moment uses
+  /// it to show the scorer's real portrait, rating and club crest. Null
+  /// for engine-level synthetic players (negative ids) and ids the
+  /// dataset does not carry; never throws for a missing row.
+  Future<BasePlayer?> getBasePlayer(int playerId) async {
+    if (playerId < 0) return null;
+    final row = await (db.select(
+      db.players,
+    )..where((p) => p.playerId.equals(playerId))).getSingleOrNull();
+    return row == null ? null : _toBasePlayer(row);
+  }
+
   /// Sells owned copies (FR-013): upgraded pricing applies per copy; the
   /// credit and status change share one transaction. Squad members are
   /// refused — the Team tab's full-card view sells those through
