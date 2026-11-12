@@ -424,14 +424,6 @@ class MatchSession {
   /// Display name of the engine's away side (scoreboard, commentary).
   String get awayTeamName => _awayName;
 
-  /// Display name of [side] — the GOAL moment names the scoring team.
-  String teamNameOf(MatchSide side) =>
-      side == MatchSide.home ? _homeName : _awayName;
-
-  /// Crest of [side] (null for a side without a persisted spec).
-  CrestSpec? crestOf(MatchSide side) =>
-      side == MatchSide.home ? homeCrest : awayCrest;
-
   /// The engine player with [playerId] on either side, or null.
   MatchPlayer? matchPlayerById(int playerId) {
     for (final side in MatchSide.values) {

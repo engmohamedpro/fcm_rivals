@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../collection/collection_store.dart' show CollectionStore;
 import '../../app/routes.dart';
-import '../../core/domain/crest.dart' show CrestSpec;
 import '../../core/domain/players.dart' show BasePlayer;
 import '../../core/ui/country_flag.dart' show flagEmojiFor;
 import '../../core/ui/fcm_style.dart';
@@ -26,18 +25,16 @@ import 'match_report_view.dart';
 import 'match_session.dart';
 import 'tactics.dart';
 
-/// Everything the live GOAL moment shows (T-0116): the scoring team's
-/// crest and name, the scorer's small card, and the new score. [scorerId]
-/// lets the late portrait lookup confirm it still belongs to the goal on
-/// screen before it swaps the richer card in.
+/// Everything the live GOAL moment needs (T-0116): the scorer's small
+/// card (the only thing it draws besides the wordmark) plus the goal's
+/// identity. [scorerId] lets the late portrait lookup confirm it still
+/// belongs to the goal on screen before it swaps the richer card in.
 typedef _GoalFlash = ({
   String scorer,
   int scorerId,
   String score,
   bool isUserGoal,
   Color color,
-  String teamName,
-  CrestSpec? crest,
   GoalScorerCard? card,
 });
 
@@ -304,8 +301,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
           score: flash.score,
           isUserGoal: flash.isUserGoal,
           color: flash.color,
-          teamName: flash.teamName,
-          crest: flash.crest,
           card: GoalScorerCard(
             rating: _goalCardRating(base, session.matchPlayerById(scorerId)),
             position: base.position.code,
@@ -364,8 +359,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
               score: '${live.scoreHome} - ${live.scoreAway}',
               isUserGoal: event.side == session.userSide,
               color: flashColor,
-              teamName: session.teamNameOf(event.side),
-              crest: session.crestOf(event.side),
               // Instant card from the engine's own player (always
               // available); the dataset lookup below swaps in the real
               // portrait and rating well before the card flips over.
@@ -686,8 +679,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                 scoreline: _goalFlash!.score,
                                 color: _goalFlash!.color,
                                 isUserGoal: _goalFlash!.isUserGoal,
-                                teamName: _goalFlash!.teamName,
-                                crest: _goalFlash!.crest,
                                 scorerCard: _goalFlash!.card,
                                 // When the animation completes the banner
                                 // clears itself and the screen rebuilds
