@@ -119,10 +119,21 @@ class MatchEngine {
 
   /// All events so far (GDD 26.4: the single source for commentary,
   /// statistics and ratings).
-  List<MatchEvent> get events => List.unmodifiable(_events);
+  ///
+  /// Perf pass 2026-11-12 (LOW): this getter used to allocate a fresh
+  /// unmodifiable copy on EVERY read. The live match screen reads it
+  /// per minute (momentum + commentary + stats), each read copying a
+  /// list that grows to ~500+ events over 90 minutes — O(n²) copies
+  /// over a match. The copy is defensive only against list MUTATION,
+  /// not element mutation: an unmodifiable VIEW keeps that guarantee
+  /// with zero copy per read.
+  List<MatchEvent> get events => _eventsView ??= List.unmodifiable(_events);
+  List<MatchEvent>? _eventsView;
 
   /// Commands actually applied, in order — the replay record (GDD 12.5).
-  List<MatchCommand> get appliedCommands => List.unmodifiable(_applied);
+  List<MatchCommand> get appliedCommands =>
+      _appliedView ??= List.unmodifiable(_applied);
+  List<MatchCommand>? _appliedView;
 
   MatchState get state => MatchState(
     minute: _minute,

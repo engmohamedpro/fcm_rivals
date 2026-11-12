@@ -45,16 +45,22 @@ extension _PackRevealViews on _PackOpeningScreenState {
                   ),
                 ],
               ),
-              child: CustomPaint(
-                size: Size(packW, packH),
-                painter: FoilPackPainter(
-                  shimmer: _idle.value,
-                  charge: charge,
-                  glowColor: glowTint,
-                  // The store cell's exact tier metal, so the pack the
-                  // player bought is the pack that tears open.
-                  tint: widget.packTint,
-                  stars: widget.packStars,
+              child: RepaintBoundary(
+                // Perf pass 2026-11-12 (LOW): the foil painter repaints
+                // at 60fps with the repeating idle shimmer — its own
+                // boundary stops each repaint from re-recording the
+                // whole reveal stage (transforms, shadows, walkout).
+                child: CustomPaint(
+                  size: Size(packW, packH),
+                  painter: FoilPackPainter(
+                    shimmer: _idle.value,
+                    charge: charge,
+                    glowColor: glowTint,
+                    // The store cell's exact tier metal, so the pack the
+                    // player bought is the pack that tears open.
+                    tint: widget.packTint,
+                    stars: widget.packStars,
+                  ),
                 ),
               ),
             ),

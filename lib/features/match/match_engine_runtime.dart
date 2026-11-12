@@ -198,21 +198,25 @@ class _TeamRuntime {
       defenceW += dw;
       if (slotPosition == Position.gk) gkEff = player.goalkeeping.toDouble();
     }
+    // Perf pass 2026-11-12 (M1): hoisted — each `tactics.modifiers` read
+    // allocates two fresh TacticModifiers and each `mentalityFx` read
+    // re-derives from the slider; computeTotals runs 2x/minute per team.
+    final mFx = mentalityFx;
+    final tFx = tactics.modifiers;
     final attack =
         (attackW > 0 ? attackSum / attackW : 0) *
-        mentalityFx.attack *
-        tactics.modifiers.attack *
+        mFx.attack *
+        tFx.attack *
         actionModifiers.attack *
         pepTalkModifiers.attack;
     final support = supportW > 0 ? supportSum / supportW : 0;
     final defence =
         (defenceW > 0 ? defenceSum / defenceW : 0) *
-        mentalityFx.defence *
-        tactics.modifiers.defence *
+        mFx.defence *
+        tFx.defence *
         actionModifiers.defence *
         pepTalkModifiers.defence;
-    final goalkeeping =
-        gkEff * mentalityFx.defence * tactics.modifiers.defence;
+    final goalkeeping = gkEff * mFx.defence * tFx.defence;
     // Chemistry (owner spec 2026-11-09, club half added 2026-11-11):
     // every shared nationality group AND every shared club group of
     // n ≥ 2 on-pitch players adds (n − 1) points, and the combined sum

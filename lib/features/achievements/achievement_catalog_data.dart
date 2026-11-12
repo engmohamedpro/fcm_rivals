@@ -26,6 +26,25 @@ class AchievementCatalog {
   static const AchievementEconomyConfig economy =
       AchievementEconomyConfig();
 
+  /// Perf pass 2026-11-12 (LOW): memoized tier lists per definition,
+  /// keyed by (definition id, economy). The screen's header counters
+  /// and progress rows used to REGENERATE every definition's tiers
+  /// (a List.generate with ladder maths per rung) on every build —
+  /// 42 definitions × their rungs, per frame the screen rebuilds. The
+  /// catalog is immutable and callers pass one economy, so this cache
+  /// has exactly one entry per definition in practice.
+  static final Map<String, List<AchievementTier>> _tiersByDefinition = {};
+
+  /// The memoized [AchievementDefinition.tiers] of [definition] under
+  /// [economy] — the public path every caller already uses.
+  static List<AchievementTier> tiersOf(
+    AchievementDefinition definition,
+    AchievementEconomyConfig economy,
+  ) {
+    return _tiersByDefinition['${definition.id}@${economy.hashCode}'] ??=
+        definition.tiers(economy);
+  }
+
   // ---- Categories (10) ----------------------------------------------
 
   static const career = AchievementCategory(
@@ -566,7 +585,20 @@ class AchievementCatalog {
 
   /// Every definition, categories in display order then ladders
   /// before milestones inside each category.
+  ///
+  /// Perf pass 2026-11-12 (LOW): the getter used to regroup the 42
+  /// definitions into a fresh map + list on EVERY read — and it is
+  /// read all over (the screen's two header counters alone call it
+  /// once per definition per build). The catalog is immutable
+  /// (compile-time lists, fixed categories), so the grouping is
+  /// computed once and memoized.
   static List<AchievementDefinition> get definitions {
+    return _definitionsCached ??= _buildDefinitions();
+  }
+
+  static List<AchievementDefinition>? _definitionsCached;
+
+  static List<AchievementDefinition> _buildDefinitions() {
     final byCat = <String, List<AchievementDefinition>>{};
     for (final d in [..._endless, ..._milestones]) {
       byCat.putIfAbsent(d.category, () => []).add(d);

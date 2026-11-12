@@ -296,7 +296,7 @@ class _Header extends StatelessWidget {
   int _claimedCount() {
     var n = 0;
     for (final d in AchievementCatalog.definitions) {
-      for (final tier in d.tiers(AchievementCatalog.economy)) {
+      for (final tier in AchievementCatalog.tiersOf(d, AchievementCatalog.economy)) {
         if (claimedKeys.contains('${d.id}:${tier.threshold}')) n++;
       }
     }
@@ -306,7 +306,7 @@ class _Header extends StatelessWidget {
   int _visibleTierCount() {
     var n = 0;
     for (final d in AchievementCatalog.definitions) {
-      n += d.tiers(AchievementCatalog.economy).length;
+      n += AchievementCatalog.tiersOf(d, AchievementCatalog.economy).length;
     }
     return n;
   }
@@ -475,7 +475,7 @@ class _AchievementCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = l10nOf(context);
     final progress = metrics.progressFor(definition.metricId) ?? 0;
-    final tiers = definition.tiers(AchievementCatalog.economy);
+    final tiers = AchievementCatalog.tiersOf(definition, AchievementCatalog.economy);
 
     // The rung the player is climbing: the first unclaimed tier
     // (eligible → claimable), else the ladder's last visible rung.

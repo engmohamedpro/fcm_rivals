@@ -107,7 +107,7 @@ class _BadgeCabinet extends StatelessWidget {
     final defs = AchievementCatalog.definitions;
 
     final hasAnyClaimed = defs.any((def) {
-      return def.tiers(AchievementCatalog.economy).any(
+      return AchievementCatalog.tiersOf(def, AchievementCatalog.economy).any(
         (tier) => claimedKeys.contains('${def.id}:${tier.threshold}'),
       );
     });

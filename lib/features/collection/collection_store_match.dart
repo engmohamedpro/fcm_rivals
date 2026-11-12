@@ -60,10 +60,23 @@ extension MatchResultOps on CollectionStore {
         updates: {db.ownedPlayers},
         updateKind: UpdateKind.update,
       );
+      // Perf pass 2026-11-12 (M4): the per-player loop used to await a
+      // SELECT + an UPDATE per squad row (~2 × squadSize sequential
+      // round trips to the drift isolate, 30+ on a big squad) inside
+      // this post-match transaction. Now: ONE select of every listed
+      // ownedId, recovery computed in memory, ONE batched UPDATE pass.
+      final ownedIds = [for (final p in players) p.ownedId];
+      final existingRows = ownedIds.isEmpty
+          ? const <dynamic>[]
+          : await (db.select(
+              db.ownedPlayers,
+            )..where((o) => o.id.isIn(ownedIds))).get();
+      final rowById = {
+        for (final r in existingRows) (r as dynamic).id as int: r,
+      };
+      final staminaWrites = <int, int>{};
       for (final p in players) {
-        final row = await (db.select(
-          db.ownedPlayers,
-        )..where((o) => o.id.equals(p.ownedId))).getSingleOrNull();
+        final row = rowById[p.ownedId];
         if (row == null) continue;
         var next = row.staminaPercent.toDouble();
         if (p.minutesPlayed > 0) {
@@ -91,13 +104,20 @@ extension MatchResultOps on CollectionStore {
             campusRecoveryBonus: campusRecoveryBonus,
           );
         }
-        await (db.update(
-          db.ownedPlayers,
-        )..where((o) => o.id.equals(p.ownedId))).write(
-          OwnedPlayersCompanion(
-            staminaPercent: Value(next.round().clamp(0, 100)),
-          ),
-        );
+        staminaWrites[p.ownedId] = next.round().clamp(0, 100);
+      }
+      if (staminaWrites.isNotEmpty) {
+        await db.batch((batch) {
+          for (final entry in staminaWrites.entries) {
+            batch.update(
+              db.ownedPlayers,
+              OwnedPlayersCompanion(
+                staminaPercent: Value(entry.value),
+              ),
+              where: (o) => o.id.equals(entry.key),
+            );
+          }
+        });
       }
       if (reward > 0) {
         // Relative credit — a concurrent coin movement (the user buying
@@ -122,21 +142,29 @@ extension MatchResultOps on CollectionStore {
       // + matches-out land with the stamina writes. The re-injury guard
       // is belt-and-braces — an injured player was never fielded
       // (selection gating), so the row is always fit here.
-      for (final injury in injuries) {
-        final row =
-            await (db.select(
-              db.ownedPlayers,
-            )..where((o) => o.id.equals(injury.ownedId))).getSingleOrNull();
-        if (row == null) continue;
-        if ((row.injuryMatchesRemaining ?? 0) > 0) continue;
-        await (db.update(
+      // Perf pass 2026-11-12 (M4): one SELECT for every injured id +
+      // one batched UPDATE, replacing the per-injury await pairs.
+      if (injuries.isNotEmpty) {
+        final injuryIds = [for (final i in injuries) i.ownedId];
+        final injuryRows = await (db.select(
           db.ownedPlayers,
-        )..where((o) => o.id.equals(injury.ownedId))).write(
-          OwnedPlayersCompanion(
-            injuryMatchesRemaining: Value(injury.matchesOut),
-            injuryKind: Value(injury.kind),
-          ),
-        );
+        )..where((o) => o.id.isIn(injuryIds))).get();
+        final injuryRowById = {for (final r in injuryRows) r.id: r};
+        await db.batch((batch) {
+          for (final injury in injuries) {
+            final row = injuryRowById[injury.ownedId];
+            if (row == null) continue;
+            if ((row.injuryMatchesRemaining ?? 0) > 0) continue;
+            batch.update(
+              db.ownedPlayers,
+              OwnedPlayersCompanion(
+                injuryMatchesRemaining: Value(injury.matchesOut),
+                injuryKind: Value(injury.kind),
+              ),
+              where: (o) => o.id.equals(injury.ownedId),
+            );
+          }
+        });
       }
     });
   }

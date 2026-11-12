@@ -32,8 +32,18 @@ enum Position {
   const Position(this.code);
   final String code;
 
+  /// Perf pass 2026-11-12 (L6): code → enum lookup map. `fromCode` runs
+  /// once per row on the 40-51k-row dataset import and in other per-row
+  /// paths (AI squads, warm-up rebuilds) — the old `firstWhere` scanned
+  /// up to 12 entries and allocated a closure per call. The map is
+  /// eagerly built (12 entries) and keyed by the upper-cased code.
+  static final Map<String, Position> _byCode = {
+    for (final p in Position.values) p.code: p,
+  };
+
   static Position fromCode(String code) =>
-      Position.values.firstWhere((p) => p.code == code.toUpperCase());
+      _byCode[code.toUpperCase()] ??
+      (throw ArgumentError('Unknown position code: $code'));
 
   /// Positions this player can reasonably play outside his primary slot.
   /// Used by Auto Pick and squad validation (compatibility, not equality).

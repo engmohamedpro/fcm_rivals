@@ -189,10 +189,15 @@ class SeasonStore {
             );
         // Persist the AI squad (GDD 9.4): XI in slot order, bench after —
         // real dataset players carry their playerId.
-        for (final p in def.players) {
-          await db
-              .into(db.aiPlayers)
-              .insert(
+        // Perf pass 2026-11-12 (M3): ~18 squad rows per club were 18
+        // awaited round trips to the drift isolate — × 19 clubs ≈ 342
+        // sequential awaits inside the season-start transaction. One
+        // batched insertAll per club.
+        await db.batch((batch) {
+          batch.insertAll(
+            db.aiPlayers,
+            [
+              for (final p in def.players)
                 AiPlayersCompanion.insert(
                   clubId: aiClubId,
                   playerName: p.name,
@@ -203,25 +208,31 @@ class SeasonStore {
                   goalkeeping: p.goalkeeping,
                   realPlayerId: Value(p.realPlayerId),
                 ),
-              );
-        }
+            ],
+          );
+        });
       }
 
       // Fixtures (FR-036): anchor = user club for a natural home/away
       // pattern; store rounds 1-based.
       final pairings = engine.generateFixtures(clubIds.length, anchorIndex: 0);
-      for (final p in pairings) {
-        await db
-            .into(db.fixtures)
-            .insert(
+      // Perf pass 2026-11-12 (M3): 380 fixtures (20 clubs × 38 rounds)
+      // were 380 awaited round trips inside this transaction — one
+      // batched insertAll now.
+      await db.batch((batch) {
+        batch.insertAll(
+          db.fixtures,
+          [
+            for (final p in pairings)
               FixturesCompanion.insert(
                 seasonId: seasonId,
                 round: p.round + 1,
                 homeClubId: clubIds[p.homeIndex],
                 awayClubId: clubIds[p.awayIndex],
               ),
-            );
-      }
+          ],
+        );
+      });
       return seasonId;
     });
   }

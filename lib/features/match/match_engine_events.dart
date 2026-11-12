@@ -73,7 +73,9 @@ extension _MatchEngineEvents on MatchEngine {
         );
     }
     if (event != null) _events.add(event);
+    _eventsView = null;
     _applied.add(command);
+    _appliedView = null;
     return event;
   }
 
@@ -130,6 +132,7 @@ extension _MatchEngineEvents on MatchEngine {
       },
     );
     _events.add(event);
+    _eventsView = null;
     produced.add(event);
     return produced;
   }
@@ -346,6 +349,7 @@ extension _MatchEngineEvents on MatchEngine {
       metadata: {'ai': true, 'reason': reason},
     );
     _events.add(event);
+    _eventsView = null;
     return event;
   }
 
@@ -473,6 +477,7 @@ extension _MatchEngineEvents on MatchEngine {
       metadata: metadata,
     );
     _events.add(event);
+    _eventsView = null;
     return event;
   }
 }

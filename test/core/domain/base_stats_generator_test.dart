@@ -130,7 +130,13 @@ void main() {
       for (final p in Position.values) {
         expect(Position.fromCode(p.code), p);
       }
-      expect(() => Position.fromCode('XX'), throwsStateError);
+      // Perf pass 2026-11-12: fromCode moved from firstWhere (StateError)
+      // to a code→enum map; an unknown code now throws ArgumentError
+      // with the offending code in the message.
+      expect(
+        () => Position.fromCode('XX'),
+        throwsArgumentError,
+      );
     });
 
     test('goalkeeper flag', () {

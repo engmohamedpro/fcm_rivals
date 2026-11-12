@@ -17,6 +17,15 @@ extension _MatchEngineSim on MatchEngine {
   List<MatchEvent> _simulateSegment(int minute) {
     final produced = <MatchEvent>[];
 
+    // Perf pass 2026-11-12 (M1): hoist the tactics modifier bundles and
+    // mentality effects ONCE per segment. Each `tactics.modifiers` read
+    // allocates two fresh TacticModifiers (two operator-* passes) and
+    // each `mentalityFx` re-derives from the slider — this segment used
+    // to pay that 5 times across its pocket pipeline, per minute, for
+    // every match (user + the season's AI sweeps).
+    final homeTacticsFx = _home.tactics.modifiers;
+    final awayTacticsFx = _away.tactics.modifiers;
+
     // 1. Possession (GDD 12.3 step 1): support-based, biased by tactics.
     //    A POWER competition, not a ratio: weaker support loses the ball
     //    disproportionately more, but the exponent (1.4) bounds it — a
@@ -27,11 +36,11 @@ extension _MatchEngineSim on MatchEngine {
     final homeTotals = totalsOf(MatchSide.home);
     final awayTotals = totalsOf(MatchSide.away);
     final homePoss = math.pow(
-      homeTotals.support * _home.tactics.modifiers.possession,
+      homeTotals.support * homeTacticsFx.possession,
       1.4,
     );
     final awayPoss = math.pow(
-      awayTotals.support * _away.tactics.modifiers.possession,
+      awayTotals.support * awayTacticsFx.possession,
       1.4,
     );
     final attackerSide = _random.chance(homePoss / (homePoss + awayPoss))
@@ -117,10 +126,15 @@ extension _MatchEngineSim on MatchEngine {
     // complete 75-85%).
     final passesAttempted = 3 + _random.nextInt(8);
     final possessionAccuracy =
-        ((attTotals.support / 100) * att.tactics.modifiers.passAccuracy).clamp(
-          0.40,
-          0.92,
-        );
+        ((attTotals.support / 100) *
+                (attackerSide == MatchSide.home
+                    ? homeTacticsFx
+                    : awayTacticsFx)
+                .passAccuracy)
+            .clamp(
+              0.40,
+              0.92,
+            );
     var passesCompleted = (passesAttempted * possessionAccuracy).round();
 
     // 2-3. Build-up: passing and progression vs defensive pressure.
@@ -222,7 +236,10 @@ extension _MatchEngineSim on MatchEngine {
         (config.chanceBase +
                 config.chanceScale *
                     edgeFactor *
-                    att.tactics.modifiers.chance *
+                    (attackerSide == MatchSide.home
+                        ? homeTacticsFx
+                        : awayTacticsFx)
+                    .chance *
                     urgency *
                     _defensiveOpenness(attackerSide, minute))
             .clamp(0.05, config.chanceMax);
@@ -240,7 +257,11 @@ extension _MatchEngineSim on MatchEngine {
         return produced;
       }
       final passAccuracy =
-          (attTotals.support / 100) * att.tactics.modifiers.passAccuracy;
+          (attTotals.support / 100) *
+          (attackerSide == MatchSide.home
+              ? homeTacticsFx
+              : awayTacticsFx)
+              .passAccuracy;
       final completed = (passesAttempted * passAccuracy.clamp(0.40, 0.92))
           .round();
       final md = <String, dynamic>{
@@ -322,8 +343,13 @@ extension _MatchEngineSim on MatchEngine {
     final def = _runtimeOf(
       attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
     );
-    final styleDrain = def.tactics.modifiers.stamina *
-        def.mentalityFx.stamina *
+    // Perf pass 2026-11-12 (M1): hoisted — one modifiers/mentality
+    // allocation instead of two per call, per minute.
+    final defTacticsFx = def.tactics.modifiers;
+    final defMentalityFx = def.mentalityFx;
+    final styleDrain =
+        defTacticsFx.stamina *
+        defMentalityFx.stamina *
         _activeActionModifiersOf(
           attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
         ).stamina *
