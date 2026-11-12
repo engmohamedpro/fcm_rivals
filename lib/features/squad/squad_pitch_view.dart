@@ -201,7 +201,7 @@ class SquadPitch extends StatelessWidget {
                                   flag: flagEmojiFor(card.base.nationality),
                                   imageUrl: card.base.imageUrl,
                                   clubCrestUrl: card.base.clubCrestUrl,
-                                  name: card.base.name.split(' ').last,
+                                  name: card.base.name,
                                   rarity: rarityOf(card),
                                   width: cardW,
                                   warn: fs.position != card.position,
@@ -212,6 +212,7 @@ class SquadPitch extends StatelessWidget {
                                   injuryMatchesOut: showCondition
                                       ? card.injuryMatchesRemaining
                                       : null,
+                                  upgradeLevel: card.upgradeLevel,
                                   upgradable: upgradable?.call(
                                         card.base.playerId,
                                       ) ??
@@ -237,7 +238,7 @@ class SquadPitch extends StatelessWidget {
                                       flag: flagEmojiFor(card.base.nationality),
                                       imageUrl: card.base.imageUrl,
                                       clubCrestUrl: card.base.clubCrestUrl,
-                                      name: card.base.name.split(' ').last,
+                                      name: card.base.name,
                                       rarity: rarityOf(card),
                                       width: cardW,
                                       warn: fs.position != card.position,
@@ -248,6 +249,7 @@ class SquadPitch extends StatelessWidget {
                                       injuryMatchesOut: showCondition
                                           ? card.injuryMatchesRemaining
                                           : null,
+                                      upgradeLevel: card.upgradeLevel,
                                       upgradable: upgradable?.call(
                                             card.base.playerId,
                                           ) ??
@@ -368,7 +370,7 @@ class SquadCardRow extends StatelessWidget {
                       flag: flagEmojiFor(c.base.nationality),
                       imageUrl: c.base.imageUrl,
                       clubCrestUrl: c.base.clubCrestUrl,
-                      name: c.base.name.split(' ').last,
+                      name: c.base.name,
                       rarity: rarityOf(c),
                       width: cardWidth,
                       stamina: showStamina ? c.staminaPercent : null,
@@ -376,6 +378,7 @@ class SquadCardRow extends StatelessWidget {
                       injuryMatchesOut: showCondition
                           ? c.injuryMatchesRemaining
                           : null,
+                      upgradeLevel: c.upgradeLevel,
                       upgradable: upgradable?.call(c.base.playerId) ?? false,
                     ),
                   )
@@ -392,7 +395,7 @@ class SquadCardRow extends StatelessWidget {
                           flag: flagEmojiFor(c.base.nationality),
                           imageUrl: c.base.imageUrl,
                           clubCrestUrl: c.base.clubCrestUrl,
-                          name: c.base.name.split(' ').last,
+                          name: c.base.name,
                           rarity: rarityOf(c),
                           width: cardWidth,
                           stamina: showStamina ? c.staminaPercent : null,
@@ -400,6 +403,7 @@ class SquadCardRow extends StatelessWidget {
                           injuryMatchesOut: showCondition
                               ? c.injuryMatchesRemaining
                               : null,
+                          upgradeLevel: c.upgradeLevel,
                           upgradable: upgradable?.call(c.base.playerId) ??
                               false,
                         ),
@@ -477,9 +481,12 @@ Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
   overall: card.overall,
   position: card.position.code,
   flag: flagEmojiFor(card.base.nationality),
-  name: card.base.name.split(' ').last,
+  imageUrl: card.base.imageUrl,
+  clubCrestUrl: card.base.clubCrestUrl,
+  name: card.base.name,
   rarity: rarityOf(card),
   width: width,
+  upgradeLevel: card.upgradeLevel,
 );
 
 /// An unassigned formation slot: a ghost mini card — the exact shape,

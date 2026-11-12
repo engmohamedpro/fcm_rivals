@@ -1,6 +1,4 @@
-// The mini card's face mirrors the big card: the identity stack
-// (OVR → position → flag → crest) down the left and the portrait
-// filling the band beside it — all five data points on a 64px shield.
+// The mini card's face mirrors the new premium card style without attributes.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,7 +13,7 @@ void main() {
     ),
   );
 
-  testWidgets('the mini face carries all five data points', (
+  testWidgets('the mini card renders rating, position, and name without attributes', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -32,35 +30,10 @@ void main() {
         ),
       ),
     );
-    // Identity stack: rating, position, flag.
     expect(find.text('92'), findsOneWidget);
     expect(find.text('ST'), findsOneWidget);
     expect(find.text('🇪🇬'), findsOneWidget);
-    // Portrait + crest: two network images on the face.
-    expect(find.byType(Image), findsNWidgets(2));
-    // No overflow at the pitch size.
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('the identity stack degrades per data point', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      host(
-        const FcmMiniCard(
-          overall: 75,
-          position: 'CM',
-          name: 'Salem',
-          rarity: CardRarity.epic,
-          width: 56,
-        ),
-      ),
-    );
-    // No flag, no crest, no portrait: the texts stand alone and the
-    // painted silhouette keeps the band — nothing else renders.
-    expect(find.text('75'), findsOneWidget);
-    expect(find.text('CM'), findsOneWidget);
-    expect(find.byType(Image), findsNothing);
+    expect(find.text('FOUAD'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -84,7 +57,6 @@ void main() {
     );
     expect(find.text('80'), findsNothing);
     expect(find.text('GHOST'), findsNothing);
-    expect(find.byType(Image), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

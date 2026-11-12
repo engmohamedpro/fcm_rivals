@@ -141,7 +141,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.text('TEST STRIKER'), findsOneWidget);
     expect(find.text('91'), findsOneWidget);
-    expect(find.text('EPIC'), findsOneWidget);
     // The fade-in itself takes 300ms after the done mark.
     await tester.pump(const Duration(milliseconds: 400));
     final done = tester.widget<AnimatedOpacity>(
@@ -173,7 +172,6 @@ void main() {
     expect(mid.opacity, 0);
     await tester.pump(const Duration(seconds: 4));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('RARE'), findsOneWidget);
     expect(find.text('BACK'), findsOneWidget);
     // SELL carries the player's coin value (overall 55 → the economy's
     // sell price of a 90M-market-value player) behind the same C coin
@@ -524,7 +522,6 @@ void main() {
     await tester.pump(kStandardRevealDuration);
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('BACK'), findsOneWidget);
-    expect(find.text('RARE'), findsOneWidget);
   });
 
   testWidgets('premium 90+ pull: the red timeline — mystery caption, '

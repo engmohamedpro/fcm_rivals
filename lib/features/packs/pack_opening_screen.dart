@@ -534,14 +534,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
         ),
-        CustomPaint(
-          painter: LightRaysPainter(
-            rotation: _spin.value,
-            color: glowTint,
-            strength: raysStrength.clamp(0.0, 1.0),
-            rays: premium ? 26 : (legend ? 22 : 14),
-          ),
-        ),
+
 
         // Energy ring orbiting the sealed pack while it charges.
         if (showPack)
@@ -665,13 +658,7 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
             ),
           ),
 
-        // Legendary mystery: the card's silhouette rising out of the
-        // dark, breathing, "?" on its face — the clues land on top of it.
-        if (legend && t >= tl.mysteryIn!.begin && flipT < 0.2)
-          Align(
-            alignment: const Alignment(0, -0.12),
-            child: _buildMystery(t, cardWidth, rarity, tl),
-          ),
+
 
         // Walkout: flag → position.
         if (t >= tl.walkoutStart && infoFade > 0)
@@ -767,10 +754,19 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                             key: const ValueKey('reveal-actions'),
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // T-0085 row order: the resolver FIRST
-                              // (NEXT PLAYER on earlier cards, BACK on
-                              // the last), SELL LAST. Row order follows
-                              // the text direction, so RTL mirrors it.
+                              if (_showChain) ...[
+                                ChainButton(
+                                  affordable: _chainAffordable,
+                                  isFree: widget.chainInfo!.isFree,
+                                  ownedCount: widget.chainInfo!.ownedCount,
+                                  price: widget.chainInfo!.price,
+                                  shortfall: widget.chainInfo!.shortfall,
+                                  balance: _chainBalance,
+                                  accent: widget.packTint,
+                                  onPressed: _chain,
+                                ),
+                                const SizedBox(height: 10),
+                              ],
                               Row(
                                 children: [
                                   Expanded(
@@ -809,19 +805,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
                                     ),
                                 ],
                               ),
-                              if (_showChain) ...[
-                                const SizedBox(height: 10),
-                                ChainButton(
-                                  affordable: _chainAffordable,
-                                  isFree: widget.chainInfo!.isFree,
-                                  ownedCount: widget.chainInfo!.ownedCount,
-                                  price: widget.chainInfo!.price,
-                                  shortfall: widget.chainInfo!.shortfall,
-                                  balance: _chainBalance,
-                                  accent: widget.packTint,
-                                  onPressed: _chain,
-                                ),
-                              ],
                             ],
                           ),
                   ),

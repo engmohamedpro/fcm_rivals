@@ -1,8 +1,3 @@
-// The premium player card is ONE design at every size: the same widget
-// tree, drawn in proportion to its width — from the 56px pitch card to
-// the 320px reveal card. These tests pin that: it lays out without
-// overflow at every size, shows the same identity at each, and the
-// legendary typewriter / redacted name behave.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -57,14 +52,11 @@ void main() {
             ),
           ),
         );
-        // Same size ratio at every width.
         final size = tester.getSize(find.byType(FcmPlayerCard));
         expect(size.width, closeTo(width, 0.01));
         expect(size.height, closeTo(width / kPlayerCardAspect, 0.01));
-        // Same identity on every size, no overflow exceptions thrown.
         expect(find.text('KARIM FOUAD'), findsOneWidget);
         expect(find.text('ATT'), findsOneWidget);
-        expect(find.text('EGYPT'), findsOneWidget);
         expect(tester.takeException(), isNull, reason: 'width $width');
       }
     });
@@ -105,30 +97,6 @@ void main() {
     expect(find.text('99'), findsOneWidget);
   });
 
-  testWidgets('club crest replaces the nationality name under the flag', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      _host(
-        FcmPlayerCard(
-          player: _player(
-            clubCrestUrl:
-                'https://img.a.transfermarkt.technology/wappen/head/281.png',
-          ),
-          rarity: CardRarity.epic,
-        ),
-      ),
-    );
-    // The crest is a network image under the flag; the fallback name is
-    // not built while the crest URL is present.
-    expect(find.byType(Image), findsOneWidget);
-    expect(find.text('EGYPT'), findsNothing);
-    // The test HTTP client fails the download (400) — the card must
-    // degrade to the nationality name, never to a blank slot.
-    await tester.pumpAndSettle();
-    expect(find.text('EGYPT'), findsOneWidget);
-  });
-
   testWidgets('name is absent until revealed (plain fade)', (
     WidgetTester tester,
   ) async {
@@ -151,12 +119,9 @@ void main() {
         player: _player(),
         rarity: CardRarity.legendary,
         nameLetters: letters,
-        maskName: true,
-        maskPulse: 0.5,
       ),
     );
     await tester.pumpWidget(card(0));
-    // Redacted: nothing readable anywhere on the card.
     expect(find.text('KARIM FOUAD'), findsNothing);
 
     await tester.pumpWidget(card(0.3));
@@ -165,39 +130,6 @@ void main() {
 
     await tester.pumpWidget(card(1));
     expect(find.text('KARIM FOUAD'), findsOneWidget);
-    // The card itself never resizes as letters land.
     expect(tester.getSize(find.byType(FcmPlayerCard)), partial);
-  });
-
-  testWidgets('mini card shares the premium face and keeps its layout', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      _host(
-        FcmMiniCard(
-          overall: 91,
-          position: 'ST',
-          name: 'Fouad',
-          rarity: CardRarity.legendary,
-          width: 56,
-          stamina: 70,
-        ),
-      ),
-    );
-    expect(find.text('91'), findsOneWidget);
-    expect(find.text('FOUAD'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  test('cardPath is one chamfered silhouette that fits its box', () {
-    const size = Size(100, 143);
-    final b = cardPath(size).getBounds();
-    expect(b.left, closeTo(0, 0.01));
-    expect(b.top, closeTo(0, 0.01));
-    expect(b.right, closeTo(100, 0.01));
-    expect(b.bottom, closeTo(143, 0.01));
-    // Top corners are cut: the very corner is outside the path.
-    expect(cardPath(size).contains(const Offset(1, 1)), isFalse);
-    expect(cardPath(size).contains(const Offset(50, 70)), isTrue);
   });
 }

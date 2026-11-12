@@ -36,18 +36,16 @@ BasePlayer _player({int overall = 91}) => BasePlayer(
   ),
 );
 
-/// Finds the single [CardFacePainter] in the pumped tree and returns its
-/// class axis — the surface-consistency lock.
-CardClass _faceClassOf(WidgetTester tester) {
+PlayerCardRarity _faceClassOf(WidgetTester tester) {
   final painters = tester
       .widgetList<CustomPaint>(
         find.byWidgetPredicate((w) => w is CustomPaint),
       )
       .map((p) => p.painter)
-      .whereType<CardFacePainter>()
+      .whereType<PlayerCardPainter>()
       .toList();
   expect(painters, isNotEmpty);
-  return painters.first.cardClass;
+  return painters.first.rarity;
 }
 
 void main() {
@@ -105,11 +103,11 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(home: Scaffold(body: card(92))),
       );
-      expect(_faceClassOf(tester), CardClass.premium);
+      expect(_faceClassOf(tester), PlayerCardRarity.premium);
       await tester.pumpWidget(
         MaterialApp(home: Scaffold(body: card(89))),
       );
-      expect(_faceClassOf(tester), CardClass.standard);
+      expect(_faceClassOf(tester), PlayerCardRarity.legendary);
     });
 
     testWidgets('FcmPlayerCard renders 90 premium and 80 standard', (tester) async {
@@ -121,11 +119,11 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(home: Scaffold(body: card(90))),
       );
-      expect(_faceClassOf(tester), CardClass.premium);
+      expect(_faceClassOf(tester), PlayerCardRarity.premium);
       await tester.pumpWidget(
         MaterialApp(home: Scaffold(body: card(80))),
       );
-      expect(_faceClassOf(tester), CardClass.standard);
+      expect(_faceClassOf(tester), PlayerCardRarity.legendary);
     });
 
     testWidgets('the pre-flip back is class-agnostic brand art', (tester) async {

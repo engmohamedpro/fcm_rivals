@@ -97,6 +97,11 @@ extension _PackRevealViews on _PackOpeningScreenState {
   Widget _buildWalkout(double t, CardRarity rarity, RevealTimeline tl) {
     final p = _player;
     final flag = tl.flagIn.transform(t);
+    final club = Interval(
+      (tl.flagIn.begin + tl.posIn.begin) / 2,
+      (tl.flagIn.end + tl.posIn.end) / 2,
+      curve: Curves.easeOutBack,
+    ).transform(t);
     final pos = tl.posIn.transform(t);
 
     Widget pop(double v, Widget child, {double dy = 30}) => Opacity(
@@ -107,9 +112,6 @@ extension _PackRevealViews on _PackOpeningScreenState {
       ),
     );
 
-    // No name and no rating here: the identity and the overall land on
-    // the card itself, after the flip (GDD 5.6 suspense) — the walkout
-    // gives flag and position only.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -117,7 +119,7 @@ extension _PackRevealViews on _PackOpeningScreenState {
           flag,
           Text(
             flagEmojiFor(p.nationality),
-            style: const TextStyle(fontSize: 88),
+            style: const TextStyle(fontSize: 72),
           ),
         ),
         const SizedBox(height: 4),
@@ -127,13 +129,43 @@ extension _PackRevealViews on _PackOpeningScreenState {
             p.nationality.toUpperCase(),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w800,
-              letterSpacing: 5,
+              letterSpacing: 4,
             ),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
+        if (p.clubName.isNotEmpty) ...[
+          pop(
+            club,
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: p.clubCrestUrl.isNotEmpty
+                  ? Image.network(
+                      p.clubCrestUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.shield, color: Colors.white70, size: 40),
+                    )
+                  : const Icon(Icons.shield, color: Colors.white70, size: 40),
+            ),
+          ),
+          const SizedBox(height: 4),
+          pop(
+            club,
+            Text(
+              p.clubName.toUpperCase(),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 3,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         pop(
           pos,
           Text(
@@ -260,43 +292,46 @@ extension _PackRevealViews on _PackOpeningScreenState {
       clipBehavior: Clip.none,
       children: [
         card,
-        PositionedDirectional(
-          top: -cardWidth * 0.03,
-          end: cardWidth * 0.06,
-          child: Transform.scale(
-            scale: appear,
-            alignment: AlignmentDirectional.bottomStart,
-            child: Opacity(
-              opacity: (appear * 1.4).clamp(0.0, 1.0),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: cardWidth * 0.045,
-                  vertical: cardWidth * 0.012,
-                ),
-                decoration: BoxDecoration(
-                  color: FcmColors.gold.withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(cardWidth * 0.045),
-                  border: Border.all(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    width: math.max(0.5, cardWidth * 0.004),
+        Positioned(
+          top: -cardWidth * 0.12,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Transform.scale(
+              scale: appear,
+              alignment: Alignment.bottomCenter,
+              child: Opacity(
+                opacity: (appear * 1.4).clamp(0.0, 1.0),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: cardWidth * 0.045,
+                    vertical: cardWidth * 0.012,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: FcmColors.gold.withValues(alpha: 0.55),
-                      blurRadius: cardWidth * 0.08,
+                  decoration: BoxDecoration(
+                    color: FcmColors.gold.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(cardWidth * 0.045),
+                    border: Border.all(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      width: math.max(0.5, cardWidth * 0.004),
                     ),
-                  ],
-                ),
-                child: Text(
-                  l10nOf(context).packsNewCard.toUpperCase(),
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    color: FcmColors.ink,
-                    fontSize: cardWidth * 0.055,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    height: 1,
+                    boxShadow: [
+                      BoxShadow(
+                        color: FcmColors.gold.withValues(alpha: 0.55),
+                        blurRadius: cardWidth * 0.08,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    l10nOf(context).packsNewCard.toUpperCase(),
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      color: FcmColors.ink,
+                      fontSize: cardWidth * 0.055,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                      height: 1,
+                    ),
                   ),
                 ),
               ),

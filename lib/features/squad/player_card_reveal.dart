@@ -208,20 +208,20 @@ class _PlayerCardRevealState extends State<PlayerCardReveal>
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Scrim: near-black, tinted by the rarity glow.
+                  // Scrim: deep immersive radial gradient tinted by the rarity glow (same style as pack opening).
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.88),
-                    ),
-                    child: CustomPaint(
-                      painter: LightRaysPainter(
-                        rotation: _spin.value,
-                        color: rarity.accent,
-                        strength:
-                            (0.30 + 0.20 * pulse(_idle.value)) *
-                            Curves.easeOut.transform(
-                              ((t - 0.02) / 0.20).clamp(0.0, 1.0),
-                            ),
+                      gradient: RadialGradient(
+                        center: const Alignment(0, -0.15),
+                        radius: 1.1,
+                        colors: [
+                          Color.lerp(
+                            FcmColors.surface,
+                            rarity.accent,
+                            0.30,
+                          )!,
+                          FcmColors.night,
+                        ],
                       ),
                     ),
                   ),
