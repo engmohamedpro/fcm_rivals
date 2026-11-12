@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +15,7 @@ import '../../features/collection/collection_store.dart'
 import '../../features/packs/pack_engine.dart' show PackCategory, PackTier;
 import 'pack_tier_colors.dart';
 import 'pack_opening_screen.dart';
+import 'debug_player_picker.dart';
 import 'packs_store_widgets.dart';
 
 /// Store tab (nav label 'Store', GDD 5.5): one SECTION per position,
@@ -86,17 +88,35 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
             ),
           ],
         ),
-        data: (packs) => StoreGrid(
-          packs: packs,
-          offers: offers,
-          coins: coins,
-          opening: _opening,
-          onOpen: (packId, tier) => _open(context, packId, tier),
-          onBuy: (offer) => _buy(context, offer),
-          // Opens the scope's contents list — same entry as the cells'
-          // players icon buttons.
-          onInfo: (offer) => _showContents(context, offer),
-        ),
+      data: (packs) => Column(
+        children: [
+          // DEBUG-ONLY draw picker (debug tool request 2026-11-12,
+          // removed before release — file debug_player_picker.dart and
+          // this block are the whole surface): choose a player, every
+          // pack opened next reveals him. kDebugMode-gated inside the
+          // widget too (release builds render nothing).
+          if (kDebugMode)
+            FutureBuilder<CollectionStore>(
+              future: ref.watch(collectionStoreProvider.future),
+              builder: (context, snap) => snap.hasData
+                  ? DebugPlayerPicker(store: snap.data!)
+                  : const SizedBox.shrink(),
+            ),
+          Expanded(
+            child: StoreGrid(
+              packs: packs,
+              offers: offers,
+              coins: coins,
+              opening: _opening,
+              onOpen: (packId, tier) => _open(context, packId, tier),
+              onBuy: (offer) => _buy(context, offer),
+              // Opens the scope's contents list — same entry as the cells'
+              // players icon buttons.
+              onInfo: (offer) => _showContents(context, offer),
+            ),
+          ),
+        ],
+      ),
       ),
     );
   }

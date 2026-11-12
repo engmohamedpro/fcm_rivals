@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/domain/players.dart'
-    show PlayerAttribute, Position;
+    show BasePlayer, PlayerAttribute, Position;
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
@@ -72,6 +72,17 @@ Future<CollectionStore> seededStore(AppDatabase db) async {
     crestIndex: 0,
   );
   return store;
+}
+
+/// The debug picker's pool, for the debug-draw-override tests: warms
+/// the registry the same way the packs screen does before opening.
+Future<List<BasePlayer>> _debugPool() async {
+  final db = memoryDb();
+  final store = await seededStore(db);
+  await store.debugWarmRegistry();
+  final pool = store.debugPackPool();
+  await db.close();
+  return pool;
 }
 
 void main() {
@@ -1170,6 +1181,108 @@ void main() {
         (c) => c.base.playerId == before.first.base.playerId,
       );
       expect(changed.base.marketValueEur, before.first.base.marketValueEur * 4);
+    });
+
+    group('debug draw override (debug tool 2026-11-12, pre-release)', () {
+      test('the chosen player is drawn instead of the roll', () async {
+        final packs = await store.getAvailablePacks();
+        final gkPack = packs.firstWhere((p) => p.scopeValue == 'GK');
+        // 'Keeper 3' — a GK in the seed pool, eligible for the GK pack.
+        final pool = await _debugPool();
+        final chosen = pool.firstWhere(
+          (p) => p.playerId == 3,
+        ); // Keeper 3, GK — pinned by the seed above.
+        store.debugDrawOverride = chosen;
+
+        final result = await store.openPack(
+          packId: gkPack.id,
+          random: math.Random(99),
+        );
+        expect(result.players.single.playerId, 3);
+        expect(result.players.single.name, 'Keeper 3');
+        // The tier is the player's OWN band, not a rolled one: the
+        // seed's 'Keeper 3' (€6.5M) rates in the 70-79 epic band — 1.
+        expect(result.tiers.single, 1);
+
+        // Everything else stayed real: the pack was consumed and the
+        // player persisted.
+        final remaining = await store.getAvailablePacks();
+        expect(remaining.any((p) => p.id == gkPack.id), isFalse);
+        final collection = await store.getCollection();
+        expect(
+          collection.any((c) => c.base.playerId == 3),
+          isTrue,
+        );
+      });
+
+      test('the override honours the pack scope — ineligible falls back to the real roll', () async {
+        final packs = await store.getAvailablePacks();
+        final gkPack = packs.firstWhere((p) => p.scopeValue == 'GK');
+        // 'Striker 51' — a ST, NOT eligible for a GK pack: the
+        // override must fall through to the real two-stage roll.
+        final pool = await _debugPool();
+        store.debugDrawOverride = pool.firstWhere((p) => p.playerId == 51);
+
+        final result = await store.openPack(
+          packId: gkPack.id,
+          random: math.Random(11),
+        );
+        expect(result.players.single.playerId, isNot(51));
+        expect(result.players.single.position.code, 'GK');
+      });
+
+      test('null override keeps the real odds (regression guard)', () async {
+        expect(store.debugDrawOverride, isNull);
+        // The very first GK open of this store with seed 11 is pinned
+        // by the suite above ('position pack yields one player of that
+        // position, once' uses the same seed and pack slot): running
+        // it here against a FRESH store with the override unset proves
+        // the draw still comes from the real roll, not from any
+        // leftover state.
+        final db2 = memoryDb();
+        final store2 = await seededStore(db2);
+        final packs2 = await store2.getAvailablePacks();
+        final gkPack2 = packs2.firstWhere((p) => p.scopeValue == 'GK');
+
+        final a = await store2.openPack(
+          packId: gkPack2.id,
+          random: math.Random(11),
+        );
+        expect(a.players.single.position.code, 'GK');
+        await db2.close();
+      });
+
+      test('icon override draws with the icon band index', () async {
+        // Icon packs are OFFERS, not owned rows — buy one first (the
+        // normal store path), then open it with the override set.
+        final offers = await store.getStoreOffers();
+        final iconOffer = offers.firstWhere(
+          (o) => o.category == PackCategory.icon,
+        );
+        final clubBefore = (await store.getClub())!;
+        if (clubBefore.coins < iconOffer.price) {
+          await (db.update(db.clubs)
+                ..where((c) => c.id.equals(clubBefore.id)))
+              .write(ClubsCompanion(
+                coins: Value(clubBefore.coins + 500_000),
+              ));
+        }
+        final pack = await store.buyPack(
+          category: PackCategory.icon,
+          tier: PackTier.iconEpic,
+        );
+        final pool = await _debugPool();
+        store.debugDrawOverride = pool.firstWhere(
+          (p) => p.playerId == 1000,
+        ); // The Icon, ST, Brazil.
+
+        final result = await store.openPack(
+          packId: pack.id,
+          random: math.Random(7),
+        );
+        expect(result.players.single.playerId, 1000);
+        expect(result.tiers.single, 4); // kIconBandIndex
+      });
     });
   });
 

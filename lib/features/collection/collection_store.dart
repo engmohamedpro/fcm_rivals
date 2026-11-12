@@ -15,7 +15,7 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart';
 
 import '../../core/domain/crest.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
 
 import '../../core/database/app_database.dart';
 import '../../core/database/coin_ops.dart';
@@ -28,6 +28,7 @@ import '../match/stamina.dart'
     show StaminaConfig, recoverStamina;
 import '../match/tactics.dart' show TeamTactics;
 import '../packs/pack_engine.dart';
+import '../packs/pack_rarity.dart';
 import 'collection_results.dart';
 import 'pack_catalog.dart';
 
@@ -122,6 +123,36 @@ class CollectionStore {
   /// its band caches) are rebuilt over the new registry contents.
   void _invalidatePackCache() => _poolEpoch++;
   int _poolEpochBuilt = -1;
+
+  /// DEBUG-ONLY draw override (debug tool request 2026-11-12, removed
+  /// before release): when set, [openPack] draws EXACTLY this player
+  /// instead of rolling the two-stage odds — the packs debug picker
+  /// (packs_screen.dart, `kDebugMode` gated) sets it so the chosen
+  /// player is the one revealed, including every OPEN ANOTHER in a
+  /// chain. Null (the release state — the field never exists outside
+  /// debug builds' code paths) keeps the real odds. The override does
+  /// NOT bypass the pack's own gating: the player must be in the pack's
+  /// pool and the club must have room, exactly like a real draw, so
+  /// the debug tool can never plant an impossible card.
+  BasePlayer? debugDrawOverride;
+
+  /// DEBUG-ONLY (removed before release, see [debugDrawOverride]):
+  /// warms the registry so the debug picker's pool read is warm.
+  Future<void> debugWarmRegistry() async {
+    assert(kDebugMode, 'debug-only API');
+    await _ensureRegistry();
+  }
+
+  /// DEBUG-ONLY (removed before release, see [debugDrawOverride]):
+  /// the pack pool the debug picker searches — the same list instance
+  /// the engine draws from.
+  List<BasePlayer> debugPackPool() {
+    assert(kDebugMode, 'debug-only API');
+    if (_packPool.isEmpty && _registryLoaded) {
+      _packPool = _registry.all.toList(growable: false);
+    }
+    return _packPool;
+  }
 
   static const int startingPacksPerPosition = 2;
 
@@ -273,7 +304,33 @@ class CollectionStore {
       tier: PackTier.fromName(pack.tier),
     );
     final engine = _engineFor();
-    final draws = engine.open(scope, _packPool, random: random);
+    // DEBUG-ONLY draw override (debug tool request 2026-11-12, removed
+    // before release): the packs debug picker chose this player — draw
+    // him directly instead of rolling. The tier the reveal celebrates
+    // is the player's OWN band (never a rolled one — the reveal card
+    // colour and the odds display must agree with what is on screen).
+    // The override respects the pack's scope: an ineligible pick (e.g.
+    // a GK in a ST pack) falls through to the REAL roll, so the debug
+    // tool cannot plant a card the pack could never contain.
+    var draws = const <PackDraw>[];
+    if (debugDrawOverride case final chosen?) {
+      if (scope.matches(chosen)) {
+        draws = [
+          PackDraw(
+            player: chosen,
+            tier: chosen.isIcon
+                ? kIconBandIndex
+                : PackRarity.fromOverall(
+                    chosen.baseStats.overall,
+                    config: engine.oddsConfig,
+                  ).index,
+          ),
+        ];
+      }
+    }
+    if (draws.isEmpty) {
+      draws = engine.open(scope, _packPool, random: random);
+    }
     if (draws.isEmpty) {
       throw const CollectionException('No eligible players for this pack');
     }
