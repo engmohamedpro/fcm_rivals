@@ -122,7 +122,7 @@ class SquadScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
           children: [
             TacticsSetupView(
-              formationCode: club?.formationCode ?? '4-3-3',
+              formation: formationOfCode(club?.formationCode ?? '4-3-3'),
               tactics: tactics,
               mentality: mentality,
               xi: xi,
@@ -190,7 +190,7 @@ class SquadScreen extends ConsumerWidget {
               // green / red hover feedback and the final drop.
               swapping: SquadSwapping(
                 rejection: (dragged, target) => planSquadDrop(
-                  formation: formationByCode(club?.formationCode ?? '4-3-3'),
+                  formation: formationOfCode(club?.formationCode ?? '4-3-3'),
                   squad: squad,
                   dragged: dragged,
                   target: target,
@@ -245,6 +245,10 @@ class SquadScreen extends ConsumerWidget {
   /// Applies a drag-and-drop swap: validated once more against the squad
   /// as it is now, then saved as the club's squad. A refused drop explains
   /// itself in a snackbar and changes nothing.
+  ///
+  /// A drop that redefined an empty slot (custom formation building)
+  /// carries the new formation: the store persists BOTH, atomically, so
+  /// the pitch and the squad can never disagree.
   Future<void> _swap(
     BuildContext context,
     WidgetRef ref, {
@@ -259,7 +263,7 @@ class SquadScreen extends ConsumerWidget {
       ..showSnackBar(SnackBar(content: Text(message)));
 
     final outcome = planSquadDrop(
-      formation: formationByCode(formationCode),
+      formation: formationOfCode(formationCode),
       squad: squad,
       dragged: dragged,
       target: target,
@@ -270,7 +274,10 @@ class SquadScreen extends ConsumerWidget {
     }
     try {
       final store = await ref.read(collectionStoreProvider.future);
-      await store.saveSquad(outcome.assignment!);
+      await store.saveSquadAndFormation(
+        outcome.assignment!,
+        formationCode: outcome.formation?.code,
+      );
       ref.invalidate(squadProvider);
     } catch (e) {
       say('$e'.replaceFirst('CollectionException: ', ''));
@@ -310,6 +317,7 @@ class SquadScreen extends ConsumerWidget {
   }
 
   /// Persists a new formation (GDD 6.4) and re-picks the best XI for it.
+  /// The code may be a preset ('4-3-3') or a custom code ('C|GK,…').
   Future<void> _changeFormation(
     BuildContext context,
     WidgetRef ref,

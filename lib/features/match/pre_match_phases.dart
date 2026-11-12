@@ -110,7 +110,7 @@ class TacticsPhase extends StatelessWidget {
         // match-day fitness. Stamina on, stat rows off, full 23-man
         // strip including reserves.
         TacticsSetupView(
-          formationCode: formationCode,
+          formation: formationOfCode(formationCode),
           tactics: tactics,
           mentality: mentality,
           xi: xi,
@@ -147,7 +147,7 @@ class TacticsPhase extends StatelessWidget {
   final cards = squad.values.toList();
   final assignment = const SquadEngine().autoPick(
     cards,
-    formationByCode(formationCode),
+    formationOfCode(formationCode),
     // The matchday policy (T-0118): exclude the injured, rank by
     // fitness band then quality. suspendedPlayerIds stays empty —
     // the red-card HOOK exists, the suspension STATE does not yet.

@@ -223,7 +223,7 @@ class CollectionStore {
     if (existing != null) {
       throw const CollectionException('A club already exists on this device');
     }
-    final formation = formationByCode(formationCode);
+    final formation = formationOfCode(formationCode);
 
     final now = DateTime.now();
     return db.transaction(() async {
@@ -768,7 +768,7 @@ class CollectionStore {
       if (copy.squadSlot != null &&
           copy.squadSlot! < Formation.startingXiSize) {
         final cards = await getCollection();
-        final formation = formationByCode(club.formationCode);
+        final formation = formationOfCode(club.formationCode);
         final others = cards
             .where((c) => c.ownedId != ownedId)
             .toList(growable: false);
@@ -923,7 +923,7 @@ class CollectionStore {
       if (duplicate.squadSlot != null &&
           duplicate.squadSlot! < Formation.startingXiSize) {
         final cards = await getCollection();
-        final formation = formationByCode(club.formationCode);
+        final formation = formationOfCode(club.formationCode);
         await saveSquad(squad.autoPick(cards, formation));
       }
     });
@@ -985,6 +985,16 @@ class CollectionStore {
   );
   Future<void> changeFormation(String formationCode) =>
       _squadStore.changeFormation(formationCode);
+
+  /// Squad + formation in one transaction (custom formations): see
+  /// SquadStore.saveSquadAndFormation.
+  Future<void> saveSquadAndFormation(
+    Map<int, int> assignments, {
+    String? formationCode,
+  }) => _squadStore.saveSquadAndFormation(
+    assignments,
+    formationCode: formationCode,
+  );
   Future<void> changeTactics({
     String? formationCode,
     TeamTactics? tactics,

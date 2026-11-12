@@ -13,6 +13,19 @@
 /// with the back three and attacks with its wing backs already advanced.
 /// x values are symmetric about 50 (a left back at 14 mirrors a right
 /// back at 86), so every line reads centred.
+///
+/// ## Custom formations (owner request 2026-11-12)
+///
+/// The user can also build a CUSTOM shape by dragging players onto empty
+/// pitch slots: every slot KEEPS its pitch place, and the slot's
+/// POSITION becomes the dropped player's own. The position mix obeys
+/// [positionCaps] (the owner's exact ladder: ST 0-2, LW/RW/LB/RB 0-1,
+/// CAM 0-2, CM/CDM/CB 0-3, GK exactly 1 — LM/RM allowed 0-1 each
+/// because the dataset carries them). A custom formation serialises as
+/// the code `'C|GK,LB,CB,…'` (position codes, GK first); [customFormation]
+/// builds it and [formationByCode] decodes it, so every consumer of
+/// `formationByCode` (match engine, season, pre-match) sees it as just
+/// another formation.
 library;
 
 import '../../core/domain/players.dart';
@@ -264,3 +277,156 @@ Formation formationByCode(String code) => formations.firstWhere(
   (f) => f.code == code,
   orElse: () => formations.first,
 );
+
+// ---------------------------------------------------------------------------
+// Custom formations (owner request 2026-11-12)
+// ---------------------------------------------------------------------------
+
+/// The custom-formation code prefix: `'C|GK,LB,CB,…'`.
+const String kCustomFormationPrefix = 'C|';
+
+/// How many slots a custom formation's position mix may carry (the
+/// owner's exact ladder, 2026-11-12). GK is exactly 1 — the keeper's
+/// slot never changes. LM/RM get 0-1: the dataset carries 393 LM and
+/// 457 RM players and the preset shapes use them as wide men, so a
+/// custom shape may field one of each.
+const Map<Position, (int min, int max)> positionCaps = {
+  Position.gk: (1, 1),
+  Position.st: (0, 2),
+  Position.lw: (0, 1),
+  Position.rw: (0, 1),
+  Position.lm: (0, 1),
+  Position.rm: (0, 1),
+  Position.cam: (0, 2),
+  Position.cm: (0, 3),
+  Position.cdm: (0, 3),
+  Position.cb: (0, 3),
+  Position.rb: (0, 1),
+  Position.lb: (0, 1),
+};
+
+/// True when [positions] is a legal custom XI: 11 entries, GK first
+/// (the keeper's slot is fixed), and every position within its cap
+/// from [positionCaps]. [positions] here are the XI slot positions in
+/// slot order, GK first.
+String? customFormationProblem(List<Position> positions) {
+  if (positions.length != Formation.startingXiSize) {
+    return 'A formation needs exactly ${Formation.startingXiSize} slots '
+        '(${positions.length} given).';
+  }
+  if (positions.first != Position.gk) {
+    return 'The goalkeeper keeps his slot — GK must come first.';
+  }
+  final counts = <Position, int>{};
+  for (final p in positions) {
+    counts.update(p, (n) => n + 1, ifAbsent: () => 1);
+  }
+  for (final e in counts.entries) {
+    final cap = positionCaps[e.key]!;
+    if (e.value < cap.$1 || e.value > cap.$2) {
+      return 'Too many ${e.key.code}s — a custom formation fields '
+          '${cap.$1 == cap.$2 ? 'exactly ${cap.$1}' : '${cap.$1} to ${cap.$2}'}.';
+    }
+  }
+  return null;
+}
+
+/// The canonical pitch anchors a custom formation places its slots at,
+/// keyed by (position, occurrence index) — first CB, second CB, third
+/// CB. Multiple slots of one position share a symmetric spread around
+/// the position's home x, so two STs read as a strike PAIR, three CBs
+/// as a back three, whatever slots they landed in.
+///
+/// The x/y values follow the same depth ladder and symmetry rules the
+/// preset formations use (see the ladder above), so a custom shape
+/// looks native on the pitch.
+const Map<Position, List<(double x, double y)>> _customAnchors = {
+  // The keeper: home, exactly one, slot 0.
+  Position.gk: [(50, _gkY)],
+  // Back line.
+  Position.cb: [(36, _cbY), (64, _cbY), (50, _cbMidY)],
+  Position.lb: [(14, _fbY)],
+  Position.rb: [(86, _fbY)],
+  // Midfield.
+  Position.cdm: [(36, _cdmY), (64, _cdmY), (50, _cdmY)],
+  Position.cm: [(32, _cmY), (68, _cmY), (50, _cmY)],
+  Position.cam: [(32, _camY), (68, _camY), (50, _camY)],
+  Position.lm: [(12, _wbY)],
+  Position.rm: [(88, _wbY)],
+  // Attack.
+  Position.lw: [(16, _lwY)],
+  Position.rw: [(84, _lwY)],
+  Position.st: [(40, _stY), (60, _stY)],
+};
+
+/// Builds the custom formation for [positions] (XI slot order, GK
+/// first). The 11 slots keep the PITCH PLACES of the base shape the
+/// user started from (dragging redefines WHAT a slot asks for, not
+/// where it stands), and each slot's position comes straight from
+/// [positions] — so the slot the user dropped a striker on now asks
+/// for a striker, forever, until the shape changes.
+///
+/// Returns null (and the reason via [customFormationProblem]) when the
+/// mix is illegal. The resulting [Formation.code] round-trips through
+/// [formationByCode]: `'C|GK,LB,…'` — compact, readable in the database,
+/// and decodable by every existing consumer without a schema change.
+Formation? customFormation(List<Position> positions) {
+  final problem = customFormationProblem(positions);
+  if (problem != null) return null;
+
+  // The occurrence index of each position so far — the anchor table
+  // spreads same-position slots symmetrically (first CB left, second
+  // right, third centre).
+  final seen = <Position, int>{};
+  final slots = <FormationSlot>[];
+  for (final p in positions) {
+    final n = seen.update(p, (v) => v + 1, ifAbsent: () => 0);
+    final anchor = _customAnchors[p]![n.clamp(0, _customAnchors[p]!.length - 1)];
+    slots.add(FormationSlot(p, anchor.$1, anchor.$2));
+  }
+
+  // The code the formation serialises to. Positions in slot order,
+  // comma-separated, GK first — decoded verbatim by formationByCode.
+  final code = '$kCustomFormationPrefix${positions.map((p) => p.code).join(',')}';
+  return Formation(code, 'Custom', slots);
+}
+
+/// True when [code] is a custom-formation code (see [customFormation]).
+bool isCustomFormationCode(String code) =>
+    code.startsWith(kCustomFormationPrefix);
+
+/// Uppercase position codes for decode validation (see
+/// [tryParseCustomFormation] — fromCode throws on unknowns).
+final Set<String> _positionCodes = {
+  for (final p in Position.values) p.code,
+};
+
+/// Decodes a custom-formation code produced by [customFormation]. Any
+/// malformed code resolves to null — callers fall back to the default
+/// shape rather than crashing on a bad database value.
+Formation? tryParseCustomFormation(String code) {
+  if (!isCustomFormationCode(code)) return null;
+  final body = code.substring(kCustomFormationPrefix.length);
+  final parts = body.split(',');
+  if (parts.length != Formation.startingXiSize) return null;
+  final positions = <Position>[];
+  for (final part in parts) {
+    // Unknown codes (a corrupted or hand-edited database value) must
+    // not throw: the whole code is rejected and the caller falls back
+    // to the default shape.
+    if (!_positionCodes.contains(part.toUpperCase())) return null;
+    positions.add(Position.fromCode(part));
+  }
+  return customFormation(positions);
+}
+
+/// Resolves any formation code: a preset ('4-3-3'), a custom
+/// ('C|GK,…'), or a fallback to the default shape for anything
+/// unknown — the drop-in replacement every `formationByCode` caller
+/// can switch to when it must also honour custom shapes.
+Formation formationOfCode(String code) {
+  if (isCustomFormationCode(code)) {
+    return tryParseCustomFormation(code) ?? formations.first;
+  }
+  return formationByCode(code);
+}

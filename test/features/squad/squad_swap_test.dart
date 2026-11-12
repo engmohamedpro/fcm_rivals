@@ -97,29 +97,33 @@ void main() {
       expect(out.assignment![15], 9);
     });
 
-    test('a bench player of ANOTHER position cannot take a starting slot', () {
-      // Bench slot 12 is a CB; slot 9 wants a ST.
+    test('a bench player of ANOTHER position may take a starting slot '
+        '(custom formations: outfield is free)', () {
+      // Bench slot 12 is a CB; slot 9 wants a ST. Out-of-position
+      // placement is a manager's choice now — only the keeper's slot
+      // is protected (owner request 2026-11-12).
       final out = swapSquadSlots(
         formation: _f433,
         squad: _squad(),
         fromSlot: 12,
         toSlot: 9,
       );
-      expect(out.isAccepted, isFalse);
-      expect(out.rejection, contains('CB'));
-      expect(out.rejection, contains('ST'));
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment![9], 12, reason: 'the CB stands up front');
+      expect(out.assignment![12], 9);
     });
 
-    test('the refusal also applies when dragging the starter out', () {
-      // Dragging the XI ST (9) onto the bench CB: the CB would land in
-      // the ST slot — refused.
+    test('the same freedom applies when dragging the starter out', () {
+      // Dragging the XI ST (9) onto the bench CB: the ST takes the
+      // bench place, the CB comes in — both out of position, both
+      // allowed (the pitch shows the warn marks).
       final out = swapSquadSlots(
         formation: _f433,
         squad: _squad(),
         fromSlot: 9,
         toSlot: 12,
       );
-      expect(out.isAccepted, isFalse);
+      expect(out.isAccepted, isTrue, reason: out.rejection);
     });
 
     test('bench ↔ reserves swap freely whatever the positions', () {
@@ -157,15 +161,16 @@ void main() {
         ).isAccepted,
         isTrue,
       );
-      // …but LB (1) and RB (4) are different positions.
+      // …and LB (1) ↔ RB (4) swap too now: out-of-position placement
+      // is a manager's choice (custom formations, 2026-11-12) — the
+      // pitch shows the warn marks, the engine applies its factor.
       final backs = swapSquadSlots(
         formation: _f433,
         squad: _squad(),
         fromSlot: 1,
         toSlot: 4,
       );
-      expect(backs.isAccepted, isFalse);
-      expect(backs.rejection, contains('needs a'));
+      expect(backs.isAccepted, isTrue, reason: backs.rejection);
     });
 
     test(
@@ -230,7 +235,7 @@ void main() {
       );
     });
 
-    test('an empty starting slot only takes its own position', () {
+    test('an empty starting slot takes any outfielder (custom rules)', () {
       final squad = _squad()..remove(9); // ST slot empty
       // Bench ST (15) fills it…
       expect(
@@ -242,7 +247,8 @@ void main() {
         ).isAccepted,
         isTrue,
       );
-      // …a bench CB (12) does not.
+      // …and a bench CB (12) may too — out-of-position placement is
+      // allowed since the custom-formation rules (2026-11-12).
       expect(
         swapSquadSlots(
           formation: _f433,
@@ -250,7 +256,7 @@ void main() {
           fromSlot: 12,
           toSlot: 9,
         ).isAccepted,
-        isFalse,
+        isTrue,
       );
     });
 
@@ -361,8 +367,8 @@ void main() {
         expect(out.assignment!.values, isNot(contains(9)));
       });
 
-      test('a pool player of the wrong position cannot take a starting '
-          'slot', () {
+      test('a pool player of ANOTHER position may take a starting slot '
+          '(outfield is free)', () {
         final squad = _squad();
         final out = planSquadDrop(
           formation: _f433,
@@ -370,8 +376,8 @@ void main() {
           dragged: _card(99, Position.cb),
           target: SquadDropTarget.player(squad[9]!),
         );
-        expect(out.isAccepted, isFalse);
-        expect(out.rejection, contains('needs a ST'));
+        expect(out.isAccepted, isTrue, reason: out.rejection);
+        expect(out.assignment![9], 99);
       });
 
       test('a pool player takes a bench place whatever his position', () {

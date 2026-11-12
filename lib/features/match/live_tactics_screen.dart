@@ -19,6 +19,7 @@ import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../core/ui/match_backdrop.dart';
 import '../../l10n/l10n_context.dart';
+import '../squad/formations.dart' show formationOfCode;
 import '../squad/squad_engine.dart' show PlayerCard;
 import '../squad/squad_view.dart' show TacticsSetupView;
 import 'match_engine.dart';
@@ -142,7 +143,7 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
               // rows, no reserves — a live match has nobody beyond the
               // bench).
               TacticsSetupView(
-                formationCode: formationCode,
+                formation: formationOfCode(formationCode),
                 tactics: tactics,
                 mentality: mentality,
                 xi: xiCards,

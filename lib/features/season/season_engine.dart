@@ -430,7 +430,7 @@ class SeasonEngine {
     List<AiSquadPlayer> squad,
     String formationCode,
   ) {
-    final formation = formationByCode(formationCode);
+    final formation = formationOfCode(formationCode);
     final available = [...squad];
     final assigned = List<AiSquadPlayer?>.filled(formation.slots.length, null);
 
@@ -598,7 +598,7 @@ class SeasonEngine {
       '4-5-1',
       '4-1-4-1',
     ];
-    return formationByCode(codes[random.nextInt(codes.length)]);
+    return formationOfCode(codes[random.nextInt(codes.length)]);
   }
 
   Mentality _pickMentality(math.Random random) {

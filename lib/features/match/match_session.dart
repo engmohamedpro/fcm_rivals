@@ -229,7 +229,7 @@ class MatchSession {
           (m) => m.name == club.mentality,
           orElse: () => Mentality.balanced,
         );
-    final formation = formationByCode(formationCode);
+    final formation = formationOfCode(formationCode);
     final squad = await store.getSquad();
     Map<int, PlayerCard> assignment = squad;
     if (formation.code != club.formationCode || tactics != null) {
@@ -404,7 +404,7 @@ class MatchSession {
     required int averageOverall,
     required String formationCode,
   }) {
-    final formation = formationByCode(formationCode);
+    final formation = formationOfCode(formationCode);
     return [
       for (var slot = 0; slot < formation.slots.length; slot++)
         MatchPlayer(

@@ -21,6 +21,8 @@ import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/match/tactics_sections.dart';
+import 'package:fcm_rivals/features/squad/formations.dart'
+    show formationByCode;
 import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
 import 'package:fcm_rivals/features/squad/squad_view.dart';
 
@@ -86,7 +88,7 @@ Widget _host({
     backgroundColor: Colors.black,
     body: SingleChildScrollView(
       child: TacticsSetupView(
-        formationCode: '4-3-3',
+        formation: formationByCode('4-3-3'),
         tactics: const TeamTactics(),
         mentality: Mentality.balanced,
         xi: xi,

@@ -22,7 +22,7 @@ extension _MatchEngineEvents on MatchEngine {
     MatchEvent? event;
     switch (command) {
       case ChangeFormationCommand(:final formationCode):
-        rt.changeFormation(formationByCode(formationCode), _random);
+        rt.changeFormation(formationOfCode(formationCode), _random);
         event = _event(
           minute: minute,
           type: MatchEventType.tacticalChange,

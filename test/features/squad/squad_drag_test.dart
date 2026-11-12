@@ -78,7 +78,7 @@ Widget _host(
       backgroundColor: Colors.black,
       body: SingleChildScrollView(
         child: TacticsSetupView(
-          formationCode: '4-3-3',
+          formation: formationByCode('4-3-3'),
           tactics: const TeamTactics(),
           mentality: Mentality.balanced,
           xi: xi,
@@ -225,9 +225,11 @@ void main() {
     await tester.pumpWidget(_host(squad, drops: drops));
     await tester.pump(const Duration(seconds: 2));
 
-    // Bench CB (id 12) onto the starting striker (id 9): refused by the
-    // rules, but the owner is told so it can show the reason.
-    await _drag(tester, find.text('F. Surn12'), find.text('F. Surn9'));
+    // Bench keeper (id 11) onto the starting striker (id 9): refused
+    // by the keeper's law (the outfield is free since the custom
+    // formation rules, but goal stays goalkeepers-only), and the owner
+    // is told so it can show the reason.
+    await _drag(tester, find.text('F. Surn11'), find.text('F. Surn9'));
     expect(drops, hasLength(1));
     final verdict = planSquadDrop(
       formation: _f433,
@@ -236,7 +238,7 @@ void main() {
       target: drops.single.target,
     );
     expect(verdict.isAccepted, isFalse);
-    expect(verdict.rejection, contains('needs a ST'));
+    expect(verdict.rejection, contains('goalkeeper'));
   });
 
   testWidgets('dropping a card on itself does nothing', (
@@ -262,7 +264,7 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: TacticsSetupView(
-              formationCode: '4-3-3',
+              formation: formationByCode('4-3-3'),
               tactics: const TeamTactics(),
               mentality: Mentality.balanced,
               xi: {for (var i = 0; i < 11; i++) i: squad[i]!},

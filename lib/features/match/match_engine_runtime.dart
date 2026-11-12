@@ -110,7 +110,7 @@ class _TeamRuntime {
   _TeamRuntime.from(MatchTeamInput input)
     : teamId = input.teamId,
       teamName = input.teamName,
-      formation = formationByCode(input.formationCode),
+      formation = formationOfCode(input.formationCode),
       tactics = input.tactics,
       mentality = input.mentality,
       aiControlled = input.aiControlled,

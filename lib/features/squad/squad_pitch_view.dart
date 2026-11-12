@@ -22,7 +22,8 @@ import 'formations.dart';
 import 'pitch_layout.dart';
 import 'squad_drag.dart';
 import 'squad_engine.dart';
-import 'squad_swap.dart' show SquadDropTarget, SquadZone;
+import 'squad_swap.dart'
+    show SquadDropTarget, SquadZone, planSquadDrop;
 
 /// The visible stat triple of a squad card: outfield players show
 /// ATT / SUP / DEF, keepers GK / DEF / SUP — upgraded values included.
@@ -93,17 +94,25 @@ class SquadPitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 0.66,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
+    // The live drag (custom-formation preview): while a player is
+    // held, every EMPTY slot previews what his drop there builds —
+    // his position when the caps allow it, the reason they do not
+    // when they do not. Read straight from the drag scope, so the
+    // preview lives only on surfaces that enable swapping.
+    final dragScope = SquadDragScope.maybeOf(context);
+    return ValueListenableBuilder<PlayerCard?>(
+      valueListenable: dragScope?.dragging ?? _noDrag,
+      builder: (context, held, _) => AspectRatio(
+        aspectRatio: 0.66,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
               final pw = constraints.maxWidth;
               final ph = constraints.maxHeight;
 
@@ -176,6 +185,25 @@ class SquadPitch extends StatelessWidget {
                       final fs = formation.slots[slot];
                       final card = assignments[slot];
                       final box = layout.boxes[slot];
+                      // The custom-formation preview for this empty slot
+                      // while a player is held: the drop's verdict (his
+                      // position, or the refusal reason). Occupied slots
+                      // have no preview — dropping on a player is a swap.
+                      Position? heldAsk;
+                      String? heldProblem;
+                      if (held != null && card == null) {
+                        final outcome = planSquadDrop(
+                          formation: formation,
+                          squad: assignments,
+                          dragged: held,
+                          target: SquadDropTarget.xiSlot(slot),
+                        );
+                        if (outcome.isAccepted) {
+                          heldAsk = held.position;
+                        } else {
+                          heldProblem = outcome.rejection;
+                        }
+                      }
                       return AnimatedPositioned(
                         key: ValueKey('slot-$slot'),
                         duration: const Duration(milliseconds: 650),
@@ -184,13 +212,16 @@ class SquadPitch extends StatelessWidget {
                         top: box.top,
                         width: box.width,
                         // A held player can be dropped on any slot: onto a
-                        // player (swap) or onto an empty slot (move).
+                        // player (swap) or onto an empty slot (move, which
+                        // redefines the slot — custom formation).
                         child: card == null
                             ? SquadDropZone(
                                 target: SquadDropTarget.xiSlot(slot),
                                 child: _EmptySlot(
                                   position: fs.position,
                                   width: cardW,
+                                  heldPosition: heldAsk,
+                                  heldProblem: heldProblem,
                                 ),
                               )
                             : showCondition && card.injuryMatchesRemaining > 0
@@ -273,13 +304,19 @@ class SquadPitch extends StatelessWidget {
                     }(),
                 ],
               );
-            },
+              },
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+/// A never-firing stand-in for the drag notifier on surfaces without a
+/// [SquadDragHost] (pre-match, live tactics): the pitch then renders no
+/// drag preview at all.
+final ValueNotifier<PlayerCard?> _noDrag = ValueNotifier<PlayerCard?>(null);
 
 /// Horizontal strip of mini cards (bench / reserves): the surname under
 /// each shield, the stat row and — when [showStamina] is set — the
@@ -504,26 +541,96 @@ Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
 
 /// An unassigned formation slot: a ghost mini card — the exact shape,
 /// size and layout of a filled one (same painter silhouette, same text
-/// slots) rendered see-through with no overall, position or name, so the
-/// pitch reads as a full formation with the empty places still holding
+/// slots) rendered see-through with no overall or name, so the pitch
+/// reads as a full formation with the empty places still holding
 /// their card footprints.
+///
+/// Custom formations (2026-11-12): the ghost also names the position
+/// the place CURRENTLY asks for (the slot's ask — what a drop there
+/// would redefine), and while a player is held the ask becomes the
+/// held player's own position when the drop would build a legal shape,
+/// or the reason it would not (caps exceeded / keeper's slot) when it
+/// would not.
 class _EmptySlot extends StatelessWidget {
-  const _EmptySlot({required this.position, required this.width});
+  const _EmptySlot({
+    required this.position,
+    required this.width,
+    this.heldPosition,
+    this.heldProblem,
+  });
 
+  /// What the slot asks for right now.
   final Position position;
+
   final double width;
+
+  /// The held player's position while a drag is live, else null.
+  final Position? heldPosition;
+
+  /// Why the held player may NOT take this slot (caps / keeper law),
+  /// or null when he may.
+  final String? heldProblem;
 
   @override
   Widget build(BuildContext context) {
+    final ask = heldPosition ?? position;
     return Opacity(
       opacity: 0.45,
-      child: FcmMiniCard(
-        overall: 0,
-        position: '',
-        name: '',
-        rarity: CardRarity.rare,
-        width: width,
-        ghost: true,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          FcmMiniCard(
+            overall: 0,
+            position: '',
+            name: '',
+            rarity: CardRarity.rare,
+            width: width,
+            ghost: true,
+          ),
+          // The position chip floating over the ghost: the slot's ask
+          // (or the held player's position while a drag is live and
+          // legal — the "what this drop builds" preview).
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: heldProblem != null
+                        ? const Color(0x99B3261E)
+                        : heldPosition != null
+                        ? FcmColors.gold.withValues(alpha: 0.92)
+                        : Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: heldProblem != null
+                          ? Colors.white.withValues(alpha: 0.8)
+                          : Colors.white.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    heldProblem != null
+                        ? (heldProblem!.length > 22
+                              ? '${heldProblem!.substring(0, 21)}…'
+                              : heldProblem!)
+                        : ask.code,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: heldProblem != null ? Colors.white : FcmColors.gold,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -127,7 +127,7 @@ class SquadStore {
     }
     final byId = await _ownedCardsById(club.id);
     final cards = byId.values.toList(growable: false);
-    final formation = formationByCode(club.formationCode);
+    final formation = formationOfCode(club.formationCode);
     final assignment = squad.autoPick(
       cards,
       formation,
@@ -140,16 +140,49 @@ class SquadStore {
 
   /// Updates the club formation (FR-018) and re-runs Auto Pick so every XI
   /// slot stays filled (GDD 6.4: changing formation updates positions).
+  /// The code may be a preset ('4-3-3') or a custom code ('C|GK,…' —
+  /// see formations.dart); an unknown code falls back to the default
+  /// shape.
   Future<void> changeFormation(String formationCode) async {
     final club = await getClub();
     if (club == null) {
       throw const CollectionException('No club');
     }
-    final formation = formationByCode(formationCode);
+    final formation = formationOfCode(formationCode);
     await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
       ClubsCompanion(formationCode: Value(formation.code)),
     );
     await autoPickSquad();
+  }
+
+  /// Persists a squad assignment and (optionally) the club's formation
+  /// in ONE transaction (custom formations, owner request 2026-11-12):
+  /// a drop on an empty pitch slot redefines the slot's position, so
+  /// the new shape and the new assignment must land together or not at
+  /// all — the pitch and the squad can never disagree.
+  ///
+  /// [formationCode] null keeps the club's shape as is (plain swaps and
+  /// moves); a preset or custom code updates the shape WITHOUT the
+  /// Auto Pick re-run [changeFormation] performs — the drag itself
+  /// decided the assignment.
+  Future<void> saveSquadAndFormation(
+    Map<int, int> assignments, {
+    String? formationCode,
+  }) async {
+    final club = await getClub();
+    if (club == null) {
+      throw const CollectionException('No club');
+    }
+    await db.transaction(() async {
+      if (formationCode != null) {
+        await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
+          ClubsCompanion(
+            formationCode: Value(formationOfCode(formationCode).code),
+          ),
+        );
+      }
+      await saveSquad(assignments, allowInjured: true);
+    });
   }
 
   /// Updates the club's tactical setup for future matches (GDD 10.2/10.3).
@@ -166,7 +199,7 @@ class SquadStore {
     await (db.update(db.clubs)..where((c) => c.id.equals(club.id))).write(
       ClubsCompanion(
         formationCode: formationCode != null
-            ? Value(formationByCode(formationCode).code)
+            ? Value(formationOfCode(formationCode).code)
             : const Value.absent(),
         tactics: tactics != null
             ? Value(jsonEncode(tactics.toJson()))

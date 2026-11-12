@@ -29,10 +29,17 @@ import 'squad_swap.dart' show SquadDropTarget, SquadZone;
 /// the Auto Pick and TACTICS actions under it), the pitch with the
 /// starting XI (stamina bars and stat rows only when [showStamina] /
 /// [showStats] ask for them), then the bench and reserves strips.
+///
+/// [formation] is the RESOLVED formation object (preset or custom —
+/// see formations.dart): since the custom-formation feature the shape
+/// is no longer always one of the presets, so callers hand the object
+/// they got from `formationOfCode(club.formationCode)`; [onFormation]
+/// still speaks codes (the preset dropdown's values), and a custom
+/// shape shows 'Custom' selected.
 class TacticsSetupView extends StatelessWidget {
   const TacticsSetupView({
     super.key,
-    required this.formationCode,
+    required this.formation,
     required this.tactics,
     required this.mentality,
     required this.xi,
@@ -57,8 +64,8 @@ class TacticsSetupView extends StatelessWidget {
     this.swapping,
   });
 
-  /// Currently selected formation code (e.g. '4-3-3').
-  final String formationCode;
+  /// The club's current formation — a preset or the custom shape.
+  final Formation formation;
 
   /// Current custom tactics / mentality selections (GDD 10.2/10.3).
   final TeamTactics tactics;
@@ -175,7 +182,7 @@ class TacticsSetupView extends StatelessWidget {
             onClear: onClear,
             teamRating: teamRating,
             chemistry: chemistry,
-            formationCode: formationCode,
+            formation: formation,
             tactics: tactics,
             mentality: mentality,
             showSetupSummary: showSetupSummary,
@@ -209,7 +216,7 @@ class TacticsSetupView extends StatelessWidget {
                 child: _PickFlash(
                   trigger: pulse,
                   child: SquadPitch(
-                    formation: formationByCode(formationCode),
+                    formation: formation,
                     assignments: xi,
                     showChemistryLinks: true,
                     showStamina: showStamina,
@@ -303,7 +310,7 @@ class _ControlCard extends StatelessWidget {
   const _ControlCard({
     required this.teamRating,
     required this.chemistry,
-    required this.formationCode,
+    required this.formation,
     required this.tactics,
     required this.mentality,
     required this.onFormation,
@@ -324,11 +331,13 @@ class _ControlCard extends StatelessWidget {
   /// The XI's nationality chemistry, 0..10 — always shown (+0% for an
   /// empty or all-distinct XI).
   final int chemistry;
-  final String formationCode;
+
+  /// The club's resolved formation (preset or custom).
+  final Formation formation;
   final TeamTactics tactics;
   final Mentality mentality;
   final ValueChanged<String> onFormation;
-  final VoidCallback onTactics;
+  final VoidCallback? onTactics;
   final VoidCallback? onAutoPick;
 
   /// See [TacticsSetupView.showSetupSummary] — the row renders only
@@ -338,7 +347,7 @@ class _ControlCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = l10nOf(context);
-    final formation = formationByCode(formationCode);
+    final isCustom = isCustomFormationCode(formation.code);
     return FcmPanel(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Column(
@@ -369,9 +378,11 @@ class _ControlCard extends StatelessWidget {
           const SizedBox(height: 8),
           ],
           // The formation picker, directly on the setup card: the closed
-          // field shows the live shape ('4-3-3'), tapping lists every
-          // formation — no detour into the tactic options sheet.
-          // Formation picker with the TACTICS button beside it.
+          // field shows the live shape ('4-3-3' — or 'Custom' when the
+          // club plays a dragged-together shape), tapping lists every
+          // preset. A custom shape is NOT in the list; picking any
+          // preset replaces it (the custom code lives only in the club
+          // row, so switching shapes simply overwrites it).
           Row(
             children: [
               Expanded(
@@ -379,6 +390,18 @@ class _ControlCard extends StatelessWidget {
                 child: FcmDropdown<String>(
                   icon: Icons.grid_on_rounded,
                   items: [
+                    // The custom shape, when active, leads the list as
+                    // a selectable read-back (its label names the mix).
+                    if (isCustom)
+                      FcmDropdownItem(
+                        value: formation.code,
+                        label: 'Custom',
+                        subtitle: [
+                          for (final slot in formation.slots)
+                            if (slot != formation.slots.first)
+                              slot.position.code,
+                        ].join(' · '),
+                      ),
                     for (final f in formations)
                       FcmDropdownItem(value: f.code, label: f.name),
                   ],
