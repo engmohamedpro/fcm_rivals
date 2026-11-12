@@ -15,20 +15,20 @@
 /// position code, nationality or club), caps the rendered rows at 24
 /// hits, and offers a RANDOM CLEAR to return to real rolls.
 ///
-/// The gate is [kDebugMode]: in release/profile builds the widget
-/// renders nothing (SizedBox.shrink) and the whole file is dead code
-/// tree-shaken by the compiler.
+/// The gate is [FcmApp.isDev] (see app/app_environment.dart): in QA
+/// and production builds the widget renders nothing (SizedBox.shrink)
+/// and the whole file is dead code tree-shaken by the compiler.
 library;
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
+import '../../app/app_environment.dart';
 import '../../core/domain/players.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../collection/collection_store.dart';
 
-/// The debug picker row: label + the field. Debug builds only.
+/// The debug picker row: label + the field. Dev builds only.
 class DebugPlayerPicker extends StatefulWidget {
   const DebugPlayerPicker({super.key, required this.store});
 
@@ -55,7 +55,7 @@ class _DebugPlayerPickerState extends State<DebugPlayerPicker> {
 
   @override
   Widget build(BuildContext context) {
-    if (!kDebugMode) return const SizedBox.shrink();
+    if (!FcmApp.isDev) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
       child: Row(

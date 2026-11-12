@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app/app_environment.dart';
 import 'l10n/app_localizations.dart';
 
 import 'app/providers.dart';
@@ -291,12 +291,13 @@ class _GameShellBodyState extends ConsumerState<_GameShellBody> {
             child: FcmGoldSeam(),
           ),
           title: const FcmWordmark(size: 44),
-          // Dev-only: the test-coin shortcut is compiled out of profile and
-          // release builds (kDebugMode is a const, so tree shaking removes
-          // the widget entirely).
+          // Dev-only (FcmApp.isDev — see app_environment.dart): the
+          // test-coin shortcut is compiled out of QA and production
+          // builds (the gate is a const, so tree shaking removes the
+          // widget entirely).
           actions: [
             const FcmLanguageToggle(),
-            if (kDebugMode) const _TestCoinButton(),
+            if (FcmApp.isDev) const _TestCoinButton(),
             const _CoinBalance(),
           ],
         ),
@@ -456,9 +457,9 @@ class _CoinBalance extends ConsumerWidget {
 }
 
 /// TEMPORARY DEV BUTTON — remove together with
-/// CollectionStore.grantTestCoins once testing is done. Debug builds
-/// only (see the kDebugMode guard at the call site); each tap credits
-/// 1,000,000 test coins.
+/// CollectionStore.grantTestCoins once testing is done. Dev builds
+/// only (see the FcmApp.isDev guard at the call site); each tap
+/// credits 1,000,000 test coins.
 class _TestCoinButton extends ConsumerWidget {
   const _TestCoinButton();
 

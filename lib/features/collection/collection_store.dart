@@ -15,8 +15,9 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart';
 
 import '../../core/domain/crest.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
+import '../../app/app_environment.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/coin_ops.dart';
 import '../../core/domain/players.dart';
@@ -127,10 +128,10 @@ class CollectionStore {
   /// DEBUG-ONLY draw override (debug tool request 2026-11-12, removed
   /// before release): when set, [openPack] draws EXACTLY this player
   /// instead of rolling the two-stage odds — the packs debug picker
-  /// (packs_screen.dart, `kDebugMode` gated) sets it so the chosen
+  /// (packs_screen.dart, dev-environment gated) sets it so the chosen
   /// player is the one revealed, including every OPEN ANOTHER in a
   /// chain. Null (the release state — the field never exists outside
-  /// debug builds' code paths) keeps the real odds. The override does
+  /// dev builds' code paths) keeps the real odds. The override does
   /// NOT bypass the pack's own gating: the player must be in the pack's
   /// pool and the club must have room, exactly like a real draw, so
   /// the debug tool can never plant an impossible card.
@@ -139,7 +140,7 @@ class CollectionStore {
   /// DEBUG-ONLY (removed before release, see [debugDrawOverride]):
   /// warms the registry so the debug picker's pool read is warm.
   Future<void> debugWarmRegistry() async {
-    assert(kDebugMode, 'debug-only API');
+    assert(FcmApp.isDev, 'debug-only API');
     await _ensureRegistry();
   }
 
@@ -147,7 +148,7 @@ class CollectionStore {
   /// the pack pool the debug picker searches — the same list instance
   /// the engine draws from.
   List<BasePlayer> debugPackPool() {
-    assert(kDebugMode, 'debug-only API');
+    assert(FcmApp.isDev, 'debug-only API');
     if (_packPool.isEmpty && _registryLoaded) {
       _packPool = _registry.all.toList(growable: false);
     }
