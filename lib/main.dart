@@ -75,7 +75,12 @@ class FcmRivalsApp extends ConsumerWidget {
               child: SizedBox(
                 width: math.min(mq.size.width, 820),
                 height: mq.size.height,
-                child: child,
+                // The scene-loading transition lives above the Navigator,
+                // so it covers every tab, route and dialog while a
+                // screen loads (see core/ui/scene_loading.dart).
+                child: SceneLoadingHost(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             ),
           ),
@@ -119,7 +124,17 @@ class _EntryGateState extends ConsumerState<_EntryGate> {
   Widget build(BuildContext context) {
     final club = ref.watch(clubProvider);
     return club.when(
-      loading: () => const Scaffold(body: FcmLogoLoading()),
+      // The still logo carries the first 150 ms; the marker then raises
+      // the full animated scene transition if the club is still loading.
+      loading: () => const Scaffold(
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            FcmLogoLoading(),
+            SceneLoadingMarker(fallback: SizedBox.shrink()),
+          ],
+        ),
+      ),
       error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
       data: (club) =>
           club == null ? const ClubCreationScreen() : const GameShell(),

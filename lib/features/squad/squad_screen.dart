@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
 import '../../app/providers.dart';
+import '../../core/ui/scene_loading.dart';
 import '../ads/ad_engine.dart' show AdEngine, AdRewardKind;
 import '../collection/card_merge_animation.dart' show showCardMergeAnimation;
 import '../collection/collection_results.dart' show SquadCapacity;
@@ -57,7 +58,7 @@ class SquadScreen extends ConsumerWidget {
     };
 
     return squad.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const SceneLoadingMarker(),
       error: (e, _) => Center(child: Text('$e')),
       data: (squad) {
         final xi = {

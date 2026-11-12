@@ -25,6 +25,7 @@ import '../../core/ui/fcm_coin.dart';
 import '../../core/ui/fcm_panel.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_button.dart';
+import '../../core/ui/scene_loading.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_context.dart';
 import 'achievement_catalog.dart';
@@ -46,10 +47,10 @@ class AchievementsScreen extends ConsumerWidget {
     final claims = ref.watch(claimsProvider);
 
     return metrics.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const SceneLoadingMarker(),
       error: (e, _) => Center(child: Text('$e')),
       data: (m) => claims.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SceneLoadingMarker(),
         error: (e, _) => Center(child: Text('$e')),
         data: (claimed) => CustomScrollView(
           slivers: [

@@ -23,6 +23,7 @@ import '../../core/domain/crest.dart';
 import '../../core/ui/fcm_crest.dart';
 import '../../core/ui/fcm_panel.dart';
 import '../../core/ui/fcm_style.dart';
+import '../../core/ui/scene_loading.dart';
 import '../../l10n/l10n_context.dart';
 import '../achievements/achievements_providers.dart'
     show careerMetricsProvider;
@@ -39,10 +40,10 @@ class ProfileScreen extends ConsumerWidget {
     final metrics = ref.watch(careerMetricsProvider);
 
     return metrics.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const SceneLoadingMarker(),
       error: (e, _) => Center(child: Text('$e')),
       data: (m) => club.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SceneLoadingMarker(),
         error: (e, _) => Center(child: Text('$e')),
         data: (clubRow) => CustomScrollView(
           slivers: [

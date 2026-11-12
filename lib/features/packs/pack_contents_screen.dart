@@ -135,7 +135,7 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _players == null && _error == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const SceneLoadingMarker()
           : _error != null
           ? Center(
               child: FcmPanel(

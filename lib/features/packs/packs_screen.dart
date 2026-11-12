@@ -50,7 +50,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     // reachable through the error panel's tap-to-retry and the
     // providers' natural refresh on screen re-entry.
     return offers.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const SceneLoadingMarker(),
       error: (e, _) => ListView(
         children: [
           Padding(
@@ -73,7 +73,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         ],
       ),
       data: (offers) => packs.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SceneLoadingMarker(),
         error: (e, _) => ListView(
           children: [
             Padding(

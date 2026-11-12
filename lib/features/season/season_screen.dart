@@ -271,7 +271,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
     final clubName = ref.watch(clubProvider).valueOrNull?.name;
 
     if (ref.watch(seasonSummaryProvider).isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SceneLoadingMarker();
     }
 
     if (_error != null) {

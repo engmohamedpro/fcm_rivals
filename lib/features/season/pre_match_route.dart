@@ -90,8 +90,10 @@ class PreMatchRouteState extends ConsumerState<PreMatchRoute> {
         if (data == null) {
           return Scaffold(
             backgroundColor: FcmColors.night,
-            body: const Center(
-              child: CircularProgressIndicator(color: FcmColors.gold),
+            body: const SceneLoadingMarker(
+              fallback: Center(
+                child: CircularProgressIndicator(color: FcmColors.gold),
+              ),
             ),
           );
         }

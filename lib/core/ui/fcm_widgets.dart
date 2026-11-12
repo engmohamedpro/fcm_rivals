@@ -15,4 +15,6 @@ export 'fcm_coin.dart';
 export 'fcm_dropdown.dart';
 export 'fcm_nav.dart';
 export 'fcm_scale_slider.dart';
+export 'scene_loading.dart';
+export 'scene_loading_transition.dart';
 export 'fcm_widgets_helpers.dart';
