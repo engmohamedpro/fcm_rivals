@@ -159,6 +159,7 @@
   "injuryChipOut": "OUT {n}",
   "@injuryChipOut": {"placeholders": {"n": {"type": "int"}}},
   "prematchMedicalTitle": "Medical room",
+  "prematchOpponentXiTitle": "Their starting XI",
   "injuryStaminaRiskHint": "Low fitness raises injury risk.",
   "injuryKindKnock": "Knock",
   "injuryKindMuscle": "Muscle injury",

@@ -79,7 +79,7 @@ PreMatchData _data(List<PlayerCard> squad) => PreMatchData(
   opponentForm: const [],
   opponentPosition: 4,
   userPosition: 2,
-  opponentKeyMen: const [],
+  opponentSquad: const [],
   userSquad: {for (final c in squad) c.ownedId: c},
 );
 
@@ -178,6 +178,15 @@ void main() {
         ),
       );
       await tester.pump(const Duration(milliseconds: 400));
+      // 2026-11-13: the formation pitch replaced the strength and
+      // top-player cards, so the medical room sits lower — drag it
+      // into view before asserting (the real user scrolls too).
+      await tester.dragUntilVisible(
+        find.text('Medical room'),
+        find.byType(Scrollable),
+        const Offset(0, -180),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Medical room'), findsOneWidget);
       expect(find.text('Test Striker'), findsOneWidget);
       expect(find.text('Out for 3 matches'), findsOneWidget);
@@ -202,6 +211,12 @@ void main() {
         direction: TextDirection.rtl,
       );
       await tester.pump(const Duration(milliseconds: 400));
+      await tester.dragUntilVisible(
+        find.text('الغرفة الطبية'),
+        find.byType(Scrollable),
+        const Offset(0, -180),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('الغرفة الطبية'), findsOneWidget);
       expect(find.text('خارج 2 مباراة'), findsOneWidget);
     });

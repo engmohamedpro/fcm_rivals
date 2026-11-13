@@ -388,24 +388,6 @@ class SeasonStore {
         }(),
     ];
 
-    // Top-3 rated players of the whole squad (starters and bench), with
-    // full attributes for the collection-style analysis cards.
-    final keyMen = [
-      for (final p in [
-        ...opponent.starters,
-        ...opponent.bench,
-      ]..sort((a, b) => _overallOf(b).compareTo(_overallOf(a))))
-        (
-          name: p.name,
-          position: p.position.code,
-          overall: _overallOf(p),
-          attack: p.attack,
-          support: p.support,
-          defence: p.defence,
-          goalkeeping: p.goalkeeping,
-        ),
-    ].take(3).toList();
-
     return PreMatchData(
       fixtureLabel: 'League · Round ${next.round}',
       userClubName: club.name,
@@ -415,18 +397,16 @@ class SeasonStore {
       opponentForm: form,
       opponentPosition: positionOf(false),
       userPosition: positionOf(true),
-      opponentKeyMen: keyMen,
       userFormationCode: club.formationCode,
       userTactics: teamTactics,
       userMentality: mentality,
       userSquad: squad,
       userCrest: CollectionStore.crestOf(club),
       opponentCrest: CollectionStore.crestOf(opponent.club),
+      opponentFormationCode: opponent.formationCode,
+      opponentSquad: opponent.starters,
     );
   }
-
-  static int _overallOf(MatchPlayer p) =>
-      ((p.attack + p.support + p.defence) / 3).round();
 
   static MatchPlayer _userMatchPlayer(PlayerCard card) => MatchPlayer(
     playerId: card.ownedId,

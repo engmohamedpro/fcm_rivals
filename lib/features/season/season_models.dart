@@ -87,11 +87,21 @@ class SeasonCompletion {
 class AiOpponentSquad {
   const AiOpponentSquad({
     required this.club,
+    required this.formationCode,
     required this.starters,
     required this.bench,
   });
 
   final Club club;
+
+  /// The club's persisted formation code (a preset like '4-3-3' or a
+  /// custom 'C|…' shape) — the shape the starting XI was picked into,
+  /// so the pre-match analysis can render the opponent's XI on a pitch.
+  final String formationCode;
+
+  /// The starting XI in SLOT ORDER of [formationCode]: index i is the
+  /// man standing in formation slot i (GK first) — the same convention
+  /// as the user's squad map.
   final List<MatchPlayer> starters;
   final List<MatchPlayer> bench;
 }

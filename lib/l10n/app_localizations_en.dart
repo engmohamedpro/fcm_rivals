@@ -377,6 +377,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prematchMedicalTitle => 'Medical room';
 
   @override
+  String get prematchOpponentXiTitle => 'Their starting XI';
+
+  @override
   String get injuryStaminaRiskHint => 'Low fitness raises injury risk.';
 
   @override

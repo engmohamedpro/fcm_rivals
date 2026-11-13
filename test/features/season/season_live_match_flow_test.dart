@@ -16,10 +16,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/app/providers.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart';
+import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/features/season/season_store.dart';
+import 'package:fcm_rivals/features/squad/squad_pitch_view.dart' show SquadPitch;
 import 'package:fcm_rivals/main.dart';
 
 import '../../helpers/audioplayers_mocks.dart';
@@ -151,22 +153,32 @@ void main() {
 
       // Kick-off: the matchday build-up screen comes first (GDD 13): the
       // opponent analysis (header with position and form, loss/draw/win
-      // row, strength, top players), then the dressing-room pep talk.
+      // row, then the opponent's starting XI on the Team tab's pitch —
+      // 2026-11-13 replaced the strength bars and top-player cards),
+      // then the dressing-room pep talk.
       await tester.tap(find.text('Play match'));
       await _flush(tester, wait: const Duration(milliseconds: 900));
       expect(find.text(opponent.opponentName), findsOneWidget);
       expect(find.text('LOSS'), findsOneWidget);
       expect(find.text('WIN'), findsOneWidget);
-      expect(find.text('STRENGTH'), findsOneWidget);
-      // T-0102: the top-player card (one per side) sits below the
-      // fold: scroll the analysis.
+      expect(find.text('STRENGTH'), findsNothing);
+      // The formation section sits below the fold: scroll the analysis.
       await tester.dragUntilVisible(
-        find.text('TOP PLAYER'),
+        find.text('Their starting XI'),
         find.byType(Scrollable).first,
         const Offset(0, -120),
       );
       await _flush(tester, wait: const Duration(milliseconds: 200));
-      expect(find.text('TOP PLAYER'), findsOneWidget);
+      expect(find.text('Their starting XI'), findsOneWidget);
+      // All eleven opponent starters stand on the pitch surface.
+      expect(find.byType(SquadPitch), findsOneWidget);
+      expect(
+        tester
+            .widgetList<FcmMiniCard>(find.byType(FcmMiniCard))
+            .where((c) => !c.ghost)
+            .length,
+        11,
+      );
 
       // Continue into the tactics phase (GDD 10.4): the SAME screen as the
       // Tactics tab — a compact control card (team rating + TACTICS button)

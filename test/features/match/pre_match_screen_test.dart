@@ -2,8 +2,9 @@
 //
 //  * the analysis is about the OPPONENT: a compact header strip with
 //    crest, table position and last-five form pips; loss/draw/win
-//    percents in one row; the strength card; the opponent's top-3 rated
-//    players as three collection-style cards side by side;
+//    percents in one row; the opponent's starting XI standing in their
+//    own formation on the Team tab's pitch surface (2026-11-13: it
+//    replaced the strength bars and the top-player cards);
 //  * the analysis phase shows a BACK action that exits the matchday
 //    build-up before anything is committed (the fixture stays unplayed);
 //    hosts can substitute their own exit via onExit;
@@ -16,13 +17,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
 import 'package:fcm_rivals/features/match/pre_match_analysis.dart';
 import 'package:fcm_rivals/core/domain/players.dart';
-import 'package:fcm_rivals/core/ui/player_card.dart'
-    show FcmPlayerCard, FcmMiniCard;
+import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/match/match_engine.dart' show TeamTotals;
+import 'package:fcm_rivals/features/match/match_event.dart' show MatchPlayer;
 import 'package:fcm_rivals/features/match/match_forecast.dart';
 import 'package:fcm_rivals/features/match/pre_match_screen.dart';
 import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
+import 'package:fcm_rivals/features/squad/squad_pitch_view.dart' show SquadPitch;
 
 MatchForecast get _forecast => MatchForecast(
   samples: 100,
@@ -52,34 +54,21 @@ PreMatchData get _data => PreMatchData(
   opponentForm: const ['W', 'D', 'L', 'W', 'D'],
   opponentPosition: 5,
   userPosition: 12,
-  opponentKeyMen: const [
-    (
-      name: 'Omar Gamal',
-      position: 'ST',
-      overall: 84,
-      attack: 86,
-      support: 80,
-      defence: 42,
-      goalkeeping: 12,
-    ),
-    (
-      name: 'Karim Fouad',
-      position: 'CB',
-      overall: 81,
-      attack: 48,
-      support: 66,
-      defence: 87,
-      goalkeeping: 15,
-    ),
-    (
-      name: 'Ali Soliman',
-      position: 'GK',
-      overall: 79,
-      attack: 18,
-      support: 44,
-      defence: 62,
-      goalkeeping: 83,
-    ),
+  // The opponent's starting XI in 4-3-3 SLOT order (GK first) — the
+  // same convention the season store's AiOpponentSquad.starters uses.
+  opponentFormationCode: '4-3-3',
+  opponentSquad: [
+    _opp(1, 'Ali Soliman', Position.gk, 79, 18, 44, 62, 83),
+    _opp(2, 'Karim Fouad', Position.cb, 81, 48, 66, 87, 15),
+    _opp(3, 'Rami Adel', Position.cb, 77, 40, 60, 84, 12),
+    _opp(4, 'Sami Nasr', Position.cb, 76, 38, 58, 82, 11),
+    _opp(5, 'Hany Farouk', Position.rb, 75, 52, 70, 74, 10),
+    _opp(6, 'Mostafa Kamel', Position.cm, 80, 62, 84, 58, 8),
+    _opp(7, 'Walid Hassan', Position.cm, 78, 58, 80, 56, 8),
+    _opp(8, 'Tarek Mounir', Position.cam, 82, 84, 78, 44, 9),
+    _opp(9, 'Omar Gamal', Position.st, 84, 86, 80, 42, 12),
+    _opp(10, 'Zaki Adel', Position.lw, 79, 81, 74, 46, 8),
+    _opp(11, 'Nabil Roshdy', Position.rw, 78, 80, 72, 44, 8),
   ],
   // Enough owned players to fill the tactics phase's strips: a starting
   // XI for the 4-3-3 slots, plus one bench and one reserve card.
@@ -120,6 +109,27 @@ PlayerCard _card(int slot, String name, Position pos, int rating) => PlayerCard(
       overall: rating,
     ),
   ),
+);
+
+/// One opponent starter for the analysis fixture: [slot] is the
+/// formation-slot index, the rating split builds the attributes.
+MatchPlayer _opp(
+  int slot,
+  String name,
+  Position pos,
+  int rating,
+  int attack,
+  int support,
+  int defence,
+  int goalkeeping,
+) => MatchPlayer(
+  playerId: -10_000 - slot,
+  name: name,
+  position: pos,
+  attack: attack,
+  support: support,
+  defence: defence,
+  goalkeeping: goalkeeping,
 );
 
 /// Marker page the pre-match route is pushed on top of.
@@ -198,39 +208,31 @@ void main() {
     expect(find.text('Expected goals'), findsNothing);
     expect(find.text('Clean sheets'), findsNothing);
 
-    // Strength: all five comparisons.
-    expect(find.text('STRENGTH'), findsOneWidget);
-    expect(find.text('OVERALL'), findsOneWidget);
-    expect(find.text('ATTACK'), findsOneWidget);
-    expect(find.text('SUPPORT'), findsOneWidget);
-    expect(find.text('DEFENCE'), findsOneWidget);
-    expect(find.text('GOALKEEPING'), findsOneWidget);
+    // 2026-11-13: the strength bars and the top-player cards are GONE.
+    expect(find.text('STRENGTH'), findsNothing);
+    expect(find.text('TOP PLAYER'), findsNothing);
+    expect(find.text('ST Finisher'), findsNothing, reason: 'no user cards on the analysis');
 
-    // T-0102: the top section is the BEST PLAYER of each side — two
-    // cards, home side's best first. The user's best from the squad
-    // fixture is 'ST Finisher' (rating 85 → score (81+85+79)/3 = 82),
-    // the opponent's best is the key-men head 'Omar Gamal'.
-    expect(find.text('THEIR SEASON'), findsNothing);
-    expect(find.text('TOP PLAYERS'), findsNothing);
-    expect(find.text('TOP PLAYER'), findsOneWidget);
-    expect(find.byType(FcmPlayerCard), findsNWidgets(2));
-    final cards = tester.widgetList<FcmPlayerCard>(find.byType(FcmPlayerCard));
-    final names = [for (final c in cards) c.player.name];
-    expect(names, containsAll(['Omar Gamal', 'ST Finisher']));
-    // Home order: the user's best sits first (left in LTR).
-    expect(names.first, 'ST Finisher');
-    final cardFinders = find
-        .byType(FcmPlayerCard)
-        .evaluate()
-        .map((e) => find.byWidgetPredicate((w) => w == e.widget));
-    final dyTop = tester.getTopLeft(cardFinders.first).dy;
-    for (final f in cardFinders) {
-      expect(
-        tester.getTopLeft(f).dy,
-        closeTo(dyTop, 1),
-        reason: 'the two cards sit side by side in one row',
-      );
+    // In their place: the opponent's starting XI on the Team tab's
+    // pitch — the section title, the shape's own code pill, and every
+    // starter's mini card standing in his slot.
+    expect(find.text('Their starting XI'), findsOneWidget);
+    expect(find.text('4-3-3'), findsOneWidget);
+    expect(find.byType(SquadPitch), findsOneWidget);
+    final minis = tester
+        .widgetList<FcmMiniCard>(find.byType(FcmMiniCard))
+        .where((c) => !c.ghost)
+        .toList();
+    expect(minis, isNotEmpty, reason: 'the opponent XI renders');
+    expect(minis.length, 11, reason: 'all eleven starters on the pitch');
+    // Management view flags: no stamina bars, no stat rows.
+    for (final c in minis) {
+      expect(c.stamina, isNull, reason: 'no stamina on the analysis pitch');
+      expect(c.stats, isNull, reason: 'no stat rows on the analysis pitch');
     }
+    // Read-only scouting: taps lead nowhere on this surface.
+    expect(tester.widget<SquadPitch>(find.byType(SquadPitch)).onPlayerTap,
+        isNull);
   });
 
   testWidgets(
@@ -252,7 +254,8 @@ void main() {
         opponentForm: _data.opponentForm,
         opponentPosition: _data.opponentPosition,
         userPosition: _data.userPosition,
-        opponentKeyMen: _data.opponentKeyMen,
+        opponentFormationCode: _data.opponentFormationCode,
+        opponentSquad: _data.opponentSquad,
         userSquad: _data.userSquad,
       );
       await tester.pumpWidget(
@@ -273,16 +276,15 @@ void main() {
       expect(find.text('FC Rivals'), findsOneWidget);
       expect(find.text('VS'), findsOneWidget);
       expect(tester.takeException(), isNull);
-      expect(find.text('TOP PLAYER'), findsOneWidget);
-      expect(find.byType(FcmPlayerCard), findsNWidgets(2));
-      // Away fixture: the opponent's best is the FIRST card.
-      final names = [
-        for (final c in tester.widgetList<FcmPlayerCard>(
-          find.byType(FcmPlayerCard),
-        ))
-          c.player.name,
-      ];
-      expect(names.first, 'Omar Gamal');
+      // The formation section renders localized, all eleven on the pitch.
+      expect(find.text('تشكيل الخصم'), findsOneWidget);
+      expect(
+        tester
+            .widgetList<FcmMiniCard>(find.byType(FcmMiniCard))
+            .where((c) => !c.ghost)
+            .length,
+        11,
+      );
     },
   );
 
@@ -291,14 +293,14 @@ void main() {
   ) async {
     await _openPreMatch(tester);
 
-    expect(find.text('TOP PLAYER'), findsOneWidget);
+    expect(find.text('Their starting XI'), findsOneWidget);
     expect(find.text('BACK'), findsOneWidget);
 
     // BACK pops the route: back on the season tab, nothing kicked off.
     await tester.tap(find.text('BACK'));
     await _settle(tester, frames: 10);
     expect(find.text('SEASON TAB'), findsOneWidget);
-    expect(find.text('TOP PLAYER'), findsNothing);
+    expect(find.text('Their starting XI'), findsNothing);
   });
 
   testWidgets('onExit replaces the default pop', (WidgetTester tester) async {
@@ -310,7 +312,7 @@ void main() {
 
     expect(exited, isTrue, reason: 'host exit callback ran');
     // The screen itself is still on stage — the host decides what pops.
-    expect(find.text('TOP PLAYER'), findsOneWidget);
+    expect(find.text('Their starting XI'), findsOneWidget);
   });
 
   testWidgets('BACK from the tactics phase steps back to the analysis', (
@@ -325,7 +327,7 @@ void main() {
     await tester.tap(find.text('BACK'));
     await _settle(tester, frames: 10);
     expect(
-      find.text('TOP PLAYER'),
+      find.text('Their starting XI'),
       findsOneWidget,
       reason: 'BACK steps back one phase, not out of the matchday',
     );
@@ -379,12 +381,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('CHEMISTRY'), findsOneWidget);
-    expect(find.text('+4%'), findsOneWidget);
-    expect(find.text('+2%'), findsOneWidget);
+    // The chemistry COMPARISON row lived on the removed strength card;
+    // chemistry itself still shows on the analysis through the pitch's
+    // LINKS (shared-nationality/club pairs render as lines).
+    expect(find.text('CHEMISTRY'), findsNothing);
+    expect(find.byType(SquadPitch), findsOneWidget);
+    expect(
+      tester
+          .widget<SquadPitch>(find.byType(SquadPitch))
+          .showChemistryLinks,
+      isTrue,
+      reason: 'the opponent pitch draws the chemistry links',
+    );
   });
 
-  testWidgets('T-0069: Arabic analysis shows الكيمياء with the percents', (
+  testWidgets('T-0069: Arabic analysis renders the formation section RTL', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(800, 1600);
@@ -405,9 +416,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('الكيمياء'), findsOneWidget);
-    expect(find.text('+4%'), findsOneWidget);
-    expect(find.text('+2%'), findsOneWidget);
+    expect(find.text('تشكيل الخصم'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('T-0118: the matchday Auto Pick button — present, '

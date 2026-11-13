@@ -121,6 +121,7 @@
   "injuryChipOut": "خارج {n}",
   "@injuryChipOut": {"placeholders": {"n": {"type": "int"}}},
   "prematchMedicalTitle": "الغرفة الطبية",
+  "prematchOpponentXiTitle": "تشكيل الخصم",
   "injuryStaminaRiskHint": "اللياقة المنخفضة تزيد خطر الإصابة.",
   "injuryKindKnock": "ارتطام",
   "injuryKindMuscle": "إصابة عضلية",

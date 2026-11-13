@@ -377,6 +377,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get prematchMedicalTitle => 'الغرفة الطبية';
 
   @override
+  String get prematchOpponentXiTitle => 'تشكيل الخصم';
+
+  @override
   String get injuryStaminaRiskHint => 'اللياقة المنخفضة تزيد خطر الإصابة.';
 
   @override

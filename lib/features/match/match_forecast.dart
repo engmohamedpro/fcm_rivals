@@ -94,11 +94,12 @@ class PreMatchData {
     required this.opponentForm,
     required this.opponentPosition,
     required this.userPosition,
-    required this.opponentKeyMen,
     this.userFormationCode = '4-3-3',
     this.userTactics = const TeamTactics(),
     this.userMentality = Mentality.balanced,
     this.userSquad = const {},
+    this.opponentFormationCode = '4-3-3',
+    this.opponentSquad = const [],
     this.userCrest,
     this.opponentCrest,
   });
@@ -126,21 +127,6 @@ class PreMatchData {
   final int opponentPosition;
   final int userPosition;
 
-  /// Opponent's three highest-rated players in the whole squad: identity
-  /// plus raw attributes, rendered as collection-style cards.
-  final List<
-    ({
-      String name,
-      String position,
-      int overall,
-      int attack,
-      int support,
-      int defence,
-      int goalkeeping,
-    })
-  >
-  opponentKeyMen;
-
   /// The club's persisted formation / custom tactics / mentality (GDD 10)
   /// — the starting point of the pre-match tactics selection.
   final String userFormationCode;
@@ -151,6 +137,16 @@ class PreMatchData {
   /// the starting XI, bench and reserves rendered like the Team tab plus
   /// match-day stamina bars (GDD 11).
   final Map<int, PlayerCard> userSquad;
+
+  /// The opponent's persisted formation code — the shape their starting
+  /// XI stands in, rendered as a read-only pitch in the analysis phase.
+  final String opponentFormationCode;
+
+  /// The opponent's starting XI in formation-SLOT order (index i is the
+  /// man in slot i of [opponentFormationCode], GK first) — the same
+  /// convention as [userSquad]'s keys, so the analysis pitch places
+  /// each man exactly where the match will.
+  final List<MatchPlayer> opponentSquad;
 }
 
 /// Runs the Monte-Carlo forecast over the two full squad lists.

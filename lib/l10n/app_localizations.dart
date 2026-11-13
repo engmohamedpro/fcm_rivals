@@ -782,6 +782,12 @@ abstract class AppLocalizations {
   /// **'Medical room'**
   String get prematchMedicalTitle;
 
+  /// No description provided for @prematchOpponentXiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Their starting XI'**
+  String get prematchOpponentXiTitle;
+
   /// No description provided for @injuryStaminaRiskHint.
   ///
   /// In en, this message translates to:

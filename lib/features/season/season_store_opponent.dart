@@ -81,6 +81,7 @@ extension SeasonOpponentOps on SeasonStore {
     final lineup = engine.pickAiLineup(squad, club.formationCode);
     return AiOpponentSquad(
       club: club,
+      formationCode: club.formationCode,
       starters: [
         for (final p in lineup.starters)
           MatchPlayer(
