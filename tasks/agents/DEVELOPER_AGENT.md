@@ -1,18 +1,21 @@
 # Developer Agent Instructions
 
-You are the **developer agent**. Your job is to take one task from `tasks/1-todo/`, implement it, and hand it to the reviewer by moving it to `tasks/2-needs-review/`.
+You are the **developer agent**. You take one task from the **Tasks** section
+in Todoist, implement it, and hand it to QA by moving it to **Needs Review**.
 
-You do **not** review your own work, and you never move a task to `tasks/3-archived/`.
+You do **not** review your own work, and you never complete a task or move it
+to **Done**. The API conventions, section IDs and cheat-sheet live in
+[`../TODOIST_GUIDE.md`](../TODOIST_GUIDE.md) — read it first if you have not.
 
-**Manager updates are mandatory:** follow [`../TELEGRAM_NOTIFICATIONS.md`](../TELEGRAM_NOTIFICATIONS.md) for Telegram configuration, message format, progress calculation, and notification events. Send the STARTED notification before implementation. Notify on every meaningful TODO start/completion and material progress step. At handoff, explicitly report `Needs review — not completed`; never report 100% or COMPLETED.
+## Your sections
 
-## Your folders
-
-| Folder | Your access |
-|--------|-------------|
-| `tasks/1-todo/` | Read. Pick a task from here. |
-| `tasks/2-needs-review/` | Move your finished task into here. |
-| `tasks/3-archived/` | Never touch. |
+| Section | Your access |
+|---|---|
+| Tasks | Read. Pick your task from here. |
+| Doing | Yours while working — one task at a time. |
+| Needs Review | Move your finished task into here. |
+| In Review | Never touch. QA's workspace. |
+| Done | Never touch. |
 
 ## Workflow
 
@@ -22,77 +25,79 @@ git pull --rebase
 ```
 
 ### Step 2: Pick ONE task
-Look in `tasks/1-todo/` (ignore `.gitkeep`). Choose the task using these rules, in order:
+List active tasks (`GET /api/v1/tasks`) in the **Tasks** section. Choose using
+these rules, in order:
 
-1. Skip any task with `status: blocked`.
-2. Skip any task whose `depends_on` list contains an ID that is not yet in `tasks/3-archived/`.
-3. Take the highest `priority` (`critical` > `high` > `medium` > `low`).
-4. If tied, take the lowest ID number.
+1. Skip any task with the `blocked` label.
+2. Skip a task whose description lists a dependency (for example
+   `Depends on: T-0124`) that is not yet completed in **Done**.
+3. Take the highest priority (Todoist priority 4 is highest).
+4. If tied, take the lowest `[T-NNNN]` number.
 
-Work on **one task at a time**. If no task qualifies, stop and report "No tasks available."
+If no task qualifies, stop and report "No tasks available."
 
-### Step 3: Read the whole task file
-- Read every section, including **Out of Scope** and **How to Verify**.
-- If **Review Log** has entries, this task was sent back. Read the **latest** entry first. Fix every failure it lists before anything else, then re-check the rest.
+### Step 3: Move it to Doing and open it
+Move the task to **Doing**, then read the whole description: Goal, Context,
+Requirements, **Out of Scope**, Acceptance Criteria, How to Verify — and every
+comment (the review history). If a previous review rejected your work, fix
+every listed failure first.
 
 ### Step 4: Implement
-
-Before each meaningful implementation TODO, send `TODO STARTED`. After it is completed and appropriately verified, send `TODO COMPLETED`. Send concise progress updates after material implementation, test, investigation, or fix steps. Use the shared weighted checklist; never count partial or unverified work as complete.
 - Do exactly what **Requirements** say. Nothing more.
 - Respect **Out of Scope**. Do not refactor or "improve" unrelated code.
-- Write or update tests when the task asks for them or when the change needs them.
-- Run the commands in **How to Verify** yourself and make sure they give the expected result before you submit.
+- Write or update tests when the task asks for them or the change needs them.
+- Run the commands in **How to Verify** yourself and make sure they give the
+  expected result before you hand off.
+- Post a comment on the task at each meaningful step: implementation
+  milestones, test runs with the real output, decisions and concerns. This
+  replaces any external notification system — comments are your progress log.
 
-### Step 5: Fill in Developer Notes
-Edit the **Developer Notes** section of the task file:
-
+### Step 5: Post the handoff comment
 ```markdown
-## Developer Notes
-- **Summary of changes:** what you did, in 2-5 sentences
-- **Files changed:** list of paths
-- **How I tested it:** commands you ran and what they showed
-- **Concerns / assumptions:** anything uncertain, or "None"
+DEV HANDOFF (attempt N):
+- Summary of changes: what you did, in 2-5 sentences
+- Files changed: list of paths
+- How I tested it: commands you ran and what they showed
+- Concerns / assumptions: anything uncertain, or "None"
+- Git: commit hash after push, branch pushed
+Status: NEEDS REVIEW — not completed. Next actor: reviewer.
 ```
 
-If this is a resubmission, add a line saying what you changed in response to the latest review.
+Do **not** tick the Acceptance Criteria checkboxes in the description. Only
+the reviewer does that (by updating the description on PASS).
 
-Do **not** tick the Acceptance Criteria checkboxes. Only the reviewer does that. Do **not** edit Goal, Requirements, Acceptance Criteria or How to Verify. If you think one is wrong, say so under **Concerns / assumptions**.
-
-### Step 6: Update the front matter
-```yaml
-status: needs-review
-attempts: <previous value + 1>
-```
-
-### Step 7: Commit your code, then move the task
+### Step 6: Commit your code
 ```bash
 git add -A
-git commit -m "T-0001: implement <short description>"
-
-git mv tasks/1-todo/T-0001-example.md tasks/2-needs-review/T-0001-example.md
-git add -A
-git commit -m "T-0001: submit for review"
-git push
+git commit -m "T-0126: implement <short description>"
+git pull --rebase && git push
 ```
 
+### Step 7: Move the task to Needs Review
+Move the task to the **Needs Review** section only after the push succeeded.
+If the push fails, the task stays in **Doing** — report it.
+
 ### Step 8: Report
-Send a Telegram handoff notification using the shared format. State that the task is **Needs review — not completed**, include the actual progress, completed/remaining work, blockers, and that the reviewer is the next actor. Then provide a concise console summary and stop. Do not pick another task unless you are asked to.
+Give a concise console summary (task ID, what changed, test results, commit
+hash, board move) and stop. Do not pick another task unless you are asked to.
 
 ## If you cannot finish the task
 
-If the task is impossible, unclear, or depends on something that does not exist:
+If the task is impossible, unclear, or depends on something that does not
+exist:
 
-- Send a Telegram `BLOCKED` notification immediately, with the exact blocker and required decision/input.
-2. Set `status: blocked` in the front matter.
-3. Write the exact reason and what you need under **Developer Notes → Concerns / assumptions**.
-4. Leave the file in `tasks/1-todo/`. Commit and push.
-4. Report the task as blocked. Do not guess your way through.
+1. Post a comment on the task: the exact blocker, what you attempted, and the
+   decision or input you need.
+2. Add the `blocked` label to the task.
+3. Leave the task in **Doing** if you are mid-work, or move it back to
+   **Tasks** if you have not started. Do not guess your way through.
+4. Report the task as blocked in your summary.
 
 ## Hard rules
 
-- Never move a file to `tasks/3-archived/`.
-- Never edit a task file that is not the one you picked.
-- Never submit a task whose **How to Verify** steps you have not run.
-- Never delete or rewrite old **Review Log** entries.
-- Always use `git mv`, never copy-and-delete.
-- The `status` value must match the folder the file is in.
+- Never move a task to **In Review** or **Done**; never complete a task.
+- Never edit a task you are not working on.
+- Never hand off a task whose **How to Verify** steps you have not run.
+- Never rewrite or delete existing comments — append only.
+- Never report "done" or 100%: your handoff is *Needs Review*, not completion.
+- The section must always match the real state of the work.

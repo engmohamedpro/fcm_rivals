@@ -1,55 +1,72 @@
-# Tasks
+# Task Management — Todoist
 
-A file-based task board for AI agents. **One task = one Markdown file.** The folder a file sits in is its stage.
+This project no longer uses file-based task boards. **All task tracking lives in
+Todoist** (project *Inbox*, five sections). The agent instructions in this folder
+tell developer and reviewer agents exactly how to use it.
+
+## Layout
 
 ```
 tasks/
-├── README.md                  ← you are here
-├── HOW_TO_WRITE_TASKS.md      ← rules for creating task files
-├── TELEGRAM_NOTIFICATIONS.md  ← shared manager update protocol for both agents
-├── 1-todo/                    ← tasks waiting to be done (or sent back by the reviewer)
-├── 2-needs-review/            ← tasks the developer finished, waiting for the reviewer
-├── 3-archived/                ← tasks the reviewer verified and accepted
-├── templates/
-│   └── TASK_TEMPLATE.md       ← copy this to create a new task
+├── README.md                    ← you are here (system overview)
+├── TODOIST_GUIDE.md             ← the agent manual: auth, API calls, task format, workflow
 └── agents/
-    ├── DEVELOPER_AGENT.md     ← instructions for the developer agent
-    └── REVIEWER_AGENT.md      ← instructions for the reviewer agent
+    ├── DEVELOPER_AGENT.md       ← instructions for the developer agent
+    └── REVIEWER_AGENT.md        ← instructions for the reviewer (QA) agent
 ```
 
-## Lifecycle
+## The board
+
+| Todoist section | Meaning | Who moves a task **out** |
+|---|---|---|
+| **Tasks** | Backlog: new work, rework sent back by QA, owner-decision items | Developer → moves to *Doing* when starting |
+| **Doing** | The developer is actively working on it | Developer → moves to *Needs Review* when done |
+| **Needs Review** | Implementation finished, waiting for QA to pick it up | Reviewer → moves to *In Review* when starting |
+| **In Review** | QA is actively verifying | Reviewer → *Done* (pass) or *Tasks* (fail) |
+| **Done** | QA passed and the task is completed/closed | Nobody. Final. |
+
+Lifecycle (one task, one ticket — moves happen **only** in this order):
 
 ```
-                 developer finishes
-   1-todo  ───────────────────────────►  2-needs-review
-     ▲                                         │
-     │          reviewer: FAIL                 │
-     └─────────────────────────────────────────┤
-                                               │ reviewer: PASS
-                                               ▼
-                                          3-archived
+Tasks ──(dev starts)──► Doing ──(dev done)──► Needs Review ──(QA picks up)──► In Review
+  ▲                                                                        │
+  └────────────────────────── QA: FAIL ────────────────────────────────────┤
+                                                                           │ QA: PASS
+                                                                           ▼
+                                                                         Done
 ```
 
-| Stage | Folder | Who moves a file **out** of it |
-|-------|--------|--------------------------------|
-| 1 | `1-todo/` | Developer agent → `2-needs-review/` |
-| 2 | `2-needs-review/` | Reviewer agent → `3-archived/` (pass) or `1-todo/` (fail) |
-| 3 | `3-archived/` | Nobody. Archived tasks are final. |
+## Task format
+
+- Title: `[T-NNNN] short imperative title` (never reuse a number; pick max + 1
+  from *all* sections including Done).
+- Description: Goal, Context, Requirements, Out of Scope, Acceptance Criteria,
+  How to Verify — same structure the old task files used.
+- Progress and review outcomes go in **comments** (one per event), never by
+  editing the description silently.
+- Labels: `blocked` marks a task that needs human input.
 
 ## Rules for everyone
 
-7. Both agents must follow `TELEGRAM_NOTIFICATIONS.md`; the developer reports implementation and handoff, and the reviewer continues the same progress through final disposition.
+1. Todoist is the single source of truth. Do not track work in files, branch
+   names or commit messages alone.
+2. A task moves forward **only** with its state actually verified — no
+   pre-moving.
+3. Git discipline stays: code commits are separate from the repo, the task ID
+   goes in the commit message (for example `T-0126: implement icon pack fix`),
+   `git pull --rebase` before starting, `git push` after finishing work.
+4. Never claim a task Done that you did not verify.
+5. Owner-decision items get the `blocked` label and stay in **Tasks** until the
+   owner rules.
 
-1. Move files with `git mv` so history is kept. Never copy-and-delete.
-2. Every move is its own commit, with the task ID in the message (for example `T-0007: submit for review`).
-3. Always `git pull --rebase` before picking a task and before every move, and `git push` right after.
-4. The `status` field in the task's front matter must always match the folder the file is in.
-5. Only the developer agent moves tasks `1-todo → 2-needs-review`. Only the reviewer agent moves tasks out of `2-needs-review`. No agent moves a task into `3-archived` except the reviewer, and only after a pass.
-6. `.gitkeep` files only keep empty folders in Git. Agents ignore them.
+## History
+
+The 124 archived file-based tasks (T-0001..T-0125) live in git history up to
+the commit that introduced this file. The eight active tasks at cutover were
+migrated into Todoist on 2026-11-13 with their full context in the description.
 
 ## Where to start
 
-- Writing tasks: `HOW_TO_WRITE_TASKS.md`
-- Telegram manager updates: `TELEGRAM_NOTIFICATIONS.md` (required by both agents)
-- Developer agent: `agents/DEVELOPER_AGENT.md`
-- Reviewer agent: `agents/REVIEWER_AGENT.md`
+- Agent manual: [`TODOIST_GUIDE.md`](TODOIST_GUIDE.md)
+- Developer agent: [`agents/DEVELOPER_AGENT.md`](agents/DEVELOPER_AGENT.md)
+- Reviewer agent: [`agents/REVIEWER_AGENT.md`](agents/REVIEWER_AGENT.md)

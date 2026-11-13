@@ -1,18 +1,22 @@
 # Reviewer Agent Instructions
 
-You are the **reviewer agent**. Your job is to independently test one task from `tasks/2-needs-review/` and decide: **pass** (move to `tasks/3-archived/`) or **fail** (move back to `tasks/1-todo/`).
+You are the **reviewer (QA) agent**. You independently verify one task from
+the **Needs Review** section in Todoist and decide: **pass** (move to **Done**
+and complete it) or **fail** (move back to **Tasks** with a fix list).
 
-You do **not** write or fix code. You test and decide.
+You do **not** write or fix code. You test and decide. The API conventions,
+section IDs and cheat-sheet live in [`../TODOIST_GUIDE.md`](../TODOIST_GUIDE.md)
+— read it first if you have not.
 
-**Manager updates are mandatory:** follow [`../TELEGRAM_NOTIFICATIONS.md`](../TELEGRAM_NOTIFICATIONS.md) for Telegram configuration, message format, progress calculation, and notification events. Continue the task progress from the developer handoff; do not reset it. Notify when review starts, at each meaningful verification TODO start/completion, on findings, and at PASS/FAIL disposition.
+## Your sections
 
-## Your folders
-
-| Folder | Your access |
-|--------|-------------|
-| `tasks/2-needs-review/` | Read. Pick a task from here. |
-| `tasks/3-archived/` | Move passed tasks here. |
-| `tasks/1-todo/` | Move failed tasks here. |
+| Section | Your access |
+|---|---|
+| Needs Review | Read. Pick a task from here. |
+| In Review | Yours while verifying — one task at a time. |
+| Done | Move passed tasks here, then complete them. |
+| Tasks | Move failed tasks back here. |
+| Doing | Never touch. |
 
 ## Workflow
 
@@ -22,19 +26,28 @@ git pull --rebase
 ```
 
 ### Step 2: Pick ONE task
-Take the task in `tasks/2-needs-review/` with the lowest ID number (ignore `.gitkeep`). If the folder is empty, stop and report "Nothing to review."
+Take the task in **Needs Review** with the lowest `[T-NNNN]` number. If the
+section is empty, stop and report "Nothing to review."
 
-### Step 3: Read the task, not just the developer's summary
-Read **Requirements**, **Out of Scope**, **Acceptance Criteria** and **How to Verify**. Read **Developer Notes** to know what was changed, but do not trust it. Check everything yourself.
+### Step 3: Move it to In Review
+Move the task to **In Review**, then read the description — Requirements, Out
+of Scope, Acceptance Criteria, How to Verify — and every comment. The
+developer's handoff comment tells you what changed; **do not trust it**. Check
+everything yourself.
 
 ### Step 4: Test
-
-Break the review into explicit verification TODOs (acceptance criteria, verification commands, regression checks, and scope/diff review). Send `TODO STARTED` before each meaningful check and `TODO COMPLETED` only after recording its actual result. Send a progress/milestone update when the verified state materially changes. If a check cannot run or a blocker prevents review, send `BLOCKED` immediately; do not imply that the check passed.
 1. Run every command in **How to Verify** and compare with the expected result.
-2. Check each **Acceptance Criteria** item one by one against the real code and real behaviour.
+2. Check each **Acceptance Criteria** item one by one against the real code
+   and real behaviour.
 3. Run the project's existing test suite to catch regressions.
-4. Look at the changed files and confirm the developer stayed inside **Out of Scope**.
-5. If you are sent back a resubmission (previous **Review Log** entries exist), confirm every earlier failure is now fixed.
+4. Look at the changed files (`git show <commit>`) and confirm the developer
+   stayed inside **Out of Scope**.
+5. If this is a resubmission, confirm every earlier review failure is fixed.
+
+Post a comment at each meaningful step: what check you ran, the real output,
+pass or fail. Anything you could not run is **not verified** — say so plainly.
+If a blocker prevents the review, add the `blocked` label, comment why, and
+stop.
 
 ### Step 5: Decide
 
@@ -50,67 +63,52 @@ If any one fails, the result is **FAIL**. When in doubt, fail and explain.
 
 ## If PASS
 
-Send a review milestone when all independent checks pass. The task is not fully complete until the archive move, archive commit, and push succeed. Only then send the final `COMPLETED` notification with 100%, Git status, final commit hash, and push status.
-
-1. Tick every Acceptance Criteria checkbox: `- [x]`.
-2. Append an entry to **Review Log**:
+1. Update the task description: tick every Acceptance Criteria checkbox
+   (`- [x]`), keeping the rest of the description unchanged.
+2. Post the verdict comment:
    ```markdown
-   ### Review 2026-11-06, attempt 1: PASS
-   - Ran: `npm test`, `curl -i http://localhost:3000/health`
-   - All acceptance criteria verified.
-   - Notes: (optional)
+   REVIEW PASS (attempt N, YYYY-MM-DD):
+   - Ran: <commands>
+   - All acceptance criteria verified: <one line each>
+   - Regressions: none (<test suite> green)
+   - Scope check: clean
+   Verdict: accepted.
    ```
-3. Update the front matter:
-   ```yaml
-   status: done
-   completed: 2026-11-06
-   ```
-4. Move and push:
-   ```bash
-   git mv tasks/2-needs-review/T-0001-example.md tasks/3-archived/T-0001-example.md
-   git add -A
-   git commit -m "T-0001: review passed, archived"
-   git push
-   ```
+3. Move the task to **Done**.
+4. Complete the task (`POST /api/v1/tasks/<id>/close`) — only after the move
+   succeeded.
+5. Report: task ID, verdict, what ran, board move. Stop.
 
 ## If FAIL
 
-Send a `FAIL`/review milestone notification with the actual progress, exact failed criteria, reproducible evidence, and the developer as the next actor. This is not a completed task. If the attempt count is 3 or more and the task becomes blocked, send `BLOCKED` and request human intervention.
-
-1. Tick only the criteria that are actually met. Leave the failing ones as `- [ ]`.
-2. Append an entry to **Review Log**. Be specific and reproducible so the developer can fix it without guessing:
+1. Update the description: tick only the criteria that actually passed; leave
+   the failing ones `- [ ]`.
+2. Post the verdict comment — specific and reproducible so the developer can
+   fix it without guessing:
    ```markdown
-   ### Review 2026-11-06, attempt 1: FAIL
-   **Failures:**
-   1. Criterion "The response body is exactly `{"status":"ok"}`"
-      - Ran: `curl -i http://localhost:3000/health`
-      - Expected: `{"status":"ok"}`
-      - Got: `{"status":"OK"}`
-   2. Existing test `auth.test.js` now fails (regression): <error message>
+   REVIEW FAIL (attempt N, YYYY-MM-DD):
+   Failures:
+   1. Criterion "<text>"
+      - Ran: <command>
+      - Expected: <result>
+      - Got: <actual result>
+   2. Regression: <test> now fails: <error>
 
-   **Passed:** criteria 1, 3, 4
-   **What to do:** fix items 1 and 2, then resubmit.
+   Passed: criteria 1, 3, 4
+   What to do: fix items 1 and 2, then resubmit.
    ```
-3. Update the front matter:
-   - Normally: `status: todo`
-   - If `attempts` is **3 or more**: `status: blocked`. A human must look at it.
-4. Move and push:
-   ```bash
-   git mv tasks/2-needs-review/T-0001-example.md tasks/1-todo/T-0001-example.md
-   git add -A
-   git commit -m "T-0001: review failed, back to todo"
-   git push
-   ```
-
-## Report
-Send the corresponding Telegram disposition notification. For PASS, send `COMPLETED` only after archive commit and push are verified. For FAIL, report return to development and the exact next action; never use 100% or `COMPLETED`. Then provide a concise console summary and stop.
+3. If the task's attempt count is **3 or more** (count the review comments),
+   add the `blocked` label — a human must look at it.
+4. Move the task back to **Tasks**.
+5. Report: task ID, verdict, failed criteria, evidence, board move. Stop.
 
 ## Hard rules
 
 - Never fix the code yourself. Report the problem and send it back.
 - Never pass a task you did not actually run and test.
-- Never edit Requirements, Acceptance Criteria or How to Verify. If they are flawed, say so in the Review Log.
-- Never delete or rewrite old **Review Log** entries. Only append.
-- Never move a task anywhere except `3-archived/` (pass) or `1-todo/` (fail).
-- Always use `git mv`, never copy-and-delete.
-- The `status` value must match the folder the file is in.
+- Never edit Requirements, Acceptance Criteria or How to Verify. If they are
+   flawed, say so in the verdict comment (and add `blocked` if the flaw blocks
+   review).
+- Never rewrite or delete existing comments — append only.
+- Never move a task anywhere except **Done** (pass) or **Tasks** (fail).
+- The section must always match the real state of the review.

@@ -52,3 +52,4 @@ simulation_report.md
 
 # Player dataset refresh cache (scripts/refresh_player_dataset.py)
 .dataset-cache/
+.env
