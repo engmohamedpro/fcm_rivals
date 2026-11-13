@@ -643,7 +643,7 @@ class _CategoryCarousel extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: AchievementCatalog.categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final category = AchievementCatalog.categories[i];
           final isActive = category.id == active;

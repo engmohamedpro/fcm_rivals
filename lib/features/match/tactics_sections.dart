@@ -119,7 +119,7 @@ class _Section extends StatelessWidget {
 /// In Possession instruction controls: build-up, tempo, width, final
 /// third and crossing — five 0–99 sliders.
 class InPossessionControls extends StatelessWidget {
-  const InPossessionControls({required this.tactics, required this.onChanged});
+  const InPossessionControls({super.key, required this.tactics, required this.onChanged});
 
   final TeamTactics tactics;
   final ValueChanged<TeamTactics> onChanged;
@@ -211,6 +211,7 @@ class _OptionChip extends StatelessWidget {
 /// off, not a scale, so it stays a switch.
 class OutOfPossessionControls extends StatelessWidget {
   const OutOfPossessionControls({
+    super.key,
     required this.tactics,
     required this.onChanged,
   });
@@ -297,7 +298,7 @@ class OutOfPossessionControls extends StatelessWidget {
 /// Transitions instruction controls: counter-press, attack on recovery
 /// and rest defence — three 0–99 sliders.
 class TransitionsControls extends StatelessWidget {
-  const TransitionsControls({required this.tactics, required this.onChanged});
+  const TransitionsControls({super.key, required this.tactics, required this.onChanged});
 
   final TeamTactics tactics;
   final ValueChanged<TeamTactics> onChanged;

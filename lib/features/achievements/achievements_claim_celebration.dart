@@ -50,7 +50,7 @@ Future<void> showAchievementClaimCelebration(
     opaque: false,
     barrierColor: Colors.transparent,
     transitionDuration: Duration.zero,
-    pageBuilder: (_, __, ___) => _ClaimCelebrationOverlay(
+    pageBuilder: (_, _, _) => _ClaimCelebrationOverlay(
       metal: metal,
       title: title,
       coins: coins,
@@ -87,8 +87,11 @@ class _ClaimCelebrationOverlayState extends State<_ClaimCelebrationOverlay>
   void initState() {
     super.initState();
     _c.forward();
-    // Self-dismiss when the beat completes.
-    _c.whenComplete(() => _dismiss());
+    // Self-dismiss when the beat completes (the controller's status
+    // listener — AnimationController has no whenComplete).
+    _c.addStatusListener((status) {
+      if (status == AnimationStatus.completed) _dismiss();
+    });
   }
 
   void _dismiss() {

@@ -69,7 +69,11 @@ void main() {
   testWidgets('fresh run: day-1 claim pays the ladder start and flips '
       'the card to claimed', (tester) async {
     await tester.pumpWidget(await harness());
-    await tester.pumpAndSettle();
+    // The redesigned card breathes forever on today's cell — fixed
+    // pumps instead of pumpAndSettle (the repo's ambient-screen
+    // convention).
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
 
     // The claim button carries the engine-derived day-1 amount.
     final engine = const StreakEngine();
@@ -79,7 +83,8 @@ void main() {
 
     final before = await balance();
     await tester.tap(claimButton);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
 
     // The coins landed through the atomic transaction.
     expect(await balance(), before + dayOne);
@@ -99,7 +104,8 @@ void main() {
     // Seed today's claim directly through the store.
     await StreakStore(database).claim(clubId: clubId);
     await tester.pumpWidget(await harness());
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
 
     // The card opens already claimed — no button, no warning. (The
     // 'Claim 600 Coins' label is the button's text; 'Claimed today'

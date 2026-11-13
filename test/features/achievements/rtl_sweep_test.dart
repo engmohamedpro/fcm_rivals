@@ -60,7 +60,9 @@ void main() {
 
     // Arabic strings render (fonts set up repo-wide).
     expect(find.text('غرفة الكؤوس'), findsOneWidget);
-    expect(find.text('المسيرة'), findsOneWidget);
+    // Career renders as BOTH its carousel chip and the default wall
+    // heading (the 2026-11-13 one-room-at-a-time redesign).
+    expect(find.text('المسيرة'), findsWidgets);
 
     // Directional layout.
     expect(

@@ -99,10 +99,9 @@ class SquadDropTarget {
 /// produces, or a human-readable reason.
 class SquadSwapOutcome {
   const SquadSwapOutcome.accepted(
-    Map<int, int> this.assignment, {
-    Formation? formation,
-  }) : rejection = null,
-       formation = formation;
+    this.assignment, {
+    this.formation,
+  }) : rejection = null;
 
   const SquadSwapOutcome.rejected(String this.rejection)
     : assignment = null,

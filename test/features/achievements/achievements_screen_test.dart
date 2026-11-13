@@ -81,21 +81,42 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     // The redesigned hub (2026-11-13): rooms render one at a time
-    // behind the category carousel. The DEFAULT room is Career; the
-    // Attack room lands on tapping its chip.
-    expect(find.text('Career'), findsOneWidget);
-    await tester.tap(find.text('Attack'));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Attack'), findsOneWidget);
+    // behind the category carousel. Career appears as BOTH its chip
+    // and the default wall heading; tapping the Attack chip swaps
+    // the wall (Career's heading leaves, Attack's lands).
+    expect(find.text('Career'), findsWidgets);
 
-    // The wins ladder: 4 wins derived — the visible rung threshold is
-    // 8 (1,2,4 claimed? none claimed — first unclaimed is 1... after
-    // no claims the first rung (threshold 1) is ELIGIBLE: progress 4
-    // >= 1. The bar shows 4 / 1 — complete. The honest readout exists.
+    // The wins ladder (in the DEFAULT Career room): 4 wins derived,
+    // nothing claimed — the first rung (threshold 1) is ELIGIBLE:
+    // progress 4 >= 1. The bar shows 4 / 1 — complete, honest. The
+    // wins card sits below the fold (hero + streak eat the first
+    // screen) — scroll it into view.
+    await tester.scrollUntilVisible(
+      find.text('4 / 1'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('4 / 1'), findsWidgets);
 
     // The claim action appears for the eligible tier.
     expect(find.text('Claim'), findsWidgets);
+
+    // The room swap: scrolling exposed the wins card but moved the
+    // carousel (a horizontal Scrollable of its own) off-screen —
+    // drag back to the top first, then tap the Attack chip.
+    await tester.fling(
+      find.byType(Scrollable).first,
+      const Offset(0, 1200),
+      1000,
+    );
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.tap(find.text('Attack'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Attack'), findsWidgets);
+    expect(find.text('Career'), findsOneWidget,
+        reason: 'only the Attack room chip keeps the Career label '
+            'after the wall swap');
   });
 
   test('the claim pipeline lands atomically (real service, real '
@@ -174,8 +195,13 @@ void main() {
     // The claimed state renders from the table — no local flag: the
     // card shows its claimed-rungs chip (1 claimed for the pre-seeded
     // career_wins claim), and eligible rungs still offer the action.
-    // The wins ladder lives in the DEFAULT Career room — no scroll
-    // needed any more (the carousel replaced the stacked sections).
+    // The wins card sits below the fold (hero + streak eat the first
+    // screen) — scroll it into view.
+    await tester.scrollUntilVisible(
+      find.text('1 claimed'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('1 claimed'), findsOneWidget,
         reason: 'the pre-claimed rung renders its state from the '
@@ -209,8 +235,8 @@ void main() {
     // The hero's completion reads as a percent + the metal segment
     // bar (the ring is gone with the redesign).
     expect(find.text('0%'), findsOneWidget);
-    // No crash: the default room rendered.
-    expect(find.text('Career'), findsOneWidget);
+    // No crash: the default room rendered (chip + heading).
+    expect(find.text('Career'), findsWidgets);
   });
 
   testWidgets('Arabic/RTL: the screen renders mirrored with real '
@@ -223,19 +249,29 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('المسيرة'), findsOneWidget);
+    // Career appears as BOTH its carousel chip and the default
+    // wall heading (the redesign's one-room-at-a-time layout).
+    expect(find.text('المسيرة'), findsWidgets);
     expect(find.text('غرفة الكؤوس'), findsOneWidget);
     // Direction captured at the fold.
     final rtl = Directionality.of(
       tester.element(find.text('المسيرة').first),
     );
-    // The Attack room is a carousel chip tap away (the redesign's
-    // one-room-at-a-time layout).
+    // The room swap works mirrored: الهجوم renders as BOTH its chip
+    // and the new wall heading after the tap.
     await tester.tap(find.text('الهجوم'));
     await tester.pump(const Duration(milliseconds: 150));
-    expect(find.text('الهجوم'), findsOneWidget);
-    // The claim action localized (eligible tiers exist in the
-    // fixture career — the wins ladder's first rungs).
+    expect(find.text('الهجوم'), findsWidgets);
+    // Back to Career — the eligible CLAIM rungs live there (the
+    // wins ladder's first rungs), localized استحق, below the fold.
+    await tester.tap(find.text('المسيرة'));
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.scrollUntilVisible(
+      find.text('استحق'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('استحق'), findsWidgets);
     expect(rtl, TextDirection.rtl);
   });

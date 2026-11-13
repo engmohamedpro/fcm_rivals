@@ -156,24 +156,32 @@ class _IdentityHeader extends StatelessWidget {
                 const EquippedTitleChip(compact: true),
                 if (joined != null) ...[
                   const SizedBox(height: 6),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.calendar_today_rounded,
-                        color: FcmColors.textDim.withValues(alpha: 0.7),
-                        size: 12,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Founded: ${joined.year}-${joined.month.toString().padLeft(2, '0')}-${joined.day.toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          color: FcmColors.textDim,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                  // The founded row can exceed the narrow RTL column
+                  // (Arabic label + digits) — FittedBox shrink instead
+                  // of a hard min-size Row (the column is unbounded,
+                  // so Flexible is wrong here).
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_rounded,
+                          color: FcmColors.textDim.withValues(alpha: 0.7),
+                          size: 12,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Text(
+                          'Founded: ${joined.year}-${joined.month.toString().padLeft(2, '0')}-${joined.day.toString().padLeft(2, '0')}',
+                          style: const TextStyle(
+                            color: FcmColors.textDim,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ],

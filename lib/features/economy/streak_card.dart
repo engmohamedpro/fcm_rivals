@@ -442,8 +442,9 @@ class _DayCellState extends State<_DayCell>
                   ),
                 ],
               ),
-              // The ordinal, tucked in the top corner.
-              Positioned(
+              // The ordinal, tucked in the top-start corner
+              // (PositionedDirectional mirrors it under RTL).
+              PositionedDirectional(
                 top: 3,
                 start: 4,
                 child: Text(
@@ -458,9 +459,9 @@ class _DayCellState extends State<_DayCell>
                   ),
                 ),
               ),
-              // The bonus star on the 7th rung.
+              // The bonus star on the 7th rung, top-end corner.
               if (bonus)
-                Positioned(
+                PositionedDirectional(
                   top: 2,
                   end: 3,
                   child: Icon(
@@ -471,11 +472,11 @@ class _DayCellState extends State<_DayCell>
                         : FcmColors.gold.withValues(alpha: 0.9),
                   ),
                 ),
-              // The claimed tick.
+              // The claimed tick, bottom-end corner.
               if (widget.claimed)
-                Positioned(
+                PositionedDirectional(
                   bottom: 2,
-                  right: 3,
+                  end: 3,
                   child: Icon(
                     Icons.check_rounded,
                     size: 11,
