@@ -106,7 +106,9 @@ void main() {
     // is the resting state, matched exactly.)
     expect(find.byType(ElevatedButton), findsNothing);
     expect(find.text('Claimed today'), findsOneWidget);
-    // The run window shows the claimed day pip.
+    // The redesigned week track: day 1 claimed renders exactly ONE
+    // lit cell carrying the tick (the remaining rungs are future
+    // days — dimmed, tickless).
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
   });
 }

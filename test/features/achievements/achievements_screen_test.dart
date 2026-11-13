@@ -80,18 +80,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
-    // Category headings render (slivers are lazy — scroll the later
-    // sections into the viewport).
+    // The redesigned hub (2026-11-13): rooms render one at a time
+    // behind the category carousel. The DEFAULT room is Career; the
+    // Attack room lands on tapping its chip.
     expect(find.text('Career'), findsOneWidget);
-    // Drag the lazy slivers until the Attack section header lands.
-    for (var i = 0; i < 12; i++) {
-      if (find.text('Attack').evaluate().isNotEmpty) break;
-      await tester.drag(
-        find.byType(Scrollable).first,
-        const Offset(0, -400),
-      );
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await tester.tap(find.text('Attack'));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Attack'), findsOneWidget);
 
     // The wins ladder: 4 wins derived — the visible rung threshold is
@@ -180,14 +174,9 @@ void main() {
     // The claimed state renders from the table — no local flag: the
     // card shows its claimed-rungs chip (1 claimed for the pre-seeded
     // career_wins claim), and eligible rungs still offer the action.
-    for (var i = 0; i < 30 && find.text('1 claimed').evaluate().isEmpty; i++) {
-      await tester.fling(
-        find.byType(Scrollable).first,
-        const Offset(0, -600),
-        800,
-      );
-      await tester.pump(const Duration(milliseconds: 150));
-    }
+    // The wins ladder lives in the DEFAULT Career room — no scroll
+    // needed any more (the carousel replaced the stacked sections).
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('1 claimed'), findsOneWidget,
         reason: 'the pre-claimed rung renders its state from the '
             'claims table through the live watch');
@@ -217,8 +206,10 @@ void main() {
     // The hub header renders with 0 of N.
     expect(find.text('The Trophy Room'), findsOneWidget);
     expect(find.textContaining('of'), findsWidgets);
-    expect(find.byType(CircularProgressIndicator), findsWidgets);
-    // No crash: the whole catalog rendered.
+    // The hero's completion reads as a percent + the metal segment
+    // bar (the ring is gone with the redesign).
+    expect(find.text('0%'), findsOneWidget);
+    // No crash: the default room rendered.
     expect(find.text('Career'), findsOneWidget);
   });
 
@@ -234,19 +225,14 @@ void main() {
 
     expect(find.text('المسيرة'), findsOneWidget);
     expect(find.text('غرفة الكؤوس'), findsOneWidget);
-    // Direction captured BEFORE the fling scrolls the header away.
+    // Direction captured at the fold.
     final rtl = Directionality.of(
       tester.element(find.text('المسيرة').first),
     );
-    for (var i = 0; i < 20; i++) {
-      if (find.text('الهجوم').evaluate().isNotEmpty) break;
-      await tester.fling(
-        find.byType(Scrollable).first,
-        const Offset(0, -600),
-        700,
-      );
-      await tester.pump(const Duration(milliseconds: 150));
-    }
+    // The Attack room is a carousel chip tap away (the redesign's
+    // one-room-at-a-time layout).
+    await tester.tap(find.text('الهجوم'));
+    await tester.pump(const Duration(milliseconds: 150));
     expect(find.text('الهجوم'), findsOneWidget);
     // The claim action localized (eligible tiers exist in the
     // fixture career — the wins ladder's first rungs).
