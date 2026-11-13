@@ -357,6 +357,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get packRarityPremium => 'Premium';
+  @override
+  String get packRarityIcon => 'Icons';
 
   @override
   String injuryBadgeSemantics(int n) {

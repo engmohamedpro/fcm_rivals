@@ -152,6 +152,7 @@
   "packRarityEpic": "Epic",
   "packRarityLegendary": "Legendary",
   "packRarityPremium": "Premium",
+  "packRarityIcon": "Icons",
   "injuryBadgeSemantics": "Injured, out for {n} matches",
   "@injuryBadgeSemantics": {"placeholders": {"n": {"type": "int"}}},
   "injuryOutForMatches": "Out for {n} matches",

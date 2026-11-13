@@ -114,6 +114,7 @@
   "packRarityEpic": "ملحمي",
   "packRarityLegendary": "أسطوري",
   "packRarityPremium": "نخبة",
+  "packRarityIcon": "الأيقونات",
   "injuryBadgeSemantics": "مصاب، خارج {n} مباراة",
   "@injuryBadgeSemantics": {"placeholders": {"n": {"type": "int"}}},
   "injuryOutForMatches": "خارج {n} مباراة",

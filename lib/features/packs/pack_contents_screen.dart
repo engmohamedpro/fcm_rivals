@@ -303,6 +303,15 @@ class _OddsStrip extends StatelessWidget {
     ];
   }
 
+  /// T-0122 F3: the icon line of an icon-tier pack — the tiny icon
+  /// chance rides FIRST in the strip (stage 0 of the draw), and only
+  /// when the pool actually carries icon rows.
+  static bool _showsIconLine(PackTier tier, List<BasePlayer>? players) {
+    if (!tier.isIconTier) return false;
+    if (players == null || players.isEmpty) return false;
+    return players.any((p) => p.isIcon);
+  }
+
   static String _rarityLabel(BuildContext context, PackRarity rarity) =>
       switch (rarity) {
         PackRarity.rare => l10nOf(context).packRarityRare,
@@ -314,13 +323,32 @@ class _OddsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chips = _bandChips(tier, players);
-    if (chips.isEmpty) return const SizedBox.shrink();
+    final iconChance = tier.isIconTier
+        ? defaultPackOddsConfig.iconChanceOf(tier)
+        : 0.0;
+    final showsIcon = _showsIconLine(tier, players) && iconChance > 0;
+    if (chips.isEmpty && !showsIcon) return const SizedBox.shrink();
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // The icon chance leads the strip — it is the first roll the
+          // pack makes (stage 0), and the headline of an icon pack.
+          if (showsIcon) ...[
+            Text(
+              '${l10nOf(context).packRarityIcon} '
+              '${(iconChance * 100).toStringAsFixed(1)}%',
+              style: const TextStyle(
+                color: FcmColors.goldSoft,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
+            ),
+            if (chips.isNotEmpty) const SizedBox(width: 8),
+          ],
           for (final (i, band) in chips.indexed) ...[
             if (i > 0) const SizedBox(width: 8),
             Text(

@@ -756,7 +756,13 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Premium'**
+  ///
+  /// No description provided for @packRarityIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Icons'**
   String get packRarityPremium;
+  String get packRarityIcon;
 
   /// No description provided for @injuryBadgeSemantics.
   ///

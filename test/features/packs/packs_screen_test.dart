@@ -97,7 +97,14 @@ void main() {
     // read the table there. The chips stay one atomic Text per band —
     // label + percent — so RTL can reorder them freely. Rare tier:
     // Rare 75% / Epic 20% / Legendary 5% with NO premium chip.
-    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+    // The ST section's own players button (the Icon section shelves
+      // first since 5925017 — .first would open the icon pool).
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('store-section-position:ST')),
+          matching: find.byIcon(Icons.people_outline_rounded),
+        ),
+      );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.runAsync(
@@ -139,7 +146,14 @@ void main() {
 
     // Same move as the EN test: the chips live in the contents screen
     // now, so open one under the AR locale.
-    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+    // The ST section's own players button (the Icon section shelves
+      // first since 5925017 — .first would open the icon pool).
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('store-section-position:ST')),
+          matching: find.byIcon(Icons.people_outline_rounded),
+        ),
+      );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.runAsync(
@@ -635,7 +649,14 @@ void main() {
       await bootScreen(tester);
 
       // Open the rare ST pack's contents from the players icon.
-      await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+      // The ST section's own players button (the Icon section shelves
+      // first since 5925017 — .first would open the icon pool).
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('store-section-position:ST')),
+          matching: find.byIcon(Icons.people_outline_rounded),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       await tester.runAsync(
@@ -672,7 +693,14 @@ void main() {
 
       // The players icon button on the section title row opens the
       // contents screen for that scope.
-      await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+      // The ST section's own players button (the Icon section shelves
+      // first since 5925017 — .first would open the icon pool).
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('store-section-position:ST')),
+          matching: find.byIcon(Icons.people_outline_rounded),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -709,7 +737,14 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+    // The ST section's own players button (the Icon section shelves
+      // first since 5925017 — .first would open the icon pool).
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('store-section-position:ST')),
+          matching: find.byIcon(Icons.people_outline_rounded),
+        ),
+      );
     await tester.pump();
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 300)),
@@ -746,7 +781,14 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    await tester.tap(find.byIcon(Icons.people_outline_rounded).first);
+    // The ST section's own players button (the Icon section shelves
+      // first since 5925017 — .first would open the icon pool).
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('store-section-position:ST')),
+          matching: find.byIcon(Icons.people_outline_rounded),
+        ),
+      );
     await tester.pump();
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 300)),
@@ -1081,6 +1123,52 @@ void main() {
       // The drawn GK was already owned: no NEW badge anywhere on the
       // finished reveal.
       expect(find.text('NEW'), findsNothing);
+    },
+  );
+  testWidgets(
+    'T-0122 F3: the icon pack contents strip leads with the icon '
+    'chance line',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(2400, 3600);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await bootScreen(tester);
+
+      // Open the ICON section's contents — anchored to the section's
+      // own key, immune to shelf order.
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('store-section-icon:ANY')),
+          matching: find.byIcon(Icons.people_outline_rounded),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byType(PackContentsScreen), findsOneWidget);
+
+      // The strip leads with the icon line — the pack's headline —
+      // carrying the configured icon chance with one decimal.
+      final iconChance =
+          defaultPackOddsConfig.iconChanceOf(PackTier.iconEpic);
+      expect(iconChance, greaterThan(0));
+      expect(
+        find.text(
+          'Icons ${(iconChance * 100).toStringAsFixed(1)}%',
+        ),
+        findsOneWidget,
+        reason: 'the icon line leads the strip of an icon-tier pack',
+      );
+      // The regular bands follow; pack I is epic-only with the rare
+      // band at zero since the F1 fix.
+      final odds = defaultPackOddsConfig.oddsFor(PackTier.iconEpic);
+      expect(odds.rare, 0, reason: 'F1: pack I no longer rolls rare');
+      expect(odds.epic, 1.0);
+      expect(find.text('Epic 100%'), findsOneWidget);
+      expect(find.textContaining('Rare'), findsNothing);
     },
   );
 }
