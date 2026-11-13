@@ -22,6 +22,10 @@ Future<MatchPepTalk?> showPepTalkChooser({
   final theme = Theme.of(context);
   return showModalBottomSheet<MatchPepTalk>(
     context: context,
+    // This sheet styles its own top chrome (title/subtitle block, no
+    // handle), so the theme's Material drag handle is disabled for
+    // consistency with the other custom sheets (T-0127 audit).
+    showDragHandle: false,
     builder: (sheetContext) => SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

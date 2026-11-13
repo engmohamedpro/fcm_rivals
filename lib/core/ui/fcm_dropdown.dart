@@ -106,6 +106,10 @@ class FcmDropdown<T> extends StatelessWidget {
       context: context,
       backgroundColor: FcmColors.surface,
       isScrollControlled: true,
+      // This sheet draws its own bronze handle pill; the theme's
+      // Material drag handle stacked a SECOND bar above it (the same
+      // duplicated-lines bug as the tactics sheet, T-0127 audit).
+      showDragHandle: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),

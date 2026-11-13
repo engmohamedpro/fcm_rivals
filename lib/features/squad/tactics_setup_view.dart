@@ -557,6 +557,11 @@ Future<void> showTacticsOptionsSheet(
     context: context,
     backgroundColor: FcmColors.surface,
     isScrollControlled: true,
+    // The sheet draws its own bronze handle pill below the title area;
+    // the theme's Material drag handle (bottomSheetTheme.showDragHandle)
+    // stacked a SECOND bar above it — the duplicated lines at the top
+    // (T-0127). One handle: ours.
+    showDragHandle: false,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
