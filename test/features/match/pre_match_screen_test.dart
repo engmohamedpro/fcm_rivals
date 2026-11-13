@@ -312,7 +312,7 @@ void main() {
 
     await tester.tap(find.text('CONTINUE'));
     await _settle(tester, frames: 10);
-    expect(find.text('Set up for this match'), findsOneWidget);
+    expect(find.text('TACTICS'), findsOneWidget);
 
     await tester.tap(find.text('BACK'));
     await _settle(tester, frames: 10);
@@ -329,7 +329,7 @@ void main() {
     await _openPreMatch(tester);
     await tester.tap(find.text('CONTINUE'));
     await _settle(tester, frames: 12);
-    expect(find.text('Set up for this match'), findsOneWidget);
+    expect(find.text('TACTICS'), findsOneWidget);
 
     // The full 23-man strip: XI, bench and RESERVES all render.
     expect(find.textContaining('Reserves'), findsOneWidget);
@@ -419,7 +419,7 @@ void main() {
     );
     await tester.tap(find.text('CONTINUE'));
     await _settle(tester, frames: 12);
-    expect(find.text('Set up for this match'), findsOneWidget);
+    expect(find.text('TACTICS'), findsOneWidget);
 
     // The Auto Pick action EXISTS on the duplicate screen (T-0118 —
     // it was entirely missing from the pre-match surface before).
@@ -429,7 +429,7 @@ void main() {
     // phase is still up (the projection re-asserts in place).
     await tester.tap(find.text('Auto Pick'));
     await _settle(tester, frames: 8);
-    expect(find.text('Set up for this match'), findsOneWidget);
+    expect(find.text('TACTICS'), findsOneWidget);
     expect(kicked, isFalse, reason: 'the pick never kicks off');
 
     // The squad shown is the fitness-aware projection: the fixture's

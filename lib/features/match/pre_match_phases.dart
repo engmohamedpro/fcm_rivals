@@ -8,7 +8,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../l10n/l10n_context.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../squad/formations.dart';
@@ -62,51 +61,13 @@ class TacticsPhase extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
       children: [
-        FcmEntrance(
-          child: Column(
-            children: [
-              const SizedBox(height: 4),
-              const Text(
-                'Set up for this match',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Same as your Team tab — but these changes last only '
-                'until the final whistle. Your saved default setup is '
-                'untouched.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: FcmColors.textDim,
-                  fontSize: 12,
-                  height: 1.4,
-                ),
-              ),
-              // T-0052 decoupling restated for the player (T-0056):
-              // fitness no longer weakens play — it signals injury risk.
-              const SizedBox(height: 4),
-              Text(
-                l10nOf(context).injuryStaminaRiskHint,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: FcmColors.danger,
-                  fontSize: 12,
-                  height: 1.4,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
+        // T-0132 (owner request 2026-11-13): the intro text block is
+        // GONE — no title, no explainer, no fitness warning. The
+        // phase opens straight onto the Team tab's own surface.
         // Same shared surface as the Team tab, with one difference:
         // match-day fitness. Stamina on, stat rows off, full 23-man
-        // strip including reserves.
+        // strip including reserves — and the same compact control
+        // card (no setup summary row) as the Team tab.
         TacticsSetupView(
           formation: formationOfCode(formationCode),
           tactics: tactics,
@@ -121,6 +82,9 @@ class TacticsPhase extends StatelessWidget {
           // (T-0117/T-0118): injuries and stamina show here.
           showCondition: true,
           showReserves: true,
+          // T-0132: identical control card to the Team tab (T-0092
+          // ruled the summary row off the Team tab; match-day follows).
+          showSetupSummary: false,
           onAutoPick: onAutoPick,
         ),
       ],
