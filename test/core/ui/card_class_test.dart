@@ -133,14 +133,13 @@ void main() {
           home: Scaffold(body: FcmPlayerCardBack(width: 120)),
         ),
       );
-      // One back for every card: the brand wordmark, cover-fit and
-      // clipped to the silhouette — no rarity or class axis, nothing
-      // about the card leaks before the flip. (The crest redesign
-      // d11d9ca swapped the back to the wordmark; this pin follows the
-      // shipped widget.)
+      // One back for every card: the brand wordmark, contain-fit and
+      // centred — no rarity or class axis, nothing about the card leaks
+      // before the flip. (T-0133: contain + centring replace the old
+      // cover fit that cropped the wordmark off-centre.)
       final image = tester.widget<Image>(find.byType(Image));
       expect((image.image as AssetImage).assetName, kFcmWordmarkAsset);
-      expect(image.fit, BoxFit.cover);
+      expect(image.fit, BoxFit.contain);
       expect(tester.takeException(), isNull);
     });
   });

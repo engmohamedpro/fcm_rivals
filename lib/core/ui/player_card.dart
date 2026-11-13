@@ -1151,13 +1151,23 @@ class PlayerCardBackWidget extends StatelessWidget {
           Positioned.fill(
             child: ClipPath(
               clipper: _CardClipper(),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(w * .14, h * .12, w * .14, h * .1),
-                child: Image.asset(
-                  logoAsset,
-                  fit: BoxFit.cover,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              // Owner request 2026-11-13: the game logo sits in the exact
+              // centre of the back and is shown COMPLETELY — a symmetric
+              // inset box with BoxFit.contain (the old asymmetric padding
+              // + BoxFit.cover overflowed the box and cropped the wordmark,
+              // pushing it off-centre).
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: w * .16,
+                    vertical: h * .12,
+                  ),
+                  child: Image.asset(
+                    logoAsset,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),
