@@ -4,7 +4,6 @@
 // 80-89), red (premium 90+). The selection keys on the same deterministic
 // overall both axes derive from; the sealed pack itself stays exactly as
 // it is — the red is discovered at the reveal moment.
-import 'dart:io' as io;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' show Color;
@@ -18,7 +17,7 @@ import 'package:fcm_rivals/features/packs/pack_reveal_timeline.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import 'package:fcm_rivals/l10n/app_localizations_en.dart';
 import '../../tm_bundle_io.dart'
-    show tmPlayersPath;
+    show loadTmDataset;
 
 RevealTimeline timelineFor(int overall) => RevealTimeline.revealTimelineFor(
   CardRarity.fromOverall(overall),
@@ -168,9 +167,7 @@ void main() {
     test('a seeded draw pulls until a 90+ appears — it selects the red '
         'timeline; the drawn rarity ladder prints', () {
       final db = PlayerDatabase();
-      db.importDatasetFromJson(
-        io.File(tmPlayersPath).readAsStringSync(),
-      );
+      db.importDataset(loadTmDataset());
       final players = db.all.toList();
       expect(players, isNotEmpty);
       final random = math.Random(20261107);
@@ -219,11 +216,19 @@ void main() {
   });
 
   group('the sealed pack provably unchanged (T-0050)', () {
-    test('three pack tiers, the shipped accents, the shipped stars', () {
-      expect(PackTier.values.length, 3);
+    test('six pack tiers, the shipped accents, the shipped stars', () {
+      // T-0124 F6: the icon tiers (owner request 2026-11-12) grew the
+      // enum 3 → 6; the three regular tiers keep their shipped colours.
+      expect(PackTier.values.length, 6);
       expect(PackTier.rare.accent, const Color(0xFF8B5CF6));
       expect(PackTier.epic.accent, const Color(0xFF3B82F6));
       expect(PackTier.legendary.accent, const Color(0xFFF7C948));
+      // The icon tiers share the legend shelf's steel accent and stamp
+      // the elite 5-star count.
+      for (final t in PackTier.values.where((t) => t.isIconTier)) {
+        expect(t.accent, const Color(0xFFDDE4EF));
+        expect(t.stars, 5);
+      }
       expect(PackTier.rare.stars, 3);
       expect(PackTier.epic.stars, 4);
       expect(PackTier.legendary.stars, 5);

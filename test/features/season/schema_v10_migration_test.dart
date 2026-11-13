@@ -202,7 +202,7 @@ void main() {
     // T-0106 to 14 (claims + equipped title); the daily rewards
     // streak (d392228) to 15 (daily_streak_claims); dataset v3's
     // presentation columns to 16 (portrait + club/league facts).
-    expect(db.schemaVersion, 16);
+    expect(db.schemaVersion, 18);
     expect(
       (await columnsOf(db, 'daily_streak_claims')).contains('streak_day'),
       isTrue,

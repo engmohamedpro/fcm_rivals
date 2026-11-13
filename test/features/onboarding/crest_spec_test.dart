@@ -333,7 +333,7 @@ void main() {
       // presentation columns to 16; the crest column this test locks
       // landed in v13 and survives every bump untouched. (The stale 14
       // assertion shipped since the v15 bump — corrected here.)
-      expect(db.schemaVersion, 17);
+      expect(db.schemaVersion, 18);
 
       // The fresh-create path is the same schema the migration lands
       // on; write a row directly and read the column back through the

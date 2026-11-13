@@ -36,7 +36,7 @@ void main() {
       () async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
-    expect(database.schemaVersion, 17);
+    expect(database.schemaVersion, 18);
 
     // The fresh-create path writes and reads the portrait facts through
     // the generated data class.
@@ -94,7 +94,7 @@ void main() {
 
     final database = AppDatabase(NativeDatabase(file));
     addTearDown(database.close);
-    expect(database.schemaVersion, 17);
+    expect(database.schemaVersion, 18);
 
     // The six columns exist...
     final columns = (await database

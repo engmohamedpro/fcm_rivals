@@ -89,7 +89,7 @@ void main() {
     // streak bumped it to 15 (daily_streak_claims); dataset v3's
     // presentation columns to 16 — the injury columns this fixture
     // exercises are untouched by all four.
-    expect(database.schemaVersion, 17);
+    expect(database.schemaVersion, 18);
     await database.close();
   });
 

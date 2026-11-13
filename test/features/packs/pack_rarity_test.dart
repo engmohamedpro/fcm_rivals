@@ -59,15 +59,15 @@ void main() {
           '(${(premium / overalls.length * 100).toStringAsFixed(3)}%)'
           ' | gold $gold');
 
-      // Curve-based references (analysis 2026-11-08): rare 18,295,
-      // epic 2,088, legendary 464, premium 29 — gold 493 (T-0047's
-      // measure). ±5% on the two wide bands absorbs retunes; the elite
-      // bands use the task's documented windows.
-      expect(premium, inInclusiveRange(20, 45),
+      // Curve-based references — the tm bundle (T-0124 F6 update,
+      // supersedes the 2026-11-08 v3 numbers): premium 133, gold
+      // ~597. The wider elite bands carry the deeper pool; the
+      // wide bands keep their ±5% retune absorption.
+      expect(premium, inInclusiveRange(120, 150),
           reason: 'the premium band must stay rare but non-empty');
-      expect(gold, inInclusiveRange(460, 520),
-          reason: 'the gold (legendary + premium) band is T-0047\'s '
-              'measured elite shape');
+      expect(gold, inInclusiveRange(560, 640),
+          reason: 'the gold (legendary + premium) band carries the '
+              'tm bundle\'s deeper elite pool');
       expect(legendary, gold - premium,
           reason: 'the bands partition — no overlap, no gaps');
       expect(epic, inInclusiveRange(1984, 2192),

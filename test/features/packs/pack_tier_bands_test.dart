@@ -9,7 +9,6 @@
 // seeded openings on the real 20,876-player dataset: the elite game
 // stays reachable, Rare stays honest, and premium stays exclusive to
 // Legendary packs.
-import 'dart:io' as io;
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -19,16 +18,14 @@ import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/packs/pack_rarity.dart';
 import 'package:fcm_rivals/features/player_database/player_database.dart';
 import '../../tm_bundle_io.dart'
-    show tmPlayersPath;
+    show loadTmDataset;
 
 /// The same import path the game (and the other dataset-backed tests)
 /// use — band counts therefore reflect the shipped OVRs exactly, and a
 /// future curve retune moves them with it.
 List<BasePlayer> _loadDataset() {
   final db = PlayerDatabase();
-  db.importDatasetFromJson(
-    io.File(tmPlayersPath).readAsStringSync(),
-  );
+  db.importDataset(loadTmDataset());
   return db.all.toList(growable: false);
 }
 

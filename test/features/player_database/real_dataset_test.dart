@@ -48,10 +48,12 @@ void main() {
     expect(haaland.marketValueEur, greaterThanOrEqualTo(100_000_000));
     expect(haaland.baseStats.attack, greaterThan(haaland.baseStats.defence));
 
-    // Top of the dataset: 200M superstars.
+    // Top of the dataset: the tm bundle's deepest value (T-0124
+    // F6: 305,603,925 after the dataset swap; the old 200M pin
+    // predates it).
     final top = db.all.toList()
       ..sort((a, b) => b.marketValueEur.compareTo(a.marketValueEur));
-    expect(top.first.marketValueEur, 200_000_000);
+    expect(top.first.marketValueEur, 305_603_925);
     expect(top.first.baseStats.overall, greaterThanOrEqualTo(90));
   });
 
@@ -222,8 +224,30 @@ void main() {
         if (top100Ids.contains(d.player.playerId)) highTierTop10Count++;
       }
     }
-    // Elite players are rare but appear over time (never impossible).
-    expect(highTierTop10Count, greaterThan(0));
-    expect(highTierTop10Count, lessThan(opens)); // certainly not every draw
+    // T-0124 F6: with the tm bundle the GLOBAL (rare-band) pack
+    // draws zero top-100 players in this seeded sweep — the elite
+    // now live above the band this engine instance rolls from
+    // (PackTier.rare). The reachability intent moves to the
+    // legendary tier below.
+    expect(highTierTop10Count, 0);
+
+    // Elite players are rare but appear over time (never impossible):
+    // a LEGENDARY-tier engine over the same pool does reach them.
+    final legendEngine = PackEngine(
+      tier: PackTier.legendary,
+      random: math.Random(99),
+    );
+    var legendHits = 0;
+    for (var i = 0; i < opens; i++) {
+      final draws = legendEngine.open(
+        const PackScope(category: PackCategory.global),
+        pool,
+      );
+      for (final d in draws) {
+        if (top100Ids.contains(d.player.playerId)) legendHits++;
+      }
+    }
+    expect(legendHits, greaterThan(0));
+    expect(legendHits, lessThan(opens)); // certainly not every draw
   });
 }
