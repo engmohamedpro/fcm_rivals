@@ -1385,6 +1385,21 @@ class _ClaimColumnState extends ConsumerState<_ClaimColumn> {
   bool _justClaimed = false;
 
   @override
+  void didUpdateWidget(_ClaimColumn oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The claim landed and the card moved to the NEXT rung: retire
+    // the optimistic ✓ so the new tier's claim button can render.
+    // Without this the check mark eats the next claim until the
+    // card scrolls out of the viewport and rebuilds fresh (the
+    // reported bug: claiming once locks the rung until you scroll
+    // away and back).
+    if (_justClaimed &&
+        oldWidget.tier.threshold != widget.tier.threshold) {
+      _justClaimed = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = l10nOf(context);
     if (widget.claimed || _justClaimed) {

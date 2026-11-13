@@ -275,4 +275,54 @@ void main() {
     expect(find.text('استحق'), findsWidgets);
     expect(rtl, TextDirection.rtl);
   });
+
+  testWidgets('claiming a rung exposes the next claim immediately '
+      '(no scroll-away needed)', (tester) async {
+    // Regression (owner report 2026-11-13): after claiming, the
+    // optimistic ✓ replaced the button and _justClaimed stayed true
+    // in the card's State — the NEXT eligible rung rendered no claim
+    // action until the card scrolled out of the viewport and back.
+    final fixture = await buildSyntheticCareer();
+    await database.close();
+    database = fixture;
+
+    await tester.pumpWidget(await harness());
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The wins card (below the fold): 4 wins, nothing claimed — the
+    // first rung (threshold 1) is eligible.
+    await tester.scrollUntilVisible(
+      find.text('4 / 1'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Claim'), findsWidgets);
+
+    // Claim the first rung — same pipeline the button runs.
+    await tester.tap(find.text('Claim').first);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // WITHOUT any scroll: the card moved to rung 2 (progress 4 >= 2)
+    // and its claim button must already be live again.
+    expect(find.text('4 / 2'), findsWidgets,
+        reason: 'the card advances to the next unclaimed rung');
+    expect(find.text('Claim'), findsWidgets,
+        reason: 'the next eligible rung offers its action without a '
+            'scroll-away');
+
+    // The claim landed for rung 1 only.
+    final claims = await AchievementClaimsRepository(database)
+        .claimsForClub(1);
+    expect(
+      claims
+          .where((c) =>
+              c.achievementId == 'career_wins' && c.tierKey == '1')
+          .length,
+      1,
+    );
+  });
 }
