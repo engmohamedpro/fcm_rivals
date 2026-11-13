@@ -3,11 +3,14 @@
 // The owner's exact ladder is the law (2026-11-13 update):
 //   GK exactly 1 (the keeper's slot never changes)
 //   ST 0-2, LW 0-1, RW 0-1, CAM 0-2,
-//   CM 0-3, CDM 0-3, CB 2-3 (a back line needs its pair), RB 0-1,
+//   CM 0-3, CDM 0-3, CB 2-3 (legacy builder only — the grid enforces
+//   the MAXIMUMS, so a centre back can be moved), RB 0-1,
 //   LB 0-1 (LM/RM 0-1 each — the dataset carries them)
 //
-// A custom formation serialises as 'C|GK,LB,CB,…'; formationOfCode
-// decodes it, so the match engine and every consumer see it as just
+// The Team tab is a chess-like GRID (owner request 2026-11-13): a grid
+// formation serialises as 'C|GK@2.0,LB@0.1,…' (position @ column . row);
+// the legacy 'C|GK,LB,CB,…' codes still decode. formationOfCode
+// decodes both, so the match engine and every consumer see it as just
 // another formation. Pure Dart, no widgets.
 import 'package:flutter_test/flutter_test.dart';
 
@@ -309,119 +312,332 @@ void main() {
     });
   });
 
-  group('planSquadDrop builds custom formations', () {
-    test('dropping a pool player on an empty slot redefines it', () {
-      // 4-3-3 with the LW slot (8) empty. Dropping a ST there turns
-      // the slot into a ST slot: the mix becomes 2 ST, 0 LW — legal.
-      final squad = {
-        for (var i = 0; i < 11; i++)
-          if (i != 8) i: _card(i, _f433Positions[i]),
-        11: _card(11, Position.gk),
-      };
-      final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: _card(99, Position.st),
-        target: const SquadDropTarget.xiSlot(8),
-      );
-      expect(out.isAccepted, isTrue, reason: out.rejection);
-      expect(out.assignment![8], 99);
-      expect(out.formation, isNotNull,
-          reason: 'the drop carries the new formation');
-      expect(out.formation!.slots[8].position, Position.st,
-          reason: 'slot 8 now asks for a ST');
-      expect(isCustomFormationCode(out.formation!.code), isTrue);
+  group('the chess grid model', () {
+    test('what a cell asks for, row by row', () {
+      expect(positionOfCell(kGridKeeperCol, 0), Position.gk);
+      expect(positionOfCell(0, 1), Position.lb);
+      expect(positionOfCell(2, 1), Position.cb);
+      expect(positionOfCell(4, 2), Position.rb);
+      expect(positionOfCell(2, 2), Position.cdm);
+      expect(positionOfCell(0, 3), Position.lm);
+      expect(positionOfCell(3, 3), Position.cm);
+      expect(positionOfCell(0, 4), Position.lw);
+      expect(positionOfCell(1, 4), Position.cam);
+      expect(positionOfCell(4, 5), Position.rw);
+      expect(positionOfCell(2, 5), Position.st);
     });
 
-    test('redefining past a cap is refused with the reason', () {
-      // 4-3-3: slots 1 (LB), 2 (CB), 3 (CB), 4 (RB) — dropping a third
-      // CB on the empty LB slot would make 3 CB + 0 LB: LEGAL. So use
-      // a shape already at 3 CB: make slots 1..3 all CB first.
-      final custom = customFormation(const [
-        Position.gk,
-        Position.cb, Position.cb, Position.cb, // back three
-        Position.rb,
-        Position.cdm, Position.cm, Position.cm,
-        Position.lw, Position.cam, Position.rw,
-        // 11 — one short: the LW slot stands empty below.
-      ])!;
-      final squad = {
-        for (var i = 0; i < 11; i++)
-          if (i != 8) i: _card(i, custom.slots[i].position),
-      };
-      // Dropping a CB on the empty LW slot (8): 4 CB — over the cap.
-      final out = planSquadDrop(
-        formation: custom,
-        squad: squad,
-        dragged: _card(99, Position.cb),
-        target: const SquadDropTarget.xiSlot(8),
+    test('row 0 holds only the keeper cell; the rest is the pitch', () {
+      var count = 0;
+      for (var r = 0; r < kGridRows; r++) {
+        for (var c = 0; c < kGridCols; c++) {
+          if (isGridCellAllowed(c, r)) count++;
+        }
+      }
+      expect(isGridCellAllowed(0, 0), isFalse);
+      expect(isGridCellAllowed(kGridKeeperCol, 0), isTrue);
+      expect(isGridCellAllowed(-1, 2), isFalse);
+      expect(isGridCellAllowed(kGridCols, 2), isFalse);
+      expect(isGridCellAllowed(2, kGridRows), isFalse);
+      expect(count, 1 + (kGridRows - 1) * kGridCols);
+    });
+
+    test('every preset snaps to 11 distinct legal cells, keeper in goal, '
+        'deeper lines never in front of higher ones', () {
+      for (final f in formations) {
+        final cells = gridCellsOf(f);
+        expect(cells, hasLength(11), reason: f.code);
+        expect(cells.toSet(), hasLength(11), reason: '${f.code}: no overlap');
+        expect(cells.first, const GridCell(kGridKeeperCol, 0),
+            reason: f.code);
+        for (final c in cells) {
+          expect(isGridCellAllowed(c.col, c.row), isTrue, reason: f.code);
+        }
+        for (var i = 1; i < 11; i++) {
+          for (var j = 1; j < 11; j++) {
+            if (f.slots[i].y < f.slots[j].y - 15) {
+              expect(cells[i].row, lessThanOrEqualTo(cells[j].row),
+                  reason: '${f.code}: slot $i is deeper than slot $j');
+            }
+          }
+        }
+      }
+    });
+
+    test('a grid formation round-trips through its code', () {
+      final f433 = formationByCode('4-3-3');
+      final positions = [for (final s in f433.slots) s.position];
+      final cells = gridCellsOf(f433);
+      final grid = customGridFormation(positions, cells)!;
+      expect(grid.code, startsWith('C|GK@2.0,'));
+      expect(isGridFormationCode(grid.code), isTrue);
+      final again = formationOfCode(grid.code);
+      expect(again.code, grid.code);
+      expect([for (final s in again.slots) s.position], positions);
+      expect(gridCellsOf(again), cells);
+      for (final s in again.slots) {
+        expect(s.x, inInclusiveRange(0, 100));
+        expect(s.y, inInclusiveRange(0, 100));
+      }
+    });
+
+    test('illegal grids are refused: shared cell, bad keeper, third ST, '
+        'cell off the pitch — but a lone CB is fine (no minimums)', () {
+      final base = gridCellsOf(formationByCode('4-4-2'));
+      final pos = [for (final s in formationByCode('4-4-2').slots) s.position];
+      expect(gridFormationProblem(pos, base), isNull);
+
+      final shared = [...base]..[2] = base[3];
+      expect(gridFormationProblem(pos, shared), contains('share'));
+
+      final offPitch = [...base]..[2] = const GridCell(0, 0);
+      expect(gridFormationProblem(pos, offPitch), isNotNull);
+
+      final noKeeperFirst = [...pos]..[0] = Position.cb;
+      expect(gridFormationProblem(noKeeperFirst, base), isNotNull);
+
+      final threeSt = [...pos]..[5] = Position.st;
+      expect(gridFormationProblem(threeSt, base), contains('ST'));
+      expect(customGridFormation(threeSt, base), isNull);
+
+      final loneCb = [...pos]..[2] = Position.cm;
+      expect(gridFormationProblem(loneCb, base), isNull,
+          reason: 'moving a centre back must be possible');
+    });
+
+    test('junk grid codes fall back to the default shape', () {
+      expect(formationOfCode('C|GK@2.0,CB@9.9').code, '4-3-3');
+      expect(
+        formationOfCode('C|GK@2.0,CB@x.1,CB@1.1,CB@3.1,CM@1.2,CM@2.2,CM@3.2,'
+                'LW@0.4,ST@2.5,RW@4.4,CAM@2.4')
+            .code,
+        '4-3-3',
       );
-      expect(out.isAccepted, isFalse);
-      expect(out.rejection, contains('CB'));
+      // Two slots on one cell.
+      expect(
+        formationOfCode('C|GK@2.0,CB@1.1,CB@1.1,CB@3.1,CM@1.2,CM@2.2,CM@3.2,'
+                'LW@0.4,ST@2.5,RW@4.4,CAM@2.4')
+            .code,
+        '4-3-3',
+      );
+    });
+  });
+
+  group('planSquadDrop on the grid', () {
+    final f433 = formationByCode('4-3-3');
+
+    Map<int, PlayerCard> squad({Set<int> without = const {}}) => {
+      for (var i = 0; i < 11; i++)
+        if (!without.contains(i)) i: _card(i, f433.slots[i].position),
+      11: _card(11, Position.gk),
+      12: _card(12, Position.cb),
+      13: _card(13, Position.st),
+    };
+
+    /// The first free allowed cell whose role is [role] in [f].
+    GridCell freeCell(Formation f, Position role) {
+      final used = gridCellsOf(f).toSet();
+      for (var r = 1; r < kGridRows; r++) {
+        for (var c = 0; c < kGridCols; c++) {
+          final cell = GridCell(c, r);
+          if (!used.contains(cell) && positionOfCell(c, r) == role) {
+            return cell;
+          }
+        }
+      }
+      throw StateError('no free $role cell in ${f.code}');
+    }
+
+    test('an XI man dropped on a free cell moves HIS place there; nobody '
+        'else moves and nobody is lost', () {
+      final s = squad();
+      final cell = freeCell(f433, Position.cam);
+      final out = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[6]!,
+        target: SquadDropTarget.cell(cell),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment, {
+        for (final e in s.entries) e.key: e.value.ownedId,
+      }, reason: 'same men on the same slots');
+      final nf = out.formation!;
+      final before = gridCellsOf(f433);
+      final after = gridCellsOf(nf);
+      expect(after[6], cell);
+      expect(nf.slots[6].position, Position.cam,
+          reason: 'the place now asks for what the cell stands for');
+      for (var i = 0; i < 11; i++) {
+        if (i == 6) continue;
+        expect(after[i], before[i], reason: 'slot $i must not move');
+        expect(nf.slots[i].position, f433.slots[i].position);
+      }
+    });
+
+    test('the moves chain: the grid formation is the next input', () {
+      var f = f433;
+      final s = squad();
+      for (final role in [Position.cam, Position.cdm, Position.cb]) {
+        final cell = freeCell(f, role);
+        final out = planSquadDrop(
+          formation: f,
+          squad: s,
+          dragged: s[7]!,
+          target: SquadDropTarget.cell(cell),
+        );
+        expect(out.isAccepted, isTrue, reason: '$role: ${out.rejection}');
+        f = out.formation!;
+        expect(gridCellsOf(f)[7], cell);
+        expect(formationOfCode(f.code).code, f.code,
+            reason: 'what is saved is what is read back');
+      }
+    });
+
+    test('a bench man on a free cell takes an EMPTY slot there and frees '
+        'his bench place', () {
+      final s = squad(without: {9});
+      final cell = freeCell(f433, Position.cam);
+      final out = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[13]!,
+        target: SquadDropTarget.cell(cell),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment![9], 13);
+      expect(out.assignment!.containsKey(13), isFalse);
+      expect(gridCellsOf(out.formation!)[9], cell);
+    });
+
+    test('a bench man on the cell of an EMPTY slot just fills it (shape '
+        'unchanged)', () {
+      final s = squad(without: {9});
+      final cell = gridCellsOf(f433)[9];
+      final out = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[13]!,
+        target: SquadDropTarget.cell(cell),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment![9], 13);
       expect(out.formation, isNull);
     });
 
-    test('the GK slot can never be redefined', () {
-      final squad = {
-        for (var i = 1; i < 11; i++) i: _card(i, _f433Positions[i]),
-      };
+    test('an XI man on the cell of an empty slot moves there; his old '
+        'slot stays an empty ghost', () {
+      final s = squad(without: {9});
+      final cell = gridCellsOf(f433)[9];
       final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: _card(99, Position.st),
-        target: const SquadDropTarget.xiSlot(0),
-      );
-      expect(out.isAccepted, isFalse);
-      expect(out.rejection, contains('goalkeeper'));
-    });
-
-    test('a keeper dropped on an empty outfield slot is refused', () {
-      final squad = {
-        for (var i = 0; i < 11; i++)
-          if (i != 8) i: _card(i, _f433Positions[i]),
-      };
-      final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: _card(99, Position.gk),
-        target: const SquadDropTarget.xiSlot(8),
-      );
-      expect(out.isAccepted, isFalse);
-      // A keeper in an outfield slot would break the exactly-1-GK law.
-      expect(customFormationProblem(const [
-        Position.gk, Position.lb, Position.cb, Position.cb, Position.rb,
-        Position.cdm, Position.cm, Position.cm,
-        Position.gk, // the redefined slot — a second GK
-        Position.st, Position.rw,
-      ]), isNotNull);
-    });
-
-    test('a bench player dropped on an empty slot redefines it too, and '
-        'frees his bench place', () {
-      final squad = {
-        for (var i = 0; i < 11; i++)
-          if (i != 8) i: _card(i, _f433Positions[i]),
-        11: _card(11, Position.cm),
-        12: _card(12, Position.st),
-      };
-      final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[12]!,
-        target: const SquadDropTarget.xiSlot(8),
+        formation: f433,
+        squad: s,
+        dragged: s[8]!,
+        target: SquadDropTarget.cell(cell),
       );
       expect(out.isAccepted, isTrue, reason: out.rejection);
-      expect(out.assignment![8], 12, reason: 'the bench ST takes the slot');
-      expect(out.assignment!.containsKey(12), isFalse,
-          reason: 'his bench place is freed');
-      expect(out.formation!.slots[8].position, Position.st);
+      expect(out.assignment![9], 8);
+      expect(out.assignment!.containsKey(8), isFalse);
+      expect(out.formation, isNull);
     });
 
-    test('an injured player cannot be dropped on an empty XI slot', () {
-      final squad = {
-        for (var i = 0; i < 11; i++)
-          if (i != 8) i: _card(i, _f433Positions[i]),
+    test('a bench man on a free cell with a FULL XI is refused and nobody '
+        'is touched', () {
+      final s = squad();
+      final out = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[13]!,
+        target: SquadDropTarget.cell(freeCell(f433, Position.cam)),
+      );
+      expect(out.isAccepted, isFalse);
+      expect(out.rejection, contains('full'));
+    });
+
+    test('a pool man behaves like a bench man', () {
+      final s = squad(without: {9});
+      final out = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: _card(99, Position.cm),
+        target: SquadDropTarget.cell(freeCell(f433, Position.cam)),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment![9], 99);
+    });
+
+    test('the keeper never leaves goal and nobody else enters it', () {
+      final s = squad();
+      final gkOnPitch = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[0]!,
+        target: SquadDropTarget.cell(freeCell(f433, Position.cam)),
+      );
+      expect(gkOnPitch.isAccepted, isFalse);
+      expect(gkOnPitch.rejection, contains('goalkeeper'));
+
+      final intoGoal = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[5]!,
+        target: const SquadDropTarget.cell(GridCell(kGridKeeperCol, 0)),
+      );
+      expect(intoGoal.isAccepted, isFalse);
+
+      final benchGk = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[11]!,
+        target: SquadDropTarget.cell(freeCell(f433, Position.cam)),
+      );
+      expect(benchGk.isAccepted, isFalse);
+    });
+
+    test('a cell off the pitch is refused', () {
+      final s = squad();
+      final out = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[6]!,
+        target: const SquadDropTarget.cell(GridCell(0, 0)),
+      );
+      expect(out.isAccepted, isFalse);
+    });
+
+    test('the per-position maximums still hold: a third striker is '
+        'refused with the reason', () {
+      final f442 = formationByCode('4-4-2');
+      final s = {
+        for (var i = 0; i < 11; i++) i: _card(i, f442.slots[i].position),
       };
+      final out = planSquadDrop(
+        formation: f442,
+        squad: s,
+        dragged: s[6]!,
+        target: SquadDropTarget.cell(freeCell(f442, Position.st)),
+      );
+      expect(out.isAccepted, isFalse);
+      expect(out.rejection, contains('ST'));
+    });
+
+    test('a centre back may be moved up the pitch (no minimums)', () {
+      final s = squad();
+      final cb = [
+        for (var i = 1; i < 11; i++)
+          if (f433.slots[i].position == Position.cb) i,
+      ].first;
+      final out = planSquadDrop(
+        formation: f433,
+        squad: s,
+        dragged: s[cb]!,
+        target: SquadDropTarget.cell(freeCell(f433, Position.cam)),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+    });
+
+    test('an injured man cannot be moved onto a free cell', () {
+      final s = squad(without: {9});
       final injured = PlayerCard(
         ownedId: 99,
         upgradeLevel: 0,
@@ -429,261 +645,28 @@ void main() {
         base: _card(99, Position.st).base,
       );
       final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
+        formation: f433,
+        squad: s,
         dragged: injured,
-        target: const SquadDropTarget.xiSlot(8),
+        target: SquadDropTarget.cell(freeCell(f433, Position.cam)),
       );
       expect(out.isAccepted, isFalse);
       expect(out.rejection, contains('injured'));
     });
 
-    test('dropping on an OCCUPIED slot stays a plain swap (no redefinition)',
-        () {
-      final squad = {
-        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
-        11: _card(11, Position.gk),
-      };
-      // Bench CB (slot 12) onto the XI ST (slot 9): a swap, out of
-      // position — allowed, and the formation does NOT change.
+    test('dropping on an OCCUPIED slot is still a plain swap (shape '
+        'unchanged)', () {
+      final s = squad();
       final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: _card(12, Position.cb),
-        target: SquadDropTarget.player(squad[9]!),
+        formation: f433,
+        squad: s,
+        dragged: s[6]!,
+        target: SquadDropTarget.player(s[7]!),
       );
       expect(out.isAccepted, isTrue, reason: out.rejection);
-      expect(out.formation, isNull,
-          reason: 'swaps never redefine slots — only empty-slot drops do');
-      expect(out.assignment![9], 12);
-    });
-  });
-
-  group('drops with a position (the pitch always sends one) — no vanishing '
-      'players', () {
-    Map<int, PlayerCard> natural(List<Position> mix, {Set<int> without = const {}}) => {
-      for (var i = 0; i < 11; i++)
-        if (!without.contains(i)) i: _card(i, mix[i]),
-    };
-
-    test('a bench striker dropped on the empty ST place fills it', () {
-      final squad = {
-        ...natural(_f442Positions, without: {10}),
-        11: _card(11, Position.gk),
-        12: _card(12, Position.st),
-      };
-      final out = planSquadDrop(
-        formation: formationByCode('4-4-2'),
-        squad: squad,
-        dragged: squad[12]!,
-        target: const SquadDropTarget.xiSlot(10, position: Position.st),
-      );
-      expect(out.isAccepted, isTrue, reason: out.rejection);
-      expect(out.assignment![10], 12);
-      expect(out.assignment!.containsKey(12), isFalse,
-          reason: 'his bench place is freed');
-      expect(out.assignment!.length, 12,
-          reason: '10 starters + the moved striker + the bench keeper: '
-              'nobody is lost');
-    });
-
-    test('an XI striker dropped on the OTHER empty ST place moves there', () {
-      final squad = natural(_f442Positions, without: {10});
-      final out = planSquadDrop(
-        formation: formationByCode('4-4-2'),
-        squad: squad,
-        dragged: squad[9]!,
-        target: const SquadDropTarget.xiSlot(10, position: Position.st),
-      );
-      expect(out.isAccepted, isTrue, reason: out.rejection);
-      expect(out.assignment![10], 9, reason: 'he stands on the place he was dropped on');
-      expect(out.assignment!.containsKey(9), isFalse,
-          reason: 'his old place is empty now');
-      expect(out.assignment!.length, 10, reason: 'nobody is lost or duplicated');
-    });
-
-    test('a bench man dropped on a spare place with a FULL XI is refused '
-        'and nobody is overwritten', () {
-      final squad = {
-        ...natural(_f433Positions),
-        11: _card(11, Position.gk),
-        12: _card(12, Position.st),
-      };
-      final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[12]!,
-        // The spare places carry the stand-in slot 1 (the LB's slot).
-        target: const SquadDropTarget.xiSlot(1, position: Position.cam),
-      );
-      expect(out.isAccepted, isFalse);
-      expect(out.assignment, isNull, reason: 'the LB is not touched');
-      expect(out.rejection, contains('full'));
-    });
-
-    test('a pool man dropped on a spare place with a FULL XI is refused', () {
-      final squad = natural(_f433Positions);
-      final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: _card(99, Position.st),
-        target: const SquadDropTarget.xiSlot(1, position: Position.cam),
-      );
-      expect(out.isAccepted, isFalse);
-      expect(out.assignment, isNull);
-      expect(out.rejection, contains('full'));
-    });
-
-    test('the keeper can not be dropped on a spare place (goal stays '
-        'filled)', () {
-      final squad = natural(_f433Positions);
-      final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[0]!,
-        target: const SquadDropTarget.xiSlot(1, position: Position.cam),
-      );
-      expect(out.isAccepted, isFalse);
-      expect(out.rejection, contains('goalkeeper'));
-    });
-
-    test('an XI man dropped on a spare place leaves nobody behind', () {
-      final squad = natural(_f433Positions);
-      final out = planSquadDrop(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[9]!, // the ST
-        target: const SquadDropTarget.xiSlot(1, position: Position.cam),
-      );
-      expect(out.isAccepted, isTrue, reason: out.rejection);
-      // Every one of the 11 men is still in the XI, once.
-      expect(out.assignment!.length, 11);
-      expect(out.assignment!.values.toSet().length, 11);
-      expect(out.assignment![9], 9, reason: 'his vacated place morphs to CAM');
-      expect(out.formation!.slots[9].position, Position.cam);
-    });
-  });
-
-  group('squadDragLayout (the drag preview, owner request 2026-11-13)', () {
-    test('a 3-4-3 with no RB shows the spare RB place', () {
-      // The 3-4-3: 3 CB, no RB. Holding its ST opens his ST place and
-      // the layout must ALSO offer the RB place the mix may take.
-      final squad = {
-        for (var i = 0; i < 11; i++)
-          i: _card(i, _f343Positions[i]),
-      };
-      final layout = squadDragLayout(
-        formation: formationByCode('3-4-3'),
-        squad: squad,
-        dragged: squad[9]!, // the ST
-      );
-      expect(layout.isLegal, isTrue, reason: layout.problem);
-      // The spare places: every outfield position the 3-4-3 does not
-      // field — RB, LB, CDM and CAM (LM/RM fielded, CB at 3/3, CM/LW/
-      // RW fielded, ST is the held man's own place).
-      final extras = layout.slots.skip(11).map((s) => s.position).toSet();
-      expect(extras, {
-        Position.rb,
-        Position.lb,
-        Position.cdm,
-        Position.cam,
-      }, reason: 'the spare places render beyond the XI');
-      // The held ST's own place is marked.
-      expect(layout.slots.any((s) => s.isHeld), isTrue);
-      // Dropping the ST onto the RB place is accepted and redefines a
-      // slot to RB.
-      final out = planSquadDrop(
-        formation: formationByCode('3-4-3'),
-        squad: squad,
-        dragged: squad[9]!, // the ST
-        target: SquadDropTarget.xiSlot(1, position: Position.rb),
-      );
-      expect(out.isAccepted, isTrue, reason: out.rejection);
-      expect(out.formation, isNotNull);
-      expect(
-        out.formation!.slots.where((s) => s.position == Position.rb),
-        isNotEmpty,
-        reason: 'the shape now fields an RB',
-      );
-      expect(
-        out.formation!.slots.where((s) => s.position == Position.st),
-        isEmpty,
-        reason: 'the dragged ST left his place — no ST remains',
-      );
-    });
-
-    test('a lone ST placeholder sits dead centre; a pair halves', () {
-      // Holding the CAM of a 4-3-3: the shape keeps its lone ST dead
-      // centre (50), and the spare second-ST place joins the layout.
-      final squad = {
-        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
-      };
-      final layout = squadDragLayout(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[8]!, // the LW
-      );
-      final stPlace = layout.slots.firstWhere(
-        (s) => s.position == Position.st,
-      );
-      expect(stPlace.x, 50, reason: 'the lone ST stays dead centre');
-      expect(stPlace.isHeld, isFalse);
-      // His own LW place is the marked one.
-      final heldPlace = layout.slots.singleWhere((s) => s.isHeld);
-      expect(heldPlace.position, Position.lw);
-    });
-
-    test('holding the third CM closes the pair ranks', () {
-      // A 4-3-3: CDM + CM + CM. Holding one CM leaves a lone CM — his
-      // place re-spreads to the CENTRE (50), not the left (32).
-      final squad = {
-        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
-      };
-      final layout = squadDragLayout(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[7]!, // a CM
-      );
-      final cmPlaces = layout.slots
-          .where((s) => s.position == Position.cm && !s.isHeld)
-          .toList();
-      expect(cmPlaces, hasLength(1),
-          reason: 'the held CM left his place');
-      expect(cmPlaces.single.x, 50, reason: 'the remaining CM centres');
-    });
-
-    test('a bench man facing a full XI is offered no spare places; the '
-        'keeper never is', () {
-      final squad = {
-        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
-        11: _card(11, Position.st),
-      };
-      final bench = squadDragLayout(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[11]!,
-      );
-      expect(bench.slots, hasLength(11),
-          reason: 'nothing to turn into a spare place');
-      final keeper = squadDragLayout(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[0]!,
-      );
-      expect(keeper.slots, hasLength(11));
-    });
-
-    test('a keeper drag is refused outright', () {
-      final squad = {
-        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
-      };
-      final layout = squadDragLayout(
-        formation: formationByCode('4-3-3'),
-        squad: squad,
-        dragged: squad[0]!,
-      );
-      expect(layout.isLegal, isFalse);
-      expect(layout.problem, contains('goalkeeper'));
+      expect(out.assignment![6], 7);
+      expect(out.assignment![7], 6);
+      expect(out.formation, isNull);
     });
   });
 
@@ -739,24 +722,3 @@ void main() {
     });
   });
 }
-
-const _f433Positions = [
-  Position.gk,
-  Position.lb, Position.cb, Position.cb, Position.rb,
-  Position.cdm, Position.cm, Position.cm,
-  Position.lw, Position.st, Position.rw,
-];
-
-const _f442Positions = [
-  Position.gk,
-  Position.lb, Position.cb, Position.cb, Position.rb,
-  Position.lm, Position.cm, Position.cm, Position.rm,
-  Position.st, Position.st,
-];
-
-const _f343Positions = [
-  Position.gk,
-  Position.cb, Position.cb, Position.cb,
-  Position.lm, Position.cm, Position.cm, Position.rm,
-  Position.lw, Position.st, Position.rw,
-];

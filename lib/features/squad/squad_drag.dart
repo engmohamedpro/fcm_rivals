@@ -244,7 +244,9 @@ class SquadDropZone extends StatelessWidget {
               // vanish whenever a keeper was held.
               // (The pool strip is exempt: it is also where the held
               // card may come from, and hiding it would hide the source.)
-              fade = target.card != null ? 0.45 : 0.0;
+              fade = target.card != null
+                  ? 0.45
+                  : (target.cell != null ? 0.25 : 0.0);
             }
           }
           return AnimatedOpacity(

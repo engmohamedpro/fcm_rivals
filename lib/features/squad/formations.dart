@@ -469,7 +469,8 @@ final Set<String> _positionCodes = {
   for (final p in Position.values) p.code,
 };
 
-/// Decodes a custom-formation code produced by [customFormation]. Any
+/// Decodes a custom-formation code produced by [customFormation] (legacy
+/// `'C|GK,LB,…'`) or [customGridFormation] (`'C|GK@2.0,LB@0.1,…'`). Any
 /// malformed code resolves to null — callers fall back to the default
 /// shape rather than crashing on a bad database value.
 Formation? tryParseCustomFormation(String code) {
@@ -478,14 +479,26 @@ Formation? tryParseCustomFormation(String code) {
   final parts = body.split(',');
   if (parts.length != Formation.startingXiSize) return null;
   final positions = <Position>[];
+  final cells = <GridCell>[];
+  final isGrid = parts.any((part) => part.contains('@'));
   for (final part in parts) {
+    final bits = part.split('@');
+    if (bits.length != (isGrid ? 2 : 1)) return null;
     // Unknown codes (a corrupted or hand-edited database value) must
     // not throw: the whole code is rejected and the caller falls back
     // to the default shape.
-    if (!_positionCodes.contains(part.toUpperCase())) return null;
-    positions.add(Position.fromCode(part));
+    if (!_positionCodes.contains(bits[0].toUpperCase())) return null;
+    positions.add(Position.fromCode(bits[0]));
+    if (isGrid) {
+      final rc = bits[1].split('.');
+      if (rc.length != 2) return null;
+      final col = int.tryParse(rc[0]);
+      final row = int.tryParse(rc[1]);
+      if (col == null || row == null) return null;
+      cells.add(GridCell(col, row));
+    }
   }
-  return customFormation(positions);
+  return isGrid ? customGridFormation(positions, cells) : customFormation(positions);
 }
 
 /// Resolves any formation code: a preset ('4-3-3'), a custom
@@ -497,4 +510,188 @@ Formation formationOfCode(String code) {
     return tryParseCustomFormation(code) ?? formations.first;
   }
   return formationByCode(code);
+}
+
+// ---------------------------------------------------------------------------
+// The pitch GRID (owner request 2026-11-13: "chess grid, like FM 26")
+// ---------------------------------------------------------------------------
+//
+// The Team-tab pitch is a fixed chess-like grid of [kGridCols] columns ×
+// [kGridRows] rows (row 0 = the keeper's row at the bottom). Every XI slot
+// stands on ONE cell; dragging a player moves him to another cell and
+// nothing else re-arranges — no re-spreading, no placeholders appearing
+// and disappearing. What a cell ASKS FOR is a pure function of the cell
+// ([positionOfCell]); a man standing out of his cell's position simply
+// shows the compatibility warn mark and the match engine's compat factor
+// applies (exactly like a preset slot).
+//
+// Persistence: a grid formation serialises as `'C|GK@2.0,LB@0.1,…'`
+// (position `@` column `.` row, slot order, GK first). Presets and legacy
+// custom codes carry no cells; [gridCellsOf] snaps their coordinates.
+
+/// Grid size: columns (left → right) and rows (own goal → opponent goal).
+const int kGridCols = 5;
+const int kGridRows = 6;
+
+/// The keeper's fixed cell: bottom row, centre column. Row 0 holds no other
+/// cell.
+const int kGridKeeperCol = 2;
+
+/// One cell of the pitch grid.
+class GridCell {
+  const GridCell(this.col, this.row);
+
+  final int col;
+  final int row;
+
+  @override
+  bool operator ==(Object other) =>
+      other is GridCell && other.col == col && other.row == row;
+
+  @override
+  int get hashCode => col * 31 + row;
+
+  @override
+  String toString() => 'GridCell($col, $row)';
+}
+
+/// True when ([col], [row]) is a cell a slot may stand on: inside the grid,
+/// and in the keeper's row only the keeper's own cell.
+bool isGridCellAllowed(int col, int row) =>
+    col >= 0 &&
+    col < kGridCols &&
+    row >= 0 &&
+    row < kGridRows &&
+    (row > 0 || col == kGridKeeperCol);
+
+/// What the cell ([col], [row]) asks for. Rows, back to front:
+/// 1 LB · CB · RB, 2 LB · CDM · RB, 3 LM · CM · RM, 4 LW · CAM · RW,
+/// 5 LW · ST · RW (the outer columns are the wings).
+Position positionOfCell(int col, int row) {
+  final side = col == 0 ? -1 : (col == kGridCols - 1 ? 1 : 0);
+  Position pick(Position left, Position centre, Position right) =>
+      side < 0 ? left : (side > 0 ? right : centre);
+  return switch (row) {
+    0 => Position.gk,
+    1 => pick(Position.lb, Position.cb, Position.rb),
+    2 => pick(Position.lb, Position.cdm, Position.rb),
+    3 => pick(Position.lm, Position.cm, Position.rm),
+    4 => pick(Position.lw, Position.cam, Position.rw),
+    _ => pick(Position.lw, Position.st, Position.rw),
+  };
+}
+
+/// The pitch coordinates (x, y percent) of a cell's centre.
+(double, double) gridCellCentre(GridCell cell) => (
+  (cell.col + 0.5) / kGridCols * 100,
+  (cell.row + 0.5) / kGridRows * 100,
+);
+
+/// The legal-mix check of a grid formation. The owner's per-position
+/// MAXIMUMS stay the law ([positionCaps]); the minimums do not apply on
+/// the grid — a man must be free to leave a place before another arrives
+/// (moving a centre back would otherwise be impossible). Returns null when
+/// legal, else the reason.
+String? gridFormationProblem(List<Position> positions, List<GridCell> cells) {
+  if (positions.length != Formation.startingXiSize ||
+      cells.length != Formation.startingXiSize) {
+    return 'A formation needs exactly ${Formation.startingXiSize} slots.';
+  }
+  if (positions.first != Position.gk ||
+      cells.first != const GridCell(kGridKeeperCol, 0)) {
+    return 'The goalkeeper keeps his slot — GK must come first.';
+  }
+  final seen = <GridCell>{};
+  for (final c in cells) {
+    if (!isGridCellAllowed(c.col, c.row)) {
+      return 'That is not a place on the pitch.';
+    }
+    if (!seen.add(c)) return 'Two players cannot share a place.';
+  }
+  final counts = <Position, int>{};
+  for (final p in positions) {
+    counts.update(p, (n) => n + 1, ifAbsent: () => 1);
+  }
+  for (final e in counts.entries) {
+    final max = positionCaps[e.key]!.$2;
+    if (e.value > max) {
+      return 'Too many ${e.key.code}s — a custom formation fields at most '
+          '$max.';
+    }
+  }
+  return null;
+}
+
+/// True when [code] is a grid code (`'C|GK@2.0,…'`).
+bool isGridFormationCode(String code) =>
+    isCustomFormationCode(code) && code.contains('@');
+
+/// Builds a grid formation: slot i asks for [positions]`[i]` and stands on
+/// [cells]`[i]`. Null when [gridFormationProblem] says the mix is illegal.
+Formation? customGridFormation(List<Position> positions, List<GridCell> cells) {
+  if (gridFormationProblem(positions, cells) != null) return null;
+  final slots = <FormationSlot>[];
+  for (var i = 0; i < positions.length; i++) {
+    final (x, y) = gridCellCentre(cells[i]);
+    slots.add(FormationSlot(positions[i], x, y));
+  }
+  final code = '$kCustomFormationPrefix${[
+    for (var i = 0; i < positions.length; i++)
+      '${positions[i].code}@${cells[i].col}.${cells[i].row}',
+  ].join(',')}';
+  return Formation(code, 'Custom', slots);
+}
+
+/// The cell every slot of [formation] stands on, slot order. A grid
+/// formation reads its own cells back; a preset (or legacy custom) snaps its
+/// coordinates to the nearest free cell — the snap keeps the keeper on his
+/// cell, rows ordered back to front, and resolves two slots that land on
+/// one cell by moving the later one to the nearest free cell. Deterministic.
+List<GridCell> gridCellsOf(Formation formation) {
+  final slots = formation.slots;
+  if (isGridFormationCode(formation.code)) {
+    return [
+      for (final s in slots)
+        GridCell(
+          (s.x / 100 * kGridCols).floor().clamp(0, kGridCols - 1),
+          (s.y / 100 * kGridRows).floor().clamp(0, kGridRows - 1),
+        ),
+    ];
+  }
+  final taken = <GridCell>{};
+  final out = <GridCell>[];
+  for (var i = 0; i < slots.length; i++) {
+    var want = i == 0
+        ? const GridCell(kGridKeeperCol, 0)
+        : GridCell(
+            (slots[i].x / 100 * kGridCols).floor().clamp(0, kGridCols - 1),
+            ((slots[i].y - _gkY) / (_stY - _gkY) * (kGridRows - 1))
+                .round()
+                .clamp(0, kGridRows - 1),
+          );
+    if (!isGridCellAllowed(want.col, want.row) || taken.contains(want)) {
+      want = _nearestFreeCell(want, taken);
+    }
+    taken.add(want);
+    out.add(want);
+  }
+  return out;
+}
+
+GridCell _nearestFreeCell(GridCell from, Set<GridCell> taken) {
+  GridCell? best;
+  var bestD = 1 << 30;
+  for (var row = 1; row < kGridRows; row++) {
+    for (var col = 0; col < kGridCols; col++) {
+      final c = GridCell(col, row);
+      if (taken.contains(c)) continue;
+      final d = (col - from.col) * (col - from.col) +
+          (row - from.row) * (row - from.row);
+      if (d < bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+  }
+  return best ?? const GridCell(0, 1);
 }

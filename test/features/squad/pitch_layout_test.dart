@@ -443,43 +443,4 @@ void main() {
       }
     });
   });
-
-  group('placeSparePlaces (the live drag preview)', () {
-    bool touches(PitchBox a, PitchBox b) =>
-        a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-
-    test('a spare place never stands on a card nor on another spare', () {
-      for (final w in const [600.0, 900.0]) {
-        final h = w / 0.66;
-        final f = formationByCode('4-3-3');
-        final layout = computePitchLayout(formation: f, width: w, height: h);
-        final spares = placeSparePlaces(
-          layout: layout,
-          formation: f,
-          width: w,
-          height: h,
-          requests: const [
-            SparePlaceRequest(y: 30, leftSide: false),
-            SparePlaceRequest(y: 30, leftSide: true),
-          ],
-        );
-        expect(spares, hasLength(2));
-        for (var i = 0; i < spares.length; i++) {
-          final box = spares[i];
-          expect(box.left, greaterThanOrEqualTo(0), reason: 'w=$w spare $i');
-          expect(box.right, lessThanOrEqualTo(w), reason: 'w=$w spare $i');
-          expect(box.top, greaterThanOrEqualTo(0), reason: 'w=$w spare $i');
-          expect(box.bottom, lessThanOrEqualTo(h), reason: 'w=$w spare $i');
-          for (final card in layout.boxes) {
-            expect(touches(box, card), isFalse,
-                reason: 'w=$w spare $i stands on a card');
-          }
-          for (var j = i + 1; j < spares.length; j++) {
-            expect(touches(box, spares[j]), isFalse,
-                reason: 'w=$w spares $i and $j stack');
-          }
-        }
-      }
-    });
-  });
 }

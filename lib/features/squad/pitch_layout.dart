@@ -331,119 +331,61 @@ PitchLayout computePitchLayout({
   );
 }
 
-/// One spare place of the drag preview: how deep it stands ([y], formation
-/// coordinates, own goal → opponent goal) and which pitch edge it prefers.
-class SparePlaceRequest {
-  const SparePlaceRequest({required this.y, required this.leftSide});
-
-  final double y;
-  final bool leftSide;
+/// The footprint of the grid cell ([col], [row]) on a pitch of [width] ×
+/// [height]: the pitch minus [kPitchMargin] split into [kGridCols] ×
+/// [kGridRows] equal cells, row 0 (the keeper's) at the BOTTOM.
+PitchBox gridCellBox(int col, int row, double width, double height) {
+  final cw = (width - 2 * kPitchMargin) / kGridCols;
+  final ch = (height - 2 * kPitchMargin) / kGridRows;
+  return PitchBox(
+    kPitchMargin + col * cw,
+    kPitchMargin + (kGridRows - 1 - row) * ch,
+    cw,
+    ch,
+  );
 }
 
-bool _boxesTouch(PitchBox a, PitchBox b) =>
-    a.left < b.right + kPitchGapH &&
-    a.right + kPitchGapH > b.left &&
-    a.top < b.bottom + kPitchGapV &&
-    a.bottom + kPitchGapV > b.top;
-
-/// Places the spare places of a live drag (positions the shape does not
-/// field — the RB of a 3-4-3) on the pitch WITHOUT standing on a card.
-///
-/// Each request starts beside the line whose depth is nearest its own and
-/// takes the preferred pitch edge, then the other one; when both edges of
-/// that line are taken by cards it scans the edges for the nearest free
-/// spot, and only when the pitch has no free spot at all does it overlap
-/// (the nearest line, preferred edge). Earlier spares count as taken for
-/// later ones, so spares never stack either. Returns one box per request,
-/// in order.
-///
-/// The old placement pinned every spare to the edge at its line's top
-/// without looking at the cards there — so a spare place covered the
-/// outermost card of the line and that player vanished behind the ghost
-/// (and could not be dropped on).
-List<PitchBox> placeSparePlaces({
-  required PitchLayout layout,
-  required Formation formation,
+/// Lays a formation out on the chess GRID (Team tab): every slot sits
+/// centred in its own cell, the cards as big as the cell allows. Unlike
+/// [computePitchLayout] nothing is solved or pushed — a card never moves
+/// unless its slot's cell does.
+PitchLayout computeGridLayout({
+  required List<GridCell> cells,
   required double width,
   required double height,
-  required List<SparePlaceRequest> requests,
+  bool showStats = false,
+  bool showStamina = false,
 }) {
-  final sw = layout.slotWidth;
-  final sh = layout.slotHeight;
-  final margin = kPitchMargin + 4.0;
-  final minTop = margin;
-  final maxTop = math.max(minTop, height - margin - sh);
-  final taken = <PitchBox>[...layout.boxes];
-  final placed = <PitchBox>[];
-
-  bool isFree(PitchBox candidate) {
-    for (final b in taken) {
-      if (_boxesTouch(candidate, b)) return false;
-    }
-    return true;
+  final cell = gridCellBox(0, 1, width, height);
+  bool fits(double w) =>
+      pitchFootprintHeight(w, showStats: showStats, showStamina: showStamina) <=
+      cell.height - 2;
+  var w = math.min(kPitchCardMaxWidth, cell.width - kPitchSlotPad);
+  while (w > 24 && !fits(w)) {
+    w -= 0.25;
   }
-
-  double meanY(List<int> row) =>
-      row.fold<double>(0, (a, i) => a + formation.slots[i].y) / row.length;
-
-  for (final request in requests) {
-    final rowOrder = List<int>.generate(layout.rows.length, (r) => r)
-      ..sort(
-        (a, b) => (meanY(layout.rows[a]) - request.y).abs().compareTo(
-          (meanY(layout.rows[b]) - request.y).abs(),
-        ),
-      );
-    final lefts = request.leftSide
-        ? <double>[margin, width - margin - sw]
-        : <double>[width - margin - sw, margin];
-
-    PitchBox? chosen;
-    PitchBox? firstChoice;
-    var preferredTop = minTop;
-
-    // 1. Beside the nearest line, preferred edge first.
-    for (var k = 0; k < rowOrder.length && chosen == null; k++) {
-      final row = layout.rows[rowOrder[k]];
-      final top = layout.boxes[row.first].top
-          .clamp(minTop, maxTop)
-          .toDouble();
-      if (k == 0) preferredTop = top;
-      for (final left in lefts) {
-        final candidate = PitchBox(left, top, sw, sh);
-        firstChoice ??= candidate;
-        if (isFree(candidate)) {
-          chosen = candidate;
-          break;
-        }
-      }
-    }
-
-    // 2. Scan both edges for the free spot nearest the preferred depth.
-    if (chosen == null) {
-      final step = math.max(4.0, sh / 4);
-      final tops = <double>[];
-      for (var t = minTop; t <= maxTop; t += step) {
-        tops.add(t);
-      }
-      tops.sort(
-        (a, b) =>
-            (a - preferredTop).abs().compareTo((b - preferredTop).abs()),
-      );
-      for (final top in tops) {
-        for (final left in lefts) {
-          final candidate = PitchBox(left, top, sw, sh);
-          if (isFree(candidate)) {
-            chosen = candidate;
-            break;
-          }
-        }
-        if (chosen != null) break;
-      }
-    }
-
-    final box = chosen ?? firstChoice ?? PitchBox(lefts.first, minTop, sw, sh);
-    placed.add(box);
-    taken.add(box);
-  }
-  return placed;
+  final sw = w + kPitchSlotPad;
+  final sh = pitchFootprintHeight(
+    w,
+    showStats: showStats,
+    showStamina: showStamina,
+  );
+  return PitchLayout(
+    cardWidth: w,
+    slotWidth: sw,
+    slotHeight: sh,
+    boxes: [
+      for (final c in cells)
+        () {
+          final b = gridCellBox(c.col, c.row, width, height);
+          return PitchBox(
+            b.left + (b.width - sw) / 2,
+            b.top + (b.height - sh) / 2,
+            sw,
+            sh,
+          );
+        }(),
+    ],
+    rows: const [],
+  );
 }
