@@ -97,19 +97,7 @@ void main() {
       );
     });
 
-    test('charge ring and lightning paint across their full range', () {
-      for (final c in [0.0, 0.3, 0.99, 1.0]) {
-        _paint(
-          ChargeRingPainter(
-            charge: c,
-            rotation: 0.42,
-            color: Colors.blue,
-            dots: 20,
-            radius: 160,
-          ),
-          size,
-        );
-      }
+    test('lightning paints across its full range', () {
       for (final t in [0.0, 0.2, 0.55, 0.99]) {
         _paint(
           LightningPainter(strength: 1, time: t, color: Colors.redAccent),

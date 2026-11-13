@@ -7,8 +7,6 @@
 ///   charges (amethyst → sapphire → gold → crimson) and stops on the rung
 ///   of the card inside. Lower pulls also flash the NEXT rung for a beat (a
 ///   near miss) before settling — the "was that gold?!" moment.
-/// * [ChargeRingPainter] — energy dots that orbit and tighten around the
-///   pack as it charges.
 /// * [AmbientPainter] — rarity-flavoured particles drifting around the
 ///   finished card (soft motes, rising crystals, falling gold dust,
 ///   crimson embers), so a great pull keeps glittering after the reveal.
@@ -71,53 +69,6 @@ Color chargeGlowColor({
 double _hash(double x) {
   final s = math.sin(x * 12.9898) * 43758.5453;
   return s - s.floorToDouble();
-}
-
-/// Energy dots orbiting the sealed pack, tightening as it charges.
-class ChargeRingPainter extends CustomPainter {
-  ChargeRingPainter({
-    required this.charge,
-    required this.rotation,
-    required this.color,
-    required this.dots,
-    required this.radius,
-  });
-
-  /// 0..1 charge progress; 0 draws nothing.
-  final double charge;
-
-  /// Rotation in turns (the screen's looping spin value).
-  final double rotation;
-  final Color color;
-  final int dots;
-
-  /// Resting orbit radius in logical pixels (about the pack's half-height).
-  final double radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (charge <= 0 || charge >= 1) return;
-    final c = Offset(size.width / 2, size.height / 2);
-    // Fade out over the last stretch so the burst owns the moment.
-    final fade = 1 - const Interval(0.88, 1.0).transform(charge);
-    final orbit = radius * (1.7 - 0.55 * charge);
-    final paint = Paint()
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
-    for (var i = 0; i < dots; i++) {
-      final a = rotation * 2 * math.pi * 6 + i * 2 * math.pi / dots;
-      // A slight ellipse so the ring reads as orbiting in 3D.
-      final p = c + Offset(math.cos(a) * orbit, math.sin(a) * orbit * 0.82);
-      paint.color = color.withValues(alpha: (0.85 * fade).clamp(0.0, 1.0));
-      canvas.drawCircle(p, 2.0 + 3.2 * charge, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(ChargeRingPainter old) =>
-      old.charge != charge ||
-      old.rotation != rotation ||
-      old.color != color ||
-      old.dots != dots;
 }
 
 /// How the ambient particles of a finished card behave.

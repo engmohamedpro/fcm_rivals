@@ -163,30 +163,4 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
   });
-
-  testWidgets('shockwave rings only draw while in flight', (
-    WidgetTester tester,
-  ) async {
-    const gold = Color(0xFFF7C948);
-    expect(
-      ShockwavePainter(
-        progress: 0,
-        color: gold,
-      ).shouldRepaint(ShockwavePainter(progress: 0.5, color: gold)),
-      isTrue,
-    );
-    for (final p in [0.0, 0.3, 0.99, 1.0]) {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SizedBox.expand(
-            child: CustomPaint(
-              painter: ShockwavePainter(progress: p, color: gold, rings: 4),
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(tester.takeException(), isNull, reason: 'progress $p');
-    }
-  });
 }

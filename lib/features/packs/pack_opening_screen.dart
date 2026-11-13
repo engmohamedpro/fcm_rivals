@@ -17,7 +17,7 @@
 /// make the player wonder who it is for as long as possible:
 ///   1. A slow, heartbeat charge — the screen darkens around the pack
 ///      while it shudders harder and harder.
-///   2. A golden burst with shock rings, then the stage goes dark and a
+///   2. A golden burst, then the stage goes dark and a
 ///      MYSTERY silhouette of the card rises, breathing, with a "?" on it.
 ///   3. Clues land one at a time on the silhouette: the nationality flag,
 ///      then the position. The rating is NOT shown here — it appears only
@@ -26,7 +26,7 @@
 ///   5. Attributes count up in slow motion while the camera pushes in and
 ///      the name slot sits redacted, pulsing.
 ///   6. The NAME is typed onto the card letter by letter — who the player
-///      is arrives last — followed by a finale: flash, shock rings, a
+///      is arrives last — followed by a finale: flash, a
 ///      second spark burst and the LEGENDARY PULL! banner.
 ///
 /// One master [AnimationController] drives each timeline through
@@ -512,14 +512,12 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
     );
 
     // Legendary stagecraft: a vignette that closes in while the mystery
-    // builds and lifts as the name lands, plus the shock rings.
+    // builds and lifts as the name lands.
     var vignette = 0.0;
-    var shock = 0.0;
     if (legend) {
       final close = Interval(0.0, tl.chargeEnd).transform(t);
       final open = tl.nameIn.transform(t);
       vignette = (close * 0.85 * (1 - 0.65 * open)).clamp(0.0, 1.0);
-      shock = Interval(tl.burstStart, tl.burstStart + 0.14).transform(t);
     }
 
     // Camera push-in while the stats count and the name waits.
@@ -548,20 +546,6 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         ),
 
 
-        // Energy ring orbiting the sealed pack while it charges.
-        if (showPack)
-          IgnorePointer(
-            child: CustomPaint(
-              painter: ChargeRingPainter(
-                charge: charge,
-                rotation: _spin.value,
-                color: glowTint,
-                dots: 8 + 4 * rank,
-                radius: math.min(size.width * 0.52, 230.0) / kPackAspect / 2,
-              ),
-            ),
-          ),
-
         // Legendary vignette: the room goes dark around the action.
         if (legend && vignette > 0)
           IgnorePointer(
@@ -583,50 +567,9 @@ class _PackOpeningScreenState extends State<PackOpeningScreen>
         // Sealed pack.
         if (showPack) Center(child: _buildPack(t, charge, glowTint, size, tl)),
 
-        // Shock rings: the burst's pressure wave, and again at the finale
-        // — twice on the premium reveal (the second wave hits harder).
-        if (legend)
-          IgnorePointer(
-            child: CustomPaint(
-              painter: ShockwavePainter(progress: shock, color: accent),
-            ),
-          ),
-        if (legend)
-          IgnorePointer(
-            child: CustomPaint(
-              painter: ShockwavePainter(
-                progress: fin,
-                color: accent,
-                rings: premium ? 5 : 4,
-              ),
-            ),
-          ),
-        if (premium && fin2 > 0)
-          IgnorePointer(
-            child: CustomPaint(
-              painter: ShockwavePainter(
-                progress: fin2,
-                color: accent,
-                rings: 3,
-              ),
-            ),
-          ),
-
-        // Ordinary pulls get the burst's own pressure ring too — one for a
-        // rare, two for an epic (the legendary reveal owns its rings above).
-        if (!legend && isFirst)
-          IgnorePointer(
-            child: CustomPaint(
-              painter: ShockwavePainter(
-                progress: Interval(
-                  tl.burstStart,
-                  tl.burstStart + 0.12,
-                ).transform(t),
-                color: accent,
-                rings: rarity == CardRarity.epic ? 2 : 1,
-              ),
-            ),
-          ),
+        // Owner request 2026-11-13 (T-0134): every ring layer removed from
+        // the pack opening — the charge orbit and all shockwaves. Sparks,
+        // glow, flash and the walkout beats below carry the escalation.
 
         // Sparks.
         IgnorePointer(
