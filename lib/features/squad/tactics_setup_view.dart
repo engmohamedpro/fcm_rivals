@@ -658,20 +658,26 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet>
             TabBar(
               // The formation and mentality are both gone from here:
               // one instruction group per tab, nothing else.
+              //
+              // T-0128: text-only tabs so every label fits in full —
+              // the icons plus text wrapped on 360dp screens, and a
+              // wrapped Tab grows the bar to ~72dp+. Without icons the
+              // default bar stays at its compact 48dp height and the
+              // longest label ("Out of Possession") still fits.
               controller: _tabController,
+              tabHeight: 44,
+              labelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
               tabs: [
-                Tab(
-                  icon: const Icon(Icons.sports_soccer_rounded, size: 16),
-                  text: l10n.tacticsInPossessionTitle,
-                ),
-                Tab(
-                  icon: const Icon(Icons.shield_rounded, size: 16),
-                  text: l10n.tacticsOutOfPossessionTitle,
-                ),
-                Tab(
-                  icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                  text: l10n.tacticsTransitionsTitle,
-                ),
+                Tab(text: l10n.tacticsInPossessionTitle),
+                Tab(text: l10n.tacticsOutOfPossessionTitle),
+                Tab(text: l10n.tacticsTransitionsTitle),
               ],
             ),
             // The pages: each tab shows its own group's controls in a
@@ -715,75 +721,37 @@ class _TacticsTabPages extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = l10nOf(context);
     return TabBarView(
       controller: controller,
       children: [
+        // T-0128: no title header inside the panes — the tab itself
+        // names the group now.
+        _GroupPane(child: InPossessionControls(tactics: tactics, onChanged: onChanged)),
         _GroupPane(
-          title: l10n.tacticsInPossessionTitle,
-          icon: Icons.sports_soccer_rounded,
-          child: InPossessionControls(tactics: tactics, onChanged: onChanged),
-        ),
-        _GroupPane(
-          title: l10n.tacticsOutOfPossessionTitle,
-          icon: Icons.shield_rounded,
           child: OutOfPossessionControls(
             tactics: tactics,
             onChanged: onChanged,
           ),
         ),
-        _GroupPane(
-          title: l10n.tacticsTransitionsTitle,
-          icon: Icons.swap_horiz_rounded,
-          child: TransitionsControls(tactics: tactics, onChanged: onChanged),
-        ),
+        _GroupPane(child: TransitionsControls(tactics: tactics, onChanged: onChanged)),
       ],
     );
   }
 }
 
-/// One tab page: the group's controls inside a scrollable, padded
-/// pane. The header repeats inside the pane so the group is named even
-/// mid-scroll (the tab bar can be a bare icon on narrow screens).
+/// One tab page: the group's controls inside a scrollable, padded pane.
 class _GroupPane extends StatelessWidget {
-  const _GroupPane({
-    required this.title,
-    required this.icon,
-    required this.child,
-  });
+  const _GroupPane({required this.child});
 
-  final String title;
-  final IconData icon;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: theme.colorScheme.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          child,
-        ],
+        children: [child],
       ),
     );
   }

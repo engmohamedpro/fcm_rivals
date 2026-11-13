@@ -306,6 +306,16 @@ void main() {
     expect(find.text('Transitions'), findsOneWidget);
     expect(find.textContaining('MENTALITY'), findsNothing);
     expect(find.textContaining('FORMATION'), findsNothing);
+    // T-0128: text-only tabs at a compact 44dp height — no icons (they
+    // wrapped the longest label on 360dp screens), and no repeated
+    // group title inside any tab page.
+    expect(find.byType(Tab), findsNWidgets(3));
+    expect(
+      find.descendant(of: find.byType(TabBar), find.byType(Icon)),
+      findsNothing,
+    );
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.tabHeight, 44);
     // Only the FIRST tab's sliders render (five of the eleven axes).
     expect(find.byType(FcmScaleSlider), findsNWidgets(5));
 
