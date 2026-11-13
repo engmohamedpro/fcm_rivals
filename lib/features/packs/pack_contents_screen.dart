@@ -36,6 +36,7 @@ class PackContentsScreen extends StatefulWidget {
     required this.scopeValue,
     required this.tier,
     required this.loadPlayers,
+    this.loadOdds,
   });
 
   /// Full offer title, e.g. 'Legendary Global Pack'.
@@ -48,6 +49,10 @@ class PackContentsScreen extends StatefulWidget {
   /// Loads the eligible pool, best-first (store-side ordering).
   final Future<List<BasePlayer>> Function() loadPlayers;
 
+  /// T-0126: loads THIS pack's per-player draw odds (playerId →
+  /// probability). Null keeps the grid without odds.
+  final Future<Map<int, double>> Function()? loadOdds;
+
   @override
   State<PackContentsScreen> createState() => _PackContentsScreenState();
 }
@@ -55,6 +60,10 @@ class PackContentsScreen extends StatefulWidget {
 class _PackContentsScreenState extends State<PackContentsScreen> {
   List<BasePlayer>? _players;
   Object? _error;
+
+  /// T-0126: per-player odds for THIS pack's own scope (never a
+  /// cross-pack aggregate), loaded alongside the pool.
+  Map<int, double>? _odds;
 
   final TextEditingController _search = TextEditingController();
   String? _nationality;
@@ -67,7 +76,10 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
     super.initState();
     widget.loadPlayers().then(
       (players) {
-        if (mounted) setState(() => _players = players);
+        if (mounted) {
+          setState(() => _players = players);
+          _loadOdds();
+        }
       },
       onError: (Object e) {
         if (mounted) setState(() => _error = e);
@@ -119,6 +131,29 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
         break;
     }
     return list;
+  }
+
+  /// Loads THIS pack's own per-player odds (T-0126) once the pool is
+  /// in. Requires a store lookup — wired from the route through the
+  /// widget's [loadOdds] when provided; null keeps the screen as it
+  /// was (no odds shown).
+  void _loadOdds() {
+    final loader = widget.loadOdds;
+    if (loader == null || _odds != null) return;
+    loader().then((odds) {
+      if (mounted) setState(() => _odds = odds);
+    }, onError: (_) {});
+  }
+
+  /// The player's draw probability text for THIS pack, or null when
+  /// odds are not loaded yet. Sub-0.01% clamps to '<0.01%'.
+  String? _oddsLabel(int playerId) {
+    final odds = _odds;
+    if (odds == null) return null;
+    final p = odds[playerId] ?? 0;
+    if (p <= 0) return null;
+    final percent = p * 100;
+    return percent < 0.01 ? '<0.01%' : '${percent.toStringAsFixed(2)}%';
   }
 
   @override
@@ -184,7 +219,7 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 24),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 115,
-        childAspectRatio: 0.60,
+        childAspectRatio: 0.56,
         crossAxisSpacing: 10,
         mainAxisSpacing: 14,
       ),
@@ -192,6 +227,7 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
       itemBuilder: (context, i) {
         final p = players[i];
         final rarity = CardRarity.fromOverall(p.baseStats.overall);
+        final oddsLabel = _oddsLabel(p.playerId);
         return FcmEntrance(
           index: math.min(i, 12),
           dx: 0,
@@ -205,16 +241,36 @@ class _PackContentsScreenState extends State<PackContentsScreen> {
                 upgradeLevel: 0,
               ),
             ),
-            child: FcmMiniCard(
-              overall: p.baseStats.overall,
-              position: p.position.code,
-              flag: flagEmojiFor(p.nationality),
-              imageUrl: p.imageUrl,
-              clubCrestUrl: p.clubCrestUrl,
-              name: p.name,
-              rarity: rarity,
-              isIcon: p.isIcon,
-              width: 92,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FcmMiniCard(
+                  overall: p.baseStats.overall,
+                  position: p.position.code,
+                  flag: flagEmojiFor(p.nationality),
+                  imageUrl: p.imageUrl,
+                  clubCrestUrl: p.clubCrestUrl,
+                  name: p.name,
+                  rarity: rarity,
+                  isIcon: p.isIcon,
+                  width: 92,
+                ),
+                // T-0126: this player's own odds in THIS pack —
+                // not a group aggregate across packs.
+                if (oddsLabel != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      oddsLabel,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: FcmColors.goldSoft,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         );

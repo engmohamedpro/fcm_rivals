@@ -389,6 +389,34 @@ class CollectionStore {
     return eligible;
   }
 
+  /// T-0126: per-player draw probability for ONE pack's own scope —
+  /// `P(rarity roll) × P(player | rarity)` straight from the engine's
+  /// [PackEngine.oddsFor] (the same numbers the draw actually uses,
+  /// never a cross-pack aggregate). playerId → probability.
+  Map<int, double> getPackPlayerOdds({
+    required PackCategory category,
+    String? scopeValue,
+    required PackTier tier,
+    List<BasePlayer>? pool,
+  }) {
+    final scope = PackScope(
+      category: category,
+      positions: category == PackCategory.position
+          ? parsePositionScopeValue(scopeValue)
+          : null,
+      tier: tier,
+    );
+    final engine = _engineFor();
+    final bandMaps = engine.oddsFor(scope, pool ?? _packPool);
+    final result = <int, double>{};
+    for (final probs in bandMaps.values) {
+      probs.forEach((playerId, p) {
+        result[playerId] = (result[playerId] ?? 0) + p;
+      });
+    }
+    return result;
+  }
+
   /// All unopened packs of the club.
   Future<List<Pack>> getAvailablePacks() async {
     final club = await getClub();

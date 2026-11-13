@@ -132,6 +132,7 @@ class AppRoutes {
     String? scopeValue,
     required PackTier tier,
     required Future<List<BasePlayer>> Function() loadPlayers,
+    Future<Map<int, double>> Function()? loadOdds,
   }) {
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -142,6 +143,7 @@ class AppRoutes {
           scopeValue: scopeValue,
           tier: tier,
           loadPlayers: loadPlayers,
+          loadOdds: loadOdds,
         ),
       ),
     );
