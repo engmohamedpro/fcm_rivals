@@ -1,10 +1,10 @@
 // Custom formations (owner request 2026-11-12): the drag-built shapes.
 //
-// The owner's exact ladder is the law:
+// The owner's exact ladder is the law (2026-11-13 update):
 //   GK exactly 1 (the keeper's slot never changes)
 //   ST 0-2, LW 0-1, RW 0-1, CAM 0-2,
-//   CM 0-3, CDM 0-3, CB 0-3, RB 0-1, LB 0-1
-//   (LM/RM 0-1 each — the dataset carries them: 393 LM, 457 RM)
+//   CM 0-3, CDM 0-3, CB 2-3 (a back line needs its pair), RB 0-1,
+//   LB 0-1 (LM/RM 0-1 each — the dataset carries them)
 //
 // A custom formation serialises as 'C|GK,LB,CB,…'; formationOfCode
 // decodes it, so the match engine and every consumer see it as just
@@ -56,7 +56,7 @@ void main() {
       expect(positionCaps[Position.cam], (0, 2));
       expect(positionCaps[Position.cm], (0, 3));
       expect(positionCaps[Position.cdm], (0, 3));
-      expect(positionCaps[Position.cb], (0, 3));
+      expect(positionCaps[Position.cb], (2, 3));
       expect(positionCaps[Position.rb], (0, 1));
       expect(positionCaps[Position.lb], (0, 1));
       // LM/RM: 0-1 each (the dataset carries 393 LM / 457 RM).
@@ -110,6 +110,18 @@ void main() {
       ];
       expect(customFormation(threeStrikers), isNull);
       expect(customFormationProblem(threeStrikers), contains('ST'));
+    });
+
+    test('a single CB is refused (the back line needs its pair)', () {
+      const oneCb = [
+        Position.gk,
+        Position.cb,
+        Position.lb, Position.rb,
+        Position.cm, Position.cm, Position.cm, Position.cdm,
+        Position.cam, Position.st, Position.st,
+      ];
+      expect(customFormation(oneCb), isNull);
+      expect(customFormationProblem(oneCb), contains('CB'));
     });
 
     test('refuses 4 CB and 2 LW', () {
@@ -209,8 +221,8 @@ void main() {
     });
 
     test('the anchors spread same-position slots symmetrically', () {
-      // Two CBs: first left (36), second right (64) — the pair reads
-      // centred, exactly like a preset back-two.
+      // Two CBs: first left (28), second right (72) — the pair reads
+      // centred, exactly like a preset back-three's outer men.
       final f = customFormation(const [
         Position.gk,
         Position.st, Position.st, // forwards first — slots can be anywhere
@@ -226,6 +238,41 @@ void main() {
       // The keeper always at home depth.
       expect(f.slots[0].y, 5);
       expect(f.slots[0].x, 50);
+    });
+
+    test('a LONE slot of a position centres; a strike pair halves '
+        '(owner request 2026-11-13)', () {
+      // One striker: dead centre (50). A lone CAM: dead centre too.
+      final lone = customFormation(const [
+        Position.gk,
+        Position.lb, Position.cb, Position.cb, Position.rb,
+        Position.cdm, Position.cm, Position.cm,
+        Position.lw, Position.cam, Position.st,
+      ])!;
+      final st = lone.slots.last;
+      expect(st.x, 50, reason: 'a lone striker stands dead centre');
+      expect(lone.slots[9].x, 50, reason: 'a lone CAM stands dead centre');
+
+      // Two strikers: 40 and 60, beside each other, centred as a pair.
+      final pair = customFormation(const [
+        Position.gk,
+        Position.lb, Position.cb, Position.cb, Position.rb,
+        Position.cdm, Position.cm, Position.cm, Position.cam,
+        Position.st, Position.st,
+      ])!;
+      expect(pair.slots[9].x, 40);
+      expect(pair.slots[10].x, 60);
+
+      // Three CMs: 22 / 50 / 78 — a left-centre-right line.
+      final trio = customFormation(const [
+        Position.gk,
+        Position.lb, Position.cb, Position.cb, Position.rb,
+        Position.cm, Position.cm, Position.cm, Position.cdm,
+        Position.lw, Position.st,
+      ])!;
+      expect(trio.slots[5].x, 22);
+      expect(trio.slots[6].x, 50);
+      expect(trio.slots[7].x, 78);
     });
 
     test('every custom slot keeps the GK-first, x/y bounds contract', () {
@@ -399,6 +446,108 @@ void main() {
     });
   });
 
+  group('squadDragLayout (the drag preview, owner request 2026-11-13)', () {
+    test('a 3-4-3 with no RB shows the spare RB place', () {
+      // The 3-4-3: 3 CB, no RB. Holding its ST opens his ST place and
+      // the layout must ALSO offer the RB place the mix may take.
+      final squad = {
+        for (var i = 0; i < 11; i++)
+          i: _card(i, _f343Positions[i]),
+      };
+      final layout = squadDragLayout(
+        formation: formationByCode('3-4-3'),
+        squad: squad,
+        dragged: squad[10]!,
+      );
+      expect(layout.isLegal, isTrue, reason: layout.problem);
+      // The spare places: every outfield position the 3-4-3 does not
+      // field — RB, LB, CDM and CAM (LM/RM fielded, CB at 3/3, CM/LW/
+      // RW fielded, ST is the held man's own place).
+      final extras = layout.slots.skip(11).map((s) => s.position).toSet();
+      expect(extras, {
+        Position.rb,
+        Position.lb,
+        Position.cdm,
+        Position.cam,
+      }, reason: 'the spare places render beyond the XI');
+      // The held ST's own place is marked.
+      expect(layout.slots.any((s) => s.isHeld), isTrue);
+      // Dropping the ST onto the RB place is accepted and redefines a
+      // slot to RB.
+      final out = planSquadDrop(
+        formation: formationByCode('3-4-3'),
+        squad: squad,
+        dragged: squad[10]!,
+        target: SquadDropTarget.xiSlot(1, position: Position.rb),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.formation, isNotNull);
+      expect(
+        out.formation!.slots.where((s) => s.position == Position.rb),
+        isNotEmpty,
+        reason: 'the shape now fields an RB',
+      );
+      expect(
+        out.formation!.slots.where((s) => s.position == Position.st),
+        isEmpty,
+        reason: 'the dragged ST left his place — no ST remains',
+      );
+    });
+
+    test('a lone ST placeholder sits dead centre; a pair halves', () {
+      // Holding the CAM of a 4-3-3: the shape keeps its lone ST dead
+      // centre (50), and the spare second-ST place joins the layout.
+      final squad = {
+        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
+      };
+      final layout = squadDragLayout(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: squad[8]!, // the LW
+      );
+      final stPlace = layout.slots.firstWhere(
+        (s) => s.position == Position.st,
+      );
+      expect(stPlace.x, 50, reason: 'the lone ST stays dead centre');
+      expect(stPlace.isHeld, isFalse);
+      // His own LW place is the marked one.
+      final heldPlace = layout.slots.singleWhere((s) => s.isHeld);
+      expect(heldPlace.position, Position.lw);
+    });
+
+    test('holding the third CM closes the pair ranks', () {
+      // A 4-3-3: CDM + CM + CM. Holding one CM leaves a lone CM — his
+      // place re-spreads to the CENTRE (50), not the left (32).
+      final squad = {
+        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
+      };
+      final layout = squadDragLayout(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: squad[7]!, // a CM
+      );
+      final cmPlaces = layout.slots
+          .where((s) => s.position == Position.cm && !s.isHeld)
+          .toList();
+      expect(cmPlaces, hasLength(1),
+          reason: 'the held CM left his place');
+      expect(cmPlaces.single.x, 50, reason: 'the remaining CM centres');
+    });
+
+    test('a keeper drag is refused outright', () {
+      final squad = {
+        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
+      };
+      final layout = squadDragLayout(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: squad[0]!,
+      );
+      expect(layout.isLegal, isFalse);
+      expect(layout.problem, contains('goalkeeper'));
+    });
+  });
+
   group('the custom formation plays (engine contract)', () {
     test('autoPick fills a custom formation with natural players', () {
       // The 3-5-2-ish custom: double pivot, strike pair, no wingers.
@@ -456,5 +605,12 @@ const _f433Positions = [
   Position.gk,
   Position.lb, Position.cb, Position.cb, Position.rb,
   Position.cdm, Position.cm, Position.cm,
+  Position.lw, Position.st, Position.rw,
+];
+
+const _f343Positions = [
+  Position.gk,
+  Position.cb, Position.cb, Position.cb,
+  Position.lm, Position.cm, Position.cm, Position.rm,
   Position.lw, Position.st, Position.rw,
 ];

@@ -17,10 +17,15 @@ class PreMatchTacticSelection {
   const PreMatchTacticSelection({
     required this.formationCode,
     required this.tactics,
-    required this.mentality,
+    this.mentality,
   });
 
   final String formationCode;
   final TeamTactics tactics;
-  final Mentality mentality;
+
+  /// The match-only mentality override, or null to kick off with the
+  /// club's saved value (the default since the pre-match surface
+  /// stopped editing it, owner request 2026-11-13). Headless sims may
+  /// still pin one.
+  final Mentality? mentality;
 }

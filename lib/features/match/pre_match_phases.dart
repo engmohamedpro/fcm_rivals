@@ -18,32 +18,30 @@ import 'match_forecast.dart';
 import 'tactics.dart';
 
 /// Set up how this match is played (GDD 10.4): the SAME tactics screen as
-/// the Team tab — formation, custom tactics and mentality
-/// with their visible percentage effects, the pitch with per-player
-/// stamina bars (GDD 11), bench and reserves — with one difference: the
-/// changes apply to THIS MATCH ONLY and never touch the club's saved
-/// default setup. The starting XI is re-picked for the chosen shape in
-/// memory, so the pitch previews the exact team that kicks off.
+/// the Team tab — formation and custom tactics with their visible
+/// percentage effects, the pitch with per-player stamina bars (GDD 11),
+/// bench and reserves — with one difference: the changes apply to THIS
+/// MATCH ONLY and never touch the club's saved default setup. The
+/// starting XI is re-picked for the chosen shape in memory, so the pitch
+/// previews the exact team that kicks off. The mentality is not edited
+/// here (owner request 2026-11-13) — it stays whatever the club saved
+/// and whatever the live panel changes mid-match.
 class TacticsPhase extends StatelessWidget {
   const TacticsPhase({
     super.key,
     required this.data,
     required this.formationCode,
     required this.tactics,
-    required this.mentality,
     required this.onFormation,
     required this.onTactics,
-    required this.onMentality,
     this.onAutoPick,
   });
 
   final PreMatchData data;
   final String formationCode;
   final TeamTactics tactics;
-  final Mentality mentality;
   final ValueChanged<String> onFormation;
   final ValueChanged<TeamTactics> onTactics;
-  final ValueChanged<Mentality> onMentality;
 
   /// T-0118: the matchday Auto Pick — re-projects the XI/bench/
   /// reserves in memory with the fitness-aware rules (injured and
@@ -112,13 +110,11 @@ class TacticsPhase extends StatelessWidget {
         TacticsSetupView(
           formation: formationOfCode(formationCode),
           tactics: tactics,
-          mentality: mentality,
           xi: xi,
           bench: bench,
           reserves: reserves,
           onFormation: onFormation,
           onTactics: onTactics,
-          onMentality: onMentality,
           showStamina: true,
           showStats: false,
           // Matchday fitness IS the point of the duplicate screen

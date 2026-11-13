@@ -23,7 +23,7 @@ import 'pitch_layout.dart';
 import 'squad_drag.dart';
 import 'squad_engine.dart';
 import 'squad_swap.dart'
-    show SquadDropTarget, SquadZone, planSquadDrop;
+    show DragSlot, SquadDropTarget, SquadZone, squadDragLayout;
 
 /// The visible stat triple of a squad card: outfield players show
 /// ATT / SUP / DEF, keepers GK / DEF / SUP — upgraded values included.
@@ -94,11 +94,16 @@ class SquadPitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The live drag (custom-formation preview): while a player is
-    // held, every EMPTY slot previews what his drop there builds —
-    // his position when the caps allow it, the reason they do not
-    // when they do not. Read straight from the drag scope, so the
-    // preview lives only on surfaces that enable swapping.
+    // The live drag (custom-formation preview, owner request
+    // 2026-11-13): while a player is held, the pitch re-spreads the
+    // WHOLE shape — his old place opens, every position's anchors
+    // re-take their count-aware spread (a lone CAM centres, a pair
+    // halves, a trio lines up), and every place the drop may fill
+    // shows its position placeholder, including positions the current
+    // shape does not field at all (a 3-4-3 with no RB still shows the
+    // RB place — a dragged ST may take it). Read straight from the
+    // drag scope, so the preview lives only on surfaces that enable
+    // swapping.
     final dragScope = SquadDragScope.maybeOf(context);
     return ValueListenableBuilder<PlayerCard?>(
       valueListenable: dragScope?.dragging ?? _noDrag,
@@ -113,27 +118,63 @@ class SquadPitch extends StatelessWidget {
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-              final pw = constraints.maxWidth;
-              final ph = constraints.maxHeight;
+                final pw = constraints.maxWidth;
+                final ph = constraints.maxHeight;
 
-              // The layout solver (pitch_layout.dart) sizes the cards as big
-              // as the pitch allows and places every slot by its role — keeper
-              // at the bottom, back line, midfield, attack at the top, each
-              // line in the formation's left-to-right order — with air
-              // between all cards and names, whatever the formation or the
-              // screen.
-              final layout = computePitchLayout(
-                formation: formation,
-                width: pw,
-                height: ph,
-                showStats: showStats,
-                showStamina: showStamina,
-              );
-              final cardW = layout.cardWidth;
-              final slotW = layout.slotWidth;
+                // The drag layout: the shape re-spread as it stands
+                // without the held man, his own place marked. Null
+                // when nobody is held (or the surface has no swapping)
+                // — the pitch then renders the plain formation.
+                final dragLayout = held == null
+                    ? null
+                    : squadDragLayout(
+                        formation: formation,
+                        squad: assignments,
+                        dragged: held,
+                      );
 
-              return Stack(
-                children: [
+                // The layout solver (pitch_layout.dart) sizes the cards as big
+                // as the pitch allows and places every slot by its role — keeper
+                // at the bottom, back line, midfield, attack at the top, each
+                // line in the formation's left-to-right order — with air
+                // between all cards and names, whatever the formation or the
+                // screen. A live drag re-solves on the PREVIEW formation (the
+                // re-spread shape's own 11 places), so the cards glide to the
+                // places the drop builds and the placeholders sit exactly
+                // where the new shape stands. The EXTRA spare places (positions
+                // the shape does not field — the RB of a 3-4-3) render from
+                // the SAME drag layout, offset alongside their line's depth.
+                final effectiveFormation = dragLayout == null
+                    ? formation
+                    : Formation(
+                        formation.code,
+                        formation.name,
+                        [
+                          for (final s in dragLayout.slots.take(11))
+                            FormationSlot(s.position, s.x, s.y),
+                        ],
+                      );
+                final layout = computePitchLayout(
+                  formation: effectiveFormation,
+                  width: pw,
+                  height: ph,
+                  showStats: showStats,
+                  showStamina: showStamina,
+                );
+                final cardW = layout.cardWidth;
+                final slotW = layout.slotWidth;
+                // The spare places beyond the XI (owner request
+                // 2026-11-13): every position the mix may still take
+                // that the shape does not field, each rendered as a
+                // placeholder at its own anchor, pushed to the pitch
+                // edge of its line so it never fights the shape's own
+                // cards for space.
+                final extraPlaces = dragLayout == null
+                    ? const <DragSlot>[]
+                    : dragLayout.slots.skip(11).toList();
+
+                return Stack(
+                  children: [
                   const Positioned.fill(
                     // Perf pass 2026-11-12: the pitch painter is static
                     // (shouldRepaint: false) but the 11 slot cards'
@@ -182,28 +223,24 @@ class SquadPitch extends StatelessWidget {
                     ),
                   for (var slot = 0; slot < formation.slots.length; slot++)
                     () {
-                      final fs = formation.slots[slot];
+                      // The DRAG view (owner request 2026-11-13): while a
+                      // player is held, every place renders from the
+                      // re-spread layout — his own place shows his
+                      // position's placeholder (he may drop back there),
+                      // every OTHER empty position of the new shape shows
+                      // its placeholder too, and the occupied places
+                      // carry their cards wherever the new spread put
+                      // them. With nobody held this is the plain slot.
+                      final fs = effectiveFormation.slots[slot];
                       final card = assignments[slot];
                       final box = layout.boxes[slot];
-                      // The custom-formation preview for this empty slot
-                      // while a player is held: the drop's verdict (his
-                      // position, or the refusal reason). Occupied slots
-                      // have no preview — dropping on a player is a swap.
-                      Position? heldAsk;
-                      String? heldProblem;
-                      if (held != null && card == null) {
-                        final outcome = planSquadDrop(
-                          formation: formation,
-                          squad: assignments,
-                          dragged: held,
-                          target: SquadDropTarget.xiSlot(slot),
-                        );
-                        if (outcome.isAccepted) {
-                          heldAsk = held.position;
-                        } else {
-                          heldProblem = outcome.rejection;
-                        }
-                      }
+                      final dragSlot = dragLayout?.slots[slot];
+                      final heldHere = dragSlot?.isHeld ?? false;
+                      // During a drag the occupied cards keep their men;
+                      // the held man's own slot and every place the shape
+                      // now asks for and nobody fills render a
+                      // placeholder naming the position.
+                      final showCard = card != null && !heldHere;
                       return AnimatedPositioned(
                         key: ValueKey('slot-$slot'),
                         duration: const Duration(milliseconds: 650),
@@ -211,17 +248,26 @@ class SquadPitch extends StatelessWidget {
                         left: box.left,
                         top: box.top,
                         width: box.width,
-                        // A held player can be dropped on any slot: onto a
-                        // player (swap) or onto an empty slot (move, which
+                        // A held player can be dropped on any place: onto a
+                        // player (swap) or onto an empty place (which
                         // redefines the slot — custom formation).
-                        child: card == null
+                        child: !showCard
                             ? SquadDropZone(
-                                target: SquadDropTarget.xiSlot(slot),
+                                target: SquadDropTarget.xiSlot(
+                                  slot,
+                                  position: dragSlot?.position ?? fs.position,
+                                ),
                                 child: _EmptySlot(
-                                  position: fs.position,
+                                  position: dragSlot?.position ?? fs.position,
                                   width: cardW,
-                                  heldPosition: heldAsk,
-                                  heldProblem: heldProblem,
+                                  heldPosition: held != null &&
+                                      dragLayout!.isLegal
+                                  ? held.position
+                                  : null,
+                                  heldProblem: held == null
+                                      ? null
+                                      : dragLayout!.problem,
+                                  highlighted: heldHere,
                                 ),
                               )
                             : showCondition && card.injuryMatchesRemaining > 0
@@ -300,6 +346,81 @@ class SquadPitch extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                      );
+                    }(),
+                  // The SPARE places (owner request 2026-11-13): the
+                  // positions the mix may still take that the shape
+                  // does not field — the RB of a 3-4-3, a second ST
+                  // of a one-striker shape. Each renders as a
+                  // placeholder at its own anchor, pushed to the
+                  // EDGE of its line (left edge for left-side
+                  // positions, right for right, centre positions sit
+                  // just outside the widest card of their line) so it
+                  // never fights the shape's own cards for space.
+                  for (final extra in extraPlaces)
+                    () {
+                      final margin = kPitchMargin + 4.0;
+                      final sw = layout.slotWidth;
+                      final sh = layout.slotHeight;
+                      // The line this position's depth belongs to:
+                      // the solved row whose mean y is nearest.
+                      var nearest = 0;
+                      var best = double.infinity;
+                      for (var r = 0; r < layout.rows.length; r++) {
+                        final row = layout.rows[r];
+                        var mean = 0.0;
+                        for (final s in row) {
+                          mean += effectiveFormation.slots[s].y;
+                        }
+                        mean /= row.length;
+                        final d = (mean - extra.y).abs();
+                        if (d < best) {
+                          best = d;
+                          nearest = r;
+                        }
+                      }
+                      final top = layout.boxes[layout.rows[nearest].first].top;
+                      // Left positions hug the left edge, right
+                      // positions the right edge, centre positions
+                      // the edge of their side of the ball.
+                      final leftSide = switch (extra.position) {
+                        Position.lb ||
+                        Position.lw ||
+                        Position.lm => true,
+                        Position.rb ||
+                        Position.rw ||
+                        Position.rm => false,
+                        _ => extra.x < 50,
+                      };
+                      final left = leftSide
+                          ? margin
+                          : pw - margin - sw;
+                      return Positioned(
+                        key: ValueKey('extra-${extra.position.code}'),
+                        left: left,
+                        top: top.clamp(margin, ph - margin - sh),
+                        width: sw,
+                        height: sh,
+                        child: SquadDropZone(
+                          target: SquadDropTarget.xiSlot(
+                            // The slot index is a placeholder — the
+                            // resolver in squad_swap.dart maps the
+                            // POSITION to the real slot; 1 is a safe
+                            // non-GK stand-in.
+                            1,
+                            position: extra.position,
+                          ),
+                          child: _EmptySlot(
+                            position: extra.position,
+                            width: cardW,
+                            heldPosition: held != null && dragLayout!.isLegal
+                                ? held.position
+                                : null,
+                            heldProblem: held == null
+                                ? null
+                                : dragLayout!.problem,
+                          ),
+                        ),
                       );
                     }(),
                 ],
@@ -539,27 +660,30 @@ Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
   upgradeLevel: card.upgradeLevel,
 );
 
-/// An unassigned formation slot: a ghost mini card — the exact shape,
+/// An unassigned formation place: a ghost mini card — the exact shape,
 /// size and layout of a filled one (same painter silhouette, same text
 /// slots) rendered see-through with no overall or name, so the pitch
 /// reads as a full formation with the empty places still holding
 /// their card footprints.
 ///
-/// Custom formations (2026-11-12): the ghost also names the position
-/// the place CURRENTLY asks for (the slot's ask — what a drop there
-/// would redefine), and while a player is held the ask becomes the
-/// held player's own position when the drop would build a legal shape,
-/// or the reason it would not (caps exceeded / keeper's slot) when it
-/// would not.
+/// Custom formations (owner request 2026-11-13): while a player is
+/// held, the whole shape re-spreads and EVERY free place of the new
+/// mix shows its position placeholder (not just the starting XI's own
+/// empty slots) — positions the current shape does not field at all
+/// included. The [heldPosition] preview applies to all of them: the
+/// drop fills the place with that position when the caps allow it,
+/// [heldProblem] names the reason when they do not, and [highlighted]
+/// marks the held man's OWN place (the natural drop-back spot).
 class _EmptySlot extends StatelessWidget {
   const _EmptySlot({
     required this.position,
     required this.width,
     this.heldPosition,
     this.heldProblem,
+    this.highlighted = false,
   });
 
-  /// What the slot asks for right now.
+  /// What the place asks for right now.
   final Position position;
 
   final double width;
@@ -567,15 +691,19 @@ class _EmptySlot extends StatelessWidget {
   /// The held player's position while a drag is live, else null.
   final Position? heldPosition;
 
-  /// Why the held player may NOT take this slot (caps / keeper law),
+  /// Why the held player may NOT take this place (caps / keeper law),
   /// or null when he may.
   final String? heldProblem;
+
+  /// True for the held man's own place while his drag is live — the
+  /// place he came from, the natural spot to drop him back.
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     final ask = heldPosition ?? position;
     return Opacity(
-      opacity: 0.45,
+      opacity: highlighted ? 0.9 : 0.45,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -587,7 +715,7 @@ class _EmptySlot extends StatelessWidget {
             width: width,
             ghost: true,
           ),
-          // The position chip floating over the ghost: the slot's ask
+          // The position chip floating over the ghost: the place's ask
           // (or the held player's position while a drag is live and
           // legal — the "what this drop builds" preview).
           Positioned.fill(
@@ -601,6 +729,8 @@ class _EmptySlot extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: heldProblem != null
                         ? const Color(0x99B3261E)
+                        : highlighted
+                        ? Colors.white.withValues(alpha: 0.92)
                         : heldPosition != null
                         ? FcmColors.gold.withValues(alpha: 0.92)
                         : Colors.black.withValues(alpha: 0.55),
@@ -608,8 +738,10 @@ class _EmptySlot extends StatelessWidget {
                     border: Border.all(
                       color: heldProblem != null
                           ? Colors.white.withValues(alpha: 0.8)
+                          : highlighted
+                          ? FcmColors.gold
                           : Colors.white.withValues(alpha: 0.25),
-                      width: 1,
+                      width: highlighted ? 2 : 1,
                     ),
                   ),
                   child: Text(
@@ -620,7 +752,9 @@ class _EmptySlot extends StatelessWidget {
                         : ask.code,
                     maxLines: 1,
                     style: TextStyle(
-                      color: heldProblem != null ? Colors.white : FcmColors.gold,
+                      color: heldProblem != null || highlighted
+                          ? FcmColors.ink
+                          : FcmColors.gold,
                       fontSize: 10.5,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.6,

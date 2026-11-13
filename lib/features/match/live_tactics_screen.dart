@@ -2,10 +2,12 @@
 ///
 /// The tactics button in the live match header opens THIS: the same
 /// tactics surface the user knows from the pre-match phase and the
-/// Team tab — control card with formation / custom tactics / mentality
-/// (with their visible effects), the pitch with the CURRENT XI at
-/// formation coordinates and live stamina bars, and the bench strip.
-/// No reserves here: a live match only has the XI and the bench.
+/// Team tab — control card with formation / custom tactics (with
+/// their visible effects), the pitch with the CURRENT XI at formation
+/// coordinates and live stamina bars, and the bench strip. No
+/// reserves here: a live match only has the XI and the bench. The
+/// mentality is edited on the live panel's own ladder, not here
+/// (owner request 2026-11-13).
 ///
 /// Every change queues for the next minute boundary; the match clock
 /// is held while the editor is open. Substitutions run through the
@@ -64,7 +66,6 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
     final onPitch = engine.onPitchOf(_side);
     final bench = engine.benchOf(_side);
     final tactics = engine.tacticsOf(_side);
-    final mentality = engine.mentalityOf(_side);
     final nextMinute = widget.minuteQueuedFrom;
 
     // The live XI as display cards: real overall, live stamina — what
@@ -145,7 +146,6 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
               TacticsSetupView(
                 formation: formationOfCode(formationCode),
                 tactics: tactics,
-                mentality: mentality,
                 xi: xiCards,
                 bench: benchCards,
                 reserves: const [],
@@ -161,13 +161,6 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                     atMinute: nextMinute,
                     side: _side,
                     tactics: t,
-                  ),
-                ),
-                onMentality: (m) => _queue(
-                  ChangeMentalityCommand(
-                    atMinute: nextMinute,
-                    side: _side,
-                    mentality: m,
                   ),
                 ),
                 showStamina: true,

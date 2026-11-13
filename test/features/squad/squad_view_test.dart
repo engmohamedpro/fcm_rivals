@@ -90,13 +90,11 @@ Widget _host({
       child: TacticsSetupView(
         formation: formationByCode('4-3-3'),
         tactics: const TeamTactics(),
-        mentality: Mentality.balanced,
         xi: xi,
         bench: bench ?? const [],
         reserves: const [],
         onFormation: (_) {},
         onTactics: (_) {},
-        onMentality: (_) {},
         onAutoPick: () {},
         showStamina: showStamina,
         showStats: showStats,
@@ -270,10 +268,8 @@ void main() {
     expect(find.text('DEF'), findsNothing);
   });
 
-  testWidgets('tactic options sheet: formation absent, mentality is the '
-      '0-100 scale slider with a floating step label', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('tactic options sheet: three tabs, no mentality, one '
+      'group per tab', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -287,9 +283,7 @@ void main() {
                   onPressed: () => showTacticsOptionsSheet(
                     context,
                     tactics: const TeamTactics(),
-                    mentality: Mentality.balanced,
                     onTactics: (_) {},
-                    onMentality: (_) {},
                   ),
                 ),
               );
@@ -302,47 +296,34 @@ void main() {
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
 
-    // The sheet holds the three custom-tactics sections and the
-    // mentality SCALE — the formation is not here (it lives on the
-    // control card).
+    // The sheet is TABBED now (owner request 2026-11-13): the three
+    // instruction groups live on their own tabs, the mentality is GONE
+    // entirely, and the formation is not here (it lives on the control
+    // card).
     expect(find.text('TACTIC OPTIONS'), findsOneWidget);
-    expect(find.text('MENTALITY'), findsOneWidget);
-    // The eleven 0-99 tactic sliders plus the mentality scale.
-    expect(find.byType(FcmScaleSlider), findsNWidgets(12));
-    expect(find.byType(TacticsGroupScaffold), findsOneWidget);
+    expect(find.byType(TabBar), findsOneWidget);
     expect(find.text('In Possession'), findsOneWidget);
     expect(find.text('Out of Possession'), findsOneWidget);
     expect(find.text('Transitions'), findsOneWidget);
+    expect(find.textContaining('MENTALITY'), findsNothing);
     expect(find.textContaining('FORMATION'), findsNothing);
+    // Only the FIRST tab's sliders render (five of the eleven axes).
+    expect(find.byType(FcmScaleSlider), findsNWidgets(5));
 
-    // Dead centre default: the mentality slider (the FIRST of the
-    // twelve) shows 50 and its pill reads Balanced. Scoped to that
-    // slider so the other pills can never disturb it.
-    expect(
-      find.descendant(
-        of: find.byType(FcmScaleSlider).first,
-        matching: find.text('Balanced'),
-      ),
-      findsOneWidget,
-    );
-    // 'Balanced' appears inside the tactics scaffold at the defaults on
-    // the final-third (shot selection), tackling, counter-press and
-    // on-recovery slider PILLS. Scoped to the scaffold: it can never
-    // touch the mentality pill above.
-    expect(
-      find.descendant(
-        of: find.byType(TacticsGroupScaffold),
-        matching: find.text('Balanced'),
-      ),
-      findsNWidgets(4),
-    );
-    // Every group ships real controls at its defaults — no section
-    // renders a placeholder state line any more.
-    expect(find.text('Default setup'), findsNothing);
+    // Switching tabs swaps the group: Out of Possession carries the
+    // defensive line / pressing / tackling sliders plus the offside
+    // toggle.
+    await tester.tap(find.text('Out of Possession'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FcmScaleSlider), findsNWidgets(3));
+    expect(find.text('Off'), findsOneWidget);
 
-    // DONE sits below the fold of the scrollable sheet on the default
-    // test viewport (ten sliders tall since T-0064) — reveal it, then
-    // tap.
+    // Transitions: counter-press, attack on recovery, rest defence.
+    await tester.tap(find.text('Transitions'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FcmScaleSlider), findsNWidgets(3));
+
+    // DONE closes the sheet.
     await tester.ensureVisible(find.text('DONE'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('DONE'));
@@ -372,9 +353,7 @@ void main() {
                     onPressed: () => showTacticsOptionsSheet(
                       context,
                       tactics: const TeamTactics(),
-                      mentality: Mentality.balanced,
                       onTactics: (_) {},
-                      onMentality: (_) {},
                     ),
                   ),
                 );
@@ -410,85 +389,6 @@ void main() {
     },
   );
 
-  testWidgets('sliding the mentality scale commits the landed-on step '
-      'once per gesture', (WidgetTester tester) async {
-    // The sheet now carries the In Possession controls too, so it is
-    // taller than the default test viewport — give the test a tall
-    // screen so the whole sheet (slider included) renders unscrolled.
-    tester.view.physicalSize = const Size(1600, 3600);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(tester.view.reset);
-    // The committed steps, in drag order.
-    final committed = <Mentality>[];
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          backgroundColor: Colors.black,
-          body: Builder(
-            builder: (context) {
-              return Center(
-                child: FcmButton(
-                  compact: true,
-                  label: 'TACTICS',
-                  onPressed: () => showTacticsOptionsSheet(
-                    context,
-                    tactics: const TeamTactics(),
-                    mentality: Mentality.balanced,
-                    onTactics: (_) {},
-                    onMentality: committed.add,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    await tester.tap(find.text('TACTICS'));
-    await tester.pumpAndSettle();
-
-    // The sheet holds twelve 0-99 sliders — the mentality one is the
-    // FIRST, above the scaffold's eleven tactic sliders.
-    final slider = find.byType(FcmScaleSlider).first;
-    // Reveal it before measuring and dragging.
-    await tester.ensureVisible(slider);
-    await tester.pumpAndSettle();
-    final track = tester.getRect(slider);
-
-    // Drag from centre to ~100 (Very Attacking): ONE commit at the end
-    // of the gesture, never per intermediate tick. The drag path
-    // crosses other steps on the way.
-    final center = Offset(
-      track.left + track.width / 2,
-      track.top + track.height / 2,
-    );
-    await tester.dragFrom(center, Offset(track.width / 2, 0));
-    await tester.pumpAndSettle();
-    expect(committed, isNotEmpty);
-    expect(committed.last, Mentality.veryAttacking);
-    // The floating label followed the marker: the pill above the thumb
-    // describes the number.
-    expect(find.text('Very attacking'), findsOneWidget);
-    // No mentality pill still reads Balanced (the STYLE dropdown's
-    // 'Balanced' label is unrelated and stays).
-    expect(
-      find.descendant(of: slider, matching: find.text('Balanced')),
-      findsNothing,
-    );
-
-    // A drag that lands back on the same step never re-commits it.
-    final right = Offset(track.right - 12, track.top + track.height / 2);
-    await tester.dragFrom(right, const Offset(6, 0));
-    await tester.pumpAndSettle();
-    expect(committed, [Mentality.veryAttacking]);
-
-    // Drag to the far left (0): Very Defensive commits.
-    await tester.dragFrom(right, Offset(-(track.width - 24), 0));
-    await tester.pumpAndSettle();
-    expect(committed, [Mentality.veryAttacking, Mentality.veryDefensive]);
-  });
-
   testWidgets('T-0064: nine axis sliders + final-third chips + offside '
       'toggle + readouts all render, no overflow', (tester) async {
     tester.view.physicalSize = const Size(1600, 4000);
@@ -507,9 +407,7 @@ void main() {
                   onPressed: () => showTacticsOptionsSheet(
                     context,
                     tactics: const TeamTactics(),
-                    mentality: Mentality.balanced,
                     onTactics: (_) {},
-                    onMentality: (_) {},
                   ),
                 ),
               );
@@ -522,10 +420,11 @@ void main() {
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
 
-    // The eleven axes + mentality = twelve sliders; the sheet lives
-    // inside its 0.85-height cap with every row expanded (no overflow
-    // exception escapes the pump).
-    expect(find.byType(FcmScaleSlider), findsNWidgets(12));
+    // Tabbed (owner request 2026-11-13): only the FIRST tab's five
+    // sliders render at once; the sheet lives inside its height cap
+    // with every row expanded (no overflow exception escapes the
+    // pump).
+    expect(find.byType(FcmScaleSlider), findsNWidgets(5));
     expect(tester.takeException(), isNull);
 
     // The final third stays a categorical CHIP row: all four styles
@@ -569,9 +468,7 @@ void main() {
                   onPressed: () => showTacticsOptionsSheet(
                     context,
                     tactics: const TeamTactics(),
-                    mentality: Mentality.balanced,
                     onTactics: committed.add,
-                    onMentality: (_) {},
                   ),
                 ),
               );
@@ -584,8 +481,12 @@ void main() {
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
 
-    // The pressing axis is the fifth slider (Out of Possession).
-    final pressing = find.byType(FcmScaleSlider).at(4);
+    // The pressing axis lives on the Out of Possession tab (owner
+    // request 2026-11-13) — switch there first; it is the second
+    // slider of the tab (defensive line, pressing, tackling).
+    await tester.tap(find.text('Out of Possession'));
+    await tester.pumpAndSettle();
+    final pressing = find.byType(FcmScaleSlider).at(1);
     await tester.ensureVisible(pressing);
     await tester.pumpAndSettle();
     final track = tester.getRect(pressing);
@@ -651,9 +552,7 @@ void main() {
                   onPressed: () => showTacticsOptionsSheet(
                     context,
                     tactics: const TeamTactics(),
-                    mentality: Mentality.balanced,
                     onTactics: committed.add,
-                    onMentality: (_) {},
                   ),
                 ),
               );
@@ -710,9 +609,7 @@ void main() {
                   onPressed: () => showTacticsOptionsSheet(
                     context,
                     tactics: const TeamTactics(),
-                    mentality: Mentality.balanced,
                     onTactics: committed.add,
-                    onMentality: (_) {},
                   ),
                 ),
               );
@@ -775,9 +672,7 @@ void main() {
                   onPressed: () => showTacticsOptionsSheet(
                     context,
                     tactics: const TeamTactics(),
-                    mentality: Mentality.balanced,
                     onTactics: committed.add,
-                    onMentality: (_) {},
                   ),
                 ),
               );
@@ -790,19 +685,15 @@ void main() {
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
 
-    // Arabic ambient direction: the mentality pill reads the localized
-    // 'متوازن' at the default, and the scale's safe end label is the
-    // localized 'دفاعي للغاية' (T-0064 requirement 6). Since T-0065
-    // localized every step name, 'متوازن' also names the tackling /
-    // counter-press / attack-on-recovery pills at their defaults —
-    // assert them scoped to their sliders instead of globally unique.
+    // Arabic ambient direction, tabbed sheet (owner request
+    // 2026-11-13): the first tab's sliders read their localized pills
+    // — 'متوازن' names the shot-selection pill at its default — and
+    // the localized band extremes render on every scale.
     expect(
-      find.descendant(of: find.byType(FcmScaleSlider).at(9),
+      find.descendant(of: find.byType(FcmScaleSlider).at(3),
           matching: find.text('متوازن')),
       findsOneWidget,
     );
-    expect(find.text('دفاعي للغاية'), findsOneWidget);
-    expect(find.text('هجومي للغاية'), findsOneWidget);
 
     // T-0065: the nine axis labels read Arabic in the sheet — the
     // pressing row's label (uppercased by _SliderRow).
@@ -820,11 +711,14 @@ void main() {
       findsNothing,
     );
 
-    // The pressing slider mirrors: the aggressive (max) end sits at the
-    // LEFT, so dragging LEFT from the centre commits the same High
-    // Press enum as the LTR drag to the right. Its default pill reads
-    // the localized 'متوسط' (T-0065).
-    final pressing = find.byType(FcmScaleSlider).at(4);
+    // The pressing slider lives on the Out of Possession tab — switch
+    // there first; it is the tab's second slider. It mirrors: the
+    // aggressive (max) end sits at the LEFT, so dragging LEFT from the
+    // centre commits the same High Press enum as the LTR drag to the
+    // right. Its default pill reads the localized 'متوسط' (T-0065).
+    await tester.tap(find.text('بدون الاستحواذ'));
+    await tester.pumpAndSettle();
+    final pressing = find.byType(FcmScaleSlider).at(1);
     await tester.ensureVisible(pressing);
     await tester.pumpAndSettle();
     expect(

@@ -41,13 +41,13 @@ class TacticsGroupScaffold extends StatelessWidget {
         _Section(
           icon: Icons.sports_soccer_rounded,
           title: l10n.tacticsInPossessionTitle,
-          child: _InPossessionControls(tactics: tactics, onChanged: onChanged),
+          child: InPossessionControls(tactics: tactics, onChanged: onChanged),
         ),
         const SizedBox(height: 12),
         _Section(
           icon: Icons.shield_rounded,
           title: l10n.tacticsOutOfPossessionTitle,
-          child: _OutOfPossessionControls(
+          child: OutOfPossessionControls(
             tactics: tactics,
             onChanged: onChanged,
           ),
@@ -56,7 +56,7 @@ class TacticsGroupScaffold extends StatelessWidget {
         _Section(
           icon: Icons.swap_horiz_rounded,
           title: l10n.tacticsTransitionsTitle,
-          child: _TransitionsControls(tactics: tactics, onChanged: onChanged),
+          child: TransitionsControls(tactics: tactics, onChanged: onChanged),
         ),
       ],
     );
@@ -118,8 +118,8 @@ class _Section extends StatelessWidget {
 
 /// In Possession instruction controls: build-up, tempo, width, final
 /// third and crossing — five 0–99 sliders.
-class _InPossessionControls extends StatelessWidget {
-  const _InPossessionControls({required this.tactics, required this.onChanged});
+class InPossessionControls extends StatelessWidget {
+  const InPossessionControls({required this.tactics, required this.onChanged});
 
   final TeamTactics tactics;
   final ValueChanged<TeamTactics> onChanged;
@@ -209,8 +209,8 @@ class _OptionChip extends StatelessWidget {
 /// the defensive line is Deep — a deep trap has no benefit, only risk,
 /// and the UI must teach that trade-off (GDD 10.3). The trap is on or
 /// off, not a scale, so it stays a switch.
-class _OutOfPossessionControls extends StatelessWidget {
-  const _OutOfPossessionControls({
+class OutOfPossessionControls extends StatelessWidget {
+  const OutOfPossessionControls({
     required this.tactics,
     required this.onChanged,
   });
@@ -296,8 +296,8 @@ class _OutOfPossessionControls extends StatelessWidget {
 
 /// Transitions instruction controls: counter-press, attack on recovery
 /// and rest defence — three 0–99 sliders.
-class _TransitionsControls extends StatelessWidget {
-  const _TransitionsControls({required this.tactics, required this.onChanged});
+class TransitionsControls extends StatelessWidget {
+  const TransitionsControls({required this.tactics, required this.onChanged});
 
   final TeamTactics tactics;
   final ValueChanged<TeamTactics> onChanged;

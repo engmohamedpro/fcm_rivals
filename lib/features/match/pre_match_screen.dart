@@ -10,10 +10,12 @@
 ///      and the opponent's top three players as collection-style cards,
 ///      each staggering in. Widgets live in `pre_match_analysis.dart`.
 ///   3. Tactics phase  — the SAME tactics screen as the Team tab
-///      (formation, custom tactics and mentality with visible
-///      percentage effects, pitch with stamina bars, bench and reserves),
-///      except the changes apply to THIS MATCH ONLY: the club's saved
-///      default setup is never touched (GDD 10.4 match-specific setup).
+///      (formation and custom tactics with visible percentage
+///      effects, pitch with stamina bars, bench and reserves), except
+///      the changes apply to THIS MATCH ONLY: the club's saved default
+///      setup is never touched (GDD 10.4 match-specific setup). The
+///      mentality is not edited here (owner request 2026-11-13) — the
+///      club's saved value kicks off and the live panel may change it.
 ///   4. Pep talk phase — one motivational choice (GDD 15.1) with its
 ///      visible percentage effects; selecting one plays a short confirm
 ///      burst. Phase widgets live in `pre_match_phases.dart`
@@ -80,7 +82,6 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
   MatchPepTalk? _selectedTalk;
   late String _formationCode = widget.data.userFormationCode;
   late TeamTactics _tactics = widget.data.userTactics;
-  late Mentality _mentality = widget.data.userMentality;
 
   void _nextPhase() {
     HapticFeedback.selectionClick();
@@ -98,7 +99,6 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
       PreMatchTacticSelection(
         formationCode: _formationCode,
         tactics: _tactics,
-        mentality: _mentality,
       ),
     );
     widget.onKickOff(_selectedTalk);
@@ -140,11 +140,9 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                       data: d,
                       formationCode: _formationCode,
                       tactics: _tactics,
-                      mentality: _mentality,
                       onFormation: (code) =>
                           setState(() => _formationCode = code),
                       onTactics: (t) => setState(() => _tactics = t),
-                      onMentality: (m) => setState(() => _mentality = m),
                       // T-0118: the matchday Auto Pick — the projection
                       // is deterministic (saved squad + fitness-aware
                       // policy), so the tap re-asserts the fittest legal

@@ -286,10 +286,10 @@ Formation formationByCode(String code) => formations.firstWhere(
 const String kCustomFormationPrefix = 'C|';
 
 /// How many slots a custom formation's position mix may carry (the
-/// owner's exact ladder, 2026-11-12). GK is exactly 1 — the keeper's
-/// slot never changes. LM/RM get 0-1: the dataset carries 393 LM and
-/// 457 RM players and the preset shapes use them as wide men, so a
-/// custom shape may field one of each.
+/// owner's exact ladder, 2026-11-13): GK exactly 1, CB exactly 2 or 3,
+/// ST/CAM up to 2, CM/CDM up to 3, one wide man per wing at most
+/// (LW/RW/LM/RM/LB/RB). The minima are part of the law: a back line
+/// without a CB pair is not a shape anyone may field.
 const Map<Position, (int min, int max)> positionCaps = {
   Position.gk: (1, 1),
   Position.st: (0, 2),
@@ -300,7 +300,7 @@ const Map<Position, (int min, int max)> positionCaps = {
   Position.cam: (0, 2),
   Position.cm: (0, 3),
   Position.cdm: (0, 3),
-  Position.cb: (0, 3),
+  Position.cb: (2, 3),
   Position.rb: (0, 1),
   Position.lb: (0, 1),
 };
@@ -331,33 +331,88 @@ String? customFormationProblem(List<Position> positions) {
   return null;
 }
 
-/// The canonical pitch anchors a custom formation places its slots at,
-/// keyed by (position, occurrence index) — first CB, second CB, third
-/// CB. Multiple slots of one position share a symmetric spread around
-/// the position's home x, so two STs read as a strike PAIR, three CBs
-/// as a back three, whatever slots they landed in.
+/// The pitch anchor (x, y) of one [position] place: [index]-th player
+/// of [count] teammates in the same position. The spread rules (owner
+/// request 2026-11-13): a LONE player of a position stands at the
+/// position's home x — CENTRED (a lone striker at 50, a lone CAM at
+/// 50, never off to one side); a PAIR spreads symmetrically beside the
+/// centre (a strike pair at 40/60, two CAMs at 40/60, two CMs at
+/// 32/68); a TRIO spreads as a left-centre-right line (a back three at
+/// 28/50/72, three CMs at 22/50/78 — count 3 is capped at 2 for ST
+/// and CAM, so a trio only ever happens for CB/CM/CDM). Depth (y) is
+/// the position's rung on the shared ladder, so every line keeps its
+/// role depth whatever the mix.
 ///
-/// The x/y values follow the same depth ladder and symmetry rules the
-/// preset formations use (see the ladder above), so a custom shape
-/// looks native on the pitch.
-const Map<Position, List<(double x, double y)>> _customAnchors = {
-  // The keeper: home, exactly one, slot 0.
-  Position.gk: [(50, _gkY)],
-  // Back line.
-  Position.cb: [(36, _cbY), (64, _cbY), (50, _cbMidY)],
-  Position.lb: [(14, _fbY)],
-  Position.rb: [(86, _fbY)],
-  // Midfield.
-  Position.cdm: [(36, _cdmY), (64, _cdmY), (50, _cdmY)],
-  Position.cm: [(32, _cmY), (68, _cmY), (50, _cmY)],
-  Position.cam: [(32, _camY), (68, _camY), (50, _camY)],
-  Position.lm: [(12, _wbY)],
-  Position.rm: [(88, _wbY)],
-  // Attack.
-  Position.lw: [(16, _lwY)],
-  Position.rw: [(84, _lwY)],
-  Position.st: [(40, _stY), (60, _stY)],
-};
+/// Public because the drag layout (`squad_swap.dart`) re-spreads the
+/// live mix with the same rules while a player is held.
+(double, double) customAnchors(Position position, int index, int count) {
+  // The spread ladder by count (owner request 2026-11-13): ONE player
+  // of a position stands dead centre; TWO spread symmetrically beside
+  // the centre; THREE line up left-centre-right. Counts above three
+  // never happen (the caps cap them).
+  final spread = <Position, Map<int, List<double>>>{
+    Position.gk: {
+      1: [50],
+    },
+    Position.cb: {
+      2: [28, 72],
+      3: [28, 50, 72],
+    },
+    Position.cdm: {
+      1: [50],
+      2: [32, 68],
+      3: [22, 50, 78],
+    },
+    Position.cm: {
+      1: [50],
+      2: [32, 68],
+      3: [22, 50, 78],
+    },
+    Position.cam: {
+      1: [50],
+      2: [32, 68],
+      // A third CAM never fields (cap 2) — the pair is the widest.
+    },
+    Position.st: {
+      1: [50],
+      2: [40, 60],
+      // A third ST never fields (cap 2).
+    },
+    // Wide men: the wing's own side, exactly one each.
+    Position.lb: {
+      1: [14],
+    },
+    Position.rb: {
+      1: [86],
+    },
+    Position.lw: {
+      1: [16],
+    },
+    Position.rw: {
+      1: [84],
+    },
+    Position.lm: {
+      1: [12],
+    },
+    Position.rm: {
+      1: [88],
+    },
+  };
+  final xs = spread[position]?[count.clamp(1, 3)] ?? [50];
+  final x = xs[index.clamp(0, xs.length - 1)];
+  final y = switch (position) {
+    Position.gk => _gkY,
+    Position.cb => index == 1 && count == 3 ? _cbMidY : _cbY,
+    Position.lb || Position.rb => _fbY,
+    Position.lw || Position.rw => _lwY,
+    Position.lm || Position.rm => _wbY,
+    Position.cdm => _cdmY,
+    Position.cm => _cmY,
+    Position.cam => _camY,
+    Position.st => _stY,
+  };
+  return (x, y);
+}
 
 /// Builds the custom formation for [positions] (XI slot order, GK
 /// first). The 11 slots keep the PITCH PLACES of the base shape the
@@ -374,15 +429,19 @@ Formation? customFormation(List<Position> positions) {
   final problem = customFormationProblem(positions);
   if (problem != null) return null;
 
-  // The occurrence index of each position so far — the anchor table
-  // spreads same-position slots symmetrically (first CB left, second
+  // The occurrence index of each position so far — the anchor spread
+  // places same-position slots symmetrically (first CB left, second
   // right, third centre).
   final seen = <Position, int>{};
+  final counts = <Position, int>{};
+  for (final p in positions) {
+    counts.update(p, (n) => n + 1, ifAbsent: () => 1);
+  }
   final slots = <FormationSlot>[];
   for (final p in positions) {
     final n = seen.update(p, (v) => v + 1, ifAbsent: () => 0);
-    final anchor = _customAnchors[p]![n.clamp(0, _customAnchors[p]!.length - 1)];
-    slots.add(FormationSlot(p, anchor.$1, anchor.$2));
+    final (x, y) = customAnchors(p, n, counts[p]!);
+    slots.add(FormationSlot(p, x, y));
   }
 
   // The code the formation serialises to. Positions in slot order,

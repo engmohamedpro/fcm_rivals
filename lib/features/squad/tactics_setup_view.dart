@@ -12,23 +12,22 @@ import 'package:flutter/material.dart';
 
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_context.dart';
 import '../match/chemistry.dart';
 import '../match/tactics.dart';
-import '../match/tactic_slider_row.dart';
-import '../match/tactics_sections.dart';
 import 'formations.dart';
 import 'squad_drag.dart';
 import 'squad_engine.dart';
 import 'squad_pitch_view.dart';
 import 'squad_swap.dart' show SquadDropTarget, SquadZone;
+import '../match/tactics_sections.dart'
+    show InPossessionControls, OutOfPossessionControls, TransitionsControls;
 
 /// The whole tactical setup column: the control card (the setup row —
-/// formation, playing style, mentality — closed by the team rating, with
-/// the Auto Pick and TACTICS actions under it), the pitch with the
-/// starting XI (stamina bars and stat rows only when [showStamina] /
-/// [showStats] ask for them), then the bench and reserves strips.
+/// tactics, formation — closed by the team rating, with the Auto Pick
+/// and TACTICS actions under it), the pitch with the starting XI
+/// (stamina bars and stat rows only when [showStamina] / [showStats]
+/// ask for them), then the bench and reserves strips.
 ///
 /// [formation] is the RESOLVED formation object (preset or custom —
 /// see formations.dart): since the custom-formation feature the shape
@@ -41,13 +40,11 @@ class TacticsSetupView extends StatelessWidget {
     super.key,
     required this.formation,
     required this.tactics,
-    required this.mentality,
     required this.xi,
     required this.bench,
     required this.reserves,
     required this.onFormation,
     required this.onTactics,
-    required this.onMentality,
     this.onAutoPick,
     this.onClear,
     this.poolTitle,
@@ -67,9 +64,11 @@ class TacticsSetupView extends StatelessWidget {
   /// The club's current formation — a preset or the custom shape.
   final Formation formation;
 
-  /// Current custom tactics / mentality selections (GDD 10.2/10.3).
+  /// Current custom tactics selection (GDD 10.2). The mentality is no
+  /// longer part of the SETUP surface (owner request 2026-11-13): it
+  /// stays an engine value (live panel ladder, AI, saved column) and
+  /// is simply not edited here.
   final TeamTactics tactics;
-  final Mentality mentality;
 
   /// Starting XI assignments: slot index → card.
   final Map<int, PlayerCard> xi;
@@ -82,7 +81,6 @@ class TacticsSetupView extends StatelessWidget {
   /// (Team tab) or apply to one match only (pre-match phase).
   final ValueChanged<String> onFormation;
   final ValueChanged<TeamTactics> onTactics;
-  final ValueChanged<Mentality> onMentality;
 
   /// Shows the Auto Pick button (GDD 6.3) when non-null — the Team tab
   /// persists a re-picked squad; pre-match hides it.
@@ -130,10 +128,10 @@ class TacticsSetupView extends StatelessWidget {
   /// editor hides it — a match day squad has nobody beyond the bench.
   final bool showReserves;
 
-  /// Whether the control card opens with the three-part setup summary
-  /// row — TACTICS / MENTALITY / TEAM RATING (T-0092): the Team tab
-  /// drops it (the pitch already tells the rating story), while the
-  /// pre-match and live surfaces keep the default and the row.
+  /// Whether the control card opens with the setup summary row —
+  /// TACTICS / FORMATION (T-0092, mentality dropped 2026-11-13): the
+  /// Team tab drops it (the pitch already tells the rating story),
+  /// while the pre-match and live surfaces keep the row.
   final bool showSetupSummary;
 
   /// Opens the player detail sheet; null makes the cards non-tappable.
@@ -184,7 +182,6 @@ class TacticsSetupView extends StatelessWidget {
             chemistry: chemistry,
             formation: formation,
             tactics: tactics,
-            mentality: mentality,
             showSetupSummary: showSetupSummary,
             onFormation: onFormation,
             onAutoPick: onAutoPick == null
@@ -198,9 +195,7 @@ class TacticsSetupView extends StatelessWidget {
             onTactics: () => showTacticsOptionsSheet(
               context,
               tactics: tactics,
-              mentality: mentality,
               onTactics: onTactics,
-              onMentality: onMentality,
             ),
           ),
         ),
@@ -300,9 +295,9 @@ class TacticsSetupView extends StatelessWidget {
 }
 
 /// The single control card of the tactics screen. Its top row carries
-/// the setup summary — playing style, mentality — and closes with the
-/// team rating on the right; every block shrinks to fit, so the row
-/// never overflows. Under it the formation dropdown sits DIRECTLY on the
+/// the setup summary — tactics, formation — and closes with the team
+/// rating on the right; every block shrinks to fit, so the row never
+/// overflows. Under it the formation dropdown sits DIRECTLY on the
 /// card (one tap switches shape; the pitch below re-picks its slots),
 /// and the Auto Pick (when the surface owns squad persistence) and
 /// TACTICS buttons close the card on a full-width row.
@@ -312,7 +307,6 @@ class _ControlCard extends StatelessWidget {
     required this.chemistry,
     required this.formation,
     required this.tactics,
-    required this.mentality,
     required this.onFormation,
     required this.onTactics,
     this.onAutoPick,
@@ -335,7 +329,6 @@ class _ControlCard extends StatelessWidget {
   /// The club's resolved formation (preset or custom).
   final Formation formation;
   final TeamTactics tactics;
-  final Mentality mentality;
   final ValueChanged<String> onFormation;
   final VoidCallback? onTactics;
   final VoidCallback? onAutoPick;
@@ -346,7 +339,6 @@ class _ControlCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = l10nOf(context);
     final isCustom = isCustomFormationCode(formation.code);
     return FcmPanel(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -360,19 +352,16 @@ class _ControlCard extends StatelessWidget {
             children: [_rating(), const Spacer(), _chemistry()],
           ),
           const SizedBox(height: 10),
-          // The setup summary row (T-0092): Team tab opts out.
+          // The setup summary row (T-0092): Team tab opts out. The
+          // mentality chip is gone (owner request 2026-11-13) — the
+          // summary carries the tactics only, one strong block.
           if (showSetupSummary) ...[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Flexible(child: _info('TACTICS', tactics.label)),
               const SizedBox(width: 12),
-              Flexible(
-                child: _info(
-                  l10n.tacticsMentality.toUpperCase(),
-                  mentalityDisplayName(l10n, mentality),
-                ),
-              ),
+              Flexible(child: _info('FORMATION', formation.name)),
             ],
           ),
           const SizedBox(height: 8),
@@ -551,31 +540,18 @@ class _ControlCard extends StatelessWidget {
   );
 }
 
-/// A mentality's localized display name (T-0064): the seven steps read
-/// their ARB names in both locales — `Mentality.displayName` stays the
-/// engine-facing English constant and is no longer shown to the user.
-String mentalityDisplayName(AppLocalizations l10n, Mentality m) =>
-    switch (m) {
-      Mentality.veryDefensive => l10n.mentalityVeryDefensive,
-      Mentality.defensive => l10n.mentalityDefensive,
-      Mentality.cautious => l10n.mentalityCautious,
-      Mentality.balanced => l10n.mentalityBalanced,
-      Mentality.positive => l10n.mentalityPositive,
-      Mentality.attacking => l10n.mentalityAttacking,
-      Mentality.veryAttacking => l10n.mentalityVeryAttacking,
-    };
-
-/// Opens the tactic options sheet (GDD 10): the custom-tactics sections
-/// and the mentality scale slider — every option listing its visible
+/// Opens the tactic options sheet (GDD 10): the custom-tactics
+/// instructions split across three tabs — In Possession, Out of
+/// Possession and Transitions — every option listing its visible
 /// percentage effects. The formation lives directly on the control
-/// card, not here. Selections apply immediately through the owner's
-/// callbacks (mentality commits on drag release); DONE closes the sheet.
+/// card, not here; the mentality is GONE from this sheet (owner
+/// request 2026-11-13 — it stays an engine concern, set from the live
+/// match panel, and no longer clutters the setup). Selections apply
+/// immediately through the owner's callback; DONE closes the sheet.
 Future<void> showTacticsOptionsSheet(
   BuildContext context, {
   required TeamTactics tactics,
-  required Mentality mentality,
   required ValueChanged<TeamTactics> onTactics,
-  required ValueChanged<Mentality> onMentality,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -586,9 +562,7 @@ Future<void> showTacticsOptionsSheet(
     ),
     builder: (_) => _TacticsOptionsSheet(
       initialTactics: tactics,
-      initialMentality: mentality,
       onTactics: onTactics,
-      onMentality: onMentality,
     ),
   );
 }
@@ -596,51 +570,46 @@ Future<void> showTacticsOptionsSheet(
 class _TacticsOptionsSheet extends StatefulWidget {
   const _TacticsOptionsSheet({
     required this.initialTactics,
-    required this.initialMentality,
     required this.onTactics,
-    required this.onMentality,
   });
 
   final TeamTactics initialTactics;
-  final Mentality initialMentality;
   final ValueChanged<TeamTactics> onTactics;
-  final ValueChanged<Mentality> onMentality;
 
   @override
   State<_TacticsOptionsSheet> createState() => _TacticsOptionsSheetState();
 }
 
-class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
+class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet>
+    with SingleTickerProviderStateMixin {
   late TeamTactics _tactics = widget.initialTactics;
 
-  /// The last mentality handed to the owner — drags that stay inside
-  /// the same step never re-commit it. Mutable: it moves with every
-  /// committed drag.
-  late Mentality _committed;
+  /// The sheet's own tab controller (three tabs, no host above to
+  /// supply one — a bottom sheet lives outside any Scaffold's
+  /// DefaultTabController).
+  late final TabController _tabController = TabController(
+    length: 3,
+    vsync: this,
+  );
 
   @override
-  void initState() {
-    super.initState();
-    _committed = widget.initialMentality;
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
-  /// A released drag commits once: the fine position rides in the
-  /// tactics, and the step it landed on goes to the mentality when it
-  /// changed.
-  void _commitMentality(int scale) {
-    final m = mentalityOfScale(scale);
-    setState(() => _tactics = _tactics.withMentalityScale(scale));
-    widget.onTactics(_tactics);
-    if (m == _committed) return;
-    _committed = m;
-    widget.onMentality(m);
-  }
+  void _change(TeamTactics t) => setState(() {
+    _tactics = t;
+    widget.onTactics(t);
+  });
 
   @override
   Widget build(BuildContext context) {
-    // The three instruction sections plus the mentality scale can grow
-    // past the viewport (phases 1-3 add controls), so the sheet scrolls
-    // inside a height cap instead of overflowing.
+    // The three instruction groups each have their own tab now (owner
+    // request 2026-11-13): a tab bar under the title, one group per
+    // page, DONE closing the sheet. The sheet stays compact — one
+    // group fits the cap without scrolling most of the time.
+    final l10n = l10nOf(context);
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -648,58 +617,168 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet> {
           // pitch context visible behind it instead of a takeover.
           maxHeight: MediaQuery.sizeOf(context).height * 0.62,
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: FcmColors.bronze.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(3),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: FcmColors.bronze.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'TACTIC OPTIONS',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: FcmColors.gold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TabBar(
+              // The formation and mentality are both gone from here:
+              // one instruction group per tab, nothing else.
+              controller: _tabController,
+              tabs: [
+                Tab(
+                  icon: const Icon(Icons.sports_soccer_rounded, size: 16),
+                  text: l10n.tacticsInPossessionTitle,
                 ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'TACTIC OPTIONS',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: FcmColors.gold,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
+                Tab(
+                  icon: const Icon(Icons.shield_rounded, size: 16),
+                  text: l10n.tacticsOutOfPossessionTitle,
                 ),
-              ),
-              const SizedBox(height: 14),
-              // Mentality is the first slider: 0 Very Defensive … 99 Very
-              // Attacking, Balanced at 50, like every other tactic.
-              TacticSliderRow(
-                axis: TacticAxisId.mentality,
-                value: _tactics.mentalityScaleFor(_committed),
-                onCommit: _commitMentality,
-              ),
-              const SizedBox(height: 12),
-              TacticsGroupScaffold(
+                Tab(
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                  text: l10n.tacticsTransitionsTitle,
+                ),
+              ],
+            ),
+            // The pages: each tab shows its own group's controls in a
+            // scrollable pane (a short screen still reaches every
+            // slider), sharing the one live tactics object.
+            Flexible(
+              child: _TacticsTabPages(
+                controller: _tabController,
                 tactics: _tactics,
-                onChanged: (t) => setState(() {
-                  _tactics = t;
-                  widget.onTactics(t);
-                }),
+                onChanged: _change,
               ),
-              const SizedBox(height: 16),
-              FcmButton(
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: FcmButton(
                 icon: Icons.check_rounded,
                 label: 'DONE',
                 onPressed: () => Navigator.of(context).pop(),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The tabbed body of the tactic options sheet: one instruction group
+/// per page (In Possession / Out of Possession / Transitions), each in
+/// its own scroll pane, all bound to the same [tactics].
+class _TacticsTabPages extends StatelessWidget {
+  const _TacticsTabPages({
+    required this.controller,
+    required this.tactics,
+    required this.onChanged,
+  });
+
+  final TabController controller;
+  final TeamTactics tactics;
+  final ValueChanged<TeamTactics> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = l10nOf(context);
+    return TabBarView(
+      controller: controller,
+      children: [
+        _GroupPane(
+          title: l10n.tacticsInPossessionTitle,
+          icon: Icons.sports_soccer_rounded,
+          child: InPossessionControls(tactics: tactics, onChanged: onChanged),
+        ),
+        _GroupPane(
+          title: l10n.tacticsOutOfPossessionTitle,
+          icon: Icons.shield_rounded,
+          child: OutOfPossessionControls(
+            tactics: tactics,
+            onChanged: onChanged,
           ),
         ),
+        _GroupPane(
+          title: l10n.tacticsTransitionsTitle,
+          icon: Icons.swap_horiz_rounded,
+          child: TransitionsControls(tactics: tactics, onChanged: onChanged),
+        ),
+      ],
+    );
+  }
+}
+
+/// One tab page: the group's controls inside a scrollable, padded
+/// pane. The header repeats inside the pane so the group is named even
+/// mid-scroll (the tab bar can be a bare icon on narrow screens).
+class _GroupPane extends StatelessWidget {
+  const _GroupPane({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
+
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
       ),
     );
   }

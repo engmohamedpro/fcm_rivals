@@ -80,13 +80,11 @@ Widget _host(
         child: TacticsSetupView(
           formation: formationByCode('4-3-3'),
           tactics: const TeamTactics(),
-          mentality: Mentality.balanced,
           xi: xi,
           bench: bench,
           reserves: reserves,
           onFormation: (_) {},
           onTactics: (_) {},
-          onMentality: (_) {},
           showStamina: false,
           showStats: false,
           swapping: swap
@@ -266,13 +264,11 @@ void main() {
             child: TacticsSetupView(
               formation: formationByCode('4-3-3'),
               tactics: const TeamTactics(),
-              mentality: Mentality.balanced,
               xi: {for (var i = 0; i < 11; i++) i: squad[i]!},
               bench: [for (var i = 11; i < 18; i++) squad[i]!],
               reserves: [for (var i = 18; i < 23; i++) squad[i]!],
               onFormation: (_) {},
               onTactics: (_) {},
-              onMentality: (_) {},
               showStamina: false,
               showStats: false,
               onPlayerTap: (c) => tapped.add(c.ownedId),

@@ -207,6 +207,238 @@ List<Position>? _slotPositionsAfter(
   return positions;
 }
 
+/// The drag layout the pitch renders while a player is held (owner
+/// request 2026-11-13): the shape the drop builds, decomposed into the
+/// PLACES it stands at — every position's player-count spread by the
+/// anchor rules (see `formations.dart`), the GK fixed in goal.
+///
+/// A drop never adds a player: the held man LEAVES his place (dragged
+/// off the pitch, the bench or the pool) and re-enters at one of the
+/// [slots]. So [count] of the held player's own position is the LIVE
+/// mix minus him; every other position keeps its live count. The
+/// [slots] are ordered slot-index-wise (GK first) exactly like a
+/// [Formation.slots] list, so the pitch can lay them out with the
+/// same solver it already uses.
+class SquadDragLayout {
+  const SquadDragLayout({required this.slots, required this.problem});
+
+  /// The places the pitch renders while a drag is live: the shape's
+  /// own 11 places (GK first, slot order) plus every ADDITIONAL spare
+  /// place the drop may fill (positions the shape does not field —
+  /// the RB of a 3-4-3 — appended after the XI, back line → attack).
+  final List<DragSlot> slots;
+
+  /// Why the held player may not enter any place — the cap his
+  /// position is at. Null when the drop may proceed.
+  final String? problem;
+
+  bool get isLegal => problem == null;
+}
+
+/// One place of a [SquadDragLayout]: what it asks for and where it
+/// stands (x/y percent of the pitch, like [FormationSlot]).
+class DragSlot {
+  const DragSlot(this.position, this.x, this.y, {required this.isHeld});
+
+  final Position position;
+
+  /// Pitch coordinates for rendering (percent of width/height).
+  final double x;
+  final double y;
+
+  /// True when this place is the one the held player would take on
+  /// entry — the pitch highlights it.
+  final bool isHeld;
+}
+
+/// The LIVE position mix of the XI: a slot's ask is its occupant's
+/// position when it has one (an out-of-position player redefines the
+/// place he stands on — the custom-formation rule), otherwise the
+/// formation's ask.
+List<Position> _livePositions(Formation formation, Map<int, PlayerCard> live) => [
+  for (var slot = 0; slot < Formation.startingXiSize; slot++)
+    live[slot]?.position ?? formation.slots[slot].position,
+];
+
+/// Computes the [SquadDragLayout] the pitch shows while [dragged] is
+/// held: the shape as it stands without him, so the empty places the
+/// drop could fill are the empty positions of that shape, and every
+/// occupied place keeps its anchor in the RE-SPREAD formation (two CMs
+/// whose third man just got picked up close ranks to a pair).
+SquadDragLayout squadDragLayout({
+  required Formation formation,
+  required Map<int, PlayerCard> squad,
+  required PlayerCard dragged,
+}) {
+  const firstPoolSlot = Formation.startingXiSize + Formation.benchSize;
+  final live = <int, PlayerCard>{
+    for (final e in squad.entries)
+      if (e.key < firstPoolSlot) e.key: e.value,
+  };
+  int? slotOf(PlayerCard c) {
+    for (final e in live.entries) {
+      if (e.value.ownedId == c.ownedId) return e.key;
+    }
+    return null;
+  }
+
+  final from = slotOf(dragged);
+  final positions = _livePositions(formation, live);
+  // The held man leaves his place first: the layout below is the shape
+  // WITHOUT him — his slot renders as a free place.
+  final heldSlot = (from != null && from < Formation.startingXiSize)
+      ? from
+      : -1;
+
+  // Count the mix without the held man.
+  final counts = <Position, int>{};
+  for (var i = 0; i < positions.length; i++) {
+    if (i == heldSlot) continue;
+    counts.update(positions[i], (n) => n + 1, ifAbsent: () => 1);
+  }
+
+  // Where the held man may re-enter: his own position when it has a
+  // free place under the caps, or any position short of its cap. A
+  // keeper re-enters only in goal (his slot's occupant is always
+  // there, so he can never re-enter — dropping him anywhere else is
+  // refused as ever).
+  final cap = positionCaps[dragged.position]!;
+  String? problem;
+  if (dragged.position == Position.gk) {
+    problem = 'The goalkeeper keeps his slot — drag him nowhere.';
+  } else if ((counts[dragged.position] ?? 0) + 1 > cap.$2) {
+    problem = 'Too many ${dragged.position.code}s — a custom formation '
+        'fields at most ${cap.$2}.';
+  }
+
+  // Build the layout places: the live mix WITHOUT the held man — his
+  // own slot renders as a free placeholder dead-centre of his
+  // position's home (his natural drop-back home), and the REMAINING
+  // men of his position re-spread to their true count (a lone CM
+  // centres, a pair halves). Plus ONE spare place for every position
+  // the mix does not field AT ALL and that is not the held man's own
+  // (owner request 2026-11-13: a 3-4-3 with no RB still shows the RB
+  // place, so a dragged ST may take it). Positions the mix already
+  // fields do NOT grow extra placeholders: their spare capacity is
+  // reached by redefining an empty slot, not by stacking invitations.
+  final layoutPositions = <Position>[];
+  var heldIndex = -1;
+  for (var i = 0; i < positions.length; i++) {
+    if (i == heldSlot) {
+      layoutPositions.add(dragged.position);
+      heldIndex = layoutPositions.length - 1;
+    } else {
+      layoutPositions.add(positions[i]);
+    }
+  }
+  // The absent positions: one place each, ordered back line →
+  // midfield → attack so the pitch reads top to bottom. GK never
+  // appears (its slot never opens), and the held man's own position
+  // never doubles up — his vacated place already invites him back.
+  final order = [
+    Position.rb, Position.lb,
+    Position.cdm, Position.cm, Position.cam, Position.lm, Position.rm,
+    Position.lw, Position.rw, Position.st,
+  ];
+  for (final p in order) {
+    if (p == dragged.position && heldSlot >= 0) continue;
+    if ((counts[p] ?? 0) == 0) {
+      layoutPositions.add(p);
+    }
+  }
+  // The anchor spread counts only the OCCUPIED places: the held man's
+  // placeholder and the spare places anchor ALONE (dead centre / their
+  // wing), so the remaining men of a position close ranks to their
+  // true count — the remaining CM of a picked-apart pair centres.
+  final totals = <Position, int>{};
+  for (var i = 0; i < layoutPositions.length; i++) {
+    if (i >= Formation.startingXiSize) continue; // spare places
+    if (i == heldSlot) continue; // the held man's placeholder
+    totals.update(layoutPositions[i], (n) => n + 1, ifAbsent: () => 1);
+  }
+  // The occurrence index of each OCCUPIED place, numbered left to
+  // right by where the current formation stands them: a pair reads
+  // 32/68 whatever order its slots carried.
+  final occurrence = <int, int>{};
+  for (final e in totals.entries) {
+    final indices = <int>[
+      for (var i = 0; i < Formation.startingXiSize; i++)
+        if (i != heldSlot && layoutPositions[i] == e.key) i,
+    ];
+    if (indices.isEmpty) continue;
+    final byX = [
+      for (final i in indices) (i, formation.slots[i].x),
+    ]..sort((a, b) => a.$2.compareTo(b.$2));
+    for (var n = 0; n < byX.length; n++) {
+      occurrence[byX[n].$1] = n;
+    }
+  }
+  final slots = <DragSlot>[
+    for (var i = 0; i < layoutPositions.length; i++)
+      () {
+        final p = layoutPositions[i];
+        final inXi = i < Formation.startingXiSize;
+        final occupied = inXi && i != heldSlot;
+        final (x, y) = customAnchors(
+          p,
+          occupied ? (occurrence[i] ?? 0) : 0,
+          occupied ? (totals[p] ?? 1) : 1,
+        );
+        return DragSlot(p, x, y, isHeld: i == heldIndex);
+      }(),
+  ];
+  return SquadDragLayout(slots: slots, problem: problem);
+}
+
+/// Which XI slot a placeholder drop redefines (owner request
+/// 2026-11-13). The drag layout shows COUNT-AWARE places, not one
+/// placeholder per static slot, so the finger lands on a PLACE (a
+/// position) rather than a slot index; this maps it back to the slot
+/// whose redefinition reproduces exactly that place:
+///
+///  * the dragged man's own slot, when the place asks for his
+///    position — dropping a ST back on a ST place puts him home and
+///    the shape keeps his old slot asking for ST (no change at all);
+///  * else the EMPTY slot whose live position already asks for the
+///    place's position (a 3-4-3's RB-less slot at the RB place) —
+///    redefining it is a no-op that simply fills it;
+///  * else the dragged man's vacated slot (the place is a NEW
+///    position for the shape — his old place is the one that morphs).
+///
+/// Falls back to [targetSlot] when [targetPosition] is null (the
+/// legacy static-slot drops and the tests).
+int _resolveDropSlot({
+  required Formation formation,
+  required Map<int, PlayerCard> live,
+  required PlayerCard dragged,
+  required int targetSlot,
+  Position? targetPosition,
+}) {
+  final ask = targetPosition;
+  if (ask == null) return targetSlot;
+  int? from;
+  for (final e in live.entries) {
+    if (e.value.ownedId == dragged.ownedId) {
+      from = e.key;
+      break;
+    }
+  }
+  // His own slot when the place asks for his position.
+  if (ask == dragged.position && from != null && from > 0) return from;
+  // An empty slot that already asks for the place's position.
+  for (var s = 1; s < Formation.startingXiSize; s++) {
+    if (live.containsKey(s)) continue;
+    if ((live[s]?.position ?? formation.slots[s].position) == ask) return s;
+  }
+  // His vacated slot: the place is a new position for the shape.
+  if (from != null && from > 0) return from;
+  // Any empty outfield slot (a pool drop on a fresh position).
+  for (var s = 1; s < Formation.startingXiSize; s++) {
+    if (!live.containsKey(s)) return s;
+  }
+  return targetSlot;
+}
+
 /// Resolves a UI drop ([dragged] onto [target]) into the new squad.
 /// [squad] is the persisted slot → card map.
 ///
@@ -251,38 +483,54 @@ SquadSwapOutcome planSquadDrop({
       target.zone == SquadZone.reserves ||
       (target.card != null && targetCardSlot == null);
 
-  // A drop on an EMPTY XI slot: the slot BECOMES the dragged player's
-  // position (custom formation building). Applies from the squad or
-  // from the pool alike; the GK slot is untouchable (its occupant is
-  // always there, so it is never empty in practice).
+  // A drop on an EMPTY XI place: the place BECOMES the dragged
+  // player's position (custom formation building). Applies from the
+  // squad or from the pool alike; the GK slot is untouchable (its
+  // occupant is always there, so it is never empty in practice).
+  //
+  // [SquadDropTarget.slotPosition] (owner request 2026-11-13): the
+  // placeholder's POSITION the finger rested on, as the drag layout
+  // computed it — the drop then redefines THIS player's slot to that
+  // position, not merely the slot index under the finger. It picks
+  // the dragged man's own slot when the position matches his (a drop
+  // back home), otherwise the OCCUPANT-less slot whose live position
+  // already asks for it, and otherwise the held man's vacated slot.
   if (target.slot != null && targetCardSlot == null && !toPool) {
-    final slot = target.slot!;
+    final slot = _resolveDropSlot(
+      formation: formation,
+      live: live,
+      dragged: dragged,
+      targetSlot: target.slot!,
+      targetPosition: target.slotPosition,
+    );
     if (slot <= 0 || slot >= Formation.startingXiSize) {
       return const SquadSwapOutcome.rejected(
         'Only the goalkeeper stands in goal — his slot cannot change.',
       );
     }
-    final positions = _slotPositionsAfter(
-      formation,
-      live,
-      slot,
-      dragged.position,
-    );
+    // WHAT the redefined slot asks for: the PLACE's position when the
+    // finger rested on a drag-layout placeholder (dropping a ST on the
+    // spare RB place turns the slot into an RB slot), otherwise the
+    // dragged man's own position (the legacy slot drops).
+    final ask = target.slotPosition ?? dragged.position;
+    final positions = _slotPositionsAfter(formation, live, slot, ask);
     if (positions == null) {
       return SquadSwapOutcome.rejected(
         customFormationProblem([
           for (var s = 0; s < Formation.startingXiSize; s++)
             s == slot
-                ? dragged.position
+                ? ask
                 : (live[s]?.position ?? formation.slots[s].position),
         ])!,
       );
     }
     final newFormation = customFormation(positions)!;
     final assignment = ids()..[slot] = dragged.ownedId;
-    if (from != null && from < Formation.startingXiSize) {
-      assignment.remove(from);
-    } else if (from != null) {
+    // His old place frees up when he came from the XI; a bench man
+    // frees his bench slot instead. A drop that lands the man BACK on
+    // his own slot (slot == from) keeps the assignment tight — the
+    // remove-then-settle order below handles it by re-adding him.
+    if (from != null && from != slot) {
       assignment.remove(from);
     }
     // An injured player cannot hold a starting place at all.

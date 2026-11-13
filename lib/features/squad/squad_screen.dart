@@ -111,10 +111,9 @@ class SquadScreen extends ConsumerWidget {
           return a.ownedId.compareTo(b.ownedId);
         });
         final tactics = tacticsFromDbPayload(club?.tactics);
-        final mentality = Mentality.values.firstWhere(
-          (m) => m.name == club?.mentality,
-          orElse: () => Mentality.balanced,
-        );
+        // The mentality stays an ENGINE value (owner request
+        // 2026-11-13): the saved column loads for matches and the AI,
+        // but the Team tab no longer edits it.
 
         // Top padding matches the sides and the gap below the control
         // card, so the card sits in even whitespace on all four sides.
@@ -124,14 +123,11 @@ class SquadScreen extends ConsumerWidget {
             TacticsSetupView(
               formation: formationOfCode(club?.formationCode ?? '4-3-3'),
               tactics: tactics,
-              mentality: mentality,
               xi: xi,
               bench: bench,
               reserves: reserves,
               onFormation: (code) => _changeFormation(context, ref, code),
               onTactics: (t) => _changeTactics(context, ref, tactics: t),
-              onMentality: (m) =>
-                  _changeTactics(context, ref, mentality: m.name),
               onAutoPick: () => _autoPick(context, ref),
               onClear: () => _clearSquad(ref),
               poolTitle: 'All players',
@@ -284,16 +280,16 @@ class SquadScreen extends ConsumerWidget {
     }
   }
 
-  /// Persists the club's tactical setup (GDD 10.2/10.3) — used by the
-  /// custom-tactics sheet and the mentality scale on this tab.
+  /// Persists the club's tactical setup (GDD 10.2) — used by the
+  /// custom-tactics sheet on this tab. The mentality no longer passes
+  /// through here (owner request 2026-11-13): it is an engine value.
   Future<void> _changeTactics(
     BuildContext context,
     WidgetRef ref, {
     TeamTactics? tactics,
-    String? mentality,
   }) async {
     final store = await ref.read(collectionStoreProvider.future);
-    await store.changeTactics(tactics: tactics, mentality: mentality);
+    await store.changeTactics(tactics: tactics);
     ref.invalidate(squadProvider);
   }
 
