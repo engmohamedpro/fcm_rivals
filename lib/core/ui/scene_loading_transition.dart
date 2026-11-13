@@ -13,10 +13,9 @@
 /// Layers, back to front (every layer is periodic in the loop, so the
 /// animation never visibly restarts):
 ///  1. a breathing champagne glow behind the crest,
-///  2. slowly rotating light rays,
-///  3. orbiting sparks on the far side of the logo,
-///  4. the logo itself — breathing, floating, with a light sweep,
-///  5. orbiting sparks on the near side (depth).
+///  2. orbiting sparks on the far side of the logo,
+///  3. the logo itself — breathing, floating, with a light sweep,
+///  4. orbiting sparks on the near side (depth).
 library;
 
 import 'dart:math' as math;
@@ -206,7 +205,7 @@ class _SlideGradient extends GradientTransform {
 }
 
 // -----------------------------------------------------------------------------
-// Backdrop: glow, rays, rings, vignette
+// Backdrop: glow, vignette
 // -----------------------------------------------------------------------------
 
 class _BackdropPainter extends CustomPainter {
@@ -218,7 +217,6 @@ class _BackdropPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final shortest = size.shortestSide;
-    final diagonal = size.longestSide * 1.1;
 
     // 1. Breathing glow.
     final breathe = math.sin(t * _tau * 2);
@@ -237,33 +235,7 @@ class _BackdropPainter extends CustomPainter {
         ).createShader(Rect.fromCircle(center: c, radius: glowR)),
     );
 
-    // 2. Slowly rotating light rays (one revolution per loop).
-    const rays = 14;
-    final rayPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          FcmColors.goldSoft.withValues(alpha: 0.13),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCircle(center: c, radius: diagonal * 0.62));
-    for (var i = 0; i < rays; i++) {
-      final a = t * _tau + i * _tau / rays;
-      final half = i.isEven ? 0.060 : 0.030;
-      final path = Path()
-        ..moveTo(c.dx, c.dy)
-        ..lineTo(
-          c.dx + math.cos(a - half) * diagonal,
-          c.dy + math.sin(a - half) * diagonal,
-        )
-        ..lineTo(
-          c.dx + math.cos(a + half) * diagonal,
-          c.dy + math.sin(a + half) * diagonal,
-        )
-        ..close();
-      canvas.drawPath(path, rayPaint);
-    }
-
-    // 3. Vignette keeps the eye on the crest and the edges quiet.
+    // 2. Vignette keeps the eye on the crest and the edges quiet.
     canvas.drawRect(
       Offset.zero & size,
       Paint()
