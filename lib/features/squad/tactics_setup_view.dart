@@ -20,6 +20,7 @@ import 'squad_drag.dart';
 import 'squad_engine.dart';
 import 'squad_pitch_view.dart';
 import 'squad_swap.dart' show SquadDropTarget, SquadZone;
+import '../match/tactic_presets.dart';
 import '../match/tactics_sections.dart'
     show InPossessionControls, OutOfPossessionControls, TransitionsControls;
 
@@ -652,6 +653,35 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet>
                       letterSpacing: 2,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  // T-0129: tappable preset combinations. One row of
+                  // chips under the title — a tap applies the whole
+                  // combination at once; the sliders below still allow
+                  // manual fine-tuning on top.
+                  SizedBox(
+                    height: 34,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      itemCount: tacticPresets.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 6),
+                      itemBuilder: (context, i) {
+                        final preset = tacticPresets[i];
+                        final arabic =
+                            Localizations.maybeLocaleOf(context)
+                                ?.languageCode ==
+                            'ar';
+                        final selected = _tactics == preset.tactics;
+                        return _PresetChip(
+                          label: preset.label(arabic: arabic),
+                          blurb: preset.blurb,
+                          selected: selected,
+                          onTap: () => _change(preset.tactics),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                 ],
               ),
             ),
@@ -752,6 +782,62 @@ class _GroupPane extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [child],
+      ),
+    );
+  }
+}
+
+/// One preset chip of the T-0129 row: gold-filled when the current
+/// tactics are exactly the preset's combination, otherwise a quiet
+/// outline chip. The blurb rides the semantics label for screen
+/// readers without cluttering the row.
+class _PresetChip extends StatelessWidget {
+  const _PresetChip({
+    required this.label,
+    required this.blurb,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String blurb;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      hint: blurb,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: selected ? FcmColors.goldGradient : null,
+            color: selected ? null : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: selected
+                  ? FcmColors.goldSoft.withValues(alpha: 0.5)
+                  : FcmColors.bronze.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: selected ? FcmColors.ink : Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
