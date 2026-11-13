@@ -1748,6 +1748,36 @@ abstract class AppLocalizations {
   /// **'Starts now'**
   String get profileNoMatches;
 
+  /// No description provided for @profileFounded.
+  ///
+  /// In en, this message translates to:
+  /// **'Founded'**
+  String get profileFounded;
+
+  /// No description provided for @profileHeadlineSeasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Seasons'**
+  String get profileHeadlineSeasons;
+
+  /// No description provided for @profileHeadlineTrophies.
+  ///
+  /// In en, this message translates to:
+  /// **'Trophies'**
+  String get profileHeadlineTrophies;
+
+  /// No description provided for @profileStatsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Career record'**
+  String get profileStatsSectionTitle;
+
+  /// No description provided for @profileSilverwareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Silverware & trophies'**
+  String get profileSilverwareTitle;
+
   /// No description provided for @profilePercent.
   ///
   /// In en, this message translates to:
@@ -1813,6 +1843,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stayed'**
   String get profileOutcomeStayed;
+
+  /// No description provided for @campusBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Club Campus'**
+  String get campusBannerTitle;
+
+  /// No description provided for @campusBannerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanent boosts — every level costs more.'**
+  String get campusBannerSubtitle;
+
+  /// No description provided for @campusTeamBoost.
+  ///
+  /// In en, this message translates to:
+  /// **'Team boost {value}'**
+  String campusTeamBoost(String value);
+
+  /// No description provided for @campusNoBoosts.
+  ///
+  /// In en, this message translates to:
+  /// **'No boosts yet'**
+  String get campusNoBoosts;
 
   /// No description provided for @badgeCabinetTitle.
   ///

@@ -81,10 +81,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
-    // W/D/L exact (the fixture's corrected expectations: 4/1/0).
-    expect(find.text('4'), findsWidgets);
-    expect(find.text('1'), findsWidgets);
-    expect(find.text('0'), findsWidgets);
+    // The headline ribbon on the identity card (top of the screen,
+    // before any scrolling): seasons 2, trophies 2.
+    expect(find.text('Seasons'), findsOneWidget);
+    expect(find.text('Trophies'), findsOneWidget);
+
+    // The redesigned record panel sits below the taller manager
+    // card — scroll the W/D/L bar into view first.
+    await tester.scrollUntilVisible(
+      find.text('80.0%'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 150));
+
+    // W/D/L exact (the fixture's corrected expectations: 4/1/0) —
+    // the 2026-11-13 redesign renders the counts inside the legend
+    // row beside the segmented bar ('Wins 4' / 'Draws 1' / 'Losses 0').
+    expect(find.text('Wins 4'), findsOneWidget);
+    expect(find.text('Draws 1'), findsOneWidget);
+    expect(find.text('Losses 0'), findsOneWidget);
     // Win rate: 4/5 = 80.0% (locale-formatted, one decimal).
     expect(find.text('80.0%'), findsOneWidget);
     // Goals for / against: 9 / 2.
@@ -198,14 +214,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('نسبة الفوز'), findsOneWidget);
-    expect(find.text('أطول سلسلة فوز'), findsOneWidget);
+    // The streak label renders in BOTH the hero streak row and the
+    // counting grid (the 2026-11-13 redesign).
+    expect(find.text('أطول سلسلة فوز'), findsWidgets);
     // The Arabic percent: locale digits (AR locale formats with
     // Arabic-Indic numerals through intl) — assert the RTL layout.
     final rtl = Directionality.of(
       tester.element(find.text('نسبة الفوز').first),
     );
     expect(rtl, TextDirection.rtl);
-    // Silverware localized.
+    // Silverware + history localized — the history header now sits
+    // below the taller redesigned panels; scroll to it.
+    await tester.scrollUntilVisible(
+      find.text('سجل المواسم'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 150));
     expect(find.text('سجل المواسم'), findsOneWidget);
   });
 }

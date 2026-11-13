@@ -72,7 +72,11 @@ void main() {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 200)),
     );
-    await tester.pumpAndSettle();
+    // The redesigned cards breathe forever on affordable upgrades —
+    // fixed pumps instead of pumpAndSettle (the repo's ambient-screen
+    // convention, same as streak_card_test).
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
   }
 
   Future<void> bootScreen(WidgetTester tester, {int coins = 50_000}) async {
@@ -106,13 +110,15 @@ void main() {
     expect(find.textContaining('k in'), findsNothing);
     expect(find.text('Maximum level reached.'), findsNothing);
 
-    // No header at all: the tab jumps straight into the facility list
-    // (the shell's masthead already names the game).
-    expect(find.text('Club campus'), findsNothing);
+    // The 2026-11-13 redesign adds THE CAMPUS BANNER on top: the
+    // aggregate story first (total levels arc + team boost chip).
+    expect(find.text('Club Campus'), findsOneWidget);
     expect(
       find.text('Permanent boosts — every level costs more.'),
-      findsNothing,
+      findsOneWidget,
     );
+    // Fresh club: no fake boosts.
+    expect(find.text('No boosts yet'), findsOneWidget);
     expect(find.textContaining('shopping spree'), findsNothing);
     expect(find.textContaining('across seasons'), findsNothing);
   });
@@ -135,12 +141,13 @@ void main() {
         .first;
     expect(card.facility, Facility.attack);
     await tester.tap(find.text('4K').first);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
     // Real I/O for the upgrade write + provider invalidation.
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 300)),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
 
     // Now level 1: live effect with the gold '+1.8%' next-level delta.
     expect(find.text('LV 1'), findsOneWidget);

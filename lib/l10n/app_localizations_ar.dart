@@ -890,6 +890,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileNoMatches => 'تبدأ الآن';
 
   @override
+  String get profileFounded => 'التأسيس';
+
+  @override
+  String get profileHeadlineSeasons => 'مواسم';
+
+  @override
+  String get profileHeadlineTrophies => 'ألقاب';
+
+  @override
+  String get profileStatsSectionTitle => 'السجل المهني';
+
+  @override
+  String get profileSilverwareTitle => 'الألقاب والكؤوس';
+
+  @override
   String profilePercent(num value) {
     return '$value٪';
   }
@@ -931,6 +946,20 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileOutcomeStayed => 'بقي';
+
+  @override
+  String get campusBannerTitle => 'حرم النادي';
+
+  @override
+  String get campusBannerSubtitle => 'تعزيزات دائمة — كل مستوى أغلى من سابقه.';
+
+  @override
+  String campusTeamBoost(String value) {
+    return 'قوة الفريق $value';
+  }
+
+  @override
+  String get campusNoBoosts => 'لا تعزيزات بعد';
 
   @override
   String get badgeCabinetTitle => 'خزانة الشارات';

@@ -897,6 +897,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileNoMatches => 'Starts now';
 
   @override
+  String get profileFounded => 'Founded';
+
+  @override
+  String get profileHeadlineSeasons => 'Seasons';
+
+  @override
+  String get profileHeadlineTrophies => 'Trophies';
+
+  @override
+  String get profileStatsSectionTitle => 'Career record';
+
+  @override
+  String get profileSilverwareTitle => 'Silverware & trophies';
+
+  @override
   String profilePercent(num value) {
     return '$value%';
   }
@@ -938,6 +953,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileOutcomeStayed => 'Stayed';
+
+  @override
+  String get campusBannerTitle => 'Club Campus';
+
+  @override
+  String get campusBannerSubtitle =>
+      'Permanent boosts — every level costs more.';
+
+  @override
+  String campusTeamBoost(String value) {
+    return 'Team boost $value';
+  }
+
+  @override
+  String get campusNoBoosts => 'No boosts yet';
 
   @override
   String get badgeCabinetTitle => 'The Badge Cabinet';

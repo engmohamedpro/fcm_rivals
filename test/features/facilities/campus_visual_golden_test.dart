@@ -70,7 +70,10 @@ void main() {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 300)),
     );
-    await tester.pumpAndSettle();
+    // Ambient breathing on affordable cards — fixed pumps (the
+    // repo's convention for always-animating screens).
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
 
     // Layout metrics instead of a binary golden (anti-aliasing differs
     // per platform): every card renders within bounds and nothing
