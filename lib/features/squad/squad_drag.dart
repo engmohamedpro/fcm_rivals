@@ -192,9 +192,10 @@ class SquadDraggable extends StatelessWidget {
 }
 
 /// Makes [child] a place a held player can be dropped. While a card is
-/// held, every place that would refuse him is hidden and the places that
-/// accept him stay as they are; under the finger the ring turns gold
-/// (will swap). A plain pass-through when no [SquadDragScope] is above.
+/// held, every EMPTY place that would refuse him is hidden, a player's
+/// card that would refuse him dims (it never vanishes), and the places
+/// that accept him stay as they are; under the finger the ring turns
+/// gold (will swap). A plain pass-through when no [SquadDragScope] is above.
 class SquadDropZone extends StatelessWidget {
   const SquadDropZone({
     super.key,
@@ -236,10 +237,14 @@ class SquadDropZone extends StatelessWidget {
                 ringWidth = 2.5;
               }
             } else if (target.zone != SquadZone.reserves) {
-              // The places he cannot go to disappear while he is held.
+              // A PLACE he cannot take (an empty placeholder) disappears
+              // while he is held — but a PLAYER's card never does: it
+              // only dims. Hiding the cards made the keeper vanish
+              // whenever an outfield man was held, and the WHOLE outfield
+              // vanish whenever a keeper was held.
               // (The pool strip is exempt: it is also where the held
               // card may come from, and hiding it would hide the source.)
-              fade = 0.0;
+              fade = target.card != null ? 0.45 : 0.0;
             }
           }
           return AnimatedOpacity(

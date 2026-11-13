@@ -330,3 +330,120 @@ PitchLayout computePitchLayout({
     rows: rows,
   );
 }
+
+/// One spare place of the drag preview: how deep it stands ([y], formation
+/// coordinates, own goal → opponent goal) and which pitch edge it prefers.
+class SparePlaceRequest {
+  const SparePlaceRequest({required this.y, required this.leftSide});
+
+  final double y;
+  final bool leftSide;
+}
+
+bool _boxesTouch(PitchBox a, PitchBox b) =>
+    a.left < b.right + kPitchGapH &&
+    a.right + kPitchGapH > b.left &&
+    a.top < b.bottom + kPitchGapV &&
+    a.bottom + kPitchGapV > b.top;
+
+/// Places the spare places of a live drag (positions the shape does not
+/// field — the RB of a 3-4-3) on the pitch WITHOUT standing on a card.
+///
+/// Each request starts beside the line whose depth is nearest its own and
+/// takes the preferred pitch edge, then the other one; when both edges of
+/// that line are taken by cards it scans the edges for the nearest free
+/// spot, and only when the pitch has no free spot at all does it overlap
+/// (the nearest line, preferred edge). Earlier spares count as taken for
+/// later ones, so spares never stack either. Returns one box per request,
+/// in order.
+///
+/// The old placement pinned every spare to the edge at its line's top
+/// without looking at the cards there — so a spare place covered the
+/// outermost card of the line and that player vanished behind the ghost
+/// (and could not be dropped on).
+List<PitchBox> placeSparePlaces({
+  required PitchLayout layout,
+  required Formation formation,
+  required double width,
+  required double height,
+  required List<SparePlaceRequest> requests,
+}) {
+  final sw = layout.slotWidth;
+  final sh = layout.slotHeight;
+  final margin = kPitchMargin + 4.0;
+  final minTop = margin;
+  final maxTop = math.max(minTop, height - margin - sh);
+  final taken = <PitchBox>[...layout.boxes];
+  final placed = <PitchBox>[];
+
+  bool isFree(PitchBox candidate) {
+    for (final b in taken) {
+      if (_boxesTouch(candidate, b)) return false;
+    }
+    return true;
+  }
+
+  double meanY(List<int> row) =>
+      row.fold<double>(0, (a, i) => a + formation.slots[i].y) / row.length;
+
+  for (final request in requests) {
+    final rowOrder = List<int>.generate(layout.rows.length, (r) => r)
+      ..sort(
+        (a, b) => (meanY(layout.rows[a]) - request.y).abs().compareTo(
+          (meanY(layout.rows[b]) - request.y).abs(),
+        ),
+      );
+    final lefts = request.leftSide
+        ? <double>[margin, width - margin - sw]
+        : <double>[width - margin - sw, margin];
+
+    PitchBox? chosen;
+    PitchBox? firstChoice;
+    var preferredTop = minTop;
+
+    // 1. Beside the nearest line, preferred edge first.
+    for (var k = 0; k < rowOrder.length && chosen == null; k++) {
+      final row = layout.rows[rowOrder[k]];
+      final top = layout.boxes[row.first].top
+          .clamp(minTop, maxTop)
+          .toDouble();
+      if (k == 0) preferredTop = top;
+      for (final left in lefts) {
+        final candidate = PitchBox(left, top, sw, sh);
+        firstChoice ??= candidate;
+        if (isFree(candidate)) {
+          chosen = candidate;
+          break;
+        }
+      }
+    }
+
+    // 2. Scan both edges for the free spot nearest the preferred depth.
+    if (chosen == null) {
+      final step = math.max(4.0, sh / 4);
+      final tops = <double>[];
+      for (var t = minTop; t <= maxTop; t += step) {
+        tops.add(t);
+      }
+      tops.sort(
+        (a, b) =>
+            (a - preferredTop).abs().compareTo((b - preferredTop).abs()),
+      );
+      for (final top in tops) {
+        for (final left in lefts) {
+          final candidate = PitchBox(left, top, sw, sh);
+          if (isFree(candidate)) {
+            chosen = candidate;
+            break;
+          }
+        }
+        if (chosen != null) break;
+      }
+    }
+
+    final box = chosen ?? firstChoice ?? PitchBox(lefts.first, minTop, sw, sh);
+    placed.add(box);
+    taken.add(box);
+  }
+  return placed;
+}

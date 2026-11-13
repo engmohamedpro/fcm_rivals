@@ -340,7 +340,24 @@ SquadDragLayout squadDragLayout({
     Position.cdm, Position.cm, Position.cam, Position.lm, Position.rm,
     Position.lw, Position.rw, Position.st,
   ];
+  // A spare place is only offered when the drop can really fill it: the
+  // held man vacates a place of his own (heldSlot >= 0), or the XI has
+  // an empty outfield place to turn into it. A bench / pool man facing
+  // a full XI brings no place — offering spares then made the drop
+  // refuse (or, worse, land on somebody) — and the keeper never takes
+  // an outfield place at all.
+  var hasEmptyOutfieldSlot = false;
+  for (var s = 1; s < Formation.startingXiSize; s++) {
+    if (!live.containsKey(s)) {
+      hasEmptyOutfieldSlot = true;
+      break;
+    }
+  }
+  final offersSpares =
+      dragged.position != Position.gk &&
+      (heldSlot >= 0 || hasEmptyOutfieldSlot);
   for (final p in order) {
+    if (!offersSpares) break;
     if (p == dragged.position && heldSlot >= 0) continue;
     if ((counts[p] ?? 0) == 0) {
       layoutPositions.add(p);
@@ -407,7 +424,15 @@ SquadDragLayout squadDragLayout({
 ///
 /// Falls back to [targetSlot] when [targetPosition] is null (the
 /// legacy static-slot drops and the tests).
-int _resolveDropSlot({
+///
+/// Never returns a slot another man stands on, and never a slot outside
+/// the outfield XI (1..10): a drop that has nowhere legal to land
+/// returns null and the caller refuses it with a reason. (Before this
+/// guard the fallback returned the spare place's stand-in slot — an
+/// OCCUPIED slot — and the drop silently overwrote its occupant, and a
+/// bench man's own bench slot came back as the "XI slot", so the drop
+/// was refused with the keeper message.)
+int? _resolveDropSlot({
   required Formation formation,
   required Map<int, PlayerCard> live,
   required PlayerCard dragged,
@@ -423,20 +448,43 @@ int _resolveDropSlot({
       break;
     }
   }
-  // His own slot when the place asks for his position.
-  if (ask == dragged.position && from != null && from > 0) return from;
-  // An empty slot that already asks for the place's position.
-  for (var s = 1; s < Formation.startingXiSize; s++) {
-    if (live.containsKey(s)) continue;
-    if ((live[s]?.position ?? formation.slots[s].position) == ask) return s;
+  // Only a man standing in the OUTFIELD XI vacates a pitch place; a
+  // bench man (slot 11..17) or a pool man (null) brings no place with
+  // him, and the keeper's place never moves.
+  final fromXi =
+      (from != null && from > 0 && from < Formation.startingXiSize)
+      ? from
+      : null;
+  // The empty outfield places, in slot order.
+  final empty = <int>[
+    for (var s = 1; s < Formation.startingXiSize; s++)
+      if (!live.containsKey(s)) s,
+  ];
+  Position askOf(int s) =>
+      live[s]?.position ?? formation.slots[s].position;
+
+  // 1. The empty place the finger rested on, when it already asks for
+  //    the place's position: the man simply moves THERE (a CM dropped
+  //    on the empty CM place beside him changes sides instead of the
+  //    drop silently doing nothing).
+  if (empty.contains(targetSlot) && askOf(targetSlot) == ask) {
+    return targetSlot;
   }
-  // His vacated slot: the place is a new position for the shape.
-  if (from != null && from > 0) return from;
-  // Any empty outfield slot (a pool drop on a fresh position).
-  for (var s = 1; s < Formation.startingXiSize; s++) {
-    if (!live.containsKey(s)) return s;
+  // 2. His own slot when the place asks for his position (dropped
+  //    straight back home — no change).
+  if (fromXi != null && ask == dragged.position) return fromXi;
+  // 3. Another empty slot that already asks for the place's position.
+  for (final s in empty) {
+    if (askOf(s) == ask) return s;
   }
-  return targetSlot;
+  // 4. His vacated slot: the place is a new position for the shape.
+  if (fromXi != null) return fromXi;
+  // 5. A bench / pool man on a fresh position: the empty place under
+  //    his finger, else the first empty place there is.
+  if (empty.contains(targetSlot)) return targetSlot;
+  if (empty.isNotEmpty) return empty.first;
+  // 6. The XI is full and he brings no place: nowhere legal to land.
+  return null;
 }
 
 /// Resolves a UI drop ([dragged] onto [target]) into the new squad.
@@ -496,6 +544,19 @@ SquadSwapOutcome planSquadDrop({
   // back home), otherwise the OCCUPANT-less slot whose live position
   // already asks for it, and otherwise the held man's vacated slot.
   if (target.slot != null && targetCardSlot == null && !toPool) {
+    // The keeper never takes an outfield place — dropping him on an
+    // empty place (or a spare one) used to move him out of goal and
+    // leave the goal empty.
+    if (dragged.position == Position.gk) {
+      return const SquadSwapOutcome.rejected(
+        'The goalkeeper keeps his slot — only a goalkeeper stands in goal.',
+      );
+    }
+    if (target.slot == 0) {
+      return const SquadSwapOutcome.rejected(
+        'Only the goalkeeper stands in goal — his slot cannot change.',
+      );
+    }
     final slot = _resolveDropSlot(
       formation: formation,
       live: live,
@@ -503,9 +564,24 @@ SquadSwapOutcome planSquadDrop({
       targetSlot: target.slot!,
       targetPosition: target.slotPosition,
     );
+    if (slot == null) {
+      return const SquadSwapOutcome.rejected(
+        'The starting XI is full — drop him on a player to swap, or move '
+        'a starter out first.',
+      );
+    }
     if (slot <= 0 || slot >= Formation.startingXiSize) {
       return const SquadSwapOutcome.rejected(
         'Only the goalkeeper stands in goal — his slot cannot change.',
+      );
+    }
+    // Never overwrite a man who stands on the resolved place: the only
+    // occupied place the drop may take is the one the held man himself
+    // leaves (his own slot).
+    final occupant = live[slot];
+    if (occupant != null && occupant.ownedId != dragged.ownedId) {
+      return const SquadSwapOutcome.rejected(
+        'That place is taken — drop him on the player to swap them.',
       );
     }
     // WHAT the redefined slot asks for: the PLACE's position when the

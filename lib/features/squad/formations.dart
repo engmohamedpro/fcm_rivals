@@ -321,11 +321,20 @@ String? customFormationProblem(List<Position> positions) {
   for (final p in positions) {
     counts.update(p, (n) => n + 1, ifAbsent: () => 1);
   }
-  for (final e in counts.entries) {
-    final cap = positionCaps[e.key]!;
-    if (e.value < cap.$1 || e.value > cap.$2) {
-      return 'Too many ${e.key.code}s — a custom formation fields '
-          '${cap.$1 == cap.$2 ? 'exactly ${cap.$1}' : '${cap.$1} to ${cap.$2}'}.';
+  // Walk the CAPS, not the counts: a position the mix does not field at
+  // all (zero CBs) must still meet its minimum — iterating only the
+  // positions that are present let a back line with no centre backs
+  // through.
+  for (final e in positionCaps.entries) {
+    final n = counts[e.key] ?? 0;
+    final range = e.value.$1 == e.value.$2
+        ? 'exactly ${e.value.$1}'
+        : '${e.value.$1} to ${e.value.$2}';
+    if (n > e.value.$2) {
+      return 'Too many ${e.key.code}s — a custom formation fields $range.';
+    }
+    if (n < e.value.$1) {
+      return 'Too few ${e.key.code}s — a custom formation fields $range.';
     }
   }
   return null;

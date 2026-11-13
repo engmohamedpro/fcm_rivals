@@ -172,6 +172,29 @@ class SquadPitch extends StatelessWidget {
                 final extraPlaces = dragLayout == null
                     ? const <DragSlot>[]
                     : dragLayout.slots.skip(11).toList();
+                // Where each spare stands: beside the line of its own
+                // depth, on a free spot — never on top of a card.
+                final extraBoxes = placeSparePlaces(
+                  layout: layout,
+                  formation: effectiveFormation,
+                  width: pw,
+                  height: ph,
+                  requests: [
+                    for (final extra in extraPlaces)
+                      SparePlaceRequest(
+                        y: extra.y,
+                        leftSide: switch (extra.position) {
+                          Position.lb ||
+                          Position.lw ||
+                          Position.lm => true,
+                          Position.rb ||
+                          Position.rw ||
+                          Position.rm => false,
+                          _ => extra.x < 50,
+                        },
+                      ),
+                  ],
+                );
 
                 return Stack(
                   children: [
@@ -357,50 +380,16 @@ class SquadPitch extends StatelessWidget {
                   // positions, right for right, centre positions sit
                   // just outside the widest card of their line) so it
                   // never fights the shape's own cards for space.
-                  for (final extra in extraPlaces)
+                  for (var e = 0; e < extraPlaces.length; e++)
                     () {
-                      final margin = kPitchMargin + 4.0;
-                      final sw = layout.slotWidth;
-                      final sh = layout.slotHeight;
-                      // The line this position's depth belongs to:
-                      // the solved row whose mean y is nearest.
-                      var nearest = 0;
-                      var best = double.infinity;
-                      for (var r = 0; r < layout.rows.length; r++) {
-                        final row = layout.rows[r];
-                        var mean = 0.0;
-                        for (final s in row) {
-                          mean += effectiveFormation.slots[s].y;
-                        }
-                        mean /= row.length;
-                        final d = (mean - extra.y).abs();
-                        if (d < best) {
-                          best = d;
-                          nearest = r;
-                        }
-                      }
-                      final top = layout.boxes[layout.rows[nearest].first].top;
-                      // Left positions hug the left edge, right
-                      // positions the right edge, centre positions
-                      // the edge of their side of the ball.
-                      final leftSide = switch (extra.position) {
-                        Position.lb ||
-                        Position.lw ||
-                        Position.lm => true,
-                        Position.rb ||
-                        Position.rw ||
-                        Position.rm => false,
-                        _ => extra.x < 50,
-                      };
-                      final left = leftSide
-                          ? margin
-                          : pw - margin - sw;
+                      final extra = extraPlaces[e];
+                      final box = extraBoxes[e];
                       return Positioned(
                         key: ValueKey('extra-${extra.position.code}'),
-                        left: left,
-                        top: top.clamp(margin, ph - margin - sh),
-                        width: sw,
-                        height: sh,
+                        left: box.left,
+                        top: box.top,
+                        width: box.width,
+                        height: box.height,
                         child: SquadDropZone(
                           target: SquadDropTarget.xiSlot(
                             // The slot index is a placeholder — the
@@ -701,7 +690,11 @@ class _EmptySlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ask = heldPosition ?? position;
+    // The chip names the PLACE's own position — the position a drop on
+    // it builds — so the RB / LB / CDM / CAM spares read differently.
+    // (It used to print the HELD man's position on every placeholder,
+    // so every spare place of a drag read the same.)
+    final ask = position;
     return Opacity(
       opacity: highlighted ? 0.9 : 0.45,
       child: Stack(

@@ -124,6 +124,19 @@ void main() {
       expect(customFormationProblem(oneCb), contains('CB'));
     });
 
+    test('a back line with NO centre back is refused (min 2 holds for an '
+        'absent position too)', () {
+      const noCb = [
+        Position.gk,
+        Position.lb, Position.rb,
+        Position.cm, Position.cm, Position.cm,
+        Position.cdm, Position.cdm, Position.cdm,
+        Position.st, Position.st,
+      ];
+      expect(customFormation(noCb), isNull);
+      expect(customFormationProblem(noCb), contains('CB'));
+    });
+
     test('refuses 4 CB and 2 LW', () {
       const fourCb = [
         Position.gk,
@@ -446,6 +459,111 @@ void main() {
     });
   });
 
+  group('drops with a position (the pitch always sends one) — no vanishing '
+      'players', () {
+    Map<int, PlayerCard> natural(List<Position> mix, {Set<int> without = const {}}) => {
+      for (var i = 0; i < 11; i++)
+        if (!without.contains(i)) i: _card(i, mix[i]),
+    };
+
+    test('a bench striker dropped on the empty ST place fills it', () {
+      final squad = {
+        ...natural(_f442Positions, without: {10}),
+        11: _card(11, Position.gk),
+        12: _card(12, Position.st),
+      };
+      final out = planSquadDrop(
+        formation: formationByCode('4-4-2'),
+        squad: squad,
+        dragged: squad[12]!,
+        target: const SquadDropTarget.xiSlot(10, position: Position.st),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment![10], 12);
+      expect(out.assignment!.containsKey(12), isFalse,
+          reason: 'his bench place is freed');
+      expect(out.assignment!.length, 12,
+          reason: '10 starters + the moved striker + the bench keeper: '
+              'nobody is lost');
+    });
+
+    test('an XI striker dropped on the OTHER empty ST place moves there', () {
+      final squad = natural(_f442Positions, without: {10});
+      final out = planSquadDrop(
+        formation: formationByCode('4-4-2'),
+        squad: squad,
+        dragged: squad[9]!,
+        target: const SquadDropTarget.xiSlot(10, position: Position.st),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment![10], 9, reason: 'he stands on the place he was dropped on');
+      expect(out.assignment!.containsKey(9), isFalse,
+          reason: 'his old place is empty now');
+      expect(out.assignment!.length, 10, reason: 'nobody is lost or duplicated');
+    });
+
+    test('a bench man dropped on a spare place with a FULL XI is refused '
+        'and nobody is overwritten', () {
+      final squad = {
+        ...natural(_f433Positions),
+        11: _card(11, Position.gk),
+        12: _card(12, Position.st),
+      };
+      final out = planSquadDrop(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: squad[12]!,
+        // The spare places carry the stand-in slot 1 (the LB's slot).
+        target: const SquadDropTarget.xiSlot(1, position: Position.cam),
+      );
+      expect(out.isAccepted, isFalse);
+      expect(out.assignment, isNull, reason: 'the LB is not touched');
+      expect(out.rejection, contains('full'));
+    });
+
+    test('a pool man dropped on a spare place with a FULL XI is refused', () {
+      final squad = natural(_f433Positions);
+      final out = planSquadDrop(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: _card(99, Position.st),
+        target: const SquadDropTarget.xiSlot(1, position: Position.cam),
+      );
+      expect(out.isAccepted, isFalse);
+      expect(out.assignment, isNull);
+      expect(out.rejection, contains('full'));
+    });
+
+    test('the keeper can not be dropped on a spare place (goal stays '
+        'filled)', () {
+      final squad = natural(_f433Positions);
+      final out = planSquadDrop(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: squad[0]!,
+        target: const SquadDropTarget.xiSlot(1, position: Position.cam),
+      );
+      expect(out.isAccepted, isFalse);
+      expect(out.rejection, contains('goalkeeper'));
+    });
+
+    test('an XI man dropped on a spare place leaves nobody behind', () {
+      final squad = natural(_f433Positions);
+      final out = planSquadDrop(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: squad[9]!, // the ST
+        target: const SquadDropTarget.xiSlot(1, position: Position.cam),
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      // Every one of the 11 men is still in the XI, once.
+      expect(out.assignment!.length, 11);
+      expect(out.assignment!.values.toSet().length, 11);
+      expect(out.assignment![9], 9, reason: 'his vacated place morphs to CAM');
+      expect(out.formation!.slots[9].position, Position.cam);
+    });
+  });
+
   group('squadDragLayout (the drag preview, owner request 2026-11-13)', () {
     test('a 3-4-3 with no RB shows the spare RB place', () {
       // The 3-4-3: 3 CB, no RB. Holding its ST opens his ST place and
@@ -457,7 +575,7 @@ void main() {
       final layout = squadDragLayout(
         formation: formationByCode('3-4-3'),
         squad: squad,
-        dragged: squad[10]!,
+        dragged: squad[9]!, // the ST
       );
       expect(layout.isLegal, isTrue, reason: layout.problem);
       // The spare places: every outfield position the 3-4-3 does not
@@ -477,7 +595,7 @@ void main() {
       final out = planSquadDrop(
         formation: formationByCode('3-4-3'),
         squad: squad,
-        dragged: squad[10]!,
+        dragged: squad[9]!, // the ST
         target: SquadDropTarget.xiSlot(1, position: Position.rb),
       );
       expect(out.isAccepted, isTrue, reason: out.rejection);
@@ -532,6 +650,27 @@ void main() {
       expect(cmPlaces, hasLength(1),
           reason: 'the held CM left his place');
       expect(cmPlaces.single.x, 50, reason: 'the remaining CM centres');
+    });
+
+    test('a bench man facing a full XI is offered no spare places; the '
+        'keeper never is', () {
+      final squad = {
+        for (var i = 0; i < 11; i++) i: _card(i, _f433Positions[i]),
+        11: _card(11, Position.st),
+      };
+      final bench = squadDragLayout(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: squad[11]!,
+      );
+      expect(bench.slots, hasLength(11),
+          reason: 'nothing to turn into a spare place');
+      final keeper = squadDragLayout(
+        formation: formationByCode('4-3-3'),
+        squad: squad,
+        dragged: squad[0]!,
+      );
+      expect(keeper.slots, hasLength(11));
     });
 
     test('a keeper drag is refused outright', () {
@@ -606,6 +745,13 @@ const _f433Positions = [
   Position.lb, Position.cb, Position.cb, Position.rb,
   Position.cdm, Position.cm, Position.cm,
   Position.lw, Position.st, Position.rw,
+];
+
+const _f442Positions = [
+  Position.gk,
+  Position.lb, Position.cb, Position.cb, Position.rb,
+  Position.lm, Position.cm, Position.cm, Position.rm,
+  Position.st, Position.st,
 ];
 
 const _f343Positions = [
