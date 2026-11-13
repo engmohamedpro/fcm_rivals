@@ -18,7 +18,6 @@ import '../squad/formations.dart' show formationOfCode;
 import '../squad/squad_engine.dart' show PlayerCard;
 import '../squad/squad_pitch_view.dart' show SquadPitch;
 import '../../core/domain/players.dart';
-import '../../core/domain/crest.dart' show CrestSpec;
 import '../../core/ui/fcm_club_badge.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
@@ -192,68 +191,11 @@ class _OpponentHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          // T-0102: team vs team — the fixture's HOME club at the
-          // start, AWAY at the end, regardless of the user's side; the
-          // user's chip carries the gold accent so their side is
-          // obvious. Row order mirrors with the text direction.
-          Container(
-            padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  FcmColors.bronze.withValues(alpha: 0.10),
-                  Colors.white.withValues(alpha: 0.03),
-                ],
-              ),
-              border: Border.all(
-                color: FcmColors.bronze.withValues(alpha: 0.35),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _TeamChip(
-                    clubName: d.userAtHome
-                        ? d.userClubName
-                        : d.opponentClubName,
-                    position: d.userAtHome
-                        ? d.userPosition
-                        : d.opponentPosition,
-                    crest: d.userAtHome ? d.userCrest : d.opponentCrest,
-                    isUser: d.userAtHome,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text(
-                    'VS',
-                    style: TextStyle(
-                      color: FcmColors.gold,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: _TeamChip(
-                    clubName: d.userAtHome
-                        ? d.opponentClubName
-                        : d.userClubName,
-                    position: d.userAtHome
-                        ? d.opponentPosition
-                        : d.userPosition,
-                    crest: d.userAtHome ? d.opponentCrest : d.userCrest,
-                    isUser: !d.userAtHome,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
+          // T-0131: the team-vs-team card is GONE (owner request
+          // 2026-11-13) — the analysis is about the opponent, so the
+          // header carries the fixture line and the opponent's form
+          // only; the opponent's crest, name and table position now
+          // lead THEIR STARTING XI card below.
           // The opponent's recent form and the league-positions
           // comparison stay as they were (T-0102 out of scope).
           Row(
@@ -321,57 +263,6 @@ class _OpponentHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// One side of the team-vs-team header (T-0102): the club's crest,
-/// name and table position stacked — compact, gold-accented when it is
-/// the user's club, steel otherwise.
-class _TeamChip extends StatelessWidget {
-  const _TeamChip({
-    required this.clubName,
-    required this.position,
-    required this.crest,
-    required this.isUser,
-  });
-
-  final String clubName;
-  final int position;
-  final CrestSpec? crest;
-  final bool isUser;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        FcmClubBadge(name: clubName, crest: crest, size: 54, isUser: isUser),
-        const SizedBox(height: 6),
-        Text(
-          clubName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: isUser ? FcmColors.gold : Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 14,
-            height: 1.15,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '${ordinalOf(position)} in the table',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: FcmColors.goldSoft,
-            fontWeight: FontWeight.w800,
-            fontSize: 10.5,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -497,20 +388,46 @@ class _OpponentFormationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // T-0131 (owner request 2026-11-13): the card's header IS the
+          // opponent now — crest, club name and table position replace
+          // the old "Their starting XI" label. The formation code pill
+          // stays on the end.
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              FcmClubBadge(
+                name: data.opponentClubName,
+                crest: data.opponentCrest,
+                size: 40,
+                isUser: false,
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  l10nOf(context).prematchOpponentXiTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: FcmColors.gold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.opponentClubName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: FcmColors.gold,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${ordinalOf(data.opponentPosition)} in the table',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: FcmColors.goldSoft,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               // The shape's own code ('4-3-3') — the identifier the

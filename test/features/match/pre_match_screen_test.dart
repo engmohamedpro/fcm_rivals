@@ -176,28 +176,18 @@ Future<void> _openPreMatch(
 
 void main() {
   testWidgets(
-    'T-0102: the header is team vs team — HOME club first, both '
-    'orientations',
+    'T-0131: the team-vs-team card is gone; the opponent header row '
+    'leads their starting XI',
     (WidgetTester tester) async {
       await _openPreMatch(tester);
 
-      // Both club names show, the user home: FC Rivals at the start.
-      expect(find.text('Al Ahly'), findsOneWidget);
-      expect(find.text('FC Rivals'), findsOneWidget);
-      expect(find.text('VS'), findsOneWidget);
-      // The table positions survive per side.
-      expect(find.text('5th in the table'), findsOneWidget);
-      expect(find.text('12th in the table'), findsOneWidget);
+      // The team-vs-team card is gone (owner request 2026-11-13): no
+      // VS, and the user's club no longer sits in the analysis header.
+      expect(find.text('VS'), findsNothing);
       // The form pips row stays.
       expect(find.text('W'), findsNWidgets(2));
       expect(find.text('D'), findsNWidgets(2));
       expect(find.text('L'), findsNWidgets(1));
-
-      // Start-side order: the home club's name sits to the LEFT in LTR.
-      final userDx = tester.getTopLeft(find.text('FC Rivals')).dx;
-      final oppDx = tester.getTopLeft(find.text('Al Ahly')).dx;
-      expect(userDx, lessThan(oppDx),
-          reason: 'userAtHome: the user club is the HOME side, first');
 
     // Forecast: loss/draw/win in ONE row, no heading or sample count.
     expect(find.text('LOSS'), findsOneWidget);
@@ -213,10 +203,11 @@ void main() {
     expect(find.text('TOP PLAYER'), findsNothing);
     expect(find.text('ST Finisher'), findsNothing, reason: 'no user cards on the analysis');
 
-    // In their place: the opponent's starting XI on the Team tab's
-    // pitch — the section title, the shape's own code pill, and every
-    // starter's mini card standing in his slot.
-    expect(find.text('Their starting XI'), findsOneWidget);
+    // T-0131: the formation card's header IS the opponent — crest,
+    // club name and table position replace 'Their starting XI'.
+    expect(find.text('Their starting XI'), findsNothing);
+    expect(find.text('Al Ahly'), findsOneWidget);
+    expect(find.text('5th in the table'), findsOneWidget);
     expect(find.text('4-3-3'), findsOneWidget);
     expect(find.byType(SquadPitch), findsOneWidget);
     final minis = tester
@@ -271,13 +262,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Both sides render in AR; no overflow exception.
+      // T-0131: the opponent renders in AR; no overflow exception.
       expect(find.text('Al Ahly'), findsOneWidget);
-      expect(find.text('FC Rivals'), findsOneWidget);
-      expect(find.text('VS'), findsOneWidget);
+      expect(find.text('VS'), findsNothing);
       expect(tester.takeException(), isNull);
       // The formation section renders localized, all eleven on the pitch.
-      expect(find.text('تشكيل الخصم'), findsOneWidget);
+      expect(find.text('5th in the table'), findsOneWidget);
       expect(
         tester
             .widgetList<FcmMiniCard>(find.byType(FcmMiniCard))
@@ -293,14 +283,14 @@ void main() {
   ) async {
     await _openPreMatch(tester);
 
-    expect(find.text('Their starting XI'), findsOneWidget);
+    expect(find.text('5th in the table'), findsOneWidget);
     expect(find.text('BACK'), findsOneWidget);
 
     // BACK pops the route: back on the season tab, nothing kicked off.
     await tester.tap(find.text('BACK'));
     await _settle(tester, frames: 10);
     expect(find.text('SEASON TAB'), findsOneWidget);
-    expect(find.text('Their starting XI'), findsNothing);
+    expect(find.text('5th in the table'), findsNothing);
   });
 
   testWidgets('onExit replaces the default pop', (WidgetTester tester) async {
@@ -312,7 +302,7 @@ void main() {
 
     expect(exited, isTrue, reason: 'host exit callback ran');
     // The screen itself is still on stage — the host decides what pops.
-    expect(find.text('Their starting XI'), findsOneWidget);
+    expect(find.text('5th in the table'), findsOneWidget);
   });
 
   testWidgets('BACK from the tactics phase steps back to the analysis', (
@@ -327,7 +317,7 @@ void main() {
     await tester.tap(find.text('BACK'));
     await _settle(tester, frames: 10);
     expect(
-      find.text('Their starting XI'),
+      find.text('5th in the table'),
       findsOneWidget,
       reason: 'BACK steps back one phase, not out of the matchday',
     );
