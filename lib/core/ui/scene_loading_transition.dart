@@ -14,11 +14,9 @@
 /// animation never visibly restarts):
 ///  1. a breathing champagne glow behind the crest,
 ///  2. slowly rotating light rays,
-///  3. shock-wave rings that expand off the logo and fade,
-///  4. orbiting sparks on the far side of the logo,
-///  5. the logo itself — breathing, floating, with a light sweep,
-///  6. orbiting sparks on the near side (depth),
-///  7. a gold progress shimmer under the crest.
+///  3. orbiting sparks on the far side of the logo,
+///  4. the logo itself — breathing, floating, with a light sweep,
+///  5. orbiting sparks on the near side (depth).
 library;
 
 import 'dart:math' as math;
@@ -112,7 +110,7 @@ class _SceneLoadingTransitionState extends State<SceneLoadingTransition>
                   children: [
                     ExcludeSemantics(
                       child: CustomPaint(
-                        painter: _BackdropPainter(t, logoWidth),
+                        painter: _BackdropPainter(t),
                       ),
                     ),
                     if (!_reduceMotion)
@@ -128,16 +126,6 @@ class _SceneLoadingTransitionState extends State<SceneLoadingTransition>
                           painter: _SparkPainter(t, logoWidth, front: true),
                         ),
                       ),
-                    Align(
-                      alignment: const Alignment(0, 0.42),
-                      child: ExcludeSemantics(
-                        child: SizedBox(
-                          width: math.min(logoWidth * 0.5, 190),
-                          height: 4,
-                          child: CustomPaint(painter: _BarPainter(t)),
-                        ),
-                      ),
-                    ),
                   ],
                 );
               },
@@ -222,10 +210,9 @@ class _SlideGradient extends GradientTransform {
 // -----------------------------------------------------------------------------
 
 class _BackdropPainter extends CustomPainter {
-  _BackdropPainter(this.t, this.logoWidth);
+  _BackdropPainter(this.t);
 
   final double t;
-  final double logoWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -276,23 +263,7 @@ class _BackdropPainter extends CustomPainter {
       canvas.drawPath(path, rayPaint);
     }
 
-    // 3. Shock-wave rings: three staggered, one launched per second.
-    for (var i = 0; i < 3; i++) {
-      final phase = (t * 2 + i / 3) % 1.0;
-      final eased = Curves.easeOutCubic.transform(phase);
-      final radius = logoWidth * 0.30 + (shortest * 0.95 - logoWidth * 0.30) * eased;
-      final fade = math.pow(1 - phase, 1.6).toDouble();
-      canvas.drawCircle(
-        c,
-        radius,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2 + 2.6 * (1 - phase)
-          ..color = FcmColors.gold.withValues(alpha: 0.34 * fade),
-      );
-    }
-
-    // 4. Vignette keeps the eye on the crest and the edges quiet.
+    // 3. Vignette keeps the eye on the crest and the edges quiet.
     canvas.drawRect(
       Offset.zero & size,
       Paint()
@@ -308,8 +279,7 @@ class _BackdropPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BackdropPainter old) =>
-      old.t != t || old.logoWidth != logoWidth;
+  bool shouldRepaint(_BackdropPainter old) => old.t != t;
 }
 
 // -----------------------------------------------------------------------------
@@ -357,48 +327,4 @@ class _SparkPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SparkPainter old) =>
       old.t != t || old.logoWidth != logoWidth || old.front != front;
-}
-
-// -----------------------------------------------------------------------------
-// Progress shimmer
-// -----------------------------------------------------------------------------
-
-/// An indeterminate gold shimmer sliding along a faint track.
-class _BarPainter extends CustomPainter {
-  _BarPainter(this.t);
-
-  final double t;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final track = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(size.height / 2),
-    );
-    canvas.drawRRect(
-      track,
-      Paint()..color = Colors.white.withValues(alpha: 0.08),
-    );
-
-    final segW = size.width * 0.42;
-    final p = (t * 3) % 1.0; // three passes per loop
-    final x = -segW + (size.width + segW) * Curves.easeInOut.transform(p);
-    canvas.save();
-    canvas.clipRRect(track);
-    canvas.drawRect(
-      Rect.fromLTWH(x, 0, segW, size.height),
-      Paint()
-        ..shader = LinearGradient(
-          colors: [
-            Colors.transparent,
-            FcmColors.goldSoft,
-            Colors.transparent,
-          ],
-        ).createShader(Rect.fromLTWH(x, 0, segW, size.height)),
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_BarPainter old) => old.t != t;
 }
