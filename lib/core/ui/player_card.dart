@@ -472,6 +472,7 @@ class PlayerCardWidget extends StatelessWidget {
     this.width,
     this.fontFamily,
     this.shimmer = .35,
+    this.imageReveal = 1.0,
   });
 
   final PlayerCardRarity rarity;
@@ -490,6 +491,11 @@ class PlayerCardWidget extends StatelessWidget {
   final double? width;
   final String? fontFamily;
   final double shimmer;
+
+  /// 0..1 — how much of the real face is shown. Below 1 the card
+  /// cross-fades from the generic silhouette (the pack-reveal secret:
+  /// WHO is in the pack stays hidden until the name lands).
+  final double imageReveal;
 
   @override
   Widget build(BuildContext context) {
@@ -660,7 +666,11 @@ class PlayerCardWidget extends StatelessWidget {
                       width: w * .42,
                       height: h * .50,
                       child: _PlayerImage(
-                          image: playerImage, hasBackground: imageHasBackground, pal: pal, isSmall: true),
+                          image: playerImage,
+                          hasBackground: imageHasBackground,
+                          pal: pal,
+                          isSmall: true,
+                          reveal: imageReveal),
                     ),
                     // Bottom: Flag and team logo side by side, moved up a bit (top: h * .52), with identical equal box sizing
                     Positioned(
@@ -778,13 +788,21 @@ class PlayerCardWidget extends StatelessWidget {
       ),
     );
 
+    // Owner request 2026-11-13: the big-card portrait a touch smaller —
+    // the bottom edge stays pinned at .63h (feet just above the name
+    // plate), the top edge drops from .055h to .10h, so the player
+    // shrinks without the composition drifting.
     final image = Positioned(
       left: w * .30,
       right: w * .03,
-      top: h * .055,
-      height: h * .575,
+      top: h * .10,
+      height: h * .53,
       child: _PlayerImage(
-          image: playerImage, hasBackground: imageHasBackground, pal: pal, isSmall: false),
+          image: playerImage,
+          hasBackground: imageHasBackground,
+          pal: pal,
+          isSmall: false,
+          reveal: imageReveal),
     );
 
     final shownStats = stats.take(3).toList();
@@ -925,12 +943,17 @@ class _PlayerImage extends StatefulWidget {
     required this.hasBackground,
     required this.pal,
     this.isSmall = false,
+    this.reveal = 1.0,
   });
 
   final ImageProvider? image;
   final bool? hasBackground;
   final _Palette pal;
   final bool isSmall;
+
+  /// 0..1 — 0 hides the real face behind the generic silhouette, 1 shows
+  /// it fully; in between cross-fades (the pack-reveal name beat).
+  final double reveal;
 
   @override
   State<_PlayerImage> createState() => _PlayerImageState();
@@ -1001,6 +1024,11 @@ class _PlayerImageState extends State<_PlayerImage> {
 
     final fallback = SizedBox.expand(child: playerPng());
     if (widget.image == null) return fallback;
+    // The pack-reveal secret (owner request 2026-11-13): until the name
+    // lands, the face is the generic silhouette — the real image fades
+    // in on the same beat the name types on.
+    final reveal = widget.reveal.clamp(0.0, 1.0);
+    if (reveal <= 0) return fallback;
     final hasBg = _bg;
     if (hasBg == null) return const SizedBox.expand();
 
@@ -1014,7 +1042,7 @@ class _PlayerImageState extends State<_PlayerImage> {
       errorBuilder: (_, _, _) => playerPng(),
     );
 
-    return AnimatedSwitcher(
+    Widget revealed() => AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
       child: ShaderMask(
         key: ValueKey(hasBg),
@@ -1034,6 +1062,16 @@ class _PlayerImageState extends State<_PlayerImage> {
               ).createShader(r),
         child: img,
       ),
+    );
+
+    if (reveal >= 1) return revealed();
+    // Cross-fade: silhouette under, real face over, riding the reveal.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Opacity(opacity: 1 - reveal, child: fallback),
+        Opacity(opacity: reveal, child: revealed()),
+      ],
     );
   }
 }
@@ -1202,6 +1240,7 @@ class FcmPlayerCard extends StatelessWidget {
     this.shine,
     this.statProgress = 1.0,
     this.nameProgress = 1.0,
+    this.imageProgress = 1.0,
     this.glow = 0.0,
     this.overall,
     this.stats,
@@ -1218,6 +1257,11 @@ class FcmPlayerCard extends StatelessWidget {
   final double? shine;
   final double statProgress;
   final double nameProgress;
+
+  /// 0..1 — the face reveal, driven by the SAME beat as the name
+  /// (owner request 2026-11-13): the pack reveal hides the image behind
+  /// the generic silhouette and fades it in as the name lands.
+  final double imageProgress;
   final double glow;
   final int? overall;
   final List<({String label, int value})>? stats;
@@ -1282,6 +1326,7 @@ class FcmPlayerCard extends StatelessWidget {
       stats: pStats,
       width: width,
       shimmer: shine ?? .35,
+      imageReveal: imageProgress,
     );
   }
 }

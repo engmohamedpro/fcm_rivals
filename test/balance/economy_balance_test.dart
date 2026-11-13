@@ -125,22 +125,19 @@ void main() {
     });
 
     test('position pack prices sit in their bands across tiers', () {
-      // Measured on the shipped dataset (per-position EV pools): rare
-      // 914-1,188, epic 2,838-4,058, legendary 8,203-11,794 — the RM
-      // pool prices lowest, RW highest within each tier.
+      // Measured on the shipped dataset (per-group EV pools — RW+RM and
+      // LW+LM merged into one shelf group each, owner request
+      // 2026-11-13): rare 4-5k, epic 8-10k, legendary 23-26k.
       final byTier = <PackTier, List<int>>{};
       for (final o in offers) {
         byTier.putIfAbsent(o.tier, () => []).add(o.price);
       }
-      expect(byTier[PackTier.rare], hasLength(12));
-      expect(byTier[PackTier.epic], hasLength(12));
-      // The tm bundle's legendary shelf (80+ rows): 11 of 12 positions.
-      // RM has ZERO 80+ rows (457 rows, max €22.2M — the modern game
-      // barely fields classic right midfielders), so the catalog drops
-      // the RM legendary offer instead of shelving an empty promise;
-      // the T-0047 note (LM/RM tiny pools) no longer applies to the
-      // 39,090-row bundle.
-      expect(byTier[PackTier.legendary], hasLength(11));
+      // Owner request 2026-11-13: 10 shelf groups — the merged RW+RM and
+      // LW+LM pools each carry all three tiers (the winger's 80+ rows
+      // cover the group), every other position shelves alone.
+      expect(byTier[PackTier.rare], hasLength(10));
+      expect(byTier[PackTier.epic], hasLength(10));
+      expect(byTier[PackTier.legendary], hasLength(10));
       // The icon section shelves above the ST packs (owner request
       // 2026-11-12): exactly three icon packs, every one priced.
       expect(byTier[PackTier.iconEpic], hasLength(1));

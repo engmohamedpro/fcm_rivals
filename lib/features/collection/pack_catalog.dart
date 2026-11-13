@@ -52,13 +52,17 @@ List<StorePackOffer> storeOffersFor(
     PackCategory category,
     String? scopeValue,
     PackTier tier,
-    String baseTitle,
-  ) {
+    String baseTitle, {
+    Set<Position>? positions,
+  }) {
     final scope = PackScope(
       category: category,
-      position: category == PackCategory.position && scopeValue != null
+      position: positions == null &&
+              category == PackCategory.position &&
+              scopeValue != null
           ? Position.fromCode(scopeValue)
           : null,
+      positions: category == PackCategory.position ? positions : null,
       tier: tier,
     );
     final eligible = poolRef.where(scope.matches).toList(growable: false);
@@ -107,7 +111,33 @@ List<StorePackOffer> storeOffersFor(
       }
     }
 
+    // Owner request 2026-11-13: RW+RM and LW+LM shelf as ONE merged group
+    // each — the winger and his wide midfielder share a section, a pool
+    // and a price. Every other position shelves alone. A group shelves at
+    // its FIRST member's slot (LW's, RW's), keeping the shelf order the
+    // positions always had; the other member falls through as already
+    // shelved.
     for (final position in Position.values) {
+      if (_shelfGroupOf(position) case final group?) {
+        final firstMember =
+            group.reduce((a, b) => a.index < b.index ? a : b);
+        if (position != firstMember) continue;
+        final scopeCode = positionScopeCode(group);
+        for (final tier in PackTier.values) {
+          if (tier.isIconTier) {
+            continue; // icon tiers shelf in their own section
+          }
+          final offer = offerFor(
+            PackCategory.position,
+            scopeCode,
+            tier,
+            '$scopeCode Position Pack',
+            positions: group,
+          );
+          if (offer != null) offers.add(offer);
+        }
+        continue;
+      }
       for (final tier in PackTier.values) {
         if (tier.isIconTier) {
           continue; // icon tiers shelf in their own section
@@ -122,4 +152,13 @@ List<StorePackOffer> storeOffersFor(
       }
     }
     return offers;
+}
+
+/// The merged shelf group [position] belongs to, if any (RW+RM, LW+LM —
+/// owner request 2026-11-13); null shelves alone.
+Set<Position>? _shelfGroupOf(Position position) {
+  for (final group in kStoreShelfGroups) {
+    if (group.contains(position)) return group;
+  }
+  return null;
 }

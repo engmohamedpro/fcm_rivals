@@ -222,6 +222,11 @@ extension _PackRevealViews on _PackOpeningScreenState {
                       width: cardWidth,
                       statProgress: stats,
                       nameProgress: name,
+                      // Owner request 2026-11-13: the face is part of the
+                      // identity — hidden behind the generic silhouette
+                      // until the name beat, then it fades in WITH the
+                      // name (the same interval that types the letters).
+                      imageProgress: name,
                       // Legendary: the name types in letter by letter,
                       // and a redacted bar breathes where it will land.
                       nameLetters: legend ? name : null,

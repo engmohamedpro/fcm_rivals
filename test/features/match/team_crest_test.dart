@@ -43,7 +43,6 @@ void main() {
               speed: 1,
               onTogglePause: () {},
               onSetSpeed: (_) {},
-              onTactics: () {},
             ),
           ),
         ),
@@ -51,8 +50,9 @@ void main() {
 
       // Both sides paint their crest — two FcmCrest instances on screen.
       expect(find.byType(FcmCrest), findsNWidgets(2));
-      // The letters-circle fallback must NOT appear: the chips are
-      // crests, not initials.
+      // The letters-circle fallback must NOT appear: the scoreline is a
+      // broadcast row — crest, abbreviation, score (owner request
+      // 2026-11-13), never initials.
       expect(
         find.text('FR'),
         findsNothing,
@@ -63,9 +63,15 @@ void main() {
         findsNothing,
         reason: 'opponent chip must show the crest, not initials',
       );
-      // Both club names still read.
-      expect(find.text('FC Rivals'), findsOneWidget);
-      expect(find.text('Al Ahly'), findsOneWidget);
+      // Broadcast abbreviations replace the full club names.
+      expect(find.text('FCR'), findsOneWidget);
+      expect(find.text('ALA'), findsOneWidget);
+      expect(find.text('FC Rivals'), findsNothing);
+      expect(find.text('Al Ahly'), findsNothing);
+      // The broadcast strip's competition column splits 'League ·
+      // Round 3'-style tags, but this header carries no label — no
+      // phantom column text.
+      expect(find.text('Round 3'), findsNothing);
     },
   );
 
@@ -206,7 +212,6 @@ void main() {
               speed: 1,
               onTogglePause: () {},
               onSetSpeed: (_) {},
-              onTactics: () {},
             ),
           ),
         ),

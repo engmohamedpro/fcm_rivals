@@ -81,18 +81,72 @@ enum PackTier {
   };
 }
 
+/// The store's merged shelf groups (owner request 2026-11-13): RW+RM
+/// and LW+LM each shelf as ONE pack group — the winger and his wide
+/// midfielder share a section, a pool and a price. Every other
+/// position shelves alone.
+const List<Set<Position>> kStoreShelfGroups = [
+  {Position.rw, Position.rm},
+  {Position.lw, Position.lm},
+];
+
+/// Canonical scope code for a position scope: a single position is its
+/// own code ('ST'); a merged group joins its codes in Position enum
+/// order ('RW+RM', 'LW+LM' — the winger first, exactly as the shelf
+/// group reads) — the exact string the offers carry and the packs table
+/// persists, whatever order the caller's set iterates in.
+String positionScopeCode(Iterable<Position> positions) {
+  final ordered = [for (final p in positions) p]
+    ..sort((a, b) => a.index.compareTo(b.index));
+  return [for (final p in ordered) p.code].join('+');
+}
+
+/// Normalizes a position-scope value onto its shelf group: 'RW' and
+/// 'RM' both map to 'RW+RM' (so a formation-granted RW pack stacks
+/// under the merged cell and chains into the merged slot); a value
+/// outside every group returns itself. Non-position scopes pass
+/// through untouched.
+String normalizePositionScopeValue(String value) {
+  for (final group in kStoreShelfGroups) {
+    if (group.any((p) => p.code == value)) return positionScopeCode(group);
+  }
+  return value;
+}
+
+/// Parses a persisted position-scope value into its position set: a
+/// plain code ('ST') yields {ST}; a merged group ('RW+RM') yields both
+/// positions. Null/empty yields null.
+Set<Position>? parsePositionScopeValue(String? value) {
+  if (value == null || value.isEmpty) return null;
+  final parts = value
+      .split('+')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty);
+  if (parts.isEmpty) return null;
+  return {for (final p in parts) Position.fromCode(p)};
+}
+
 /// Filter describing which players a pack draws from.
 class PackScope {
   const PackScope({
     required this.category,
     this.nationality,
     this.position,
+    this.positions,
     this.tier,
   });
 
   final PackCategory category;
   final String? nationality;
+
+  /// Single-position filter (position packs). Null when [positions]
+  /// (a merged shelf group) carries the filter instead.
   final Position? position;
+
+  /// Merged position group (owner request 2026-11-13: RW+RM, LW+LM):
+  /// when set, the scope matches ANY of these positions. Single-position
+  /// call sites (starting packs, tests) keep using [position].
+  final Set<Position>? positions;
 
   /// Store tier of the pack (GDD 5.5 variety); null keeps the engine's
   /// constructor-configured tier (backwards compatibility).
@@ -113,9 +167,12 @@ class PackScope {
             !p.isIcon &&
             p.nationality == nationality;
       case PackCategory.position:
-        // ST packs and every other position scope draw regulars only —
-        // the ST packs stay exactly what they were; the icon tiers
-        // shelf as their own section beside them.
+        // The merged shelf group (RW+RM / LW+LM) draws from the union;
+        // single scopes stay exactly what they were.
+        final group = positions;
+        if (group != null) {
+          return !p.isIcon && group.contains(p.position);
+        }
         return position != null && !p.isIcon && p.position == position;
       case PackCategory.icon:
         // Icon packs draw from the full pool: REGULARS of the rolled
@@ -134,10 +191,27 @@ class PackScope {
       other.category == category &&
       other.nationality == nationality &&
       other.position == position &&
+      _setEquals(other.positions, positions) &&
       other.tier == tier;
 
   @override
-  int get hashCode => Object.hash(category, nationality, position, tier);
+  int get hashCode =>
+      Object.hash(category, nationality, position, _setHash(positions), tier);
+
+  static bool _setEquals(Set<Position>? a, Set<Position>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.length == b.length && a.containsAll(b);
+  }
+
+  static int _setHash(Set<Position>? s) {
+    if (s == null) return 0;
+    var h = 0;
+    for (final p in s) {
+      h ^= p.hashCode;
+    }
+    return h;
+  }
 }
 
 /// One drawn player with the rarity band he was drawn under.

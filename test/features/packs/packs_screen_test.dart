@@ -21,7 +21,7 @@ import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/packs/pack_contents_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_opening_screen.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart'
-    show PackCategory, PackTier;
+    show PackCategory, PackTier, normalizePositionScopeValue;
 import 'package:fcm_rivals/features/packs/pack_rarity.dart'
     show defaultPackOddsConfig;
 import 'package:fcm_rivals/features/packs/packs_screen.dart';
@@ -176,43 +176,51 @@ void main() {
     addTearDown(tester.view.reset);
     await bootScreen(tester);
 
-    // 12 position sections, one shared title each — the global pack is
+    // 10 shelf sections (owner request 2026-11-13: RW+RM and LW+LM each
+    // merged into ONE group), one shared title each — the global pack is
     // gone from the store, and no per-cell titles are left over from the
     // old flat grid.
     expect(find.text('Global Pack'), findsNothing);
     expect(find.text('ST Pack'), findsOneWidget);
-    expect(find.text('LW Pack'), findsOneWidget);
+    expect(find.text('LW+LM Pack'), findsOneWidget);
+    expect(find.text('RW+RM Pack'), findsOneWidget);
+    expect(find.text('LW Pack'), findsNothing);
+    expect(find.text('RM Pack'), findsNothing);
     expect(find.text('FREE ×3'), findsNothing);
-    // A tier only shelves when the position's pool holds a player of
-    // that rarity: LM and RM have no 82+ players in the bundled dataset,
-    // so their sections showed Rare and Epic cells only before the
-    // T-0047 regrade — the 80+ threshold gave both a (small) legendary
-    // pool, so every position now carries all three tiers.
+    // A tier only shelves when the group's pool holds a player of that
+    // rarity: the bundled dataset gives every single position all three
+    // tiers since the T-0047 regrade (80+ threshold), so the merged
+    // pools carry all three tiers a fortiori.
     final offers = await tester.runAsync(() => store.getStoreOffers());
     expect(
-      offers!.where((o) => o.scopeValue == 'LM').map((o) => o.tier),
+      offers!.where((o) => o.scopeValue == 'LW+LM').map((o) => o.tier),
       containsAllInOrder([PackTier.rare, PackTier.epic, PackTier.legendary]),
     );
     expect(
-      offers.where((o) => o.scopeValue == 'RM').map((o) => o.tier),
+      offers.where((o) => o.scopeValue == 'RW+RM').map((o) => o.tier),
       containsAllInOrder([PackTier.rare, PackTier.epic, PackTier.legendary]),
     );
     expect(
       offers.where((o) => o.scopeValue == 'ST').map((o) => o.tier),
       containsAllInOrder([PackTier.rare, PackTier.epic, PackTier.legendary]),
     );
-    // T-0047: 12 positions × 3 tiers — the regrade moved the legendary
-    // threshold 82 → 80, adding exactly the LM and RM legendary shelves
-    // (2 and 1 players respectively) and emptying none.
-    expect(offers.length, 12 * 3);
+    // Owner request 2026-11-13: 10 shelf groups × 3 tiers + the three
+    // icon packs — RW+RM and LW+LM merged, every other position alone.
+    expect(offers.length, 10 * 3 + 3);
     // No pool sizes or player strips on the store anymore: the contents
     // list behind the players icon button is the one place the pool is
-    // shown.
-    expect(offers.any((o) => o.scopeValue == null), isFalse);
-    // One compact players icon button per section title row (12), not
-    // per cell: the contents pool is per-scope. The text label is gone —
-    // the icon (with its tooltip) is the whole button.
-    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(12));
+    // shown. (The icon offers legitimately carry no scope value.)
+    expect(
+      offers
+          .where((o) => o.category == PackCategory.position)
+          .any((o) => o.scopeValue == null),
+      isFalse,
+    );
+    // One compact players icon button per section title row (10 position
+    // groups + the Icon section = 11), not per cell: the contents pool
+    // is per-scope. The text label is gone — the icon (with its tooltip)
+    // is the whole button.
+    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(11));
     expect(find.text('VIEW PLAYERS'), findsNothing);
     // The tier name is stamped on the foil's plate (painted, not a
     // Text widget), so no tier labels render under the cells anymore.
@@ -226,7 +234,9 @@ void main() {
     // so the stack badges are ×2 on single-slot positions (GK, LB, RB,
     // CDM, LW, ST, RW), ×4 on the doubled slots (CB, CM) — nothing at
     // ×1, nothing at ×3, and the positions the shape doesn't use
-    // (CAM, LM, RM) carry no free stack at all.
+    // (CAM, LM, RM) carry no free stack at all. The single-position
+    // rows (LW, RW) stack under their MERGED cells (LW+LM, RW+RM —
+    // owner request 2026-11-13) through the shelf-group normalization.
     expect(find.text('FREE ×1'), findsNothing);
     expect(find.text('FREE ×2'), findsNWidgets(7));
     expect(find.text('FREE ×4'), findsNWidgets(2));
@@ -251,7 +261,7 @@ void main() {
     expect(find.text('BUY'), findsNothing);
     // Every section title row carries a players icon button into the
     // scope's shared pool.
-    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(12));
+    expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(11));
     // No player preview strip on the store itself.
     expect(find.byType(FcmMiniCard), findsNothing);
   });
@@ -816,12 +826,19 @@ void main() {
       // block, so CLAIM opens another owned pack straight away — before
       // the fix the whole store stayed dead until an app restart. The
       // pack art itself is the CLAIM button now: tap the first owned
-      // cell, derived from the inventory.
+      // cell, derived from the inventory. A single-position row (e.g.
+      // 'LW') stacks under its MERGED cell ('LW+LM' — owner request
+      // 2026-11-13), so the key normalizes through the shelf group.
       final remaining = await tester.runAsync(() => store.getAvailablePacks());
+      final firstOwned = remaining!.first;
+      final ownedScope = firstOwned.category == 'position' &&
+              firstOwned.scopeValue != null
+          ? normalizePositionScopeValue(firstOwned.scopeValue!)
+          : firstOwned.scopeValue;
       final claimCell = find
           .byKey(
             ValueKey(
-              'store-pack-${remaining!.first.category}-${remaining.first.scopeValue ?? 'ANY'}-${remaining.first.tier}',
+              'store-pack-${firstOwned.category}-${ownedScope ?? 'ANY'}-${firstOwned.tier}',
             ),
           )
           .first;
@@ -890,7 +907,7 @@ void main() {
       // badges of the 22 starter packs and the section icon buttons.
       expect(find.text('FREE ×2'), findsNWidgets(7));
       expect(find.text('FREE ×4'), findsNWidgets(2));
-      expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(12));
+      expect(find.byIcon(Icons.people_outline_rounded), findsNWidgets(11));
     },
   );
 

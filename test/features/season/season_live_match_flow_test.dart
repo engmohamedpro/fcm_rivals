@@ -236,9 +236,13 @@ void main() {
       // The live match screen is pushed over the shell: real club names on
       // the scoreboard, the auto-play controls (pause + 1x–3x speed; no
       // skip-to-end exists anywhere) and the tactics entry point.
-      expect(find.text('League · Round 1'), findsOneWidget);
-      expect(find.text('FC Rivals'), findsWidgets);
-      expect(find.text(opponent.opponentName), findsWidgets);
+      expect(find.text('D1'), findsOneWidget);
+      expect(find.text('Round 1'), findsOneWidget);
+      // Broadcast abbreviations replace the full club names (owner
+      // request 2026-11-13): 'FC Rivals' reads 'FCR' on the scoreline.
+      expect(find.text('FCR'), findsOneWidget);
+      expect(find.text(opponent.opponentName), findsNothing,
+          reason: 'the scoreline abbreviates, full names are gone');
       expect(find.text('1x'), findsOneWidget);
       expect(find.text('3x'), findsOneWidget);
       expect(find.text('4x'), findsNothing);

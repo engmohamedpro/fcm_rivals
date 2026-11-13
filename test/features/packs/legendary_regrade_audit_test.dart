@@ -67,6 +67,10 @@ void main() {
       };
       var positionsWithGold = 0;
       for (final position in Position.values) {
+        // Owner request 2026-11-13: shelf groups — the position shelves
+        // under its merged group's code ('LW' → 'LW+LM'), so the audit
+        // reads the group's shelf entry.
+        final shelfKey = normalizePositionScopeValue(position.code);
         final oldCount = pool
             .where(
               (p) =>
@@ -83,14 +87,14 @@ void main() {
             reason: '${position.code}: the regrade can only grow pools');
         if (oldCount > 0) {
           positionsWithGold++;
-          expect(legendaryShelf[position.code], isNotNull,
+          expect(legendaryShelf[shelfKey], isNotNull,
               reason: '${position.code} carried a legendary shelf before '
                   'the regrade — it must not silently empty');
-          expect(legendaryShelf[position.code]!, greaterThan(0));
+          expect(legendaryShelf[shelfKey]!, greaterThan(0));
         }
         // ignore: avoid_print
         print('${position.code}: legendary pool 82+ = $oldCount, '
-            '80+ = $newCount, shelved = ${legendaryShelf[position.code]}');
+            '80+ = $newCount, shelved = ${legendaryShelf[shelfKey]}');
       }
       expect(positionsWithGold, greaterThan(0),
           reason: 'the audit is only meaningful if some position had a '

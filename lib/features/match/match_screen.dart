@@ -580,7 +580,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               speed: _speed,
                               onTogglePause: _togglePause,
                               onSetSpeed: _setSpeed,
-                              onTactics: () => _openLiveTactics(context),
+                              // Tactics left the header card (owner
+                              // request 2026-11-13): the live tactics
+                              // panel below and the half-time card keep
+                              // the editor one tap away.
                               // Momentum rides the clock bar: the home
                               // share of the latest minute, the user's
                               // crest colour tinting their side.

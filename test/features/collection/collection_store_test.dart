@@ -605,7 +605,7 @@ void main() {
     tearDown(() async => db.close());
 
     test('position sections only, tiers shelved when the pool has the '
-        'rarity — 24 offers', () async {
+        'rarity — merged RW+RM / LW+LM groups', () async {
       final offers = await store.getStoreOffers();
       // The global pack is gone: every POSITION offer is scoped; the
       // icon offers (owner request 2026-11-12) carry no scope value.
@@ -616,11 +616,26 @@ void main() {
             .every((o) => o.scopeValue != null),
         isTrue,
       );
-      // Every position holds rare and epic players, so 12 sections × 2
-      // tiers; only ST (with its €40M legend) also shelves Legendary.
-      // The seeded icon (owner request 2026-11-12) shelves the three
-      // icon packs above them: 12 × 2 + 1 + 3 = 28 offers.
-      expect(offers.length, 12 * 2 + 1 + 3);
+      // Owner request 2026-11-13: RW+RM and LW+LM shelf as ONE merged
+      // group each — 10 shelf groups in total. Every group holds rare
+      // and epic players, so 10 × 2 tiers; only ST (with its €40M
+      // legend) also shelves Legendary. The seeded icon shelves the
+      // three icon packs above them: 10 × 2 + 1 + 3 = 24 offers.
+      expect(offers.length, 10 * 2 + 1 + 3);
+      // The merged groups carry the joined scope code, and the single
+      // RW/RM/LW/LM sections are gone.
+      expect(offers.any((o) => o.scopeValue == 'RW'), isFalse);
+      expect(offers.any((o) => o.scopeValue == 'RM'), isFalse);
+      expect(offers.any((o) => o.scopeValue == 'LW'), isFalse);
+      expect(offers.any((o) => o.scopeValue == 'LM'), isFalse);
+      expect(
+        offers.where((o) => o.scopeValue == 'RW+RM').map((o) => o.tier).toSet(),
+        {PackTier.rare, PackTier.epic},
+      );
+      expect(
+        offers.where((o) => o.scopeValue == 'LW+LM').map((o) => o.tier).toSet(),
+        {PackTier.rare, PackTier.epic},
+      );
       expect(
         offers.where((o) => o.scopeValue == 'ST').map((o) => o.tier).toSet(),
         {PackTier.rare, PackTier.epic, PackTier.legendary},
@@ -635,13 +650,18 @@ void main() {
         offers.where((o) => o.scopeValue == 'GK').map((o) => o.tier).toSet(),
         {PackTier.rare, PackTier.epic},
       );
-      // Titles carry the tier, e.g. 'Legendary ST Position Pack'.
+      // Titles carry the tier and the merged scope, e.g. 'Legendary ST
+      // Position Pack' and 'Epic RW+RM Position Pack'.
       expect(
         offers.map((o) => o.title).contains('Legendary ST Position Pack'),
         isTrue,
       );
       expect(
         offers.map((o) => o.title).contains('Epic ST Position Pack'),
+        isTrue,
+      );
+      expect(
+        offers.map((o) => o.title).contains('Epic RW+RM Position Pack'),
         isTrue,
       );
     });
@@ -723,6 +743,58 @@ void main() {
           tier: PackTier.rare,
         );
         expect(global.length, 61);
+      },
+    );
+
+    test(
+      'merged shelf groups (owner request 2026-11-13): buying and '
+      'opening a RW+RM pack draws from BOTH positions',
+      () async {
+        // The merged pool: the 5 seeded RW rows plus the 5 RM rows.
+        final players = await store.getPackPlayers(
+          category: PackCategory.position,
+          scopeValue: 'RW+RM',
+          tier: PackTier.rare,
+        );
+        expect(players.length, 10);
+        expect(
+          players.map((p) => p.position.code).toSet(),
+          {'RW', 'RM'},
+        );
+
+        // Buy through the merged group: the persisted row carries the
+        // group's canonical scope code.
+        final clubBefore = (await store.getClub())!;
+        final offers = await store.getStoreOffers();
+        final merged = offers.firstWhere(
+          (o) => o.scopeValue == 'RW+RM' && o.tier == PackTier.epic,
+        );
+        if (clubBefore.coins < merged.price) {
+          await (db.update(db.clubs)..where((c) => c.id.equals(clubBefore.id)))
+              .write(ClubsCompanion(
+            coins: Value(clubBefore.coins + 100_000),
+          ));
+        }
+        final before = (await store.getClub())!.coins;
+        final pack = await store.buyPack(
+          category: PackCategory.position,
+          positions: {Position.rw, Position.rm},
+          tier: PackTier.epic,
+        );
+        expect(pack.scopeValue, 'RW+RM');
+        expect(pack.price, merged.price);
+        expect((await store.getClub())!.coins, before - merged.price);
+
+        // Opening the merged pack draws a player from either side.
+        final result = await store.openPack(
+          packId: pack.id,
+          random: math.Random(4),
+        );
+        expect(result.players.length, 1);
+        expect(
+          {'RW', 'RM'}.contains(result.players.single.position.code),
+          isTrue,
+        );
       },
     );
   });

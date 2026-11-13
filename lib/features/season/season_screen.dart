@@ -125,10 +125,15 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       );
       if (!mounted) return;
       setState(() => _error = null);
+      // Broadcast-style tag (owner request 2026-11-13): 'D1 · Round 3' —
+      // division and round feed the live header's competition column,
+      // Bein-sports style.
+      final season = await store.getActiveSeason();
+      if (!mounted) return;
       await AppRoutes.leagueMatch(
         context,
         session: session,
-        title: 'League · Round ${next.round}',
+        title: 'D${season?.division ?? 1} · Round ${next.round}',
         onFullTime: (report) => store.commitFixtureResult(session, next),
       );
       ref.invalidate(seasonSummaryProvider);

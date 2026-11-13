@@ -7,12 +7,16 @@ import '../../app/routes.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_context.dart';
 import '../../core/database/app_database.dart' show Pack;
-import '../../core/domain/players.dart' show Position;
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../../features/collection/collection_store.dart'
     show CollectionStore, PackOpenResult, StorePackOffer;
-import '../../features/packs/pack_engine.dart' show PackCategory, PackTier;
+import '../../features/packs/pack_engine.dart'
+    show
+        PackCategory,
+        PackTier,
+        normalizePositionScopeValue,
+        parsePositionScopeValue;
 import 'pack_tier_colors.dart';
 import 'pack_opening_screen.dart';
 import 'debug_player_picker.dart';
@@ -260,8 +264,8 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
           nationality: target.category == PackCategory.nationality
               ? target.scopeValue
               : null,
-          position: target.category == PackCategory.position
-              ? Position.fromCode(target.scopeValue!)
+          positions: target.category == PackCategory.position
+              ? parsePositionScopeValue(target.scopeValue)
               : null,
         );
       }
@@ -284,7 +288,9 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
   /// The shelf slot the current pack came from — the same product the
   /// OPEN ANOTHER chains into. Titles come from the matching offer when
   /// one exists (reward packs beyond the shelves fall back to a derived
-  /// name).
+  /// name). A single-position scope ('RW' from a starting pack) maps
+  /// onto its merged shelf group ('RW+RM'), so the chain follows the
+  /// store's merged sections.
   _ChainTarget? _chainTargetForPack(Pack pack) {
     // The persisted row stores the category and tier as plain text;
     // the chain target speaks the enums (unknown values fall back the
@@ -292,20 +298,23 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     final category =
         PackCategory.values.asNameMap()[pack.category] ?? PackCategory.global;
     final tier = PackTier.fromName(pack.tier);
+    final scopeValue = category == PackCategory.position && pack.scopeValue != null
+        ? normalizePositionScopeValue(pack.scopeValue!)
+        : pack.scopeValue;
     final probe = _ChainTarget(
       category: category,
-      scopeValue: pack.scopeValue,
+      scopeValue: scopeValue,
       tier: tier,
     );
     final match = _offerFor(probe);
     final title =
         match?.title ??
         (category == PackCategory.position
-            ? '${pack.scopeValue} ${tier.label} Pack'
+            ? '${scopeValue ?? ''} ${tier.label} Pack'
             : '${tier.label} ${category.label}');
     return _ChainTarget(
       category: category,
-      scopeValue: pack.scopeValue,
+      scopeValue: scopeValue,
       tier: tier,
       title: title,
     );
@@ -338,17 +347,26 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
     );
   }
 
+  /// Same shelf slot = same category + tier + normalized scope: an
+  /// owned 'RW' pack belongs to the merged 'RW+RM' slot exactly like a
+  /// bought 'RW+RM' one does.
   bool _sameSlot(Pack pack, _ChainTarget target) =>
       PackCategory.values.asNameMap()[pack.category] == target.category &&
-      pack.scopeValue == target.scopeValue &&
+      _normalizedScope(pack.scopeValue) == _normalizedScope(target.scopeValue) &&
       PackTier.fromName(pack.tier) == target.tier;
+
+  /// Scope comparison under the merged-shelf lens: group members
+  /// ('RW', 'RM') read as their group code ('RW+RM'); anything else —
+  /// nationalities, singles — passes through unchanged.
+  static String? _normalizedScope(String? value) =>
+      value == null ? null : normalizePositionScopeValue(value);
 
   StorePackOffer? _offerFor(_ChainTarget target) {
     final offers =
         ref.read(storeOffersProvider).valueOrNull ?? const <StorePackOffer>[];
     for (final o in offers) {
       if (o.category == target.category &&
-          o.scopeValue == target.scopeValue &&
+          _normalizedScope(o.scopeValue) == _normalizedScope(target.scopeValue) &&
           o.tier == target.tier) {
         return o;
       }
@@ -488,8 +506,8 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       final pack = await store.buyPack(
         category: offer.category,
         tier: offer.tier,
-        position: offer.category == PackCategory.position
-            ? Position.fromCode(offer.scopeValue!)
+        positions: offer.category == PackCategory.position
+            ? parsePositionScopeValue(offer.scopeValue)
             : null,
       );
       ref.invalidate(availablePacksProvider);

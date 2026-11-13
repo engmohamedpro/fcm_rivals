@@ -297,10 +297,13 @@ class CollectionStore {
       (c) => c.name == pack.category,
       orElse: () => PackCategory.global,
     );
+    // Merged shelf groups (owner request 2026-11-13): a position scope
+    // may name one position ('RW') or a merged group ('RW+RM') — both
+    // parse into the scope's position set.
     final scope = PackScope(
       category: category,
-      position: pack.scopeValue != null && category == PackCategory.position
-          ? Position.fromCode(pack.scopeValue!)
+      positions: category == PackCategory.position
+          ? parsePositionScopeValue(pack.scopeValue)
           : null,
       tier: PackTier.fromName(pack.tier),
     );
@@ -421,10 +424,12 @@ class CollectionStore {
     // reading _packPool without this would see the pre-seed empty list
     // when this is the first engine-adjacent call of the session.
     _engineFor();
+    // Position scopes parse into a position set: a single code ('ST')
+    // or a merged shelf group ('RW+RM' — owner request 2026-11-13).
     final scope = PackScope(
       category: category,
-      position: category == PackCategory.position && scopeValue != null
-          ? Position.fromCode(scopeValue)
+      positions: category == PackCategory.position
+          ? parsePositionScopeValue(scopeValue)
           : null,
       tier: tier,
     );
@@ -471,6 +476,7 @@ class CollectionStore {
     PackTier tier = PackTier.rare,
     String? nationality,
     Position? position,
+    Set<Position>? positions,
   }) async {
     final userClub = await getClub();
     if (userClub == null) {
@@ -483,6 +489,7 @@ class CollectionStore {
       category: category,
       nationality: nationality,
       position: position,
+      positions: category == PackCategory.position ? positions : null,
       tier: tier,
     );
     // A pack draws exactly one player — an empty eligible pool must be
@@ -522,7 +529,13 @@ class CollectionStore {
             PacksCompanion.insert(
               clubId: userClub.id,
               category: category.name,
-              scopeValue: Value(position?.code ?? nationality),
+              scopeValue: Value(
+                positions != null
+                    // The merged group's canonical code ('RW+RM');
+                    // single scopes keep their own code.
+                    ? positionScopeCode(positions)
+                    : position?.code ?? nationality,
+              ),
               tier: Value(tier.name),
               price: Value(price),
               source: const Value('purchase'),

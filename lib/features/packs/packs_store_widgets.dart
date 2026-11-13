@@ -11,7 +11,7 @@ import '../../core/database/app_database.dart' show Pack;
 import '../../core/ui/fcm_widgets.dart';
 import '../../features/collection/collection_store.dart'
     show StorePackOffer;
-import 'pack_engine.dart' show PackTier;
+import 'pack_engine.dart' show PackTier, normalizePositionScopeValue;
 import 'pack_effects.dart' show FoilPackPainter, kPackAspect;
 import 'pack_price_widgets.dart';
 import 'pack_tier_colors.dart';
@@ -19,9 +19,15 @@ import 'pack_tier_colors.dart';
 /// Scope key shared by owned packs and store offers, e.g.
 /// 'global:bronze' or 'position:ST:gold' — the join between inventory
 /// and grid cell: owned starting packs are bronze, so they stack under
-/// the bronze cells only.
+/// the bronze cells only. A position scope normalizes onto its merged
+/// shelf group ('RW' stacks under the 'RW+RM' cell — owner request
+/// 2026-11-13).
 String _scopeKey(String category, String? scopeValue, String tier) =>
-    '$category:${scopeValue ?? 'ANY'}:$tier';
+    '$category:${_normalizedScopeValue(scopeValue) ?? 'ANY'}:$tier';
+
+String? _normalizedScopeValue(String? scopeValue) => scopeValue == null
+    ? null
+    : normalizePositionScopeValue(scopeValue);
 
 /// The store: one section per scope — global first, then every position —
 /// each grouping its three tier offers under a shared header.
@@ -142,7 +148,7 @@ class _ScopeSection extends StatelessWidget {
     // falls back to the section's category name instead of 'null Pack'.
     final scopeLabel = head.scopeValue != null
         ? '${head.scopeValue} Pack'
-        : '${head.category.label}';
+        : head.category.label;
 
     // One visual group: title, players icon entry and the tier cells
     // share a single raised surface, so what belongs together reads as

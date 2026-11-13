@@ -147,15 +147,17 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MatchScreen(session: session, title: 'League · Round 1'),
+        home: MatchScreen(session: session, title: 'D1 · Round 1'),
       ),
     );
     await tester.pump();
     // Kick-off minute (800ms at 1x) produces the first commentary lines.
     await _play(tester, frames: 10);
 
-    // The header is ONE fused panel: play/pause, the speed segments and
-    // the tactics button all live inside it — no separate controls row.
+    // The header is ONE fused panel: play/pause and the speed segments
+    // live inside it — no separate controls row. The tactics button
+    // left the header (owner request 2026-11-13): the live tactics
+    // panel below and the half-time card keep the editor one tap away.
     expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
     expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
     expect(find.text('1x'), findsOneWidget);
@@ -163,13 +165,16 @@ void main() {
     expect(find.text('3x'), findsOneWidget);
     // 4x is gone — the ladder stops at 3x.
     expect(find.text('4x'), findsNothing);
-    expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.tune_rounded), findsNothing);
 
-    // T-0114: no AppBar during live play — the label that used to own
-    // the bar now whispers inside the header panel itself, and the
-    // reclaimed band flows to the content column.
+    // T-0114 → broadcast strip (owner request 2026-11-13): no AppBar
+    // during live play — the label feeds the strip's competition
+    // column ('D1' over 'Round 1'), and the reclaimed band flows to
+    // the content column.
     expect(find.byType(AppBar), findsNothing);
-    expect(find.text('League · Round 1'), findsOneWidget);
+    expect(find.text('D1'), findsOneWidget);
+    expect(find.text('Round 1'), findsOneWidget);
+    expect(find.text('League · Round 1'), findsNothing);
 
     // The momentum bar lives IN the header, between the live dot and the
     // clock — bare tug-of-war, no label, no numbers. The broadcast stats
@@ -237,7 +242,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MatchScreen(session: session, title: 'League · Round 1'),
+        home: MatchScreen(session: session, title: 'D1 · Round 1'),
       ),
     );
     await tester.pump();
@@ -290,7 +295,7 @@ void main() {
       ProviderScope(
         overrides: [collectionStoreProvider.overrideWith((ref) => store)],
         child: MaterialApp(
-          home: MatchScreen(session: session, title: 'League · Round 1'),
+          home: MatchScreen(session: session, title: 'D1 · Round 1'),
         ),
       ),
     );
@@ -443,7 +448,7 @@ void main() {
           locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: MatchScreen(session: session, title: 'League · Round 1'),
+          home: MatchScreen(session: session, title: 'D1 · Round 1'),
         ),
       ),
     );
@@ -540,24 +545,27 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MatchScreen(session: session, title: 'League · Round 3'),
+        home: MatchScreen(session: session, title: 'D1 · Round 3'),
       ),
     );
     await _play(tester, frames: 6);
 
     // No AppBar at all during live play — the label lives INSIDE the
-    // header panel now, as one dim caption line above the scoreboard.
+    // header now, split into the broadcast strip's competition column:
+    // 'D1' over 'Round 3' (owner request 2026-11-13).
     expect(find.byType(AppBar), findsNothing);
-    final caption = find.text('League · Round 3');
-    expect(caption, findsOneWidget);
+    expect(find.text('D1'), findsOneWidget);
+    expect(find.text('Round 3'), findsOneWidget);
+    expect(find.text('D1 · Round 3'), findsNothing);
+    final caption = find.text('D1');
     final captionStyle = tester.widget<Text>(caption).style!;
-    expect(captionStyle.color, FcmColors.textDim);
-    expect(captionStyle.fontSize, lessThan(11));
-    // The caption sits ABOVE the header's scoreboard row (the team
-    // name row): smaller y than any team-chip text.
+    expect(captionStyle.color, FcmColors.goldSoft);
+    expect(captionStyle.fontSize, lessThan(14));
+    // The caption column sits ABOVE the header's scoreline row: its
+    // top edge is smaller-y than the score text's.
     final captionY = tester.getTopLeft(caption).dy;
-    final homeName = find.text(session.homeTeamName);
-    expect(tester.getTopLeft(homeName).dy, greaterThan(captionY));
+    final score = find.text('0 - 0');
+    expect(tester.getTopLeft(score).dy, greaterThan(captionY));
     // And the content column starts higher than the AppBar band it
     // used to sit below: the header's top is inside the first ~90px
     // of the viewport (56px AppBar + panel padding used to push it
