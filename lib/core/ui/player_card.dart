@@ -951,8 +951,10 @@ class _PlayerImage extends StatefulWidget {
   final _Palette pal;
   final bool isSmall;
 
-  /// 0..1 — 0 hides the real face behind the generic silhouette, 1 shows
-  /// it fully; in between cross-fades (the pack-reveal name beat).
+  /// 0..1 — 0 shows NOTHING in the image slot, 1 shows the image fully;
+  /// in between fades the real image in (the pack-reveal name beat). A
+  /// player with no image shows the placeholder/silhouette only once the
+  /// reveal has started (T-0135).
   final double reveal;
 
   @override
@@ -1023,12 +1025,13 @@ class _PlayerImageState extends State<_PlayerImage> {
         );
 
     final fallback = SizedBox.expand(child: playerPng());
-    if (widget.image == null) return fallback;
-    // The pack-reveal secret (owner request 2026-11-13): until the name
-    // lands, the face is the generic silhouette — the real image fades
-    // in on the same beat the name types on.
+    // T-0135 (owner request 2026-11-13, supersedes the earlier
+    // silhouette-until-reveal decision): NOTHING renders in the image slot
+    // before the reveal beat — then the real image appears if the player
+    // has one, otherwise the placeholder/silhouette.
     final reveal = widget.reveal.clamp(0.0, 1.0);
-    if (reveal <= 0) return fallback;
+    if (reveal <= 0) return const SizedBox.expand();
+    if (widget.image == null) return fallback;
     final hasBg = _bg;
     if (hasBg == null) return const SizedBox.expand();
 
@@ -1065,14 +1068,8 @@ class _PlayerImageState extends State<_PlayerImage> {
     );
 
     if (reveal >= 1) return revealed();
-    // Cross-fade: silhouette under, real face over, riding the reveal.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Opacity(opacity: 1 - reveal, child: fallback),
-        Opacity(opacity: reveal, child: revealed()),
-      ],
-    );
+    // Fade-in from the empty slot: the real face rides the reveal beat.
+    return Opacity(opacity: reveal, child: revealed());
   }
 }
 
@@ -1269,8 +1266,9 @@ class FcmPlayerCard extends StatelessWidget {
   final double nameProgress;
 
   /// 0..1 — the face reveal, driven by the SAME beat as the name
-  /// (owner request 2026-11-13): the pack reveal hides the image behind
-  /// the generic silhouette and fades it in as the name lands.
+  /// (T-0135): the pack reveal keeps the image slot EMPTY until the name
+  /// beat, then fades the real image in (placeholder if the player has
+  /// no image).
   final double imageProgress;
   final double glow;
   final int? overall;

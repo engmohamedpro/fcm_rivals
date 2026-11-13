@@ -116,6 +116,48 @@ void main() {
     expect(find.text('KARIM FOUAD'), findsNothing);
   });
 
+  testWidgets(
+    'T-0135: image slot is EMPTY before the reveal beat, placeholder '
+    'after it for a player with no image',
+    (WidgetTester tester) async {
+      // No player image (imageUrl empty) -> before the beat nothing
+      // renders; once the reveal starts the placeholder shows.
+      Widget card(double imageProgress) => _host(
+        FcmPlayerCard(
+          player: _player(),
+          rarity: CardRarity.epic,
+          imageProgress: imageProgress,
+        ),
+      );
+
+      // Before the beat: no player.png placeholder anywhere on the card.
+      await tester.pumpWidget(card(0));
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName.contains('player'),
+        ),
+        findsNothing,
+        reason: 'the image slot must be empty before the name beat',
+      );
+
+      // From the beat on: the placeholder image is present.
+      await tester.pumpWidget(card(1));
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName.contains('player'),
+        ),
+        findsAtLeastNWidgets(1),
+        reason: 'the placeholder shows once the reveal has started',
+      );
+    },
+  );
+
   testWidgets('legendary typewriter: no name until the first letter, '
       'then the name, never shifting', (WidgetTester tester) async {
     Widget card(double letters) => _host(
