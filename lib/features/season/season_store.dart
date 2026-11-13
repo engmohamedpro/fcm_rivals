@@ -28,8 +28,10 @@ import '../squad/formations.dart';
 import '../squad/squad_engine.dart' show PlayerCard;
 import 'season_engine.dart';
 import 'season_models.dart';
+import 'season_stats.dart';
 
 export 'season_models.dart';
+export 'season_stats.dart';
 
 part 'season_store_opponent.dart';
 part 'season_store_fixture_play.dart';

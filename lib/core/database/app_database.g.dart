@@ -8594,6 +8594,752 @@ class DailyStreakClaimsCompanion extends UpdateCompanion<DailyStreakClaim> {
   }
 }
 
+
+class $PlayerSeasonStatsTable extends PlayerSeasonStats
+    with TableInfo<$PlayerSeasonStatsTable, PlayerSeasonStat> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlayerSeasonStatsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _seasonIdMeta = const VerificationMeta(
+    'seasonId',
+  );
+  @override
+  late final GeneratedColumn<int> seasonId = GeneratedColumn<int>(
+    'season_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _clubIdMeta = const VerificationMeta(
+    'clubId',
+  );
+  @override
+  late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
+    'club_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _playerIdMeta = const VerificationMeta(
+    'playerId',
+  );
+  @override
+  late final GeneratedColumn<int> playerId = GeneratedColumn<int>(
+    'player_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _playerNameMeta = const VerificationMeta(
+    'playerName',
+  );
+  @override
+  late final GeneratedColumn<String> playerName = GeneratedColumn<String>(
+    'player_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<String> position = GeneratedColumn<String>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _goalsMeta = const VerificationMeta('goals');
+  @override
+  late final GeneratedColumn<int> goals = GeneratedColumn<int>(
+    'goals',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0',
+    ),
+  );
+  static const VerificationMeta _assistsMeta = const VerificationMeta(
+    'assists',
+  );
+  @override
+  late final GeneratedColumn<int> assists = GeneratedColumn<int>(
+    'assists',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0',
+    ),
+  );
+  static const VerificationMeta _shotsMeta = const VerificationMeta('shots');
+  @override
+  late final GeneratedColumn<int> shots = GeneratedColumn<int>(
+    'shots',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0',
+    ),
+  );
+  static const VerificationMeta _savesMeta = const VerificationMeta('saves');
+  @override
+  late final GeneratedColumn<int> saves = GeneratedColumn<int>(
+    'saves',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0',
+    ),
+  );
+  static const VerificationMeta _cleanSheetsMeta = const VerificationMeta(
+    'cleanSheets',
+  );
+  @override
+  late final GeneratedColumn<int> cleanSheets = GeneratedColumn<int>(
+    'clean_sheets',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0',
+    ),
+  );
+  static const VerificationMeta _goalsConcededMeta = const VerificationMeta(
+    'goalsConceded',
+  );
+  @override
+  late final GeneratedColumn<int> goalsConceded = GeneratedColumn<int>(
+    'goals_conceded',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0',
+    ),
+  );
+  static const VerificationMeta _appearancesMeta = const VerificationMeta(
+    'appearances',
+  );
+  @override
+  late final GeneratedColumn<int> appearances = GeneratedColumn<int>(
+    'appearances',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0',
+    ),
+  );
+  static const VerificationMeta _minutesPlayedMeta = const VerificationMeta(
+    'minutesPlayed',
+  );
+  @override
+  late final GeneratedColumn<int> minutesPlayed = GeneratedColumn<int>(
+    'minutes_played',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0',
+    ),
+  );
+  static const VerificationMeta _ratingSumMeta = const VerificationMeta(
+    'ratingSum',
+  );
+  @override
+  late final GeneratedColumn<double> ratingSum = GeneratedColumn<double>(
+    'rating_sum',
+    aliasedName,
+    false,
+    type: DriftSqlType.real,
+    requiredDuringInsert: false,
+    hasDefault: true,
+    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
+      'DEFAULT 0.0',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    seasonId,
+    clubId,
+    playerId,
+    playerName,
+    position,
+    goals,
+    assists,
+    shots,
+    saves,
+    cleanSheets,
+    goalsConceded,
+    appearances,
+    minutesPlayed,
+    ratingSum,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'player_season_stats';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlayerSeasonStat> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('season_id')) {
+      context.handle(
+        _seasonIdMeta,
+        seasonId.isAcceptableOrUnknown(data['season_id']!, _seasonIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seasonIdMeta);
+    }
+    if (data.containsKey('club_id')) {
+      context.handle(
+        _clubIdMeta,
+        clubId.isAcceptableOrUnknown(data['club_id']!, _clubIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clubIdMeta);
+    }
+    if (data.containsKey('player_id')) {
+      context.handle(
+        _playerIdMeta,
+        playerId.isAcceptableOrUnknown(data['player_id']!, _playerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_playerIdMeta);
+    }
+    if (data.containsKey('player_name')) {
+      context.handle(
+        _playerNameMeta,
+        playerName.isAcceptableOrUnknown(
+          data['player_name']!,
+          _playerNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_playerNameMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('goals')) {
+      context.handle(
+        _goalsMeta,
+        goals.isAcceptableOrUnknown(data['goals']!, _goalsMeta),
+      );
+    }
+    if (data.containsKey('assists')) {
+      context.handle(
+        _assistsMeta,
+        assists.isAcceptableOrUnknown(data['assists']!, _assistsMeta),
+      );
+    }
+    if (data.containsKey('shots')) {
+      context.handle(
+        _shotsMeta,
+        shots.isAcceptableOrUnknown(data['shots']!, _shotsMeta),
+      );
+    }
+    if (data.containsKey('saves')) {
+      context.handle(
+        _savesMeta,
+        saves.isAcceptableOrUnknown(data['saves']!, _savesMeta),
+      );
+    }
+    if (data.containsKey('clean_sheets')) {
+      context.handle(
+        _cleanSheetsMeta,
+        cleanSheets.isAcceptableOrUnknown(
+          data['clean_sheets']!,
+          _cleanSheetsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('goals_conceded')) {
+      context.handle(
+        _goalsConcededMeta,
+        goalsConceded.isAcceptableOrUnknown(
+          data['goals_conceded']!,
+          _goalsConcededMeta,
+        ),
+      );
+    }
+    if (data.containsKey('appearances')) {
+      context.handle(
+        _appearancesMeta,
+        appearances.isAcceptableOrUnknown(
+          data['appearances']!,
+          _appearancesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('minutes_played')) {
+      context.handle(
+        _minutesPlayedMeta,
+        minutesPlayed.isAcceptableOrUnknown(
+          data['minutes_played']!,
+          _minutesPlayedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rating_sum')) {
+      context.handle(
+        _ratingSumMeta,
+        ratingSum.isAcceptableOrUnknown(data['rating_sum']!, _ratingSumMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlayerSeasonStat map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlayerSeasonStat(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      seasonId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season_id'],
+      )!,
+      clubId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}club_id'],
+      )!,
+      playerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}player_id'],
+      )!,
+      playerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}player_name'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}position'],
+      )!,
+      goals: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goals'],
+      )!,
+      assists: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}assists'],
+      )!,
+      shots: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}shots'],
+      )!,
+      saves: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}saves'],
+      )!,
+      cleanSheets: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}clean_sheets'],
+      )!,
+      goalsConceded: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goals_conceded'],
+      )!,
+      appearances: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}appearances'],
+      )!,
+      minutesPlayed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minutes_played'],
+      )!,
+      ratingSum: attachedDatabase.typeMapping.read(
+        DriftSqlType.real,
+        data['${effectivePrefix}rating_sum'],
+      )!,
+    );
+  }
+
+  @override
+  $PlayerSeasonStatsTable createAlias(String alias) {
+    return $PlayerSeasonStatsTable(attachedDatabase, alias);
+  }
+}
+
+class PlayerSeasonStat extends DataClass
+    implements Insertable<PlayerSeasonStat> {
+  final int id;
+  final int seasonId;
+  final int clubId;
+  final int playerId;
+  final String playerName;
+  final String position;
+  final int goals;
+  final int assists;
+  final int shots;
+  final int saves;
+  final int cleanSheets;
+  final int goalsConceded;
+  final int appearances;
+  final int minutesPlayed;
+  final double ratingSum;
+  const PlayerSeasonStat({
+    required this.id,
+    required this.seasonId,
+    required this.clubId,
+    required this.playerId,
+    required this.playerName,
+    required this.position,
+    required this.goals,
+    required this.assists,
+    required this.shots,
+    required this.saves,
+    required this.cleanSheets,
+    required this.goalsConceded,
+    required this.appearances,
+    required this.minutesPlayed,
+    required this.ratingSum,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['season_id'] = Variable<int>(seasonId);
+    map['club_id'] = Variable<int>(clubId);
+    map['player_id'] = Variable<int>(playerId);
+    map['player_name'] = Variable<String>(playerName);
+    map['position'] = Variable<String>(position);
+    map['goals'] = Variable<int>(goals);
+    map['assists'] = Variable<int>(assists);
+    map['shots'] = Variable<int>(shots);
+    map['saves'] = Variable<int>(saves);
+    map['clean_sheets'] = Variable<int>(cleanSheets);
+    map['goals_conceded'] = Variable<int>(goalsConceded);
+    map['appearances'] = Variable<int>(appearances);
+    map['minutes_played'] = Variable<int>(minutesPlayed);
+    map['rating_sum'] = Variable<double>(ratingSum);
+    return map;
+  }
+
+  PlayerSeasonStatsCompanion toCompanion(bool nullToAbsent) {
+    return PlayerSeasonStatsCompanion(
+      id: Value(id),
+      seasonId: Value(seasonId),
+      clubId: Value(clubId),
+      playerId: Value(playerId),
+      playerName: Value(playerName),
+      position: Value(position),
+      goals: Value(goals),
+      assists: Value(assists),
+      shots: Value(shots),
+      saves: Value(saves),
+      cleanSheets: Value(cleanSheets),
+      goalsConceded: Value(goalsConceded),
+      appearances: Value(appearances),
+      minutesPlayed: Value(minutesPlayed),
+      ratingSum: Value(ratingSum),
+    );
+  }
+
+  factory PlayerSeasonStat.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlayerSeasonStat(
+      id: serializer.fromJson<int>(json['id']),
+      seasonId: serializer.fromJson<int>(json['seasonId']),
+      clubId: serializer.fromJson<int>(json['clubId']),
+      playerId: serializer.fromJson<int>(json['playerId']),
+      playerName: serializer.fromJson<String>(json['playerName']),
+      position: serializer.fromJson<String>(json['position']),
+      goals: serializer.fromJson<int>(json['goals']),
+      assists: serializer.fromJson<int>(json['assists']),
+      shots: serializer.fromJson<int>(json['shots']),
+      saves: serializer.fromJson<int>(json['saves']),
+      cleanSheets: serializer.fromJson<int>(json['cleanSheets']),
+      goalsConceded: serializer.fromJson<int>(json['goalsConceded']),
+      appearances: serializer.fromJson<int>(json['appearances']),
+      minutesPlayed: serializer.fromJson<int>(json['minutesPlayed']),
+      ratingSum: serializer.fromJson<double>(json['ratingSum']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'seasonId': serializer.toJson<int>(seasonId),
+      'clubId': serializer.toJson<int>(clubId),
+      'playerId': serializer.toJson<int>(playerId),
+      'playerName': serializer.toJson<String>(playerName),
+      'position': serializer.toJson<String>(position),
+      'goals': serializer.toJson<int>(goals),
+      'assists': serializer.toJson<int>(assists),
+      'shots': serializer.toJson<int>(shots),
+      'saves': serializer.toJson<int>(saves),
+      'cleanSheets': serializer.toJson<int>(cleanSheets),
+      'goalsConceded': serializer.toJson<int>(goalsConceded),
+      'appearances': serializer.toJson<int>(appearances),
+      'minutesPlayed': serializer.toJson<int>(minutesPlayed),
+      'ratingSum': serializer.toJson<double>(ratingSum),
+    };
+  }
+}
+
+class PlayerSeasonStatsCompanion
+    extends UpdateCompanion<PlayerSeasonStat> {
+  final Value<int> id;
+  final Value<int> seasonId;
+  final Value<int> clubId;
+  final Value<int> playerId;
+  final Value<String> playerName;
+  final Value<String> position;
+  final Value<int> goals;
+  final Value<int> assists;
+  final Value<int> shots;
+  final Value<int> saves;
+  final Value<int> cleanSheets;
+  final Value<int> goalsConceded;
+  final Value<int> appearances;
+  final Value<int> minutesPlayed;
+  final Value<double> ratingSum;
+  const PlayerSeasonStatsCompanion({
+    this.id = const Value.absent(),
+    this.seasonId = const Value.absent(),
+    this.clubId = const Value.absent(),
+    this.playerId = const Value.absent(),
+    this.playerName = const Value.absent(),
+    this.position = const Value.absent(),
+    this.goals = const Value.absent(),
+    this.assists = const Value.absent(),
+    this.shots = const Value.absent(),
+    this.saves = const Value.absent(),
+    this.cleanSheets = const Value.absent(),
+    this.goalsConceded = const Value.absent(),
+    this.appearances = const Value.absent(),
+    this.minutesPlayed = const Value.absent(),
+    this.ratingSum = const Value.absent(),
+  });
+  PlayerSeasonStatsCompanion.insert({
+    this.id = const Value.absent(),
+    required int seasonId,
+    required int clubId,
+    required int playerId,
+    required String playerName,
+    required String position,
+    this.goals = const Value.absent(),
+    this.assists = const Value.absent(),
+    this.shots = const Value.absent(),
+    this.saves = const Value.absent(),
+    this.cleanSheets = const Value.absent(),
+    this.goalsConceded = const Value.absent(),
+    this.appearances = const Value.absent(),
+    this.minutesPlayed = const Value.absent(),
+    this.ratingSum = const Value.absent(),
+  }) : seasonId = Value(seasonId),
+       clubId = Value(clubId),
+       playerId = Value(playerId),
+       playerName = Value(playerName),
+       position = Value(position);
+  static Insertable<PlayerSeasonStat> custom({
+    Expression<int>? id,
+    Expression<int>? seasonId,
+    Expression<int>? clubId,
+    Expression<int>? playerId,
+    Expression<String>? playerName,
+    Expression<String>? position,
+    Expression<int>? goals,
+    Expression<int>? assists,
+    Expression<int>? shots,
+    Expression<int>? saves,
+    Expression<int>? cleanSheets,
+    Expression<int>? goalsConceded,
+    Expression<int>? appearances,
+    Expression<int>? minutesPlayed,
+    Expression<double>? ratingSum,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (seasonId != null) 'season_id': seasonId,
+      if (clubId != null) 'club_id': clubId,
+      if (playerId != null) 'player_id': playerId,
+      if (playerName != null) 'player_name': playerName,
+      if (position != null) 'position': position,
+      if (goals != null) 'goals': goals,
+      if (assists != null) 'assists': assists,
+      if (shots != null) 'shots': shots,
+      if (saves != null) 'saves': saves,
+      if (cleanSheets != null) 'clean_sheets': cleanSheets,
+      if (goalsConceded != null) 'goals_conceded': goalsConceded,
+      if (appearances != null) 'appearances': appearances,
+      if (minutesPlayed != null) 'minutes_played': minutesPlayed,
+      if (ratingSum != null) 'rating_sum': ratingSum,
+    });
+  }
+
+  PlayerSeasonStatsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? seasonId,
+    Value<int>? clubId,
+    Value<int>? playerId,
+    Value<String>? playerName,
+    Value<String>? position,
+    Value<int>? goals,
+    Value<int>? assists,
+    Value<int>? shots,
+    Value<int>? saves,
+    Value<int>? cleanSheets,
+    Value<int>? goalsConceded,
+    Value<int>? appearances,
+    Value<int>? minutesPlayed,
+    Value<double>? ratingSum,
+  }) {
+    return PlayerSeasonStatsCompanion(
+      id: id ?? this.id,
+      seasonId: seasonId ?? this.seasonId,
+      clubId: clubId ?? this.clubId,
+      playerId: playerId ?? this.playerId,
+      playerName: playerName ?? this.playerName,
+      position: position ?? this.position,
+      goals: goals ?? this.goals,
+      assists: assists ?? this.assists,
+      shots: shots ?? this.shots,
+      saves: saves ?? this.saves,
+      cleanSheets: cleanSheets ?? this.cleanSheets,
+      goalsConceded: goalsConceded ?? this.goalsConceded,
+      appearances: appearances ?? this.appearances,
+      minutesPlayed: minutesPlayed ?? this.minutesPlayed,
+      ratingSum: ratingSum ?? this.ratingSum,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (seasonId.present) {
+      map['season_id'] = Variable<int>(seasonId.value);
+    }
+    if (clubId.present) {
+      map['club_id'] = Variable<int>(clubId.value);
+    }
+    if (playerId.present) {
+      map['player_id'] = Variable<int>(playerId.value);
+    }
+    if (playerName.present) {
+      map['player_name'] = Variable<String>(playerName.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<String>(position.value);
+    }
+    if (goals.present) {
+      map['goals'] = Variable<int>(goals.value);
+    }
+    if (assists.present) {
+      map['assists'] = Variable<int>(assists.value);
+    }
+    if (shots.present) {
+      map['shots'] = Variable<int>(shots.value);
+    }
+    if (saves.present) {
+      map['saves'] = Variable<int>(saves.value);
+    }
+    if (cleanSheets.present) {
+      map['clean_sheets'] = Variable<int>(cleanSheets.value);
+    }
+    if (goalsConceded.present) {
+      map['goals_conceded'] = Variable<int>(goalsConceded.value);
+    }
+    if (appearances.present) {
+      map['appearances'] = Variable<int>(appearances.value);
+    }
+    if (minutesPlayed.present) {
+      map['minutes_played'] = Variable<int>(minutesPlayed.value);
+    }
+    if (ratingSum.present) {
+      map['rating_sum'] = Variable<double>(ratingSum.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlayerSeasonStatsCompanion(')
+          ..write('id: $id, ')
+          ..write('seasonId: $seasonId, ')
+          ..write('clubId: $clubId, ')
+          ..write('playerId: $playerId, ')
+          ..write('playerName: $playerName, ')
+          ..write('position: $position, ')
+          ..write('goals: $goals, ')
+          ..write('assists: $assists, ')
+          ..write('shots: $shots, ')
+          ..write('saves: $saves, ')
+          ..write('cleanSheets: $cleanSheets, ')
+          ..write('goalsConceded: $goalsConceded, ')
+          ..write('appearances: $appearances, ')
+          ..write('minutesPlayed: $minutesPlayed, ')
+          ..write('ratingSum: $ratingSum')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8619,6 +9365,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AchievementClaimsTable(this);
   late final $DailyStreakClaimsTable dailyStreakClaims =
       $DailyStreakClaimsTable(this);
+  late final $PlayerSeasonStatsTable playerSeasonStats =
+      $PlayerSeasonStatsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8640,6 +9388,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     userSettings,
     achievementClaims,
     dailyStreakClaims,
+    playerSeasonStats,
   ];
 }
 

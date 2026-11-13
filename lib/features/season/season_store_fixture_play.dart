@@ -61,6 +61,32 @@ extension SeasonFixturePlayOps on SeasonStore {
       awayGoals: state.scoreAway,
       seed: session.engine.seed,
     );
+    // T-0130: the season leaderboards — both squads' contributions
+    // fold into PlayerSeasonStats from the SAME events the ratings
+    // came from (user players key on owned ids, AI players on their
+    // ai-players row ids).
+    await persistMatchContributions(
+      db,
+      seasonId: season.id,
+      clubId: fixture.isHome ? season.userClubId : fixture.opponentClubId,
+      contributions: contributionsOf(
+        events: session.engine.events,
+        players: session.engine.playersOf(MatchSide.home),
+        teamId: session.userClubId,
+        teamGoalsConceded: state.scoreAway,
+      ),
+    );
+    await persistMatchContributions(
+      db,
+      seasonId: season.id,
+      clubId: fixture.isHome ? fixture.opponentClubId : season.userClubId,
+      contributions: contributionsOf(
+        events: session.engine.events,
+        players: session.engine.playersOf(MatchSide.away),
+        teamId: fixture.opponentClubId,
+        teamGoalsConceded: state.scoreHome,
+      ),
+    );
     // The AI opponent's squad also tires and recovers (GDD 11 symmetry);
     // its rolled injuries persist through the same pipeline (T-0055).
     final aiSide = fixture.isHome ? MatchSide.away : MatchSide.home;
@@ -281,6 +307,31 @@ extension SeasonFixturePlayOps on SeasonStore {
       homeGoals: match.state.scoreHome,
       awayGoals: match.state.scoreAway,
       seed: match.seed,
+    );
+    // T-0130: AI-vs-AI fixtures feed the leaderboards too — the
+    // golden boot race covers the whole league, not just the user's
+    // matches (players key on their ai-players row ids).
+    await persistMatchContributions(
+      db,
+      seasonId: season.id,
+      clubId: f.homeClubId,
+      contributions: contributionsOf(
+        events: match.events,
+        players: match.playersOf(MatchSide.home),
+        teamId: home.club.id,
+        teamGoalsConceded: match.state.scoreAway,
+      ),
+    );
+    await persistMatchContributions(
+      db,
+      seasonId: season.id,
+      clubId: f.awayClubId,
+      contributions: contributionsOf(
+        events: match.events,
+        players: match.playersOf(MatchSide.away),
+        teamId: away.club.id,
+        teamGoalsConceded: match.state.scoreHome,
+      ),
     );
     // Both AI squads tire and recover symmetrically (GDD 11); their
     // rolled injuries persist through the same pipeline (T-0055).

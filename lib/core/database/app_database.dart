@@ -281,6 +281,41 @@ class AdUsages extends Table {
   DateTimeColumn get completedAt => dateTime()();
 }
 
+/// Per-player season statistics (T-0130, GDD 9.6 leaderboards): one row
+/// per (season, club, player), accumulated at match-commit time from the
+/// SAME MatchEvents the ratings derive from (GDD 26.4 — never side
+/// calculations). User players key on their owned-player id; AI players
+/// key on their ai-players row id (both unique inside one club).
+class PlayerSeasonStats extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get seasonId => integer()();
+  IntColumn get clubId => integer()();
+  IntColumn get playerId => integer()();
+  TextColumn get playerName => text()();
+
+  /// 'ST', 'GK'… — the player's natural position (goalkeeper clean
+  /// sheets read it).
+  TextColumn get position => text()();
+
+  /// Team goals scored/against while this player was on the pitch,
+  /// minute-weighted from the event timeline.
+  IntColumn get goals => integer().withDefault(const Constant(0))();
+  IntColumn get assists => integer().withDefault(const Constant(0))();
+  IntColumn get shots => integer().withDefault(const Constant(0))();
+  IntColumn get saves => integer().withDefault(const Constant(0))();
+  IntColumn get cleanSheets =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get goalsConceded =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get appearances => integer().withDefault(const Constant(0))();
+  IntColumn get minutesPlayed => integer().withDefault(const Constant(0))();
+
+  /// Sum of the player's per-match ratings (computePlayerRatings), so
+  /// the average needs no second pass: ratingSum / appearances.
+  RealColumn get ratingSum => real().withDefault(const Constant(0))();
+}
+
+
 /// Club campus facilities (GDD 3.5): one row per built facility of the
 /// user's club. The level drives the facility's team-wide effect and the
 /// escalating coin cost of the next upgrade. AI clubs own no facilities.
@@ -388,6 +423,7 @@ class DailyStreakClaims extends Table {
     MatchResults,
     AiPlayers,
     AdUsages,
+    PlayerSeasonStats,
     FacilityLevels,
     UserSettings,
     AchievementClaims,
@@ -398,7 +434,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -589,6 +625,12 @@ class AppDatabase extends _$AppDatabase {
         if (playersTable.isNotEmpty && !hasIsIcon) {
           await m.addColumn(players, players.isIcon);
         }
+      }
+      if (from < 18) {
+        // T-0130: per-player season statistics for the leaderboards.
+        // Pure addition — a new table, no existing shape changes. Rows
+        // only appear as matches are committed from this version on.
+        await m.createTable(playerSeasonStats);
       }
     },
   );

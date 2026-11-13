@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 
 import '../../app/providers.dart';
 import '../../app/routes.dart';
+import '../../core/database/app_database.dart' show PlayerSeasonStat;
 import '../../core/domain/crest.dart';
 import '../../core/ui/fcm_crest.dart';
 import '../../core/ui/fcm_style.dart';
@@ -38,6 +39,8 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       await action(await ref.read(seasonStoreProvider.future));
       ref.invalidate(seasonSummaryProvider);
       ref.invalidate(standingsProvider);
+      ref.invalidate(playerSeasonStatsProvider);
+      ref.invalidate(playerSeasonStatsProvider);
       ref.invalidate(nextFixtureProvider);
       ref.invalidate(availablePacksProvider);
       if (mounted) setState(() => _error = null);
@@ -75,6 +78,8 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
         ref.invalidate(nextFixtureProvider);
         ref.invalidate(seasonSummaryProvider);
         ref.invalidate(standingsProvider);
+      ref.invalidate(playerSeasonStatsProvider);
+        ref.invalidate(playerSeasonStatsProvider);
         if (mounted) setState(() => _error = null);
         return;
       }
@@ -138,6 +143,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       );
       ref.invalidate(seasonSummaryProvider);
       ref.invalidate(standingsProvider);
+      ref.invalidate(playerSeasonStatsProvider);
       ref.invalidate(nextFixtureProvider);
       ref.invalidate(collectionProvider);
       ref.invalidate(squadProvider);
@@ -258,6 +264,7 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       final completion = await store.completeSeason(collection);
       ref.invalidate(seasonSummaryProvider);
       ref.invalidate(standingsProvider);
+      ref.invalidate(playerSeasonStatsProvider);
       ref.invalidate(availablePacksProvider);
       if (mounted) await _showCompletion(completion);
     } finally {
@@ -624,7 +631,193 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
               ],
             ),
           ),
+
+        // T-0130: the season's statistical leaders under the table —
+        // the golden boot, playmaker, best-rated and clean-sheet races.
+        _SeasonLeaderboards(clubName: clubName),
       ],
+    );
+  }
+}
+
+/// The season's statistical leaderboards (T-0130): top-3 per category
+/// under the standings table, every number accumulated from the SAME
+/// MatchEvents the ratings derive from (schema v18, GDD 26.4 — never
+/// side calculations). Hidden entirely until the first match commits
+/// stats (no empty placeholders).
+class _SeasonLeaderboards extends ConsumerWidget {
+  const _SeasonLeaderboards({this.clubName});
+
+  /// The user's club name — kept for the follow-up that marks the
+  /// user's own players in gold (needs the club-id mapping).
+  final String? clubName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stats = ref.watch(playerSeasonStatsProvider).valueOrNull;
+    if (stats == null || stats.isEmpty) return const SizedBox.shrink();
+
+    // Player boards — the standard award set. Minimum appearances gate
+    // the average-rating board so one great match cannot top it.
+    List<PlayerSeasonStat> topBy(
+      int Function(PlayerSeasonStat) of,
+    ) => (stats.toList()..sort((a, b) => of(b).compareTo(of(a))))
+        .take(3)
+        .toList();
+    final scorers = topBy((s) => s.goals).where((s) => s.goals > 0).toList();
+    final playmakers = topBy((s) => s.assists)
+        .where((s) => s.assists > 0)
+        .toList();
+    final rated = (stats.where((s) => s.appearances >= 3).toList()
+          ..sort(
+            (a, b) => (b.ratingSum / b.appearances)
+                .compareTo(a.ratingSum / a.appearances),
+          ))
+        .take(3)
+        .toList();
+    final keepers = (stats
+            .where((s) => s.position == 'GK' && s.cleanSheets > 0)
+            .toList()
+          ..sort((a, b) => b.cleanSheets.compareTo(a.cleanSheets)))
+        .take(3);
+
+    if (scorers.isEmpty &&
+        playmakers.isEmpty &&
+        rated.isEmpty &&
+        keepers.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 6),
+        const FcmSectionTitle('Season Leaders'),
+        _LeaderboardPanel(
+          icon: Icons.sports_soccer_rounded,
+          title: 'Goals',
+          rows: [
+            for (final s in scorers) (s.playerName, '${s.goals}'),
+          ],
+        ),
+        if (playmakers.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _LeaderboardPanel(
+            icon: Icons.auto_awesome_rounded,
+            title: 'Assists',
+            rows: [
+              for (final s in playmakers) (s.playerName, '${s.assists}'),
+            ],
+          ),
+        ],
+        if (rated.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _LeaderboardPanel(
+            icon: Icons.star_rounded,
+            title: 'Average Rating',
+            rows: [
+              for (final s in rated)
+                (
+                  s.playerName,
+                  (s.ratingSum / s.appearances).toStringAsFixed(2),
+                ),
+            ],
+          ),
+        ],
+        if (keepers.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _LeaderboardPanel(
+            icon: Icons.front_hand_rounded,
+            title: 'Clean Sheets',
+            rows: [
+              for (final s in keepers)
+                (s.playerName, '${s.cleanSheets}'),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// One leaderboard panel: icon + title header, top-3 rows.
+class _LeaderboardPanel extends StatelessWidget {
+  const _LeaderboardPanel({
+    required this.icon,
+    required this.title,
+    required this.rows,
+  });
+
+  final IconData icon;
+  final String title;
+
+  /// (name, value) pairs.
+  final List<(String, String)> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcmPanel(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: FcmColors.gold),
+              const SizedBox(width: 6),
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  color: FcmColors.gold,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (final (i, (name, value)) in rows.indexed)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 18,
+                    child: Text(
+                      '${i + 1}',
+                      style: const TextStyle(
+                        color: FcmColors.textDim,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: FcmColors.goldSoft,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -243,6 +243,16 @@ final standingsProvider = FutureProvider<List<StandingEntry>>((ref) async {
   return store.getStandings();
 });
 
+/// T-0130: the season's per-player statistics rows — the leaderboards'
+/// raw material. Refreshes with the standings (a committed match
+/// invalidates both together).
+final playerSeasonStatsProvider = FutureProvider<List<PlayerSeasonStat>>((
+  ref,
+) async {
+  final store = await ref.watch(seasonStoreProvider.future);
+  return store.getPlayerSeasonStats();
+});
+
 /// Every club's crest by club id (the standings table's badge column).
 /// Re-reads whenever the standings refresh, so a new season's freshly
 /// generated AI crests show up with it.

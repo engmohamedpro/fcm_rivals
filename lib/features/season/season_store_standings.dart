@@ -287,4 +287,18 @@ extension SeasonStandingsOps on SeasonStore {
 
     return startSeason(division: division, carriedClubIds: carriedIds);
   }
+
+  /// T-0130: the season's per-player statistics rows (all clubs),
+  /// newest season first — the leaderboards' raw material.
+  Future<List<PlayerSeasonStat>> getPlayerSeasonStats() async {
+    final season =
+        await getActiveSeason() ??
+        (await (db.select(
+          db.seasons,
+        )..orderBy([(s) => OrderingTerm.desc(s.id)])).get()).firstOrNull;
+    if (season == null) return const [];
+    return (db.select(db.playerSeasonStats)
+          ..where((s) => s.seasonId.equals(season.id)))
+        .get();
+  }
 }
