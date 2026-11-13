@@ -10,7 +10,6 @@ library;
 import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
-import 'collection_store.dart' show CollectionException;
 import '../../core/database/coin_ops.dart' show CoinOps;
 
 /// CollectionStore delegates here; see the library doc.
@@ -34,35 +33,6 @@ class ClubStore {
   Stream<Club?> watchClub() => (db.select(
     db.clubs,
   )..where((c) => c.isUser.equals(true))).watchSingleOrNull();
-
-  /// TEMPORARY DEV HELPER — remove together with the app-bar "+"
-  /// button (main.dart) once testing is done. Credits the user club
-  /// with [amount] test coins through the same atomic transaction and
-  /// ledger row as every other coin movement (FR-016).
-  ///
-  /// Debug and test builds only: asserts are enabled there, so the
-  /// helper runs; release builds compile asserts out and this returns
-  /// without touching the balance or the ledger. The app-bar button is
-  /// guarded by kDebugMode too, so neither half of the dev shortcut can
-  /// ship.
-  Future<void> grantTestCoins({int amount = 1_000_000}) async {
-    var devBuild = false;
-    assert(() {
-      devBuild = true;
-      return true;
-    }());
-    if (!devBuild) return;
-    final club = await getClub();
-    if (club == null) {
-      throw const CollectionException('No club yet — cannot grant coins');
-    }
-    await db.creditCoins(
-      club.id,
-      amount,
-      reason: 'test_grant',
-      detail: 'Dev test grant from app-bar + button',
-    );
-  }
 
   /// Appends one ledger row for [amount] credited to [clubId]. Must be
   /// called AFTER the balance update inside the same transaction so

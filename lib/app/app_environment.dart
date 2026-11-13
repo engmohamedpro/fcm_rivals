@@ -25,9 +25,10 @@
 ///
 /// Semantics of the three values:
 /// * [AppEnvironment.dev]  — the developer's own device/simulator.
-///   All debug tools live here: the debug draw picker, the test-coin
-///   button. This is the default for plain `flutter run` (debug
-///   builds), so the dev loop needs no extra flags.
+///   The default for plain `flutter run` (debug builds), so the dev
+///   loop needs no extra flags. (The dev-only debug surfaces — the
+///   test-coin button and the pack draw picker — were REMOVED at the
+///   owner's request 2026-11-13; the gate stays for future tooling.)
 /// * [AppEnvironment.qa]   — a build handed to testers/owner. REAL
 ///   odds and real economy only (no free coins, no planted draws) —
 ///   QA must experience the game the player will. Kept as an explicit

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/app_environment.dart';
 import '../../app/providers.dart';
 import '../../app/routes.dart';
 import '../../l10n/app_localizations.dart';
@@ -19,7 +18,6 @@ import '../../features/packs/pack_engine.dart'
         parsePositionScopeValue;
 import 'pack_tier_colors.dart';
 import 'pack_opening_screen.dart';
-import 'debug_player_picker.dart';
 import 'packs_store_widgets.dart';
 
 /// Store tab (nav label 'Store', GDD 5.5): one SECTION per position,
@@ -94,18 +92,6 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
         ),
       data: (packs) => Column(
         children: [
-          // DEBUG-ONLY draw picker (debug tool request 2026-11-12,
-          // removed before release — file debug_player_picker.dart and
-          // this block are the whole surface): choose a player, every
-          // pack opened next reveals him. Dev-environment gated inside
-          // the widget too (QA/production builds render nothing).
-          if (FcmApp.isDev)
-            FutureBuilder<CollectionStore>(
-              future: ref.watch(collectionStoreProvider.future),
-              builder: (context, snap) => snap.hasData
-                  ? DebugPlayerPicker(store: snap.data!)
-                  : const SizedBox.shrink(),
-            ),
           Expanded(
             child: StoreGrid(
               packs: packs,

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'app/app_environment.dart';
 import 'l10n/app_localizations.dart';
 
 import 'app/providers.dart';
@@ -291,13 +290,8 @@ class _GameShellBodyState extends ConsumerState<_GameShellBody> {
             child: FcmGoldSeam(),
           ),
           title: const FcmWordmark(size: 44),
-          // Dev-only (FcmApp.isDev — see app_environment.dart): the
-          // test-coin shortcut is compiled out of QA and production
-          // builds (the gate is a const, so tree shaking removes the
-          // widget entirely).
           actions: [
             const FcmLanguageToggle(),
-            if (FcmApp.isDev) const _TestCoinButton(),
             const _CoinBalance(),
           ],
         ),
@@ -452,29 +446,6 @@ class _CoinBalance extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: 14),
       child: Center(child: FcmCoinChip(coins: club.coins)),
-    );
-  }
-}
-
-/// TEMPORARY DEV BUTTON — remove together with
-/// CollectionStore.grantTestCoins once testing is done. Dev builds
-/// only (see the FcmApp.isDev guard at the call site); each tap
-/// credits 1,000,000 test coins.
-class _TestCoinButton extends ConsumerWidget {
-  const _TestCoinButton();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final club = ref.watch(clubProvider).valueOrNull;
-    if (club == null) return const SizedBox.shrink();
-    return IconButton(
-      tooltip: 'Add 1M coins (test)',
-      visualDensity: VisualDensity.compact,
-      icon: const Icon(Icons.add_rounded),
-      onPressed: () async {
-        final store = await ref.read(collectionStoreProvider.future);
-        await store.grantTestCoins();
-      },
     );
   }
 }

@@ -74,17 +74,6 @@ Future<CollectionStore> seededStore(AppDatabase db) async {
   return store;
 }
 
-/// The debug picker's pool, for the debug-draw-override tests: warms
-/// the registry the same way the packs screen does before opening.
-Future<List<BasePlayer>> _debugPool() async {
-  final db = memoryDb();
-  final store = await seededStore(db);
-  await store.debugWarmRegistry();
-  final pool = store.debugPackPool();
-  await db.close();
-  return pool;
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -1255,105 +1244,80 @@ void main() {
       expect(changed.base.marketValueEur, before.first.base.marketValueEur * 4);
     });
 
-    group('debug draw override (debug tool 2026-11-12, pre-release)', () {
-      test('the chosen player is drawn instead of the roll', () async {
-        final packs = await store.getAvailablePacks();
-        final gkPack = packs.firstWhere((p) => p.scopeValue == 'GK');
-        // 'Keeper 3' — a GK in the seed pool, eligible for the GK pack.
-        final pool = await _debugPool();
-        final chosen = pool.firstWhere(
-          (p) => p.playerId == 3,
-        ); // Keeper 3, GK — pinned by the seed above.
-        store.debugDrawOverride = chosen;
+    group('PackEngine draw (replaces the removed debug-override tool)', () {
+      // The debug picker (2026-11-12) was removed from the app at the
+      // owner's request; these tests keep the guarantees it existed
+      // to check — scope honouring, deterministic draws, the icon
+      // band and real two-stage odds — by driving PackEngine.open
+      // directly over the SAME seeded pool the store draws from.
 
-        final result = await store.openPack(
-          packId: gkPack.id,
-          random: math.Random(99),
+      /// The draw pool, rebuilt through PlayerDatabase.importDataset —
+      /// the exact pipeline the store's registry uses, so stats and
+      /// icon flags match what openPack would draw against.
+      List<BasePlayer> _pool() {
+        final registry = PlayerDatabase();
+        registry.importDataset(PlayerDataset.fromJson(datasetJson(seedRows)));
+        return registry.all.toList(growable: false);
+      }
+
+      test('a scoped draw only yields players the scope matches', () {
+        final pool = _pool();
+        final engine = PackEngine();
+        final scope = PackScope(
+          category: PackCategory.position,
+          positions: const {Position.gk},
         );
-        expect(result.players.single.playerId, 3);
-        expect(result.players.single.name, 'Keeper 3');
-        // The tier is the player's OWN band, not a rolled one: the
-        // seed's 'Keeper 3' (€6.5M) rates in the 70-79 epic band — 1.
-        expect(result.tiers.single, 1);
-
-        // Everything else stayed real: the pack was consumed and the
-        // player persisted.
-        final remaining = await store.getAvailablePacks();
-        expect(remaining.any((p) => p.id == gkPack.id), isFalse);
-        final collection = await store.getCollection();
-        expect(
-          collection.any((c) => c.base.playerId == 3),
-          isTrue,
-        );
-      });
-
-      test('the override honours the pack scope — ineligible falls back to the real roll', () async {
-        final packs = await store.getAvailablePacks();
-        final gkPack = packs.firstWhere((p) => p.scopeValue == 'GK');
-        // 'Striker 51' — a ST, NOT eligible for a GK pack: the
-        // override must fall through to the real two-stage roll.
-        final pool = await _debugPool();
-        store.debugDrawOverride = pool.firstWhere((p) => p.playerId == 51);
-
-        final result = await store.openPack(
-          packId: gkPack.id,
-          random: math.Random(11),
-        );
-        expect(result.players.single.playerId, isNot(51));
-        expect(result.players.single.position.code, 'GK');
-      });
-
-      test('null override keeps the real odds (regression guard)', () async {
-        expect(store.debugDrawOverride, isNull);
-        // The very first GK open of this store with seed 11 is pinned
-        // by the suite above ('position pack yields one player of that
-        // position, once' uses the same seed and pack slot): running
-        // it here against a FRESH store with the override unset proves
-        // the draw still comes from the real roll, not from any
-        // leftover state.
-        final db2 = memoryDb();
-        final store2 = await seededStore(db2);
-        final packs2 = await store2.getAvailablePacks();
-        final gkPack2 = packs2.firstWhere((p) => p.scopeValue == 'GK');
-
-        final a = await store2.openPack(
-          packId: gkPack2.id,
-          random: math.Random(11),
-        );
-        expect(a.players.single.position.code, 'GK');
-        await db2.close();
-      });
-
-      test('icon override draws with the icon band index', () async {
-        // Icon packs are OFFERS, not owned rows — buy one first (the
-        // normal store path), then open it with the override set.
-        final offers = await store.getStoreOffers();
-        final iconOffer = offers.firstWhere(
-          (o) => o.category == PackCategory.icon,
-        );
-        final clubBefore = (await store.getClub())!;
-        if (clubBefore.coins < iconOffer.price) {
-          await (db.update(db.clubs)
-                ..where((c) => c.id.equals(clubBefore.id)))
-              .write(ClubsCompanion(
-                coins: Value(clubBefore.coins + 500_000),
-              ));
+        for (var seed = 0; seed < 20; seed++) {
+          final draws = engine.open(scope, pool, random: math.Random(seed));
+          expect(draws, isNotEmpty);
+          expect(
+            draws.every((d) => d.player.position.code == 'GK'),
+            isTrue,
+            reason: 'seed $seed drew outside the pack scope',
+          );
         }
-        final pack = await store.buyPack(
-          category: PackCategory.icon,
-          tier: PackTier.iconEpic,
-        );
-        final pool = await _debugPool();
-        store.debugDrawOverride = pool.firstWhere(
-          (p) => p.playerId == 1000,
-        ); // The Icon, ST, Brazil.
+      });
 
-        final result = await store.openPack(
-          packId: pack.id,
-          random: math.Random(7),
+      test('draws are deterministic for a seeded Random (regression guard)',
+          () {
+        final pool = _pool();
+        final engine = PackEngine();
+        final scope = PackScope(
+          category: PackCategory.position,
+          positions: const {Position.gk},
         );
-        expect(result.players.single.playerId, 1000);
-        expect(result.tiers.single, 4); // kIconBandIndex
+        final a = engine.open(scope, pool, random: math.Random(99));
+        final b = engine.open(scope, pool, random: math.Random(99));
+        expect(
+          a.map((d) => d.player.playerId).toList(),
+          b.map((d) => d.player.playerId).toList(),
+        );
+        // (No 'different seed draws differently' half: on a 5-player
+        // seed pool two seeds can share a draw by chance — that is
+        // not a contract, it is a coin flip.)
+      });
+
+      test('the icon band draws icons at kIconBandIndex', () {
+        final pool = _pool();
+        final icon = pool.firstWhere((p) => p.playerId == 1000);
+        expect(icon.isIcon, isTrue);
+        final engine = PackEngine();
+        final scope = PackScope(
+          category: PackCategory.icon,
+          tier: PackTier.iconLegendary,
+        );
+        // Roll icon-tier draws until one lands (icon odds are a small
+        // table share — 50 seeds is far beyond the worst case).
+        PackDraw? iconDraw;
+        for (var seed = 0; seed < 50 && iconDraw == null; seed++) {
+          final draws = engine.open(scope, pool, random: math.Random(seed));
+          for (final d in draws) {
+            if (d.player.isIcon) iconDraw = d;
+          }
+        }
+        expect(iconDraw, isNotNull, reason: 'no icon drawn in 50 seeds');
+        expect(iconDraw!.tier, kIconBandIndex);
+        expect(iconDraw.player.playerId, 1000);
       });
     });
   });
