@@ -137,7 +137,6 @@ void main() {
                   formation: formationByCode('4-4-2'),
                   assignments: xi,
                   showChemistryLinks: true,
-                  showStamina: false,
                   showStats: false,
                 ),
               ),

@@ -467,7 +467,6 @@ class _OpponentFormationCard extends StatelessWidget {
             formation: formation,
             assignments: assignments,
             showChemistryLinks: true,
-            showStamina: false,
             showStats: false,
             showCondition: false,
           ),
@@ -502,7 +501,6 @@ class _OpponentFormationCard extends StatelessWidget {
         goalkeeping: p.goalkeeping,
       ),
     ),
-    staminaPercent: p.stamina.round(),
   );
 }
 

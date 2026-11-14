@@ -45,11 +45,14 @@ class PlayerInjury {
   String toString() => 'PlayerInjury(${kind.name}, out $matchesOut)';
 }
 
-/// Tunable injury parameters (GDD 11.7) — the StaminaConfig pattern:
-/// every knob lives here, no magic numbers anywhere else.
+/// Tunable injury parameters (GDD 11.7, updated 2026-11-14: the stamina
+/// fatigue ramp is gone — owner request: no stamina anywhere — so the
+/// flat base now carries the whole rate. Re-anchored from 0.00003 to
+/// 0.00030 per minute so a full season lands back inside the T-0055
+/// documented band [8, 30] injuries per club per 38-round season).
 class InjuryConfig {
   const InjuryConfig({
-    this.baseRiskPerMinuteAtFullStamina = 0.00003,
+    this.baseRiskPerMinuteAtFullStamina = 0.00030,
     this.fatigueRiskThreshold = 70,
     this.fatigueRiskSlope = 40,
     this.maxRiskPerMinute = 0.0035,
@@ -66,11 +69,12 @@ class InjuryConfig {
        assert(knockShare + muscleShare <= 1),
        assert(seriousMaxExtra >= 1);
 
-  /// Per-minute injury probability for a fully-fit player before any
-  /// other factor (~0.0027 per full match) — the "≈ 0 at full stamina"
-  /// floor, not a hard zero: nobody is immune. Tuned by T-0054's engine
-  /// calibration so fresh squads land under 0.05 injuries/team/match
-  /// while exhausted squads clear 0.25.
+  /// Per-minute injury probability for one player before position and
+  /// Medical Centre factors (~0.027 per full match — one knock every
+  /// ~37 player-matches). This is now the WHOLE rate: the fatigue ramp
+  /// that used to multiply it up to ~40x for drained players is gone
+  /// with the stamina system, so the base was re-anchored to keep the
+  /// season injury count in the documented band.
   final double baseRiskPerMinuteAtFullStamina;
 
   /// Stamina at or above which the fatigue ramp does not engage: starters
@@ -148,23 +152,20 @@ class InjuryConfig {
 
 const InjuryConfig defaultInjuryConfig = InjuryConfig();
 
-/// Per-minute injury probability for one player (GDD 11.7).
+/// Per-minute injury probability for one player (GDD 11.7, updated
+/// 2026-11-14: the stamina fatigue ramp is gone — the risk is the flat
+/// base × position workload × Medical Centre protection, clamped to
+/// [InjuryConfig.maxRiskPerMinute]. The old threshold/slope knobs stay
+/// in the config so old calibration docs keep reading, but nothing
+/// feeds them anymore.)
 ///
-/// Pure: base risk × fatigue ramp (identity at/above the threshold,
-/// quadratic below) × position workload × Medical Centre protection,
-/// clamped to [InjuryConfig.maxRiskPerMinute].
+/// Pure function of the config and the player's position.
 double injuryChanceForMinute({
   required InjuryConfig config,
-  required double stamina,
   required Position position,
   int medicalCentreLevel = 0,
 }) {
-  final t =
-      ((config.fatigueRiskThreshold - stamina) / config.fatigueRiskThreshold)
-          .clamp(0.0, 1.0);
-  var risk =
-      config.baseRiskPerMinuteAtFullStamina *
-      (1 + config.fatigueRiskSlope * t * t);
+  var risk = config.baseRiskPerMinuteAtFullStamina;
   risk *= config.positionRiskMultiplier[position] ?? 1.0;
   final level = medicalCentreLevel.clamp(0, config.maxMedicalCentreLevel);
   risk *= 1 - config.medicalRiskReductionPerLevel * level;

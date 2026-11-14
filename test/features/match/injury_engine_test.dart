@@ -35,9 +35,8 @@ const _positions = [
 MatchPlayer _player(
   int id,
   String name,
-  Position position, {
-  double stamina = 100,
-}) => MatchPlayer(
+  Position position,
+) => MatchPlayer(
   playerId: id,
   name: name,
   position: position,
@@ -45,13 +44,11 @@ MatchPlayer _player(
   support: 60,
   defence: 60,
   goalkeeping: position == Position.gk ? 60 : 10,
-  stamina: stamina,
 );
 
 MatchTeamInput _team({
   required int teamId,
   required String name,
-  double stamina = 100,
   List<MatchPlayer> bench = const [],
   int medicalCentreLevel = 0,
 }) => MatchTeamInput(
@@ -62,7 +59,7 @@ MatchTeamInput _team({
   mentality: Mentality.balanced,
   starters: [
     for (var i = 0; i < 11; i++)
-      _player(teamId * 100 + i, '$name $i', _positions[i], stamina: stamina),
+      _player(teamId * 100 + i, '$name $i', _positions[i]),
   ],
   bench: bench,
   aiControlled: true,
@@ -90,7 +87,7 @@ void main() {
       // regardless of which slot the seeded stream hits.
       final bench = [
         for (var i = 0; i < 11; i++)
-          _player(50 + i, 'Bench $i', _positions[i], stamina: 90),
+          _player(50 + i, 'Bench $i', _positions[i]),
       ];
       final eng = _engine(
         1,
@@ -130,7 +127,7 @@ void main() {
         'cap is shared', () {
       final bench = [
         for (var i = 0; i < 5; i++)
-          _player(50 + i, 'Bench $i', _positions[i + 1], stamina: 90),
+          _player(50 + i, 'Bench $i', _positions[i + 1]),
       ];
       final eng = _engine(
         7,

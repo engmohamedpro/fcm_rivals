@@ -202,14 +202,12 @@ class SweepBatch {
     this.homeWins,
     this.draws,
     this.goals,
-    this.stamina75,
   );
 
   final int matches;
   final int homeWins;
   final int draws;
   final int goals;
-  final double stamina75;
 
   double get homeWinRate => homeWins / matches;
   double get drawRate => draws / matches;
@@ -223,26 +221,11 @@ SweepBatch runSweepBatch(
   int matches,
   int seedBase, {
   TeamTactics homeTactics = const TeamTactics(),
-  bool measureStamina75 = false,
 }) {
   var hw = 0, d = 0, goals = 0;
-  var staminaSum = 0.0;
-  var staminaN = 0;
   for (var m = 0; m < matches; m++) {
     final engine = _engine(seedBase + m, homeTactics: homeTactics);
-    if (measureStamina75) {
-      while (!engine.isFinished && engine.state.minute < 75) {
-        engine.advanceMinute();
-      }
-      for (final p in engine.playersOf(MatchSide.home)) {
-        if (p.minutesPlayed >= 74) {
-          staminaSum += p.stamina;
-          staminaN++;
-        }
-      }
-    } else {
-      engine.simulateToEnd();
-    }
+    engine.simulateToEnd();
     final s = engine.state;
     if (s.scoreHome > s.scoreAway) {
       hw++;
@@ -256,7 +239,6 @@ SweepBatch runSweepBatch(
     hw,
     d,
     goals,
-    staminaN == 0 ? 0 : staminaSum / staminaN,
   );
 }
 
@@ -547,25 +529,8 @@ List<CaseRow> scoreBands({
       ),
     );
     final billN = n(1500);
-    final baseStamina = runSweepBatch(
-      billN,
-      _seedBase('gegenStamina'),
-      measureStamina75: true,
-    ).stamina75;
-    final gegenStamina = runSweepBatch(
-      billN,
-      _seedBase('gegenStamina'),
-      homeTactics: _gegenpress(),
-      measureStamina75: true,
-    ).stamina75;
-    rows.add(
-      CaseRow(
-        'gegenpress stamina@75',
-        gegenStamina.toStringAsFixed(1),
-        '< ${baseStamina.toStringAsFixed(1)} (baseline)',
-        gegenStamina < baseStamina,
-      ),
-    );
+    // (The 'stamina@75' row is gone — owner request 2026-11-14: no
+    // stamina anywhere. The late-goals bill below stays.)
     final baseLate = _lateGoalsConceded(billN, _seedBase('gegenLate'), const TeamTactics());
     final gegenLate = _lateGoalsConceded(billN, _seedBase('gegenLate'), _gegenpress());
     final ratio = baseLate == 0 ? 99.0 : gegenLate / baseLate;

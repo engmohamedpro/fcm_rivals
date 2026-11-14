@@ -84,9 +84,6 @@ void main() {
       expect(report.goalConversion, inInclusiveRange(0.05, 0.80));
       // Cards exist but are not constant.
       expect(report.avgYellowCards, inInclusiveRange(0.0, 8.0));
-      // Stamina depletes over 90 minutes but never to nothing on average.
-      expect(report.staminaDepletion, greaterThan(0));
-      expect(report.avgHomeStaminaEnd, inInclusiveRange(10, 95));
     }, timeout: const Timeout(Duration(minutes: 2)));
 
     test('stronger home team wins more often (tactical/quality effect)', () {

@@ -342,7 +342,6 @@ class MatchSession {
     nationality: card.base.nationality,
     clubId: card.base.clubId,
     clubName: card.base.clubName,
-    stamina: card.staminaPercent.toDouble(),
     isIcon: card.base.isIcon,
   );
 
@@ -549,14 +548,9 @@ class MatchSession {
       rewardCoins: reward,
       players: [
         for (final p in engine.playersOf(userSide))
-          (
-            ownedId: p.playerId,
-            stamina: p.stamina,
-            minutesPlayed: p.minutesPlayed,
-          ),
+          (ownedId: p.playerId, minutesPlayed: p.minutesPlayed),
       ],
       injuries: injuries,
-      restDays: restDays,
     );
 
     return MatchReportResult(

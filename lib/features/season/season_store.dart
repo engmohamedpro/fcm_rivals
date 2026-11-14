@@ -21,7 +21,6 @@ import '../match/match_engine.dart';
 import '../match/match_forecast.dart';
 import '../match/match_session.dart';
 import '../match/pre_match_tactics_selection.dart';
-import '../match/stamina.dart' show StaminaConfig, recoverStamina;
 import '../match/tactics.dart'
     show Mentality, tacticsFromDbPayload;
 import '../squad/formations.dart';
@@ -421,7 +420,6 @@ class SeasonStore {
     nationality: card.base.nationality,
     clubId: card.base.clubId,
     clubName: card.base.clubName,
-    stamina: card.staminaPercent.toDouble(),
   );
 
   /// The real-player pool for AI squad generation (GDD 9.4): every

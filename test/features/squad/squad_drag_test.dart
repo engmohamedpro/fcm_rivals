@@ -85,7 +85,6 @@ Widget _host(
           reserves: reserves,
           onFormation: (_) {},
           onTactics: (_) {},
-          showStamina: false,
           showStats: false,
           swapping: swap
               ? SquadSwapping(
@@ -269,7 +268,6 @@ void main() {
               reserves: [for (var i = 18; i < 23; i++) squad[i]!],
               onFormation: (_) {},
               onTactics: (_) {},
-              showStamina: false,
               showStats: false,
               onPlayerTap: (c) => tapped.add(c.ownedId),
               swapping: SquadSwapping(

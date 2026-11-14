@@ -386,8 +386,7 @@ void main() {
           .toList();
       expect(cards, isNotEmpty, reason: 'the live editor shows its squad');
       for (final c in cards) {
-        expect(c.stamina, isNotNull, reason: 'every card carries stamina');
-        expect(c.stats, isNull, reason: 'no stat rows on this surface');
+          expect(c.stats, isNull, reason: 'no stat rows on this surface');
       }
       // No stat-row labels leaked in through any other widget.
       expect(find.text('ATT'), findsNothing);

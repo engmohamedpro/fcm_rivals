@@ -718,13 +718,12 @@ void main() {
     });
   });
 
-  group('AI lineup rotation (GDD 11)', () {
+  group('AI lineup pick (GDD 11 — rating-only, stamina gone)', () {
     const engine = SeasonEngine();
 
     AiSquadPlayer mk(
       Position position,
-      int rating,
-      double stamina, {
+      int rating, {
       String name = 'P',
     }) => AiSquadPlayer(
       realPlayerId: position.index * 100 + rating,
@@ -734,18 +733,17 @@ void main() {
       support: rating,
       defence: position == Position.gk ? 20 : rating,
       goalkeeping: position == Position.gk ? rating : 20,
-      stamina: stamina,
     );
 
-    test('fresh starters keep their place at full stamina', () {
+    test('the best first-teamers keep their places', () {
       final squad = [
-        mk(Position.gk, 70, 100),
+        mk(Position.gk, 70),
         for (final p in [Position.cb, Position.cb, Position.lb, Position.rb])
-          mk(p, 70, 100),
+          mk(p, 70),
         for (final p in [Position.cdm, Position.cm, Position.cam])
-          mk(p, 70, 100),
-        for (final p in [Position.lw, Position.rw, Position.st]) mk(p, 70, 100),
-        for (var i = 0; i < 7; i++) mk(Position.cb, 40, 100, name: 'B$i'),
+          mk(p, 70),
+        for (final p in [Position.lw, Position.rw, Position.st]) mk(p, 70),
+        for (var i = 0; i < 7; i++) mk(Position.cb, 40, name: 'B$i'),
       ];
       final lineup = engine.pickAiLineup(squad, '4-3-3');
       expect(lineup.starters.length, 11);
@@ -756,54 +754,31 @@ void main() {
       }
     });
 
-    test('a genuinely tired starter is rested for a close backup', () {
+    test('a STAR still starts over a weak backup (quality wins)', () {
       final squad = [
-        mk(Position.gk, 70, 100),
-        mk(Position.cb, 70, 30), // exhausted starter
-        mk(Position.cb, 70, 100),
-        mk(Position.lb, 70, 100),
-        mk(Position.rb, 70, 100),
-        for (final p in [Position.cdm, Position.cm, Position.cam])
-          mk(p, 70, 100),
-        for (final p in [Position.lw, Position.rw, Position.st]) mk(p, 70, 100),
-        mk(Position.cb, 68, 100, name: 'Backup'), // near-quality cover
-        for (var i = 0; i < 6; i++) mk(Position.cm, 40, 100, name: 'B$i'),
-      ];
-      final lineup = engine.pickAiLineup(squad, '4-3-3');
-      final tired = squad[1];
-      expect(
-        lineup.starters.contains(tired),
-        isFalse,
-        reason: '30-stamina starter must be rotated out',
-      );
-      expect(lineup.bench.contains(tired), isTrue);
-    });
-
-    test('a tired STAR still starts over a weak backup (quality wins)', () {
-      final squad = [
-        mk(Position.gk, 70, 100),
-        mk(Position.st, 85, 35), // tired but a superstar
+        mk(Position.gk, 70),
+        mk(Position.st, 85), // the superstar
         for (final p in [Position.cb, Position.cb, Position.lb, Position.rb])
-          mk(p, 70, 100),
+          mk(p, 70),
         for (final p in [Position.cdm, Position.cm, Position.cam])
-          mk(p, 70, 100),
-        mk(Position.lw, 70, 100),
-        mk(Position.rw, 70, 100),
-        mk(Position.st, 50, 100, name: 'Backup'), // weak cover
-        for (var i = 0; i < 6; i++) mk(Position.cm, 40, 100, name: 'B$i'),
+          mk(p, 70),
+        mk(Position.lw, 70),
+        mk(Position.rw, 70),
+        mk(Position.st, 50, name: 'Backup'), // weak cover
+        for (var i = 0; i < 6; i++) mk(Position.cm, 40, name: 'B$i'),
       ];
       final lineup = engine.pickAiLineup(squad, '4-3-3');
       final star = squad[1];
       expect(
         lineup.starters.contains(star),
         isTrue,
-        reason: '85-rated at 35 stamina beats a 50-rated fresh backup',
+        reason: '85-rated beats a 50-rated backup',
       );
     });
 
     test('lineup returns XI in formation slot order and a bench', () {
       final squad = [
-        mk(Position.gk, 70, 100),
+        mk(Position.gk, 70),
         for (final p in [
           Position.lb,
           Position.cb,
@@ -816,8 +791,8 @@ void main() {
           Position.st,
           Position.rw,
         ])
-          mk(p, 70, 100),
-        for (var i = 0; i < 7; i++) mk(Position.cm, 50, 100, name: 'B$i'),
+          mk(p, 70),
+        for (var i = 0; i < 7; i++) mk(Position.cm, 50, name: 'B$i'),
       ];
       final lineup = engine.pickAiLineup(squad, '4-3-3');
       expect(lineup.starters.first.position, Position.gk);

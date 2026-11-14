@@ -7,84 +7,32 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const config = defaultInjuryConfig;
 
-  double chanceAt(double stamina, {Position position = Position.st, int level = 0}) {
+  double chanceAt({Position position = Position.st, int level = 0}) {
     return injuryChanceForMinute(
       config: config,
-      stamina: stamina,
       position: position,
       medicalCentreLevel: level,
     );
   }
 
-  group('injury risk model (GDD 11.7)', () {
-    test('risk ≈ 0 at full stamina (the documented floor, not zero)', () {
-      final risk = chanceAt(100);
-      // Exactly the base risk at the default striker workload.
-      expect(risk, closeTo(config.baseRiskPerMinuteAtFullStamina, 1e-12));
-      expect(risk, lessThan(0.001));
-    });
-
-    test('monotonic grid 100→0: flat at/above the threshold, strictly '
-        'increasing below it', () {
-      var previous = chanceAt(100);
-      for (var stamina = 95; stamina >= 0; stamina -= 5) {
-        final risk = chanceAt(stamina.toDouble());
-        if (stamina >= config.fatigueRiskThreshold) {
-          expect(risk, previous, reason: 'flat at stamina $stamina');
-        } else {
-          expect(risk, greaterThan(previous),
-              reason: 'strictly increasing at stamina $stamina');
-        }
+  group('injury risk model (GDD 11.7 — flat base risk, the fatigue ramp is '
+      'gone with the stamina system, owner request 2026-11-14)', () {
+    test('the Medical Centre strictly reduces risk at every level 0-5', () {
+      var previous = chanceAt(level: 0);
+      for (var level = 1; level <= 5; level++) {
+        final risk = chanceAt(level: level);
+        expect(risk, lessThan(previous), reason: 'level $level');
         previous = risk;
       }
-    });
-
-    test('the fatigue ramp is quadratic and bounded by maxRiskPerMinute', () {
-      // Halving the distance below the threshold quarters the ramp factor.
-      final at60 = chanceAt(60);
-      final at35 = chanceAt(35);
-      final t60 = (70 - 60) / 70;
-      final t35 = (70 - 35) / 70;
-      final expectedRatio =
-          (1 + config.fatigueRiskSlope * t35 * t35) /
-          (1 + config.fatigueRiskSlope * t60 * t60);
-      expect(at35 / at60, closeTo(expectedRatio, 1e-9));
-      // The per-minute cap is a real mechanism: with the pre-T-0054
-      // base risk (0.0002 — T-0054 tuned the DEFAULTS down for engine
-      // rates) the spent central midfielder crosses the documented cap:
-      // 0.0002 × 15 × 1.18 = 0.00354 → clamped.
-      final cappedConfig = const InjuryConfig(
-        baseRiskPerMinuteAtFullStamina: 0.0002,
-      );
-      expect(
-        injuryChanceForMinute(
-          config: cappedConfig,
-          stamina: 0,
-          position: Position.cm,
-        ),
-        cappedConfig.maxRiskPerMinute,
-      );
-    });
-
-    test('the Medical Centre strictly reduces risk at every level 0-5', () {
-      for (final stamina in [90.0, 70.0, 40.0, 10.0]) {
-        var previous = chanceAt(stamina, level: 0);
-        for (var level = 1; level <= 5; level++) {
-          final risk = chanceAt(stamina, level: level);
-          expect(risk, lessThan(previous),
-              reason: 'level $level at stamina $stamina');
-          previous = risk;
-        }
-      }
       // The hook is 0.6 pp/level consumed as a fraction: level 5 → −3%.
-      expect(chanceAt(100, level: 5),
+      expect(chanceAt(level: 5),
           closeTo(config.baseRiskPerMinuteAtFullStamina * 0.97, 1e-12));
     });
 
     test('position workload applies: midfield > striker > keeper', () {
-      final cm = chanceAt(40, position: Position.cm);
-      final st = chanceAt(40, position: Position.st);
-      final gk = chanceAt(40, position: Position.gk);
+      final cm = chanceAt(position: Position.cm);
+      final st = chanceAt(position: Position.st);
+      final gk = chanceAt(position: Position.gk);
       expect(cm, greaterThan(st));
       expect(st, greaterThan(gk));
     });

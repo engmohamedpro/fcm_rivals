@@ -126,7 +126,6 @@ class AiSquadPlayer {
     required this.support,
     required this.defence,
     required this.goalkeeping,
-    required this.stamina,
     this.nationality = '',
     this.clubId = 0,
     this.clubName = '',
@@ -156,6 +155,4 @@ class AiSquadPlayer {
   /// (the pool excludes them), but the flag rides for completeness.
   final bool isIcon;
 
-  /// Current condition 0..100.
-  final double stamina;
 }

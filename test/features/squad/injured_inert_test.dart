@@ -138,7 +138,6 @@ void main() {
                   child: SquadPitch(
                     formation: formationByCode('4-3-3'),
                     assignments: xi,
-                    showStamina: true,
                     showStats: false,
                     showCondition: true,
                   ),
@@ -155,7 +154,6 @@ void main() {
                   child: SquadPitch(
                     formation: formationByCode('4-3-3'),
                     assignments: xi,
-                    showStamina: true,
                     showStats: false,
                     showCondition: true,
                   ),

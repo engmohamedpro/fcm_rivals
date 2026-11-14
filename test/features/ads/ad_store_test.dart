@@ -165,44 +165,6 @@ void main() {
       );
     });
 
-    test('boosted recovery persists higher stamina than default', () async {
-      final clubId = (await collection.getClub())!.id;
-      final squad = await collection.getSquad();
-      final starters = [for (var slot = 0; slot < 11; slot++) squad[slot]!];
-
-      // Simulate a drained match state: report every starter at low
-      // stamina with full minutes, then compare recovery paths.
-      Future<double> averageStamina() async {
-        // Reset stamina to the same drained baseline each run.
-        for (final card in starters) {
-          await (db.update(db.ownedPlayers)
-                ..where((o) => o.id.equals(card.ownedId)))
-              .write(const OwnedPlayersCompanion(staminaPercent: Value(30)));
-        }
-        await collection.applyMatchResult(
-          clubId: clubId,
-          rewardCoins: 0,
-          players: [
-            for (final card in starters)
-              (ownedId: card.ownedId, stamina: 30.0, minutesPlayed: 90),
-          ],
-        );
-        final refreshed = await collection.getSquad();
-        var sum = 0.0;
-        for (var slot = 0; slot < 11; slot++) {
-          sum += refreshed[slot]!.staminaPercent;
-        }
-        return sum / 11;
-      }
-
-      // T-0100: the boosted-recovery ad path is gone with the
-      // post-match pep-talk step — the drained squad still recovers
-      // naturally above the baseline, capped at 100.
-      final plain = await averageStamina();
-      expect(plain, greaterThan(30));
-      expect(plain, lessThanOrEqualTo(100));
-    });
-
     test('replay offer requires a non-win result in the window', () async {
       final clubId = (await collection.getClub())!.id;
       final seasonStore = SeasonStore(db: db, random: math.Random(4));

@@ -44,14 +44,12 @@ List<({String label, int value})> statsOf(PlayerCard c) =>
 /// lines bound the shield size, so every card gets the most space the
 /// shape allows without neighbours overlapping. Cards glide to their new
 /// spots when the formation changes. Each card carries its stats and,
-/// when [showStamina] is set, a colour-coded stamina bar.
 class SquadPitch extends StatelessWidget {
   const SquadPitch({
     super.key,
     required this.formation,
     required this.assignments,
     this.showChemistryLinks = false,
-    this.showStamina = true,
     this.showStats = true,
     this.showCondition = true,
     this.onPlayerTap,
@@ -69,8 +67,6 @@ class SquadPitch extends StatelessWidget {
   /// itself lives on the control card above the pitch.
   final bool showChemistryLinks;
 
-  /// Whether cards carry their stamina bar (hidden in the Team tab).
-  final bool showStamina;
 
   /// Whether cards carry their stat row (hidden in the Team tab).
   final bool showStats;
@@ -136,7 +132,6 @@ class SquadPitch extends StatelessWidget {
                         width: pw,
                         height: ph,
                         showStats: showStats,
-                        showStamina: showStamina,
                         // Idle: every row spread evenly and centred. While a
                         // player (or an empty place) is held the cards
                         // stand on their grid cells, which the visible
@@ -148,7 +143,6 @@ class SquadPitch extends StatelessWidget {
                         width: pw,
                         height: ph,
                         showStats: showStats,
-                        showStamina: showStamina,
                       );
                 final cardW = layout.cardWidth;
                 final slotW = layout.slotWidth;
@@ -331,9 +325,6 @@ class SquadPitch extends StatelessWidget {
                                   width: cardW,
                                   warn: fs.position != card.position,
                                   rowShift: rowShift,
-                                  stamina: showStamina
-                                      ? card.staminaPercent
-                                      : null,
                                   stats: showStats ? statsOf(card) : null,
                                   injuryMatchesOut: showCondition
                                       ? card.injuryMatchesRemaining
@@ -370,9 +361,6 @@ class SquadPitch extends StatelessWidget {
                                       width: cardW,
                                       warn: fs.position != card.position,
                                       rowShift: rowShift,
-                                      stamina: showStamina
-                                          ? card.staminaPercent
-                                          : null,
                                       stats: showStats ? statsOf(card) : null,
                                       injuryMatchesOut: showCondition
                                           ? card.injuryMatchesRemaining
@@ -431,11 +419,8 @@ final ValueNotifier<PlayerCard?> _noDrag = ValueNotifier<PlayerCard?>(null);
 final ValueNotifier<int?> _noSlotDrag = ValueNotifier<int?>(null);
 
 /// Horizontal strip of mini cards (bench / reserves): the surname under
-/// each shield, the stat row and — when [showStamina] is set — the
-/// stamina bar.
-/// Horizontal strip of mini cards (bench / reserves): the surname under
-/// each shield, the stat row and — when [showStamina] is set — the
-/// stamina bar. [emptySlots] pads the strip with placeholder cards, so
+/// each shield and the optional stat row. [emptySlots] pads the strip
+/// with placeholder cards, so
 /// an un-filled bench or reserves still shows its full quota of slots.
 class SquadCardRow extends StatelessWidget {
   const SquadCardRow({
@@ -443,7 +428,6 @@ class SquadCardRow extends StatelessWidget {
     required this.cards,
     this.emptySlots = 0,
     this.zone,
-    this.showStamina = true,
     this.showStats = true,
     this.showCondition = true,
     this.onPlayerTap,
@@ -470,8 +454,6 @@ class SquadCardRow extends StatelessWidget {
   /// assigned players).
   final int emptySlots;
 
-  /// Whether cards carry their stamina bar (hidden in the Team tab).
-  final bool showStamina;
 
   /// Whether cards carry their stat row (hidden in the Team tab).
   final bool showStats;
@@ -492,13 +474,10 @@ class SquadCardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Shield + surname, plus the optional stat row and stamina bar
+    // Shield + surname, plus the optional stat row and condition bar
     // (20 + 22 + 8 = the flat 50 the full strip always used).
     final stripHeight =
-        cardWidth / kPlayerCardAspect +
-        20 +
-        (showStats ? 22 : 0) +
-        (showStamina ? 8 : 0);
+        cardWidth / kPlayerCardAspect + 20 + (showStats ? 22 : 0);
     Widget itemAt(BuildContext context, int i) {
           if (i >= cards.length) {
             final z = zone;
@@ -533,7 +512,6 @@ class SquadCardRow extends StatelessWidget {
                       name: c.base.name,
                       rarity: rarityOf(c),
                       width: cardWidth,
-                      stamina: showStamina ? c.staminaPercent : null,
                       stats: showStats ? statsOf(c) : null,
                       injuryMatchesOut: showCondition
                           ? c.injuryMatchesRemaining
@@ -559,8 +537,7 @@ class SquadCardRow extends StatelessWidget {
                           rarity: rarityOf(c),
                           isIcon: c.base.isIcon,
                           width: cardWidth,
-                          stamina: showStamina ? c.staminaPercent : null,
-                          stats: showStats ? statsOf(c) : null,
+                              stats: showStats ? statsOf(c) : null,
                           injuryMatchesOut: showCondition
                               ? c.injuryMatchesRemaining
                               : null,
@@ -637,7 +614,7 @@ Widget _selectedMark(Widget card) => Stack(
 );
 
 /// The card that follows the finger while a player is dragged: the plain
-/// mini card (no stamina bar or stat row), the same size as on the page.
+/// mini card (no condition bar or stat row), the same size as on the page.
 Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
   overall: card.overall,
   position: card.position.code,

@@ -165,15 +165,16 @@ extension _MatchEngineEvents on MatchEngine {
       if (event != null) produced.add(event);
     }
 
-    // Tired threshold sinks as the match ages: 76 after 65', 70 after 80'.
-    final threshold = minute >= 80 ? 70 : 76;
+    // Rating-based rotation (stamina is gone — owner request
+    // 2026-11-14): after 65' the AI swaps its WEAKEST outfield starter
+    // for the best-compatible bench body, lowest slot score first.
     final onPitch = rt.onPitch.whereType<MatchPlayer>().toList()
-      ..sort((a, b) => a.stamina.compareTo(b.stamina));
+      ..sort((a, b) => _starterScore(b).compareTo(_starterScore(a)));
     for (final tired in onPitch) {
       if (rt.substitutionsUsed >= config.maxSubstitutions) break;
       if (tired.position == Position.gk) continue;
-      if (tired.stamina >= threshold) {
-        break; // sorted ascending: nobody left is tired
+      if (minute < 72) {
+        break; // only genuinely late-match refreshment
       }
       final slotIndex = rt.onPitch.indexWhere(
         (p) => p?.playerId == tired.playerId,
@@ -211,15 +212,9 @@ extension _MatchEngineEvents on MatchEngine {
         slotPosition,
       );
       if (compat <= 0.1) continue;
-      // Freshness tiebreaker for SUB MANAGEMENT only (AI substitution
-      // decisions stay stamina-driven; performance never does, see
-      // T-0052): a fully fresh sub scores 1.00, an empty tank 0.75 —
-      // linear in stamina (0.75 + a quarter of the stamina percent),
-      // written as one division by 400.
       final score =
           compat *
-          (candidate.attack + candidate.support + candidate.defence) *
-          (0.75 + candidate.stamina / 400);
+          (candidate.attack + candidate.support + candidate.defence);
       if (score > bestScore) {
         bestScore = score;
         best = candidate;
@@ -227,6 +222,12 @@ extension _MatchEngineEvents on MatchEngine {
     }
     return best;
   }
+
+  /// Slot-role score of an on-pitch starter (rating-only — stamina is
+  /// gone, owner request 2026-11-14): the AI's late rotation targets
+  /// the weakest starter, exactly what the tired-threshold used to do.
+  double _starterScore(MatchPlayer p) =>
+      (p.attack + p.support + p.defence).toDouble();
 
   // -------------------------------------------------------------------------
   // Injuries (T-0054, GDD 11.7)
@@ -255,7 +256,6 @@ extension _MatchEngineEvents on MatchEngine {
       if (player == null) continue;
       final chance = injuryChanceForMinute(
         config: config.injuryConfig,
-        stamina: player.stamina,
         position: player.position,
         medicalCentreLevel: rt.medicalCentreLevel,
       );
@@ -372,8 +372,7 @@ extension _MatchEngineEvents on MatchEngine {
           slotPosition,
         );
         if (compat <= 0.1) continue;
-        final score =
-            compat * attacker.attack + (100 - defender.stamina) * 0.05;
+        final score = compat * attacker.attack;
         if (score > bestScore) {
           bestScore = score;
           outDefender = defender;

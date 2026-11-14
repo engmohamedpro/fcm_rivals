@@ -1,7 +1,6 @@
 // The matchday Auto Pick policy (T-0118): the pre-match duplicate's
 // XI and bench are chosen by FITNESS — injured (and, one day,
 // suspended) players are excluded from the starting XI AND the bench,
-// and every slot ranks by stamina band first (bands of 10: a 2-point
 // fitness edge must not outweigh a 15-point quality gap inside a
 // band), then by slot rating. The Team tab's merit policy (T-0117)
 // and this policy live in the ONE engine behind explicit parameters.
@@ -21,12 +20,10 @@ PlayerCard _card(
   int id,
   Position position, {
   int overall = 70,
-  int stamina = 100,
   int injuryMatchesRemaining = 0,
 }) => PlayerCard(
   ownedId: id,
   upgradeLevel: 0,
-  staminaPercent: stamina,
   injuryMatchesRemaining: injuryMatchesRemaining,
   base: BasePlayer(
     playerId: 1000 + id,
@@ -60,42 +57,6 @@ void main() {
   // rule against the rating rule in one slot (4-3-3's CB slots).
   final f433 = formationByCode('4-3-3');
 
-  test('same band: rating decides — 92-stamina 78 beats 96-stamina 72', () {
-    final a = _card(1, Position.cb, overall: 78, stamina: 92);
-    final b = _card(2, Position.cb, overall: 72, stamina: 96);
-    final assignment = const SquadEngine().autoPick(
-      [a, b],
-      f433,
-      excludeInjured: true,
-      staminaFirst: true,
-    );
-    // Both CB slots fill; the BETTER player owns the first slot the
-    // engine fills — and (the point) stamina 92 vs 96 is the same
-    // band, so quality won.
-    expect(assignment.values.toSet(), containsAll([1, 2]));
-    final betterSlot =
-        assignment.entries.firstWhere((e) => e.value == 1).key;
-    final weakerSlot =
-        assignment.entries.firstWhere((e) => e.value == 2).key;
-    expect(betterSlot, lessThan(weakerSlot),
-        reason: 'inside one stamina band the slot rating decides');
-  });
-
-  test('band beats rating — 100-stamina 75 beats 61-stamina 85', () {
-    final fit = _card(1, Position.cb, overall: 75, stamina: 100);
-    final tired = _card(2, Position.cb, overall: 85, stamina: 61);
-    final assignment = const SquadEngine().autoPick(
-      [fit, tired],
-      f433,
-      excludeInjured: true,
-      staminaFirst: true,
-    );
-    final fitSlot = assignment.entries.firstWhere((e) => e.value == 1).key;
-    final tiredSlot = assignment.entries.firstWhere((e) => e.value == 2).key;
-    expect(fitSlot, lessThan(tiredSlot),
-        reason: 'the 90s band outranks the 60s band even at -10 overall');
-  });
-
   test('injured players: excluded from the XI AND the bench', () {
     // 11 fit outfielders + 1 injured STAR: the injured star must land
     // in the RESERVES (unassigned by the matchday pick — the bench is
@@ -123,8 +84,7 @@ void main() {
       [...fit, injuredStar],
       f433,
       excludeInjured: true,
-      staminaFirst: true,
-    );
+          );
     // XI: no injured player.
     for (var slot = 0; slot < Formation.startingXiSize; slot++) {
       expect(assignment[slot], isNot(99),
@@ -148,8 +108,7 @@ void main() {
     final plain = const SquadEngine().autoPick(
       [a, b],
       f433,
-      staminaFirst: true,
-    );
+          );
     expect(plain.values.toSet(), containsAll([1, 2]));
     // With the ban set (the future red-card state): player 1 is gone
     // from every section exactly like an injured player.
@@ -157,18 +116,17 @@ void main() {
       [a, b],
       f433,
       suspendedPlayerIds: const {1},
-      staminaFirst: true,
-    );
+          );
     expect(banned.values, isNot(contains(1)));
     expect(banned.values, contains(2));
   });
 
-  test('the merit policy is untouched: staminaFirst false ranks by '
+  test('the merit policy ranks by '
       'rating alone (T-0117 regression)', () {
     // The tired SUPERIOR player wins the first slot when the Team
     // tab's merit policy runs — no stamina in the key at all.
-    final fit = _card(1, Position.cb, overall: 75, stamina: 100);
-    final tired = _card(2, Position.cb, overall: 85, stamina: 61);
+    final fit = _card(1, Position.cb, overall: 75);
+    final tired = _card(2, Position.cb, overall: 85);
     final assignment = const SquadEngine().autoPick(
       [fit, tired],
       f433,

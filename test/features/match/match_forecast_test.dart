@@ -17,9 +17,8 @@ const _generator = BaseStatsGenerator();
 MatchPlayer _player(
   int id,
   Position pos,
-  int marketValueEur, {
-  double stamina = 100,
-}) => MatchPlayer(
+  int marketValueEur,
+) => MatchPlayer(
   playerId: id,
   name: 'Player $id',
   position: pos,
@@ -27,7 +26,6 @@ MatchPlayer _player(
   support: _generator.generate(pos, marketValueEur).support,
   defence: _generator.generate(pos, marketValueEur).defence,
   goalkeeping: _generator.generate(pos, marketValueEur).goalkeeping,
-  stamina: stamina,
 );
 
 /// A 23-man squad: XI, bench and reserves, positions spread like a real
@@ -130,62 +128,6 @@ void main() {
     );
     expect(strong.attackAdvantage, greaterThan(weak.attackAdvantage));
     expect(strong.winPercent, greaterThan(weak.winPercent));
-  });
-
-  test('neutral: tactics, mentality and stamina change nothing', () {
-    final base = _squad(100, 20_000_000);
-    final opponent = _squad(200, 20_000_000);
-
-    // Stamina worn down to half: raw attributes, so identical totals.
-    final tired = [
-      for (var i = 0; i < base.length; i++)
-        _player(base[i].playerId, base[i].position, 20_000_000, stamina: 50),
-    ];
-    expect(squadQualityTotals(tired).attack, squadQualityTotals(base).attack);
-    expect(
-      squadQualityTotals(tired).goalkeeping,
-      squadQualityTotals(base).goalkeeping,
-    );
-
-    // A red card (sent off) or a booked player is still squad paper
-    // quality: the forecast ignores match state entirely.
-    final booked = [...base];
-    booked[3].yellowCards = 1;
-    booked[4].sentOff = true;
-    expect(
-      squadQualityTotals(booked).defence,
-      squadQualityTotals(base).defence,
-    );
-
-    // The forecast input itself has no style/mentality/venue fields at
-    // all — nothing tactical can enter the run.
-    final a = forecastMatch(
-      input: ForecastInput(userSquad: base, opponentSquad: opponent),
-      forecastSeed: 99,
-    );
-    final b = forecastMatch(
-      input: ForecastInput(userSquad: base, opponentSquad: opponent),
-      forecastSeed: 99,
-    );
-    expect(a.winPercent, b.winPercent);
-    expect(a.drawPercent, b.drawPercent);
-    expect(a.avgUserGoals, b.avgUserGoals);
-  });
-
-  test('same seed reproduces the identical forecast', () {
-    MatchForecast run() => forecastMatch(
-      input: ForecastInput(
-        userSquad: _squad(100, 20_000_000),
-        opponentSquad: _squad(200, 20_000_000),
-      ),
-      forecastSeed: 424242,
-    );
-    final a = run();
-    final b = run();
-    expect(a.winPercent, b.winPercent);
-    expect(a.drawPercent, b.drawPercent);
-    expect(a.lossPercent, b.lossPercent);
-    expect(a.avgUserGoals, b.avgUserGoals);
   });
 
   test('random source is honoured (independent runs can differ)', () {

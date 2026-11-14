@@ -6,7 +6,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'fcm_style.dart';
-import 'fcm_widgets.dart' show staminaColor;
 import 'injury_badge.dart';
 import 'player_card.dart';
 
@@ -26,7 +25,6 @@ class FcmMiniCard extends StatelessWidget {
     this.clubCrestUrl,
     this.warn = false,
     this.rowShift = RowShift.none,
-    this.stamina,
     this.stats,
     this.ghost = false,
     this.injuryMatchesOut,
@@ -61,7 +59,6 @@ class FcmMiniCard extends StatelessWidget {
   /// rendered as a small chevron in the warn-mark's corner. The bonus
   /// itself stays hidden (owner spec: no numbers on the card).
   final RowShift rowShift;
-  final int? stamina;
   final List<({String label, int value})>? stats;
   final bool ghost;
   final int? injuryMatchesOut;
@@ -169,10 +166,6 @@ class FcmMiniCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (stamina != null) ...[
-              const SizedBox(height: 3),
-              _StaminaBar(percent: stamina!, width: width),
-            ],
           ],
         ),
       ),
@@ -229,51 +222,6 @@ class _GhostPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Colour-coded stamina strip under a mini card.
-class _StaminaBar extends StatelessWidget {
-  const _StaminaBar({required this.percent, required this.width});
-
-  final int percent;
-  final double width;
-
-  static const double trackHeight = 5;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = staminaColor(percent);
-    final fill = (percent / 100).clamp(0.0, 1.0);
-    return Container(
-      width: width,
-      height: trackHeight,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(trackHeight / 2),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.4)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(trackHeight / 2),
-        child: Stack(
-          children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: width * fill,
-              child: DecoratedBox(
-                key: const Key('stamina_fill'),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color.withValues(alpha: 0.75), color],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Grid-row lean of a card (T-0145): up = pushed above his natural
 /// line (attack-leaning), down = dropped below it (defence-leaning).

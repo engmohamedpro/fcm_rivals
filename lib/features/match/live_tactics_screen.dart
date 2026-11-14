@@ -163,7 +163,6 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
                     tactics: t,
                   ),
                 ),
-                showStamina: true,
                 showStats: false,
                 showReserves: false,
                 onPlayerTap: _onPlayerTap,
@@ -262,7 +261,7 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
   }
 
   /// Display card for a live engine player: overall from his best live
-  /// attributes, stamina from the engine's live value.
+  /// attributes (stamina is gone — owner request 2026-11-14).
   PlayerCard _cardOf(MatchPlayer p) {
     final gk = p.position == Position.gk;
     final overall = gk
@@ -271,7 +270,6 @@ class _LiveTacticsScreenState extends State<LiveTacticsScreen> {
     return PlayerCard(
       ownedId: p.playerId,
       upgradeLevel: 0,
-      staminaPercent: p.stamina.round(),
       base: BasePlayer(
         playerId: p.playerId,
         name: p.name,
@@ -405,7 +403,8 @@ class _LiveSubstitutions extends StatelessWidget {
       : 'Coming off: ${selectedOut!.name} — pick the substitute:';
 }
 
-/// One substitution candidate: stamina avatar, name and position.
+/// One substitution candidate: name and position (the stamina avatar is
+/// gone with the stamina system — owner request 2026-11-14).
 class _PlayerChip extends StatelessWidget {
   const _PlayerChip({required this.player, required this.onTap});
 
@@ -414,15 +413,7 @@ class _PlayerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return ActionChip(
-      avatar: CircleAvatar(
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-        child: Text(
-          '${player.stamina.round()}%',
-          style: theme.textTheme.labelSmall,
-        ),
-      ),
       label: Text('${player.name} (${player.position.code})'),
       onPressed: onTap,
     );

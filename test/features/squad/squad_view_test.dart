@@ -4,7 +4,6 @@
 //    CLOSES with the team rating — one line, no overflow, at any width
 //    (a previous rating + Auto Pick + TACTICS row overflowed ~40px on
 //    phones; the actions now live on their own full-width row below);
-//  * showStamina toggles the stamina bars and showStats the stat rows
 //    (the Tactics tab hides both, the pre-match phase shows them);
 //  * T-0064: the nine ordered axes render as stepped sliders (one
 //    commit per gesture, effect summary under the track), chips stay
@@ -17,7 +16,6 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
     show FcmButton, FcmDropdown, FcmScaleSlider;
-import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
 import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/squad/formations.dart'
     show formationByCode;
@@ -27,12 +25,10 @@ import 'package:fcm_rivals/features/squad/squad_view.dart';
 PlayerCard _natCard(
   int id,
   Position position,
-  String nationality, {
-  int stamina = 100,
-}) => PlayerCard(
+  String nationality,
+) => PlayerCard(
   ownedId: id,
   upgradeLevel: 0,
-  staminaPercent: stamina,
   base: BasePlayer(
     playerId: 1000 + id,
     name: 'Player $id',
@@ -49,10 +45,9 @@ PlayerCard _natCard(
   ),
 );
 
-PlayerCard _card(int id, Position position, {int stamina = 100}) => PlayerCard(
+PlayerCard _card(int id, Position position) => PlayerCard(
   ownedId: id,
   upgradeLevel: 0,
-  staminaPercent: stamina,
   base: BasePlayer(
     playerId: 1000 + id,
     name: 'Player $id',
@@ -70,7 +65,6 @@ PlayerCard _card(int id, Position position, {int stamina = 100}) => PlayerCard(
 );
 
 Widget _host({
-  bool showStamina = true,
   bool showStats = true,
   bool showSetupSummary = true,
   List<PlayerCard>? bench,
@@ -94,7 +88,6 @@ Widget _host({
         onFormation: (_) {},
         onTactics: (_) {},
         onAutoPick: () {},
-        showStamina: showStamina,
         showStats: showStats,
         showSetupSummary: showSetupSummary,
       ),
@@ -102,21 +95,6 @@ Widget _host({
   ),
 );
 
-/// Number of 5px-tall decorated boxes under the mini cards: the stamina
-/// track (and its fill) — zero means no stamina bar is rendered.
-int _staminaTracks() {
-  var count = 0;
-  for (final e
-      in find
-          .descendant(
-            of: find.byType(FcmMiniCard),
-            matching: find.byType(DecoratedBox),
-          )
-          .evaluate()) {
-    if ((e.renderObject as RenderBox).size.height == 5) count++;
-  }
-  return count;
-}
 
 void main() {
   test('mentality scale mapping is exact at every named step', () {
@@ -201,60 +179,6 @@ void main() {
     expect(autoPick.dy, greaterThan(formation.dy));
   });
 
-  testWidgets('bench and reserves always show their full quota of slots', (
-    WidgetTester tester,
-  ) async {
-    // One bench player, no reserves: 6 bench placeholders + all 5
-    // reserve placeholders render after the real card.
-    await tester.pumpWidget(_host(bench: [_card(1, Position.st)]));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Bench (1/7)'), findsOneWidget);
-    expect(find.text('Reserves (0/5)'), findsOneWidget);
-    // The one real card plus the ghost placeholders — same widget, the
-    // ghost ones render dimmed and wordless: 11 empty formation slots,
-    // 6 bench and 5 reserve placeholders.
-    expect(find.byType(FcmMiniCard), findsNWidgets(1 + 11 + 6 + 5));
-
-    // The bench placeholders sit after the real bench card in the bench
-    // strip: the mini card shows the SURNAME with the leading initial
-    // ('P. 1' from 'Player 1' — formatMiniCardName).
-    final cardLeft = tester.getTopLeft(find.text('P. 1'));
-    final firstEmpty = tester.getTopLeft(find.byType(FcmMiniCard).at(1 + 11));
-    expect(firstEmpty.dx, greaterThan(cardLeft.dx));
-
-    // Even a completely empty squad keeps both sections visible.
-    await tester.pumpWidget(_host());
-    await tester.pumpAndSettle();
-    expect(find.text('Bench (0/7)'), findsOneWidget);
-    expect(find.text('Reserves (0/5)'), findsOneWidget);
-    expect(find.byType(FcmMiniCard), findsNWidgets(11 + 7 + 5));
-  });
-
-  testWidgets('stamina bars render only when shown', (
-    WidgetTester tester,
-  ) async {
-    final bench = [_card(1, Position.st, stamina: 50)];
-
-    await tester.pumpWidget(_host(bench: bench));
-    await tester.pumpAndSettle();
-    // Ghost placeholders render no stamina bar, so tracks come only
-    // from the one real card.
-    expect(
-      _staminaTracks(),
-      greaterThan(0),
-      reason: 'stamina bar shown when enabled',
-    );
-
-    await tester.pumpWidget(_host(bench: bench, showStamina: false));
-    await tester.pumpAndSettle();
-    expect(
-      _staminaTracks(),
-      0,
-      reason: 'no stamina bar when showStamina is false',
-    );
-  });
-
   testWidgets('stat rows render only when shown', (WidgetTester tester) async {
     final bench = [_card(1, Position.st)];
 
@@ -262,7 +186,7 @@ void main() {
     // rows from mini cards — ATT/SUP/DEF never render on the card face
     // whatever showStats says. The flag still rides along for the
     // pitch footprint math (pitch_layout.dart) and the API contract;
-    // the card simply draws the shield + formatted name (+ stamina).
+    // the card simply draws the shield + formatted name.
     await tester.pumpWidget(_host(bench: bench));
     await tester.pumpAndSettle();
     expect(find.text('ATT'), findsNothing);
@@ -273,7 +197,7 @@ void main() {
 
     // And hiding the flags changes nothing the card draws.
     await tester.pumpWidget(
-      _host(bench: bench, showStamina: false, showStats: false),
+      _host(bench: bench, showStats: false),
     );
     await tester.pumpAndSettle();
     expect(find.text('ATT'), findsNothing);

@@ -142,10 +142,8 @@ class SquadScreen extends ConsumerWidget {
                           club == null || club.coins >= capacity.nextBlockPrice,
                       onTap: () => _buySlots(context, ref, capacity),
                     ),
-              // The saved setup is about identity — match-day fitness
-              // (stamina) and the per-card stat rows belong to the
-              // pre-match phase only.
-              showStamina: false,
+              // The saved setup is about identity — the per-card stat
+              // rows belong to the pre-match phase only.
               showStats: false,
               // T-0117: the pure management surface — no match-day
               // condition chrome of any kind (stamina bars, injury

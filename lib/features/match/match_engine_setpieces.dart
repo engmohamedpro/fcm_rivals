@@ -418,28 +418,6 @@ extension _MatchEngineAi on MatchEngine {
   // Stamina
   // -------------------------------------------------------------------------
 
-  void _drainStamina() {
-    for (final side in MatchSide.values) {
-      final rt = _runtimeOf(side);
-      final styleStamina =
-          rt.tactics.modifiers.stamina *
-          rt.mentalityFx.stamina *
-          _activeActionModifiersOf(side).stamina;
-      for (final p in rt.onPitch.whereType<MatchPlayer>()) {
-        final drain = staminaDrainForMinute(
-          config: config.staminaConfig,
-          position: p.position,
-          styleStamina: styleStamina,
-          mentalityStamina: 1.0,
-          involvedInEvent: _involvedThisMinute.contains(p.playerId),
-        );
-        p.stamina = (p.stamina - drain).clamp(0, 100);
-        p.minutesPlayed++;
-      }
-      // Bench players don't consume match stamina (GDD 11.3).
-    }
-  }
-
   // -------------------------------------------------------------------------
   // Commands and AI
   // -------------------------------------------------------------------------

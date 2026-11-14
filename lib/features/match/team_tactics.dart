@@ -242,7 +242,6 @@ enum Mentality {
 
     describe('Attack', attackMod);
     describe('Defence', defenceMod);
-    describe('Stamina use', staminaMod);
     return parts.isEmpty ? 'No modifiers' : parts.join(' · ');
   }
 }

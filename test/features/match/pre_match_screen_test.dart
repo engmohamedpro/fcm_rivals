@@ -217,7 +217,6 @@ void main() {
     expect(minis.length, 11, reason: 'all eleven starters on the pitch');
     // Management view flags: no stamina bars, no stat rows.
     for (final c in minis) {
-      expect(c.stamina, isNull, reason: 'no stamina on the analysis pitch');
       expect(c.stats, isNull, reason: 'no stat rows on the analysis pitch');
     }
     // Read-only scouting: taps lead nowhere on this surface.
@@ -345,7 +344,6 @@ void main() {
         .toList();
     expect(cards, isNotEmpty, reason: 'the tactics phase shows its squad');
     for (final c in cards) {
-      expect(c.stamina, 90, reason: 'every card carries the stamina bar');
       expect(c.stats, isNull, reason: 'no stat rows on this surface');
     }
     // No stat-row labels leaked in through any other widget.

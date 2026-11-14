@@ -213,7 +213,6 @@ void main() {
           body: SquadPitch(
             formation: formationByCode('4-3-3'),
             assignments: {0: injured},
-            showStamina: true,
             showStats: false,
             showCondition: true,
           ),

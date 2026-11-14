@@ -148,71 +148,6 @@ void main() {
       },
     );
 
-    test('stamina persists with recovery applied (GDD 11.5)', () async {
-      final report = await playFriendly(restDays: 3);
-      final squad = await store.getSquad();
-      expect(squad.length, 23);
-
-      // Starters finished below 100 and recovered to a bounded range.
-      final starter = squad[0]!;
-      expect(
-        report.homeRatings
-            .firstWhere(
-              (r) => r.playerId == starter.ownedId,
-              orElse: () => throw StateError('missing'),
-            )
-            .minutesPlayed,
-        greaterThan(0),
-      );
-      // Full-match starters: recovered but below 100 (rest 3 days).
-      final collection = await store.getCollection();
-      final fullMatchStarters = collection
-          .where((c) => squad.values.any((s) => s.ownedId == c.ownedId))
-          .where((c) => c.staminaPercent < 100)
-          .toList();
-      // At least some squad members carry post-match fatigue.
-      expect(fullMatchStarters, isNotEmpty);
-      // Nobody exceeds bounds.
-      expect(
-        collection.every(
-          (c) => c.staminaPercent >= 0 && c.staminaPercent <= 100,
-        ),
-        isTrue,
-      );
-    });
-
-    test('pep talk adds recovery for the targeted group (GDD 11.6)', () async {
-      // Two independent databases, same seed: identical matches, but one
-      // applies the 'rest everyone' pep talk (+5% natural recovery).
-      Future<(Map<int, int>, int)> run() async {
-        final db = memoryDb();
-        final store = await seededSquadStore(db);
-        final session = await MatchSession.create(
-          store: store,
-          seed: 9,
-          opponentName: 'Cairo XI',
-          opponentAverageOverall: 68,
-        );
-        session.simulateToEnd();
-        final report = await session.finish();
-        final stamina = {
-          for (final c in await store.getCollection())
-            c.ownedId: c.staminaPercent,
-        };
-        await db.close();
-        return (stamina, report.rewardCoins);
-      }
-
-      // T-0100: the pep-talk comparison leg is gone with the feature —
-      // the default recovery run stays as the determinism check.
-      final (plainStamina, plainReward) = await run();
-      final (againStamina, againReward) = await run();
-
-      // Identical seeds produce identical matches, rewards and recovery.
-      expect(againReward, plainReward);
-      expect(againStamina, plainStamina);
-    });
-
     test(
       'live tactical commands work through the session (FR-022/FR-029)',
       () async {
@@ -291,33 +226,5 @@ void main() {
         await db2.close();
       }
     });
-
-    test(
-      'two consecutive matches accumulate stamina effects (GDD 11.5)',
-      () async {
-        // One-day rest: fatigue survives into the next match. With the
-        // §30-calibrated recovery (3+ days fully restores a full match's
-        // drain), only a short rest leaves carried fatigue.
-        await playFriendly(seed: 21, restDays: 1);
-        final afterFirst = {
-          for (final c in await store.getCollection())
-            c.ownedId: c.staminaPercent,
-        };
-        await playFriendly(seed: 22, restDays: 1);
-        final afterSecond = {
-          for (final c in await store.getCollection())
-            c.ownedId: c.staminaPercent,
-        };
-        // Some players must be carrying fatigue into the second match.
-        var fatigued = 0;
-        for (final e in afterFirst.entries) {
-          if (e.value < 85) fatigued++;
-        }
-        expect(fatigued, greaterThan(0));
-        // And the second match starts from those values (bounded recovery).
-        expect(afterSecond.length, afterFirst.length);
-        expect(afterSecond.values.every((v) => v >= 0 && v <= 100), isTrue);
-      },
-    );
   });
 }

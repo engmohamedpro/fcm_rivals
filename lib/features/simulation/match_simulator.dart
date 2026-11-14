@@ -35,9 +35,6 @@ class MatchSimBatchReport {
     required this.shotsOnTarget,
     required this.yellowCards,
     required this.redCards,
-    required this.staminaDepletion,
-    required this.avgHomeStaminaEnd,
-    required this.avgAwayStaminaEnd,
     required this.homeTacticsWins,
     required this.awayTacticsWins,
   });
@@ -55,14 +52,6 @@ class MatchSimBatchReport {
   final int shotsOnTarget;
   final int yellowCards;
   final int redCards;
-
-  /// Average stamina points lost per starter over 90 minutes (both
-  /// sides pooled).
-  final double staminaDepletion;
-
-  /// Average final stamina of the starting XI (both sides pooled).
-  final double avgHomeStaminaEnd;
-  final double avgAwayStaminaEnd;
 
   /// Tactical effectiveness (GDD 31): wins of the side that changed
   /// tactics at minute 60 vs the control group in the same batch.
@@ -219,8 +208,6 @@ class MatchSimulator {
     var goals = 0, homeGoals = 0, awayGoals = 0;
     var shots = 0, shotsOnTarget = 0;
     var yellowCards = 0, redCards = 0;
-    var staminaLost = 0.0, staminaCount = 0;
-    var homeStaminaEnd = 0.0, awayStaminaEnd = 0.0;
 
     for (var i = 0; i < matches; i++) {
       final seed = _random.nextInt(1 << 31);
@@ -258,20 +245,6 @@ class MatchSimulator {
       shotsOnTarget += stats.home.shotsOnTarget + stats.away.shotsOnTarget;
       yellowCards += stats.home.yellowCards + stats.away.yellowCards;
       redCards += stats.home.redCards + stats.away.redCards;
-
-      for (final side in MatchSide.values) {
-        for (final p in engine.playersOf(side)) {
-          if (p.minutesPlayed >= 90) {
-            staminaLost += 100 - p.stamina;
-            staminaCount++;
-            if (side == MatchSide.home) {
-              homeStaminaEnd += p.stamina;
-            } else {
-              awayStaminaEnd += p.stamina;
-            }
-          }
-        }
-      }
     }
 
     return MatchSimBatchReport(
@@ -287,13 +260,6 @@ class MatchSimulator {
       shotsOnTarget: shotsOnTarget,
       yellowCards: yellowCards,
       redCards: redCards,
-      staminaDepletion: staminaCount == 0 ? 0 : staminaLost / staminaCount,
-      avgHomeStaminaEnd: staminaCount == 0
-          ? 0
-          : homeStaminaEnd / (staminaCount / 2),
-      avgAwayStaminaEnd: staminaCount == 0
-          ? 0
-          : awayStaminaEnd / (staminaCount / 2),
       homeTacticsWins: controlHomeWins ?? homeWins,
       awayTacticsWins: controlAwayWins ?? awayWins,
     );

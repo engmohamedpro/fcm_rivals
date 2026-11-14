@@ -15,7 +15,7 @@ String renderMatchBatches(List<MatchSimBatchReport> batches) {
   final buffer = StringBuffer('''
 ## Match Engine Simulation (GDD 31)
 
-| Batch | Matches | Goals/match | Home win | Draw | Away win | Shots/match | On target | Conversion | Yellows/match | Stamina end (H/A) |
+| Batch | Matches | Goals/match | Home win | Draw | Away win | Shots/match | On target | Conversion | Yellows/match |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 ''');
   for (final b in batches) {
@@ -23,7 +23,7 @@ String renderMatchBatches(List<MatchSimBatchReport> batches) {
       '| ${b.label} | ${b.matches} | ${_f(b.avgGoals)} | '
       '${_pct(b.homeWinRate)} | ${_pct(b.drawRate)} | ${_pct(b.awayWinRate)} | '
       '${_f(b.avgShots)} | ${_f(b.avgShotsOnTarget)} | ${_pct(b.goalConversion)} | '
-      '${_f(b.avgYellowCards)} | ${_f(b.avgHomeStaminaEnd)}/${_f(b.avgAwayStaminaEnd)} |',
+      '${_f(b.avgYellowCards)} |',
     );
   }
   return buffer.toString();

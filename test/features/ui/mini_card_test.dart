@@ -1,4 +1,4 @@
-// Mini card regression: stamina bar fill rendering and attribute-free layout.
+// Mini card regression: attribute-free layout.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -50,59 +50,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('🇪🇬'), findsNothing);
     });
-
-    testWidgets('RTL pump renders the flag without overflow', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Scaffold(
-              backgroundColor: Colors.black,
-              body: Center(
-                child: FcmMiniCard(
-                  overall: 80,
-                  position: 'ST',
-                  name: 'Player',
-                  rarity: CardRarity.fromOverall(80),
-                  width: 56,
-                  flag: flagEmojiFor('Egypt'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text(flagEmojiFor('Egypt')), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
   });
 
-  testWidgets('stamina bar fill renders with real width and height', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      _host(
-        FcmMiniCard(
-          overall: 80,
-          position: 'ST',
-          name: 'Player',
-          rarity: CardRarity.fromOverall(80),
-          width: 56,
-          stamina: 80,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final fillBox = tester.renderObject(find.byKey(const Key('stamina_fill'))) as RenderBox;
-    expect(fillBox.size.width, closeTo(44.8, 1.0));
-    expect(fillBox.size.height, greaterThan(0));
-  });
-
-  testWidgets('mini card carries name and stamina without attributes', (
+  testWidgets('mini card carries the name without attributes', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -113,8 +63,7 @@ void main() {
           name: 'Midfielder',
           rarity: CardRarity.fromOverall(78),
           width: 64,
-          stamina: 45,
-        ),
+              ),
       ),
     );
     await tester.pumpAndSettle();

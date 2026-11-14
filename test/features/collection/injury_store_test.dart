@@ -354,15 +354,8 @@ void main() {
             ),
           );
         }
-        // Exhaust the whole club to the calibration grid's known point
-        // (start 40 → ~0.49 injuries/team/match under the shipped base):
-        // the fatigue ramp keys the risk to the stamina level (GDD 11.7)
-        // — spent squads measurably lose players.
-        await db.customUpdate(
-          'UPDATE owned_players SET stamina_percent = 40 WHERE club_id = ?',
-          variables: [Variable.withInt(club)],
-          updates: {db.ownedPlayers},
-        );
+        // (The stamina-40 exhaustion step is gone with the stamina
+        // system — owner request 2026-11-14: the risk is flat now.)
         final opponentId = await db
             .into(db.clubs)
             .insert(
@@ -388,19 +381,20 @@ void main() {
             support: 40,
             defence: 40,
             goalkeeping: 40,
-            stamina: 40,
             ),
         ];
         // The boosted risk config gives the 0.6pp/level hook statistical
         // power, tuned to sit BELOW the per-team per-match cap (2): the
-        // grid's start-40 rate (0.49) × the 2.7× base ≈ 1.3 per
-        // team-match, so the cap cannot flatten the two arms. At the
-        // shipped 3% total reduction the real effect is below the noise
-        // floor of ANY feasible sample — the wiring is what this test
-        // proves (recorded in the task notes).
+        // flat rate (0.027/match at the shipped 0.0003 base) × the
+        // ~2.7× boost ≈ 0.073 injuries/player-match ≈ 0.8 per team-match
+        // across a full XI, so the cap cannot flatten the two arms. At
+        // the shipped 3% total reduction the real effect is below the
+        // noise floor of ANY feasible sample — the wiring is what this
+        // test proves (recorded in the task notes). (Re-anchored
+        // 0.00008 -> 0.0008 with the flat-rate model, 2026-11-14.)
         const boosted = MatchEngineConfig(
           injuryConfig: InjuryConfig(
-            baseRiskPerMinuteAtFullStamina: 0.00008,
+            baseRiskPerMinuteAtFullStamina: 0.0008,
             maxRiskPerMinute: 1,
           ),
         );

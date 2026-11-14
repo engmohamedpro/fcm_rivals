@@ -77,7 +77,6 @@ String _orderEffect(ActionModifiers m) {
 
   describe('Attack', m.attack);
   describe('Defence', m.defence);
-  describe('Stamina use', m.stamina);
   return parts.isEmpty ? 'No modifiers' : parts.join(' · ');
 }
 

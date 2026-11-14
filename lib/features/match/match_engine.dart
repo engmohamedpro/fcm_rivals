@@ -44,7 +44,6 @@ import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import 'chemistry.dart';
 import 'injury.dart';
-import 'stamina.dart';
 import 'tactics.dart';
 import 'match_event.dart';
 import 'match_commands.dart';
@@ -267,14 +266,18 @@ class MatchEngine {
       produced.addAll(_simulateSegment(minute));
     }
 
-    // Stamina drain for everyone on the pitch (GDD 11.3: bench doesn't
-    // consume; GDD 11.4: dynamic workload).
-    _drainStamina();
+    // Minutes on the pitch (ratings, season stats and the post-match
+    // report all read them). The stamina drain that used to live here
+    // is gone — owner request 2026-11-14: no stamina anywhere.
+    for (final side in MatchSide.values) {
+      for (final p in _runtimeOf(side).onPitch.whereType<MatchPlayer>()) {
+        p.minutesPlayed++;
+      }
+    }
 
     // Injuries (T-0054, GDD 11.7): every on-pitch player of BOTH sides
-    // rolls against his post-drain stamina — the gameplay bite of the
-    // fatigue decoupling made visible: a drained squad starts losing
-    // players.
+    // rolls the flat base risk (the stamina fatigue ramp is gone —
+    // owner request 2026-11-14: no stamina anywhere).
     produced.addAll(_rollInjuries(minute));
 
     // AI adaptation (GDD 12.6) — reasoning recorded as events.

@@ -24,8 +24,6 @@ import '../ads/ad_engine.dart';
 import '../ads/ad_store.dart';
 import '../economy/economy_engine.dart';
 import '../facilities/facilities.dart';
-import '../match/stamina.dart'
-    show StaminaConfig, recoverStamina;
 import '../match/tactics.dart' show TeamTactics;
 import '../packs/pack_engine.dart';
 import 'collection_results.dart';

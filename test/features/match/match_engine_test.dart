@@ -222,20 +222,6 @@ void main() {
       // Identical squads: the home team must come out ahead on attack.
       expect(home.attack, greaterThan(away.attack));
     });
-
-    test('stamina does not change team totals (GDD 12.2, fatigue decoupled)', () {
-      final engine = buildEngine(5);
-      final start = engine.totalsOf(MatchSide.home);
-      for (final p in engine.playersOf(MatchSide.home)) {
-        p.stamina = 50;
-      }
-      final drained = engine.totalsOf(MatchSide.home);
-      // T-0052 owner decision 2026-11-07: attributes apply at full value
-      // whatever the stamina — drained totals are IDENTICAL, not lower.
-      expect(drained.attack, start.attack);
-      expect(drained.support, start.support);
-      expect(drained.defence, start.defence);
-    });
   });
 
   group('MatchEngine substitutions and cards (FR-023, GDD 10.5)', () {
@@ -376,12 +362,10 @@ void main() {
   });
 
   group('MatchEngine simulation sanity (GDD 31 metrics)', () {
-    test('goals, shots and stamina land in plausible ranges', () {
+    test('goals and shots land in plausible ranges', () {
       const matches = 200;
       var totalGoals = 0, homeWins = 0, draws = 0;
       var totalShots = 0, totalOnTarget = 0;
-      var totalStamina = 0.0;
-      var staminaSamples = 0;
       var totalXg = 0.0;
 
       for (var m = 0; m < matches; m++) {
@@ -398,15 +382,6 @@ void main() {
         totalShots += stats.home.shots + stats.away.shots;
         totalOnTarget += stats.home.shotsOnTarget + stats.away.shotsOnTarget;
         totalXg += stats.home.xg + stats.away.xg;
-        for (final p in [
-          ...engine.playersOf(MatchSide.home),
-          ...engine.playersOf(MatchSide.away),
-        ]) {
-          if (p.minutesPlayed >= 90) {
-            totalStamina += p.stamina;
-            staminaSamples++;
-          }
-        }
       }
 
       final avgGoals = totalGoals / matches;
@@ -424,9 +399,6 @@ void main() {
       final onTargetRatio = totalOnTarget / totalShots;
       expect(onTargetRatio, greaterThan(0.25));
       expect(onTargetRatio, lessThan(0.75));
-      final avgStamina = totalStamina / staminaSamples;
-      expect(avgStamina, greaterThan(15), reason: 'stamina drains too fast');
-      expect(avgStamina, lessThan(75), reason: 'stamina barely drains');
       final avgXg = totalXg / matches;
       expect(avgXg, greaterThan(0.5), reason: 'xG implausibly low');
       expect(avgXg, lessThan(6.0), reason: 'xG implausibly high');
@@ -595,77 +567,6 @@ void main() {
     });
   });
 
-  group('Stamina (GDD 11)', () {
-    test('bench players do not consume match stamina', () {
-      final engine = buildEngine(17);
-      engine.simulateToEnd();
-      final bench = engine
-          .playersOf(MatchSide.home)
-          .where((p) => p.playerId >= 200 && p.playerId < 300)
-          .toList();
-      // No substitutions were queued: bench stamina unchanged.
-      for (final p in bench) {
-        expect(p.stamina, 100);
-        expect(p.minutesPlayed, 0);
-      }
-    });
-
-    test('on-pitch players end the match below full stamina', () {
-      final engine = buildEngine(17);
-      engine.simulateToEnd();
-      final starters = engine
-          .playersOf(MatchSide.home)
-          .where((p) => p.playerId >= 100 && p.playerId < 110)
-          .where((p) => p.minutesPlayed >= 85);
-      expect(starters, isNotEmpty);
-      for (final p in starters) {
-        expect(p.stamina, lessThan(90));
-      }
-    });
-
-    test('mentality affects consumption (attacking drains more)', () {
-      double avgStamina(Mentality mentality) {
-        final engine = MatchEngine(
-          seed: 55,
-          home: MatchTeamInput(
-            teamId: 1,
-            teamName: 'A',
-            formationCode: '4-4-2',
-            tactics: const TeamTactics(),
-            mentality: mentality,
-            starters: makeTeam(100, 'H'),
-            bench: makeTeam(200, 'HB').sublist(0, 5),
-          ),
-          away: MatchTeamInput(
-            teamId: 2,
-            teamName: 'B',
-            formationCode: '4-4-2',
-            tactics: const TeamTactics(),
-            mentality: Mentality.balanced,
-            starters: makeTeam(300, 'A'),
-            bench: makeTeam(400, 'AB').sublist(0, 5),
-          ),
-        );
-        engine.simulateToEnd();
-        final players = engine
-            .playersOf(MatchSide.home)
-            .where((p) => p.minutesPlayed >= 85)
-            .toList();
-        return players.fold<double>(0, (a, p) => a + p.stamina) /
-            players.length;
-      }
-
-      // Average across multiple seeds for stability. The removed style
-      // spread (Gegenpressing 1.30 vs Low Block 0.85) is carried by the
-      // mentality ladder until the phase 1-3 instructions land.
-      var attacking = 0.0, defensive = 0.0;
-      for (var s = 0; s < 5; s++) {
-        attacking += avgStamina(Mentality.veryAttacking);
-        defensive += avgStamina(Mentality.veryDefensive);
-      }
-      expect(attacking / 5, lessThan(defensive / 5));
-    });
-  });
 
   group('Commentary (FR-031, GDD 13.1)', () {
     test('commentary derives from events and names players', () {
@@ -736,201 +637,5 @@ void main() {
       expect(aiChangesSeen, greaterThan(0));
       expect(aiChangesSeen / 100, lessThan(2.0));
     });
-  });
-
-  group('AI substitutions for tired legs (GDD 10.5/11)', () {
-    MatchPlayer mk(
-      int id,
-      Position position, {
-      int rating = 60,
-      double stamina = 100,
-    }) {
-      return MatchPlayer(
-        playerId: id,
-        name: 'P$id',
-        position: position,
-        attack: position == Position.gk ? 20 : rating,
-        support: rating,
-        defence: position == Position.gk ? 20 : rating,
-        goalkeeping: position == Position.gk ? rating : 20,
-        stamina: stamina,
-      );
-    }
-
-    test('an AI side substitutes genuinely tired starters from its bench', () {
-      final starters = [
-        mk(1, Position.gk),
-        mk(2, Position.lb, stamina: 20),
-        mk(3, Position.cb, stamina: 18),
-        mk(4, Position.cb),
-        mk(5, Position.rb),
-        mk(6, Position.lm),
-        mk(7, Position.cm),
-        mk(8, Position.cm),
-        mk(9, Position.rm),
-        mk(10, Position.st, stamina: 25),
-        mk(11, Position.st),
-      ];
-      final bench = [
-        mk(12, Position.lb),
-        mk(13, Position.cb),
-        mk(14, Position.st),
-        mk(15, Position.cm),
-        mk(16, Position.rm),
-      ];
-      final engine = MatchEngine(
-        seed: 42,
-        home: MatchTeamInput(
-          teamId: 1,
-          teamName: 'Home',
-          formationCode: '4-4-2',
-          tactics: const TeamTactics(),
-          mentality: Mentality.balanced,
-          starters: makeTeam(100, 'Home'),
-          bench: const [],
-        ),
-        away: MatchTeamInput(
-          teamId: 2,
-          teamName: 'Away',
-          formationCode: '4-4-2',
-          tactics: const TeamTactics(),
-          mentality: Mentality.balanced,
-          starters: starters,
-          bench: bench,
-          aiControlled: true,
-        ),
-      );
-      engine.simulateToEnd();
-
-      final subs = engine.events
-          .where((e) => e.type == MatchEventType.substitution)
-          .toList();
-      expect(
-        subs,
-        isNotEmpty,
-        reason: 'tired legs (20/18/25 stamina) must come off',
-      );
-      // The tired starters were replaced — and never more than the cap.
-      final subbedOut = subs.map((e) => e.primaryPlayerId).toSet();
-      expect(subbedOut.intersection({2, 3, 10}), isNotEmpty);
-      expect(
-        engine.state.substitutionsAway,
-        lessThanOrEqualTo(engine.config.maxSubstitutions),
-      );
-      // The engine reports the substitutes on the pitch.
-      final onPitch = engine.onPitchOf(MatchSide.away).map((p) => p.playerId);
-      for (final id in subbedOut) {
-        expect(onPitch.contains(id), isFalse);
-      }
-    });
-
-    test('AI substitutions stop at the substitution cap', () {
-      // Six tired bodies, only five subs allowed. With the 12-minute
-      // spacing (sub windows at 65, 77, 89...) the cap is reached only
-      // through the spread windows, so this proves the cap still binds:
-      // never more than five, and as many as the windows allow.
-      final starters = [
-        mk(1, Position.gk),
-        for (var i = 2; i <= 11; i++)
-          mk(i, i <= 7 ? Position.cb : Position.cm, stamina: 10),
-      ];
-      final bench = [for (var i = 12; i <= 17; i++) mk(i, Position.cb)];
-      final engine = MatchEngine(
-        seed: 7,
-        home: MatchTeamInput(
-          teamId: 1,
-          teamName: 'Home',
-          formationCode: '4-4-2',
-          tactics: const TeamTactics(),
-          mentality: Mentality.balanced,
-          starters: makeTeam(100, 'Home'),
-          bench: const [],
-        ),
-        away: MatchTeamInput(
-          teamId: 2,
-          teamName: 'Away',
-          formationCode: '4-4-2',
-          tactics: const TeamTactics(),
-          mentality: Mentality.balanced,
-          starters: starters,
-          bench: bench,
-          aiControlled: true,
-        ),
-      );
-      engine.simulateToEnd();
-      expect(
-        engine.state.substitutionsAway,
-        lessThanOrEqualTo(engine.config.maxSubstitutions),
-        reason: 'the hard cap must always bind',
-      );
-      // 65→77→89 is three spread windows before full time: the six tired
-      // legs still get relieved, just paced like a real bench.
-      expect(
-        engine.state.substitutionsAway,
-        greaterThan(0),
-        reason: 'exhausted squads must still be rotated',
-      );
-    });
-
-    test(
-      'a subbed-out player stops draining; the substitute drains from entry',
-      () {
-        // One fading starter (enters the sub window well below the 76
-        // gate) subbed at the first AI window (minute 65+), one fresh
-        // substitute: after full time the substitute's minutes are
-        // strictly fewer than the match length, while the starter's
-        // stamina stays well above zero — frozen at what he had when he
-        // came off instead of draining to the floor he would have hit
-        // playing all 90.
-        final starters = [
-          mk(1, Position.gk),
-          mk(2, Position.cb, stamina: 38),
-          for (var i = 3; i <= 11; i++)
-            mk(i, i <= 5 ? Position.cb : Position.cm),
-        ];
-        final bench = [mk(12, Position.cb), mk(13, Position.cm)];
-        final engine = MatchEngine(
-          seed: 11,
-          home: MatchTeamInput(
-            teamId: 1,
-            teamName: 'Home',
-            formationCode: '4-4-2',
-            tactics: const TeamTactics(),
-            mentality: Mentality.balanced,
-            starters: makeTeam(100, 'Home'),
-            bench: const [],
-          ),
-          away: MatchTeamInput(
-            teamId: 2,
-            teamName: 'Away',
-            formationCode: '4-4-2',
-            tactics: const TeamTactics(),
-            mentality: Mentality.balanced,
-            starters: starters,
-            bench: bench,
-            aiControlled: true,
-          ),
-        );
-        engine.simulateToEnd();
-
-        final players = engine.playersOf(MatchSide.away);
-        final starter = players.firstWhere((p) => p.playerId == 2);
-        final substitute = players.firstWhere((p) => p.playerId == 12);
-        // Substitute entered no earlier than minute 65 → at most ~33 mins
-        // (90 + stoppage - 64), never a full match.
-        expect(substitute.minutesPlayed, lessThan(34));
-        expect(substitute.minutesPlayed, greaterThan(0));
-        // The starter came off and stopped draining: subbed around minute
-        // 65 with ~65 minutes of play, his remaining stamina is exactly
-        // the kick-off value minus ~65 minutes of drain — NOT the ~0 he
-        // would have reached playing all 90 (0.43/min × 90 ≈ 39 drain).
-        // The assertion is the FROZEN property: staying above the floor a
-        // full-match drain would have hit.
-        expect(starter.stamina, greaterThan(38 - 0.55 * 90));
-        expect(starter.stamina, lessThan(38));
-        // Match minutes: starter played the minutes up to his substitution.
-        expect(starter.minutesPlayed, lessThan(66));
-      },
-    );
   });
 }

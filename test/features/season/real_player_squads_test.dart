@@ -163,7 +163,7 @@ void main() {
       expect(mean, inInclusiveRange(48, 60));
     });
 
-    test('AI squads persist for the season and rotate on condition', () async {
+    test('AI squads persist for the season (identity kept)', () async {
       final seasonId = await store.startSeason(division: 1);
       final before = await (db.select(
         db.aiPlayers,
@@ -172,16 +172,11 @@ void main() {
       // Play the user's first fixture through the store (quick-sim).
       await store.simulateRemainingFixtures(collection);
 
-      // The season's squads are the SAME rows (identity kept), only
-      // their condition moved.
+      // The season's squads are the SAME rows (identity kept). (The
+      // condition/rotation leg is gone with the stamina system —
+      // owner request 2026-11-14.)
       final after = await db.select(db.aiPlayers).get();
       expect(after.length, greaterThanOrEqualTo(before.length));
-      final staminaMoved = after.any((r) => r.staminaPercent < 100);
-      expect(
-        staminaMoved,
-        isTrue,
-        reason: 'AI squads must tire through their fixtures',
-      );
     }, timeout: const Timeout(Duration(minutes: 4)));
 
     test('a promoted club keeps its squad into the next season', () async {
@@ -203,8 +198,7 @@ void main() {
         expect(carriedSquads, isNotEmpty);
         expect(carriedSquads.every((r) => r.realPlayerId != null), isTrue);
 
-        // Fresh condition after the break.
-        expect(carriedSquads.every((r) => r.staminaPercent == 100), isTrue);
+        // (Fresh-condition check gone with the stamina system.)
       }
     }, timeout: const Timeout(Duration(minutes: 4)));
   });

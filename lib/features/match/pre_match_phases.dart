@@ -77,7 +77,6 @@ class TacticsPhase extends StatelessWidget {
           reserves: reserves,
           onFormation: onFormation,
           onTactics: onTactics,
-          showStamina: true,
           showStats: false,
           // Matchday fitness IS the point of the duplicate screen
           // (T-0117/T-0118): injuries and stamina show here.
@@ -113,7 +112,6 @@ class TacticsPhase extends StatelessWidget {
     // fitness band then quality. suspendedPlayerIds stays empty —
     // the red-card HOOK exists, the suspension STATE does not yet.
     excludeInjured: true,
-    staminaFirst: true,
   );
   final byId = {for (final c in cards) c.ownedId: c};
 

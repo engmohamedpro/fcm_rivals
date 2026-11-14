@@ -146,7 +146,6 @@ class TacticModifiers {
     describe('Defence', defence);
     describe('Chances', chance);
     describe('Shot quality', shotQuality);
-    describe('Stamina use', stamina);
     describe('Passing', passAccuracy);
     return parts.isEmpty ? 'No modifiers' : parts.join(' · ');
   }

@@ -75,7 +75,6 @@ extension SeasonOpponentOps on SeasonStore {
               ? ''
               : (clubs[r.realPlayerId!]?.$2 ?? ''),
           isIcon: r.realPlayerId != null && iconIds.contains(r.realPlayerId!),
-          stamina: r.staminaPercent.toDouble(),
         ),
     ];
     final lineup = engine.pickAiLineup(squad, club.formationCode);
@@ -96,7 +95,6 @@ extension SeasonOpponentOps on SeasonStore {
             clubId: p.clubId,
             clubName: p.clubName,
             isIcon: p.isIcon,
-            stamina: p.stamina,
           ),
       ],
       bench: [
@@ -113,7 +111,6 @@ extension SeasonOpponentOps on SeasonStore {
             clubId: p.clubId,
             clubName: p.clubName,
             isIcon: p.isIcon,
-            stamina: p.stamina,
           ),
       ],
     );
@@ -147,14 +144,9 @@ extension SeasonOpponentOps on SeasonStore {
     required Iterable<MatchPlayer> players,
     required int restDays,
   }) async {
-    final byEngineId = {for (final p in players) p.playerId: p};
-    final rows = await (db.select(
-      db.aiPlayers,
-    )..where((a) => a.clubId.equals(aiClubId))).get();
-    // Recovery decrement (T-0055, GDD 11.7): every committed fixture
-    // counts the AI club's injuries down by exactly one match, floor 0.
-    // Runs BEFORE any new injury write so a player hurt in THIS match
-    // keeps his full matches-out.
+    // (The AI stamina recovery pass is gone — owner request 2026-11-14:
+    // no stamina anywhere. Kept as the injury-decrement hook it also
+    // carried, so AI injuries still count down per committed fixture.)
     await db.customUpdate(
       'UPDATE ai_players SET injury_matches_remaining = '
       'injury_matches_remaining - 1 WHERE club_id = ? AND '
@@ -170,33 +162,6 @@ extension SeasonOpponentOps on SeasonStore {
       updates: {db.aiPlayers},
       updateKind: UpdateKind.update,
     );
-    // Perf pass 2026-11-12: the per-row awaited UPDATEs (~18 round trips
-    // to the drift isolate per club, × 2 clubs × ~9 AI fixtures per
-    // committed user match) are now ONE batched statement round trip.
-    final staminaById = <int, int>{};
-    for (final row in rows) {
-      final match = byEngineId[-10_000 - row.id];
-      final currentStamina = match?.stamina ?? row.staminaPercent.toDouble();
-      final minutes = match?.minutesPlayed ?? 0;
-      final recovered = recoverStamina(
-        config: const StaminaConfig(),
-        currentStamina: currentStamina,
-        minutesPlayed: minutes,
-        restDays: restDays,
-      );
-      staminaById[row.id] = recovered.round().clamp(0, 100);
-    }
-    await db.batch((batch) {
-      for (final entry in staminaById.entries) {
-        batch.update(
-          db.aiPlayers,
-          AiPlayersCompanion(
-            staminaPercent: Value(entry.value),
-          ),
-          where: (a) => a.id.equals(entry.key),
-        );
-      }
-    });
   }
 
   /// Persists an AI club's rolled injuries from a finished match

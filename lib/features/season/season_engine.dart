@@ -472,10 +472,9 @@ class SeasonEngine {
     return (starters: starters, bench: bench);
   }
 
-  /// Slot-role score of one squad player: compatibility × position-weighted
-  /// attributes × condition. The fitness factor runs 1.0 at full stamina
-  /// down to 0.65 at zero, which is what makes the AI rest tired legs
-  /// when the backup is close enough in quality.
+  /// Slot-role score of one squad player: compatibility × position-
+  /// weighted attributes (rating-only — stamina is gone, owner request
+  /// 2026-11-14).
   double _aiSlotScore(AiSquadPlayer p, Position slotPosition) {
     final compat = const SquadEngine().compatibilityOf(
       p.position,
@@ -494,8 +493,7 @@ class SeasonEngine {
           } *
           e.value;
     }
-    final fitness = 0.65 + 0.35 * (p.stamina.clamp(0, 100) / 100);
-    return compat * base * fitness;
+    return compat * base;
   }
 
   static int _aiOverallOf(AiSquadPlayer p) =>

@@ -27,8 +27,8 @@ import '../match/tactics_sections.dart'
 /// The whole tactical setup column: the control card (the setup row —
 /// tactics, formation — closed by the team rating, with the Auto Pick
 /// and TACTICS actions under it), the pitch with the starting XI
-/// (stamina bars and stat rows only when [showStamina] / [showStats]
-/// ask for them), then the bench and reserves strips.
+/// (stat rows only when [showStats] asks for them), then the bench and
+/// reserves strips.
 ///
 /// [formation] is the RESOLVED formation object (preset or custom —
 /// see formations.dart): since the custom-formation feature the shape
@@ -52,7 +52,6 @@ class TacticsSetupView extends StatelessWidget {
     this.poolSelectedIds = const {},
     this.poolCapacity,
     this.poolTrailing,
-    this.showStamina = true,
     this.showStats = true,
     this.showCondition = true,
     this.showReserves = true,
@@ -108,10 +107,6 @@ class TacticsSetupView extends StatelessWidget {
   /// Sits at the end of the pool title row (the buy-slots button).
   final Widget? poolTrailing;
 
-  /// Whether cards carry their stamina bar. The pre-match and live
-  /// tactics surfaces show match-day fitness; the Team tab hides it —
-  /// the saved setup is about identity, not current match state.
-  final bool showStamina;
 
   /// Whether cards carry their three-column stat row (ATT/SUP/DEF …).
   /// No surface shows it today — the setup surfaces stay about shape,
@@ -215,7 +210,6 @@ class TacticsSetupView extends StatelessWidget {
                     formation: formation,
                     assignments: xi,
                     showChemistryLinks: true,
-                    showStamina: showStamina,
                     showStats: showStats,
                     showCondition: showCondition,
                     onPlayerTap: onPlayerTap,
@@ -232,7 +226,6 @@ class TacticsSetupView extends StatelessWidget {
                 cards: bench,
                 emptySlots: Formation.benchSize - bench.length,
                 zone: SquadZone.bench,
-                showStamina: showStamina,
                 showStats: showStats,
                 showCondition: showCondition,
                 onPlayerTap: onPlayerTap,
@@ -256,7 +249,6 @@ class TacticsSetupView extends StatelessWidget {
                     emptySlots: _poolGhosts(reserves.length, poolCapacity),
                     zone: SquadZone.reserves,
                     selectedIds: poolSelectedIds,
-                    showStamina: showStamina,
                     showStats: showStats,
                     // T-0117 closes here too: the pool strip showed
                     // injury badges on the Team tab because this call
@@ -275,8 +267,7 @@ class TacticsSetupView extends StatelessWidget {
                   cards: reserves,
                   emptySlots: Formation.reservesSize - reserves.length,
                   zone: SquadZone.reserves,
-                  showStamina: showStamina,
-                  showStats: showStats,
+                    showStats: showStats,
                   onPlayerTap: onPlayerTap,
                   upgradable: upgradable,
                 ),

@@ -122,7 +122,6 @@ void main() {
                 assignments: {
                   for (var slot = 0; slot < 11; slot++) slot: card(slot),
                 },
-                showStamina: false,
                 showStats: false,
               ),
             ),

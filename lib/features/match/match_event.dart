@@ -8,7 +8,6 @@ library;
 
 import '../../core/domain/players.dart';
 import 'injury.dart';
-import 'stamina.dart';
 import 'tactics.dart';
 
 
@@ -99,7 +98,6 @@ class MatchPlayer {
     this.nationality = '',
     this.clubId = 0,
     this.clubName = '',
-    this.stamina = 100,
     this.isIcon = false,
   });
 
@@ -134,9 +132,6 @@ class MatchPlayer {
   /// nationality AND club. False for fixtures and synthetic squads.
   final bool isIcon;
 
-  /// Current stamina 0..100 (GDD 11.1). Mutated by the engine.
-  double stamina;
-
   /// Minutes on the pitch this match.
   int minutesPlayed = 0;
 
@@ -155,7 +150,6 @@ class MatchPlayer {
           nationality: nationality,
           clubId: clubId,
           clubName: clubName,
-          stamina: stamina,
           isIcon: isIcon,
         )
         ..minutesPlayed = minutesPlayed
@@ -217,7 +211,6 @@ class MatchEngineConfig {
     // 0.47-0.50 band); the pocket-share and goalkeeping layers
     // carry the rest of the advantage as before.
     this.homeAdvantage = 1.085,
-    this.staminaConfig = defaultStaminaConfig,
     this.segmentWeights = const [0.18, 0.55, 0.27],
     this.buildUpBase = 0.28,
     this.buildUpScale = 0.62,
@@ -332,8 +325,6 @@ class MatchEngineConfig {
   /// Home advantage percentage boost (GDD 12.2 step 4; final value to be
   /// established through simulation — placeholder).
   final double homeAdvantage;
-
-  final StaminaConfig staminaConfig;
 
   /// P(0/1/2 attack segments per minute).
   final List<double> segmentWeights;

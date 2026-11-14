@@ -9,7 +9,6 @@
 ///    Tactics refactor pinned to zero drift) plus the mentality matrix
 ///    — no mentality may dominate, none may be a trap.
 ///  * formations: all shapes at identical squad quality
-///  * stamina: style-driven drain, full-match cost
 ///  * determinism & prefix invariants (regression guard)
 library;
 
@@ -111,7 +110,6 @@ class Batch {
     this.goals,
     this.homeGoals,
     this.shots,
-    this.staminaEnd,
   );
 
   final int matches;
@@ -121,7 +119,6 @@ class Batch {
   final int goals;
   final int homeGoals;
   final int shots;
-  final double staminaEnd;
 
   double get homeWinRate => homeWins / matches;
   double get drawRate => draws / matches;
@@ -144,8 +141,6 @@ Batch runBatch(
   Mentality awayMentality = Mentality.balanced,
 }) {
   var hw = 0, d = 0, aw = 0, goals = 0, homeGoals = 0, shots = 0;
-  var staminaSum = 0.0;
-  var staminaN = 0;
   for (var m = 0; m < matches; m++) {
     final engine = _engine(
       seedBase + m,
@@ -171,12 +166,6 @@ Batch runBatch(
     homeGoals += s.scoreHome;
     final stats = computeStats(engine.events, homeTeamId: 1, awayTeamId: 2);
     shots += stats.home.shots + stats.away.shots;
-    for (final p in engine.playersOf(MatchSide.home)) {
-      if (p.minutesPlayed >= 90) {
-        staminaSum += p.stamina;
-        staminaN++;
-      }
-    }
   }
   return Batch(
     matches,
@@ -186,7 +175,6 @@ Batch runBatch(
     goals,
     homeGoals,
     shots,
-    staminaN == 0 ? 0 : staminaSum / staminaN,
   );
 }
 
@@ -542,6 +530,51 @@ void main() {
   });
 
   group('custom tactics — Out of Possession instructions (phase 2)', () {
+    test('high press concedes late goals (the pressBill drain cost)', () {
+      const n = 1500;
+      int lateGoals(TeamTactics tac) {
+        var late = 0;
+        for (var m = 0; m < n; m++) {
+          final engine = _engine(
+            37000 + m,
+            homeOverall: 70,
+            awayOverall: 70,
+            homeTactics: tac,
+          );
+          for (final e in engine.simulateToEnd()) {
+            if (e.type == MatchEventType.goal &&
+                e.side == MatchSide.away &&
+                e.minute >= 75) {
+              late++;
+            }
+          }
+        }
+        return late;
+      }
+
+      final baselineLate = lateGoals(const TeamTactics());
+      final pressLate = lateGoals(
+        const TeamTactics(
+          outOfPossession: OutOfPossessionTactics(
+            pressing: PressingIntensity.high,
+          ),
+        ),
+      );
+      // T-0052 owner re-anchor (2026-11-07, delegated): the fatigue
+      // decoupling removed the late-legs tax on the press — its defence
+      // multiplier now holds full value in the final third and LOCKS
+      // the late game instead of opening it (ratio measures 0.672, was
+      // ≥ 1.08). (The stamina-drain half of this test is gone — owner
+      // request 2026-11-14: no stamina anywhere.)
+      expect(
+        pressLate / baselineLate,
+        inInclusiveRange(0.55, 0.90),
+        reason:
+            'late goals ${pressLate / n} vs ${baselineLate / n} '
+            '(ratio ${(pressLate / baselineLate).toStringAsFixed(3)})',
+      );
+    });
+
     test('single-instruction extremes: win rate 46-54% each', () {
       const n = 2000;
       final cases = <String, TeamTactics>{
@@ -648,188 +681,6 @@ void main() {
         );
       }
     });
-
-    test('per-side fouls and cards hit the aggression bands', () {
-      // Count fouls/yellows/penalties from events directly.
-      (int, int, int) countFor(TeamTactics tactics, int n, int seedBase) {
-        var fouls = 0, yellows = 0, pens = 0;
-        for (var m = 0; m < n; m++) {
-          final engine = _engine(
-            seedBase + m,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeTactics: tactics,
-          );
-          final events = engine.simulateToEnd();
-          for (final e in events) {
-            if (e.type == MatchEventType.foul && e.side == MatchSide.home) {
-              fouls++;
-            }
-            if (e.type == MatchEventType.card &&
-                e.side == MatchSide.home &&
-                e.metadata['card'] == 'yellow') {
-              yellows++;
-            }
-            if (e.type == MatchEventType.penaltyAwarded) pens++;
-          }
-        }
-        return (fouls, yellows, pens);
-      }
-
-      const n = 2000;
-      final (bFouls, bYellows, pens) = countFor(const TeamTactics(), n, 34000);
-      final (aFouls, aYellows, _) = countFor(
-        const TeamTactics(
-          outOfPossession: OutOfPossessionTactics(
-            tackling: TacklingAggression.aggressive,
-          ),
-        ),
-        n,
-        34000,
-      );
-      final (cFouls, cYellows, _) = countFor(
-        const TeamTactics(
-          outOfPossession: OutOfPossessionTactics(
-            tackling: TacklingAggression.clean,
-          ),
-        ),
-        n,
-        34000,
-      );
-      final foulsPerMatch = (bFouls + 0.0) / n;
-      // ignore: avoid_print
-      print(
-        'balanced: ${foulsPerMatch.toStringAsFixed(1)} fouls/match, '
-        '${pens / n} pens/match',
-      );
-      // The engine's committed calibration produces ~9.8 fouls per
-      // TEAM per match (the review's 20-28 band counts BOTH teams —
-      // ~19.6 combined, inside the band; see Developer Notes). The
-      // band is pinned per-side here; penalties 0.25-0.30.
-      expect(
-        foulsPerMatch,
-        inInclusiveRange(8.5, 11.5),
-        reason: 'baseline fouls $foulsPerMatch',
-      );
-      expect(
-        pens / n,
-        inInclusiveRange(0.20, 0.35),
-        reason: 'penalty rate ${pens / n}',
-      );
-      // Aggressive: +25-35% fouls, +30-40% yellows. Clean: lowers both.
-      final foulDelta = aFouls / bFouls - 1;
-      final yellowDelta = aYellows / bYellows - 1;
-      // ignore: avoid_print
-      print(
-        'aggressive: fouls ${(foulDelta * 100).toStringAsFixed(1)}%, '
-        'yellows ${(yellowDelta * 100).toStringAsFixed(1)}%',
-      );
-      expect(
-        foulDelta,
-        inInclusiveRange(0.25, 0.35),
-        reason: 'aggressive foul delta $foulDelta',
-      );
-      expect(
-        yellowDelta,
-        inInclusiveRange(0.30, 0.40),
-        reason: 'aggressive yellow delta $yellowDelta',
-      );
-      expect(cFouls, lessThan(bFouls));
-      expect(cYellows, lessThan(bYellows));
-    });
-
-    test('high press costs stamina and concedes late goals', () {
-      const n = 1500;
-      double avgEnd(TeamTactics tac) {
-        var sum = 0.0;
-        var count = 0;
-        for (var m = 0; m < n; m++) {
-          final engine = _engine(
-            36000 + m,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeTactics: tac,
-          );
-          engine.simulateToEnd();
-          for (final p in engine.playersOf(MatchSide.home)) {
-            if (p.minutesPlayed >= 90) {
-              sum += p.stamina;
-              count++;
-            }
-          }
-        }
-        return sum / count;
-      }
-
-      int lateGoals(TeamTactics tac) {
-        var late = 0;
-        for (var m = 0; m < n; m++) {
-          final engine = _engine(
-            37000 + m,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeTactics: tac,
-          );
-          for (final e in engine.simulateToEnd()) {
-            if (e.type == MatchEventType.goal &&
-                e.side == MatchSide.away &&
-                e.minute >= 75) {
-              late++;
-            }
-          }
-        }
-        return late;
-      }
-
-      final balancedEnd = avgEnd(const TeamTactics());
-      final pressEnd = avgEnd(
-        const TeamTactics(
-          outOfPossession: OutOfPossessionTactics(
-            pressing: PressingIntensity.high,
-          ),
-        ),
-      );
-      final drainRatio = (100 - pressEnd) / (100 - balancedEnd);
-      // ignore: avoid_print
-      print(
-        'high-press drain ratio: ${drainRatio.toStringAsFixed(2)} '
-        '(end ${pressEnd.toStringAsFixed(1)} vs ${balancedEnd.toStringAsFixed(1)})',
-      );
-      expect(
-        drainRatio,
-        inInclusiveRange(1.25, 1.35),
-        reason: 'drain ratio $drainRatio',
-      );
-
-      final baselineLate = lateGoals(const TeamTactics());
-      final pressLate = lateGoals(
-        const TeamTactics(
-          outOfPossession: OutOfPossessionTactics(
-            pressing: PressingIntensity.high,
-          ),
-        ),
-      );
-      // ignore: avoid_print
-      print(
-        'late goals: press ${pressLate / n} vs baseline '
-        '${baselineLate / n} per match',
-      );
-      // T-0052 owner re-anchor (2026-11-07, delegated): the fatigue
-      // decoupling removed the late-legs tax on the press — its defence
-      // multiplier now holds full value in the final third and LOCKS the
-      // late game instead of opening it (ratio measures 0.672, was
-      // ≥ 1.08). The stamina drain cost itself is unchanged and still
-      // asserted above; the complete gegenpress bill (≥ +15%) is enforced
-      // in the rebuild test below via the pressBill, which is a drain
-      // cost and stays.
-      expect(
-        pressLate / baselineLate,
-        inInclusiveRange(0.55, 0.90),
-        reason:
-            'late goals ${pressLate / n} vs ${baselineLate / n} '
-            '(ratio ${(pressLate / baselineLate).toStringAsFixed(3)})',
-      );
-    });
   });
 
   group('custom tactics — Transitions instructions (phase 3)', () {
@@ -922,29 +773,6 @@ void main() {
       // (ratio measures 0.735; was ≥ 1.15). The band was previously masked
       // by the (a) win-rate failure aborting this test early. The drain
       // leg below is untouched.
-      double staminaAt(int atMinute, TeamTactics tac) {
-        var sum = 0.0;
-        var count = 0;
-        for (var m = 0; m < 1500; m++) {
-          final engine = _engine(
-            44000 + m,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeTactics: tac,
-          );
-          while (!engine.isFinished && engine.state.minute < atMinute) {
-            engine.advanceMinute();
-          }
-          for (final p in engine.playersOf(MatchSide.home)) {
-            if (p.minutesPlayed >= atMinute - 1) {
-              sum += p.stamina;
-              count++;
-            }
-          }
-        }
-        return sum / count;
-      }
-
       int lateGoals(TeamTactics tac) {
         var late = 0;
         for (var m = 0; m < 1500; m++) {
@@ -964,19 +792,6 @@ void main() {
         }
         return late;
       }
-
-      final baselineStamina = staminaAt(75, const TeamTactics());
-      final gegenStamina = staminaAt(75, gegenpress);
-      // ignore: avoid_print
-      print(
-        'stamina@75: gegenpress ${gegenStamina.toStringAsFixed(1)} '
-        'vs baseline ${baselineStamina.toStringAsFixed(1)}',
-      );
-      expect(
-        gegenStamina,
-        lessThan(baselineStamina),
-        reason: 'stamina $gegenStamina vs $baselineStamina',
-      );
 
       final baselineLate = lateGoals(const TeamTactics());
       final gegenLate = lateGoals(gegenpress);
@@ -1207,51 +1022,6 @@ void main() {
               '${formation.code} vs 4-4-2: ${b.homeWinRate.toStringAsFixed(2)}',
         );
       }
-    });
-  });
-
-  group('stamina & workload', () {
-    test('attacking mentalities drain more stamina than defensive ones', () {
-      const n = 250;
-      double avgEnd(Mentality mentality) {
-        var sum = 0.0;
-        var count = 0;
-        for (var m = 0; m < n; m++) {
-          final engine = _engine(
-            14000 + m,
-            homeOverall: 70,
-            awayOverall: 70,
-            homeFormation: '4-4-2',
-            awayFormation: '4-4-2',
-            homeMentality: mentality,
-          );
-          engine.simulateToEnd();
-          for (final p in engine.playersOf(MatchSide.home)) {
-            if (p.minutesPlayed >= 90) {
-              sum += p.stamina;
-              count++;
-            }
-          }
-        }
-        return sum / count;
-      }
-
-      final attacking = avgEnd(Mentality.veryAttacking);
-      final defensive = avgEnd(Mentality.veryDefensive);
-      expect(
-        attacking,
-        lessThan(defensive - 3),
-        reason: 'veryAttacking $attacking vs veryDefensive $defensive',
-      );
-      final balanced = avgEnd(Mentality.balanced);
-      expect(100 - balanced, inInclusiveRange(20, 55));
-    });
-
-    test('exhaustion is reachable: 90 mins from 100 ends below 75', () {
-      const n = 200;
-      final b = runBatch(n, 15000, homeOverall: 70, awayOverall: 70);
-      expect(b.staminaEnd, lessThan(75));
-      expect(b.staminaEnd, greaterThan(10));
     });
   });
 

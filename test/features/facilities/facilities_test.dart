@@ -8,7 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fcm_rivals/core/database/app_database.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/facilities/facilities.dart';
-import 'package:fcm_rivals/features/match/stamina.dart';
 
 AppDatabase memoryDb() => AppDatabase(NativeDatabase.memory());
 
@@ -142,29 +141,6 @@ void main() {
         }
       }
       expect(lastError, contains('Not enough coins'));
-    });
-
-    test('recovery centre bonus feeds natural recovery (GDD 11.5)', () {
-      // Low current stamina + full minutes: no cap near 100, so the
-      // bonus lands exactly.
-      final noCampus = recoverStamina(
-        config: const StaminaConfig(),
-        currentStamina: 20,
-        minutesPlayed: 90,
-        restDays: 0,
-      );
-      final withCampus = recoverStamina(
-        config: const StaminaConfig(),
-        currentStamina: 20,
-        minutesPlayed: 90,
-        restDays: 0,
-        campusRecoveryBonus: 7.5,
-      );
-      expect(withCampus - noCampus, 7.5);
-      // The store path applies it too: a played match with a recovery
-      // centre heals more than one without (checked via the pure
-      // function the store calls with its campus bonus).
-      expect(noCampus, lessThan(withCampus));
     });
   });
 }
