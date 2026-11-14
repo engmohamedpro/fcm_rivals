@@ -279,6 +279,14 @@ class SquadPitch extends StatelessWidget {
                     () {
                       final fs = formation.slots[slot];
                       final card = assignments[slot];
+                      // T-0145: the row lean vs the position's natural
+                      // line — up chevron when pushed above it, down
+                      // when dropped below. Only on the GRID (a preset
+                      // stands on its natural rows by construction);
+                      // the keeper never leans.
+                      final rowShift = grid && card != null
+                          ? rowShiftOf(card.position, cells, slot)
+                          : RowShift.none;
                       final box = layout.boxes[slot];
                       final showCard = card != null;
                       return AnimatedPositioned(
@@ -322,6 +330,7 @@ class SquadPitch extends StatelessWidget {
                                   isIcon: card.base.isIcon,
                                   width: cardW,
                                   warn: fs.position != card.position,
+                                  rowShift: rowShift,
                                   stamina: showStamina
                                       ? card.staminaPercent
                                       : null,
@@ -360,6 +369,7 @@ class SquadPitch extends StatelessWidget {
                                       isIcon: card.base.isIcon,
                                       width: cardW,
                                       warn: fs.position != card.position,
+                                      rowShift: rowShift,
                                       stamina: showStamina
                                           ? card.staminaPercent
                                           : null,
@@ -978,4 +988,22 @@ class _PitchPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PitchPainter old) => false;
+}
+
+
+/// T-0145: the card's grid-row lean vs its position's natural line.
+/// Up = pushed above (attack-leaning, the up chevron), down = dropped
+/// below (defence-leaning). Neutral when the grid is off, the cell is
+/// missing, the player stands on his natural row, or it is the keeper
+/// (his row is fixed by contract).
+RowShift rowShiftOf(Position position, List<GridCell> cells, int slot) {
+  if (position == Position.gk || slot >= cells.length) {
+    return RowShift.none;
+  }
+  final d = cells[slot].row - naturalRowOf(position);
+  return d > 0
+      ? RowShift.up
+      : d < 0
+      ? RowShift.down
+      : RowShift.none;
 }

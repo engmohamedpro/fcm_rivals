@@ -737,6 +737,27 @@ GridCell _nearestFreeCell(GridCell from, Set<GridCell> taken) {
 /// line and deep midfield) sit below it, rows 4-5 above it.
 const int kGridNeutralRow = 3;
 
+/// The row a position naturally belongs to (T-0145): the centre column
+/// of [positionOfCell]'s row ladder — CB/CDM/CM/CAM/ST are the spine,
+/// the wide men take the same row as their central partner. A player
+/// standing on a higher row than his position's natural line is
+/// attack-leaning (the up chevron), lower is defence-leaning (the
+/// down chevron). The keeper always reads neutral — his row is fixed.
+int naturalRowOf(Position position) => switch (position) {
+  Position.gk => 0,
+  Position.cb => 1,
+  Position.lb => 1,
+  Position.rb => 1,
+  Position.cdm => 2,
+  Position.cm => 3,
+  Position.lm => 3,
+  Position.rm => 3,
+  Position.cam => 4,
+  Position.lw => 4,
+  Position.rw => 4,
+  Position.st => 5,
+};
+
 /// Engine points of row-step on the attack and defence axes (ADR-014:
 /// 1.5 pts/row, symmetric — moving up trades defence for attack at the
 /// same absolute rate, so an all-out tilt never out-shouts the

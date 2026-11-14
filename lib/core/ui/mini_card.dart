@@ -25,6 +25,7 @@ class FcmMiniCard extends StatelessWidget {
     this.imageUrl,
     this.clubCrestUrl,
     this.warn = false,
+    this.rowShift = RowShift.none,
     this.stamina,
     this.stats,
     this.ghost = false,
@@ -54,6 +55,12 @@ class FcmMiniCard extends StatelessWidget {
   final String? clubCrestUrl;
 
   final bool warn;
+
+  /// Grid-row lean (T-0145 / ADR-014): up when the player stands above
+  /// his position's natural line (attack-leaning), down when below —
+  /// rendered as a small chevron in the warn-mark's corner. The bonus
+  /// itself stays hidden (owner spec: no numbers on the card).
+  final RowShift rowShift;
   final int? stamina;
   final List<({String label, int value})>? stats;
   final bool ghost;
@@ -125,6 +132,15 @@ class FcmMiniCard extends StatelessWidget {
                 if (warn)
                   Positioned.fill(
                     child: CustomPaint(painter: _WarnPainter()),
+                  ),
+                if (rowShift != RowShift.none)
+                  PositionedDirectional(
+                    top: 2,
+                    end: 2,
+                    child: CustomPaint(
+                      size: Size.square(math.max(12, width * 0.22)),
+                      painter: _RowShiftChevronPainter(up: rowShift == RowShift.up),
+                    ),
                   ),
                 if (injuryMatchesOut != null && injuryMatchesOut! > 0)
                   PositionedDirectional(
@@ -257,6 +273,56 @@ class _StaminaBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Grid-row lean of a card (T-0145): up = pushed above his natural
+/// line (attack-leaning), down = dropped below it (defence-leaning).
+enum RowShift { none, up, down }
+
+/// A small solid chevron in the card's top-end corner — same language
+/// as the compatibility warn-mark (a corner mark, no text), pointing
+/// where the player leans. Gold: it is an OPPORTUNITY mark, not a
+/// penalty (the danger-red border already owns 'wrong').
+class _RowShiftChevronPainter extends CustomPainter {
+  const _RowShiftChevronPainter({required this.up});
+
+  final bool up;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final pad = w * 0.22;
+    final tip = Offset(w - pad, up ? pad : w - pad);
+    final left = Offset(pad, up ? w - pad : pad);
+    final right = Offset(w - pad, up ? w - pad : pad);
+    final path = Path()
+      ..moveTo(left.dx, left.dy)
+      ..lineTo(tip.dx, tip.dy)
+      ..lineTo(right.dx, right.dy);
+    // The dark under-stroke FIRST (wider), the gold stroke on top —
+    // keeps the chevron legible on any card art.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..strokeWidth = w * 0.30
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke
+        ..color = Colors.black.withValues(alpha: 0.45),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..strokeWidth = w * 0.16
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke
+        ..color = FcmColors.gold,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RowShiftChevronPainter old) => old.up != up;
 }
 
 class _WarnPainter extends CustomPainter {
