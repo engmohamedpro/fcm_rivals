@@ -718,14 +718,17 @@ class _SeasonLeaderboards extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
+    // T-0139: the leaderboards' headings render localized (EN/AR)
+    // from the ARB catalogue.
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 6),
-        const FcmSectionTitle('Season Leaders'),
+        FcmSectionTitle(l10n.seasonLeadersTitle),
         _LeaderboardPanel(
           icon: Icons.sports_soccer_rounded,
-          title: 'Goals',
+          title: l10n.seasonLeadersGoals,
           rows: [
             for (final s in scorers)
               (s.playerName, '${s.goals}', clubOf(s.clubId)),
@@ -735,7 +738,7 @@ class _SeasonLeaderboards extends ConsumerWidget {
           const SizedBox(height: 12),
           _LeaderboardPanel(
             icon: Icons.auto_awesome_rounded,
-            title: 'Assists',
+            title: l10n.seasonLeadersAssists,
             rows: [
               for (final s in playmakers)
                 (s.playerName, '${s.assists}', clubOf(s.clubId)),
@@ -746,7 +749,7 @@ class _SeasonLeaderboards extends ConsumerWidget {
           const SizedBox(height: 12),
           _LeaderboardPanel(
             icon: Icons.star_rounded,
-            title: 'Average Rating',
+            title: l10n.seasonLeadersRating,
             rows: [
               for (final s in rated)
                 (
@@ -761,7 +764,7 @@ class _SeasonLeaderboards extends ConsumerWidget {
           const SizedBox(height: 12),
           _LeaderboardPanel(
             icon: Icons.front_hand_rounded,
-            title: 'Clean Sheets',
+            title: l10n.seasonLeadersCleanSheets,
             rows: [
               for (final s in keepers)
                 (s.playerName, '${s.cleanSheets}', clubOf(s.clubId)),

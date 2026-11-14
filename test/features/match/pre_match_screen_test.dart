@@ -266,8 +266,10 @@ void main() {
       expect(find.text('Al Ahly'), findsOneWidget);
       expect(find.text('VS'), findsNothing);
       expect(tester.takeException(), isNull);
-      // The formation section renders localized, all eleven on the pitch.
-      expect(find.text('5th in the table'), findsOneWidget);
+      // The formation section renders localized, all eleven on the
+      // pitch. T-0139: the table position reads natural Arabic — the
+      // ordinal WORD, not a transliterated EN suffix.
+      expect(find.text('الخامس في جدول الترتيب'), findsOneWidget);
       expect(
         tester
             .widgetList<FcmMiniCard>(find.byType(FcmMiniCard))

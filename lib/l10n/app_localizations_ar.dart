@@ -198,6 +198,79 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tacticsFinalThird => 'الثلث الأخير';
 
   @override
+  String get tacticsPresetBalanced => 'متوازن';
+
+  @override
+  String get tacticsPresetPossession => 'استحواذ';
+
+  @override
+  String get tacticsPresetParkTheBus => 'مركن دفاعي';
+
+  @override
+  String get tacticsPresetGegenpress => 'ضغط عالي';
+
+  @override
+  String get tacticsPresetCounterAttack => 'هجوم مرتد';
+
+  @override
+  String get tacticsPresetAllOutAttack => 'هجوم شامل';
+
+  @override
+  String get tacticsPresetBalancedHint => 'إعدادات محايدة على كل المحاور.';
+
+  @override
+  String get tacticsPresetPossessionHint =>
+      'لعب من الخلف، إيقاع هادئ، صبر، وإدخال الكرة تدريجيًا.';
+
+  @override
+  String get tacticsPresetParkTheBusHint =>
+      'بلوك منخفض، ضغط خفيف، تراجع وتماسك.';
+
+  @override
+  String get tacticsPresetGegenpressHint =>
+      'خط مرتفع، ضغط فوري عند فقدان الكرة، شراسة.';
+
+  @override
+  String get tacticsPresetCounterAttackHint =>
+      'بلوك منخفض نسبيًا، مرتدات سريعة عند استعادة الكرة.';
+
+  @override
+  String get tacticsPresetAllOutAttackHint =>
+      'الكل للأمام، خط مرتفع، وتحمل المخاطر.';
+
+  @override
+  String get tacticsPresetWingPlay => 'لعب الأطراف';
+
+  @override
+  String get tacticsPresetWingPlayHint =>
+      'انتشار عريض وعرضيات مبكرة داخل المنطقة.';
+
+  @override
+  String get seasonLeadersTitle => 'نجوم الموسم';
+
+  @override
+  String get seasonLeadersGoals => 'الأهداف';
+
+  @override
+  String get seasonLeadersAssists => 'الصناعة';
+
+  @override
+  String get seasonLeadersRating => 'متوسط التقييم';
+
+  @override
+  String get seasonLeadersCleanSheets => 'الشباك النظيفة';
+
+  @override
+  String prematchTablePosition(String position) {
+    return '$position في جدول الترتيب';
+  }
+
+  @override
+  String prematchPositionsVersus(String user, String opponent) {
+    return '$user ضد $opponent';
+  }
+
+  @override
   String get buildUpPlayOut => 'اللعب من الخلف';
 
   @override
@@ -378,12 +451,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get prematchMedicalTitle => 'الغرفة الطبية';
-
-  @override
-  String get prematchOpponentXiTitle => 'تشكيل الخصم';
-
-  @override
-  String get injuryStaminaRiskHint => 'اللياقة المنخفضة تزيد خطر الإصابة.';
 
   @override
   String get injuryKindKnock => 'ارتطام';

@@ -672,14 +672,11 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet>
                       separatorBuilder: (_, _) => const SizedBox(width: 6),
                       itemBuilder: (context, i) {
                         final preset = tacticPresets[i];
-                        final arabic =
-                            Localizations.maybeLocaleOf(context)
-                                ?.languageCode ==
-                            'ar';
+                        final l10n = l10nOf(context);
                         final selected = _tactics == preset.tactics;
                         return _PresetChip(
-                          label: preset.label(arabic: arabic),
-                          blurb: preset.blurb,
+                          label: preset.label(l10n),
+                          blurb: preset.hint(l10n),
                           selected: selected,
                           onTap: () => _change(preset.tactics),
                         );

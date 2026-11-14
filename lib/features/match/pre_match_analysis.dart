@@ -201,16 +201,30 @@ class _OpponentHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                '${ordinalOf(d.userPosition)} vs '
-                '${ordinalOf(d.opponentPosition)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: FcmColors.goldSoft,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11.5,
-                ),
+              Builder(
+                builder: (context) {
+                  final l10n = l10nOf(context);
+                  final localized = l10n.localeName == 'ar';
+                  final user = localized
+                      ? _arabicPositionOf(d.userPosition)
+                      : ordinalOf(d.userPosition);
+                  final opp = localized
+                      ? _arabicPositionOf(d.opponentPosition)
+                      : ordinalOf(d.opponentPosition);
+                  return Text(
+                    l10n.prematchPositionsVersus(
+                      user,
+                      opp,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: FcmColors.goldSoft,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11.5,
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 10),
               if (d.opponentForm.isEmpty)
@@ -417,15 +431,24 @@ class _OpponentFormationCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      '${ordinalOf(data.opponentPosition)} in the table',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: FcmColors.goldSoft,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final l10n = l10nOf(context);
+                        final localized = l10n.localeName == 'ar';
+                        final position = localized
+                            ? _arabicPositionOf(data.opponentPosition)
+                            : ordinalOf(data.opponentPosition);
+                        return Text(
+                          l10n.prematchTablePosition(position),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: FcmColors.goldSoft,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -481,4 +504,33 @@ class _OpponentFormationCard extends StatelessWidget {
     ),
     staminaPercent: p.stamina.round(),
   );
+}
+
+/// Natural-Arabic league position for the pre-match lines (T-0139):
+/// 'الأول' .. 'العشرون' for the positions a table actually holds, and
+/// the plain 'المركز N' beyond — no transliterated EN suffixes.
+String _arabicPositionOf(int n) {
+  const words = [
+    'الأول',
+    'الثاني',
+    'الثالث',
+    'الرابع',
+    'الخامس',
+    'السادس',
+    'السابع',
+    'الثامن',
+    'التاسع',
+    'العاشر',
+    'الحادي عشر',
+    'الثاني عشر',
+    'الثالث عشر',
+    'الرابع عشر',
+    'الخامس عشر',
+    'السادس عشر',
+    'السابع عشر',
+    'الثامن عشر',
+    'التاسع عشر',
+    'العشرون',
+  ];
+  return n >= 1 && n <= words.length ? words[n - 1] : 'المركز $n';
 }

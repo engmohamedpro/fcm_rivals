@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/features/match/tactic_presets.dart';
+import 'package:fcm_rivals/l10n/app_localizations_en.dart';
 import 'package:fcm_rivals/features/match/team_tactics.dart';
 import 'package:fcm_rivals/features/squad/tactics_setup_view.dart';
 
@@ -72,10 +73,13 @@ void main() {
     // preset's name ("Balanced" is also the Final Third mid band). The
     // row scrolls horizontally, so later chips need a drag into the
     // viewport before they are built (lazy slivers).
+    // T-0139: labels come through l10n — an EN-materialized lookup
+    // matches what the sheet renders in the test's default locale.
+    final en = AppLocalizationsEn();
     for (final preset in tacticPresets) {
       final chip = find.descendant(
         of: find.byType(ListView),
-        matching: find.text(preset.name),
+        matching: find.text(preset.label(en)),
       );
       if (chip.evaluate().isEmpty) {
         await tester.dragUntilVisible(

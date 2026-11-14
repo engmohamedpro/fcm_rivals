@@ -452,6 +452,132 @@ abstract class AppLocalizations {
   /// **'Final third'**
   String get tacticsFinalThird;
 
+  /// No description provided for @tacticsPresetBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get tacticsPresetBalanced;
+
+  /// No description provided for @tacticsPresetPossession.
+  ///
+  /// In en, this message translates to:
+  /// **'Possession'**
+  String get tacticsPresetPossession;
+
+  /// No description provided for @tacticsPresetParkTheBus.
+  ///
+  /// In en, this message translates to:
+  /// **'Park the Bus'**
+  String get tacticsPresetParkTheBus;
+
+  /// No description provided for @tacticsPresetGegenpress.
+  ///
+  /// In en, this message translates to:
+  /// **'Gegenpress'**
+  String get tacticsPresetGegenpress;
+
+  /// No description provided for @tacticsPresetCounterAttack.
+  ///
+  /// In en, this message translates to:
+  /// **'Counter Attack'**
+  String get tacticsPresetCounterAttack;
+
+  /// No description provided for @tacticsPresetAllOutAttack.
+  ///
+  /// In en, this message translates to:
+  /// **'All-Out Attack'**
+  String get tacticsPresetAllOutAttack;
+
+  /// No description provided for @tacticsPresetBalancedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Neutral defaults on every axis.'**
+  String get tacticsPresetBalancedHint;
+
+  /// No description provided for @tacticsPresetPossessionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Play out, slow tempo, patient, work the ball in.'**
+  String get tacticsPresetPossessionHint;
+
+  /// No description provided for @tacticsPresetParkTheBusHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep block, low press, retreat and stay solid.'**
+  String get tacticsPresetParkTheBusHint;
+
+  /// No description provided for @tacticsPresetGegenpressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'High line, immediate counter-press, aggressive.'**
+  String get tacticsPresetGegenpressHint;
+
+  /// No description provided for @tacticsPresetCounterAttackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep-ish block, fast breaks on recovery.'**
+  String get tacticsPresetCounterAttackHint;
+
+  /// No description provided for @tacticsPresetAllOutAttackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything forward, high line, take the risks.'**
+  String get tacticsPresetAllOutAttackHint;
+
+  /// No description provided for @tacticsPresetWingPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Wing Play'**
+  String get tacticsPresetWingPlay;
+
+  /// No description provided for @tacticsPresetWingPlayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Wide staging, early crosses into the box.'**
+  String get tacticsPresetWingPlayHint;
+
+  /// No description provided for @seasonLeadersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Season Leaders'**
+  String get seasonLeadersTitle;
+
+  /// No description provided for @seasonLeadersGoals.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals'**
+  String get seasonLeadersGoals;
+
+  /// No description provided for @seasonLeadersAssists.
+  ///
+  /// In en, this message translates to:
+  /// **'Assists'**
+  String get seasonLeadersAssists;
+
+  /// No description provided for @seasonLeadersRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Average Rating'**
+  String get seasonLeadersRating;
+
+  /// No description provided for @seasonLeadersCleanSheets.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean Sheets'**
+  String get seasonLeadersCleanSheets;
+
+  /// No description provided for @prematchTablePosition.
+  ///
+  /// In en, this message translates to:
+  /// **'{position} in the table'**
+  String prematchTablePosition(String position);
+
+  /// No description provided for @prematchPositionsVersus.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} vs {opponent}'**
+  String prematchPositionsVersus(String user, String opponent);
+
   /// No description provided for @buildUpPlayOut.
   ///
   /// In en, this message translates to:
@@ -787,18 +913,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Medical room'**
   String get prematchMedicalTitle;
-
-  /// No description provided for @prematchOpponentXiTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Their starting XI'**
-  String get prematchOpponentXiTitle;
-
-  /// No description provided for @injuryStaminaRiskHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Low fitness raises injury risk.'**
-  String get injuryStaminaRiskHint;
 
   /// No description provided for @injuryKindKnock.
   ///

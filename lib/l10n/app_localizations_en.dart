@@ -198,6 +198,79 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tacticsFinalThird => 'Final third';
 
   @override
+  String get tacticsPresetBalanced => 'Balanced';
+
+  @override
+  String get tacticsPresetPossession => 'Possession';
+
+  @override
+  String get tacticsPresetParkTheBus => 'Park the Bus';
+
+  @override
+  String get tacticsPresetGegenpress => 'Gegenpress';
+
+  @override
+  String get tacticsPresetCounterAttack => 'Counter Attack';
+
+  @override
+  String get tacticsPresetAllOutAttack => 'All-Out Attack';
+
+  @override
+  String get tacticsPresetBalancedHint => 'Neutral defaults on every axis.';
+
+  @override
+  String get tacticsPresetPossessionHint =>
+      'Play out, slow tempo, patient, work the ball in.';
+
+  @override
+  String get tacticsPresetParkTheBusHint =>
+      'Deep block, low press, retreat and stay solid.';
+
+  @override
+  String get tacticsPresetGegenpressHint =>
+      'High line, immediate counter-press, aggressive.';
+
+  @override
+  String get tacticsPresetCounterAttackHint =>
+      'Deep-ish block, fast breaks on recovery.';
+
+  @override
+  String get tacticsPresetAllOutAttackHint =>
+      'Everything forward, high line, take the risks.';
+
+  @override
+  String get tacticsPresetWingPlay => 'Wing Play';
+
+  @override
+  String get tacticsPresetWingPlayHint =>
+      'Wide staging, early crosses into the box.';
+
+  @override
+  String get seasonLeadersTitle => 'Season Leaders';
+
+  @override
+  String get seasonLeadersGoals => 'Goals';
+
+  @override
+  String get seasonLeadersAssists => 'Assists';
+
+  @override
+  String get seasonLeadersRating => 'Average Rating';
+
+  @override
+  String get seasonLeadersCleanSheets => 'Clean Sheets';
+
+  @override
+  String prematchTablePosition(String position) {
+    return '$position in the table';
+  }
+
+  @override
+  String prematchPositionsVersus(String user, String opponent) {
+    return '$user vs $opponent';
+  }
+
+  @override
   String get buildUpPlayOut => 'Play Out from the Back';
 
   @override
@@ -378,12 +451,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prematchMedicalTitle => 'Medical room';
-
-  @override
-  String get prematchOpponentXiTitle => 'Their starting XI';
-
-  @override
-  String get injuryStaminaRiskHint => 'Low fitness raises injury risk.';
 
   @override
   String get injuryKindKnock => 'Knock';

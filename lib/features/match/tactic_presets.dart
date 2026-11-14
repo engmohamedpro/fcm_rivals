@@ -13,12 +13,16 @@
 ///    (see the enum comments) were measured on these anchors.
 ///  * The names map to the playing-style archetypes the GDD 10.2
 ///    combinations rebuild (possession, park-the-bus, gegenpress,
-///    counter-attack, all-out attack) plus the neutral Balanced.
-///  * UI localization: each preset's label comes through [nameAr] /
-///    a fallback to the English label; the ARB pass (see task) can
-///    move these into l10n later without touching this catalogue.
+///    counter-attack, wing play, all-out attack) plus the neutral
+///    Balanced.
+///  * UI localization (T-0139): each preset carries only its l10n key
+///    stem; the chip label and its semantics hint resolve through the
+///    AppLocalizations getters `tacticsPreset<Key>` /
+///    `tacticsPreset<Key>Hint` (EN + AR in the ARB files), so the
+///    catalogue holds no user-visible strings at all.
 library;
 
+import '../../l10n/app_localizations.dart';
 import 'in_possession_tactics.dart';
 import 'out_of_possession_tactics.dart';
 import 'team_tactics.dart';
@@ -28,48 +32,57 @@ import 'transition_tactics.dart';
 class TacticPreset {
   const TacticPreset({
     required this.id,
-    required this.name,
-    this.nameAr,
+    required this.l10nKey,
     required this.tactics,
-    required this.blurb,
   });
 
   /// Stable id (persisting a chosen preset later, analytics).
   final String id;
 
-  /// English label shown on the chip.
-  final String name;
-
-  /// Arabic label; null falls back to [name].
-  final String? nameAr;
+  /// l10n key stem: the label getter is `tacticsPreset<Key>`, the
+  /// one-line style hint `tacticsPreset<Key>Hint`.
+  final String l10nKey;
 
   /// The full combination applied on tap. Replaces every instruction
-  /// group (mentality untouched — it is an engine concern, set from
+  /// group (mentality untouched — it is engine ground truth, set from
   /// the live match panel per the owner's 2026-11-13 ruling).
   final TeamTactics tactics;
 
-  /// One-line description of the style.
-  final String blurb;
+  /// Localized chip label (EN / AR from the ARB catalogues).
+  String label(AppLocalizations l10n) => switch (l10nKey) {
+        'Balanced' => l10n.tacticsPresetBalanced,
+        'Possession' => l10n.tacticsPresetPossession,
+        'ParkTheBus' => l10n.tacticsPresetParkTheBus,
+        'Gegenpress' => l10n.tacticsPresetGegenpress,
+        'CounterAttack' => l10n.tacticsPresetCounterAttack,
+        'WingPlay' => l10n.tacticsPresetWingPlay,
+        'AllOutAttack' => l10n.tacticsPresetAllOutAttack,
+        _ => l10n.tacticsPresetBalanced,
+      };
 
-  String label({bool arabic = false}) => arabic && nameAr != null
-      ? nameAr!
-      : name;
+  /// Localized one-line description of the style (semantics hint).
+  String hint(AppLocalizations l10n) => switch (l10nKey) {
+        'Balanced' => l10n.tacticsPresetBalancedHint,
+        'Possession' => l10n.tacticsPresetPossessionHint,
+        'ParkTheBus' => l10n.tacticsPresetParkTheBusHint,
+        'Gegenpress' => l10n.tacticsPresetGegenpressHint,
+        'CounterAttack' => l10n.tacticsPresetCounterAttackHint,
+        'WingPlay' => l10n.tacticsPresetWingPlayHint,
+        'AllOutAttack' => l10n.tacticsPresetAllOutAttackHint,
+        _ => l10n.tacticsPresetBalancedHint,
+      };
 }
 
 /// The catalogue, in sheet display order.
 const List<TacticPreset> tacticPresets = [
   TacticPreset(
     id: 'balanced',
-    name: 'Balanced',
-    nameAr: 'متوازن',
-    blurb: 'Neutral defaults on every axis.',
+    l10nKey: 'Balanced',
     tactics: TeamTactics(),
   ),
   TacticPreset(
     id: 'tikiTaka',
-    name: 'Possession',
-    nameAr: 'استحواذ',
-    blurb: 'Play out, slow tempo, patient, work the ball in.',
+    l10nKey: 'Possession',
     tactics: TeamTactics(
       inPossession: InPossessionTactics(
         buildUp: BuildUpStyle.playOut,
@@ -88,9 +101,7 @@ const List<TacticPreset> tacticPresets = [
   ),
   TacticPreset(
     id: 'parkTheBus',
-    name: 'Park the Bus',
-    nameAr: 'مركن دفاعي',
-    blurb: 'Deep block, low press, retreat and stay solid.',
+    l10nKey: 'ParkTheBus',
     tactics: TeamTactics(
       inPossession: InPossessionTactics(
         buildUp: BuildUpStyle.longBall,
@@ -110,9 +121,7 @@ const List<TacticPreset> tacticPresets = [
   ),
   TacticPreset(
     id: 'gegenpress',
-    name: 'Gegenpress',
-    nameAr: 'ضغط عالي',
-    blurb: 'High line, immediate counter-press, aggressive.',
+    l10nKey: 'Gegenpress',
     tactics: TeamTactics(
       inPossession: InPossessionTactics(
         tempo: AttackTempo.fast,
@@ -131,31 +140,25 @@ const List<TacticPreset> tacticPresets = [
   ),
   TacticPreset(
     id: 'counterAttack',
-    name: 'Counter Attack',
-    nameAr: 'هجوم مرتد',
-    blurb: 'Deep-ish block, fast breaks on recovery.',
+    l10nKey: 'CounterAttack',
     tactics: TeamTactics(
       inPossession: InPossessionTactics(
         buildUp: BuildUpStyle.longBall,
         tempo: AttackTempo.fast,
-        width: AttackWidth.wide,
         finalThird: FinalThirdApproach.earlyCrosses,
       ),
       outOfPossession: OutOfPossessionTactics(
-        defensiveLine: DefensiveLine.standard,
+        defensiveLine: DefensiveLine.deep,
         pressing: PressingIntensity.mid,
       ),
       transitions: TransitionTactics(
-        counterPress: CounterPress.retreat,
         attackOnRecovery: AttackOnRecovery.fast,
       ),
     ),
   ),
   TacticPreset(
     id: 'wingPlay',
-    name: 'Wing Play',
-    nameAr: 'لعب الأطراف',
-    blurb: 'Wide staging, early crosses into the box.',
+    l10nKey: 'WingPlay',
     tactics: TeamTactics(
       inPossession: InPossessionTactics(
         width: AttackWidth.wide,

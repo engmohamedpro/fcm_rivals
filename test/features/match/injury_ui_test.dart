@@ -22,7 +22,6 @@ import 'package:fcm_rivals/features/match/pre_match_analysis.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
 import 'package:fcm_rivals/l10n/app_localizations_ar.dart';
-import 'package:fcm_rivals/l10n/app_localizations_en.dart';
 
 BasePlayer _player(int id) => BasePlayer(
   playerId: id,
@@ -221,15 +220,10 @@ void main() {
       expect(find.text('خارج 2 مباراة'), findsOneWidget);
     });
 
-    testWidgets('the stamina helper copy carries the injury-risk meaning',
-        (tester) async {
-      // The pre-match hint lives on the phases screen; the string itself
-      // is the l10n key both languages share.
-      final en = AppLocalizationsEn();
-      expect(en.injuryStaminaRiskHint, 'Low fitness raises injury risk.');
-      expect(AppLocalizationsAr().injuryStaminaRiskHint,
-          'اللياقة المنخفضة تزيد خطر الإصابة.');
-    });
+    // T-0139: the injuryStaminaRiskHint ARB key was removed — it was
+    // orphaned (zero UI consumers since the phases screen dropped the
+    // hint); the medical-room surface itself keeps its localized
+    // title above.
   });
 
   group('live injury banner (requirement 3)', () {
