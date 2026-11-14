@@ -381,7 +381,7 @@ class _PacksScreenState extends ConsumerState<PacksScreen> {
       ),
       // T-0126: the SAME pack's own odds — never a cross-pool
       // aggregate — computed from the engine's real draw math.
-      loadOdds: () => store.getPackPlayerOdds(
+      loadOdds: () async => store.getPackPlayerOdds(
         category: offer.category,
         scopeValue: offer.scopeValue,
         tier: offer.tier,
