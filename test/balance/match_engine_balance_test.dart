@@ -1362,16 +1362,21 @@ void main() {
         reason: 'all-out front win rate ${tilted.homeWinRate}',
       );
 
-      // Strictly smaller than Very Attacking's own swing from even:
-      // the row term alone (all 10 outfield men tilted, ±3% attr) must
-      // not out-shout the mentality ladder's extreme rung. Very
-      // Attacking measures W≈0.44-0.48 off even in this suite; the
-      // row-tilt shape must stay on the calmer side of 0.52 — it is a
-      // formation choice, not a mentality.
+      // ONE rung of the mentality ladder, not its extreme: the measured
+      // swing from the balanced baseline (|W-0.501| = 0.02) is the size
+      // of a single mentality step, while the ladder's extremes swing
+      // ~0.09 end-to-end (T-0052 re-anchor note). Cross-check on the
+      // same n=2000 scale: veryAttacking-vs-balanced reads W=0.459 —
+      // the row tilt (+W, the attack pays its defensive cost) and a
+      // mentality rung (-W, risk trades) move in OPPOSITE directions,
+      // so the honest bound is the swing SIZE, not a raw inequality.
+      // 0.52 keeps the shape from ever reading as a dominant exploit.
       expect(
         tilted.homeWinRate,
         lessThan(0.52),
-        reason: 'row tilt is smaller than a mentality extreme rung',
+        reason:
+            'row tilt must stay a formation choice, not an exploit '
+            '(measured ${tilted.homeWinRate})',
       );
 
       // And it plays the tilted game: the shape's OWN goals rise (the
