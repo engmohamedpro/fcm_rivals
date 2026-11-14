@@ -695,7 +695,6 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet>
               // default bar stays at its compact 48dp height and the
               // longest label ("Out of Possession") still fits.
               controller: _tabController,
-              tabHeight: 44,
               labelStyle: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
@@ -704,10 +703,12 @@ class _TacticsOptionsSheetState extends State<_TacticsOptionsSheet>
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
+              // T-0133: TabBar has no height parameter — the per-tab
+              // Tab(height:) is the supported way to a compact 44dp bar.
               tabs: [
-                Tab(text: l10n.tacticsInPossessionTitle),
-                Tab(text: l10n.tacticsOutOfPossessionTitle),
-                Tab(text: l10n.tacticsTransitionsTitle),
+                Tab(height: 44, text: l10n.tacticsInPossessionTitle),
+                Tab(height: 44, text: l10n.tacticsOutOfPossessionTitle),
+                Tab(height: 44, text: l10n.tacticsTransitionsTitle),
               ],
             ),
             // The pages: each tab shows its own group's controls in a

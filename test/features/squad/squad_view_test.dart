@@ -311,11 +311,21 @@ void main() {
     // group title inside any tab page.
     expect(find.byType(Tab), findsNWidgets(3));
     expect(
-      find.descendant(of: find.byType(TabBar), find.byType(Icon)),
+      find.descendant(
+        of: find.byType(TabBar),
+        matching: find.byType(Icon),
+      ),
       findsNothing,
     );
-    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-    expect(tabBar.tabHeight, 44);
+    // T-0133: TabBar exposes no height — the compact bar comes from the
+    // per-tab Tab(height: 44), which sizes every tab's row uniformly.
+    final tabs = tester
+        .widgetList<Tab>(find.byType(Tab))
+        .toList(growable: false);
+    expect(tabs, isNotEmpty);
+    for (final tab in tabs) {
+      expect(tab.height, 44);
+    }
     // Only the FIRST tab's sliders render (five of the eleven axes).
     expect(find.byType(FcmScaleSlider), findsNWidgets(5));
 
