@@ -22,7 +22,8 @@ library;
 import 'package:drift/drift.dart';
 
 import '../../core/database/app_database.dart';
-import '../match/match_engine.dart' show MatchPlayer, MatchSide, MatchEventType, ShotOutcome;
+import '../match/match_engine.dart'
+    show MatchEvent, MatchPlayer, MatchEventType, ShotOutcome;
 import '../match/match_report.dart' show computePlayerRatings;
 
 /// One player's per-match contribution, ready to fold into the season

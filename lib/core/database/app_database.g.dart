@@ -7024,6 +7024,850 @@ class AdUsagesCompanion extends UpdateCompanion<AdUsage> {
   }
 }
 
+class $PlayerSeasonStatsTable extends PlayerSeasonStats
+    with TableInfo<$PlayerSeasonStatsTable, PlayerSeasonStat> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlayerSeasonStatsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _seasonIdMeta = const VerificationMeta(
+    'seasonId',
+  );
+  @override
+  late final GeneratedColumn<int> seasonId = GeneratedColumn<int>(
+    'season_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _clubIdMeta = const VerificationMeta('clubId');
+  @override
+  late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
+    'club_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _playerIdMeta = const VerificationMeta(
+    'playerId',
+  );
+  @override
+  late final GeneratedColumn<int> playerId = GeneratedColumn<int>(
+    'player_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _playerNameMeta = const VerificationMeta(
+    'playerName',
+  );
+  @override
+  late final GeneratedColumn<String> playerName = GeneratedColumn<String>(
+    'player_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<String> position = GeneratedColumn<String>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _goalsMeta = const VerificationMeta('goals');
+  @override
+  late final GeneratedColumn<int> goals = GeneratedColumn<int>(
+    'goals',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _assistsMeta = const VerificationMeta(
+    'assists',
+  );
+  @override
+  late final GeneratedColumn<int> assists = GeneratedColumn<int>(
+    'assists',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _shotsMeta = const VerificationMeta('shots');
+  @override
+  late final GeneratedColumn<int> shots = GeneratedColumn<int>(
+    'shots',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _savesMeta = const VerificationMeta('saves');
+  @override
+  late final GeneratedColumn<int> saves = GeneratedColumn<int>(
+    'saves',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _cleanSheetsMeta = const VerificationMeta(
+    'cleanSheets',
+  );
+  @override
+  late final GeneratedColumn<int> cleanSheets = GeneratedColumn<int>(
+    'clean_sheets',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _goalsConcededMeta = const VerificationMeta(
+    'goalsConceded',
+  );
+  @override
+  late final GeneratedColumn<int> goalsConceded = GeneratedColumn<int>(
+    'goals_conceded',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _appearancesMeta = const VerificationMeta(
+    'appearances',
+  );
+  @override
+  late final GeneratedColumn<int> appearances = GeneratedColumn<int>(
+    'appearances',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _minutesPlayedMeta = const VerificationMeta(
+    'minutesPlayed',
+  );
+  @override
+  late final GeneratedColumn<int> minutesPlayed = GeneratedColumn<int>(
+    'minutes_played',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _ratingSumMeta = const VerificationMeta(
+    'ratingSum',
+  );
+  @override
+  late final GeneratedColumn<double> ratingSum = GeneratedColumn<double>(
+    'rating_sum',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    seasonId,
+    clubId,
+    playerId,
+    playerName,
+    position,
+    goals,
+    assists,
+    shots,
+    saves,
+    cleanSheets,
+    goalsConceded,
+    appearances,
+    minutesPlayed,
+    ratingSum,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'player_season_stats';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlayerSeasonStat> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('season_id')) {
+      context.handle(
+        _seasonIdMeta,
+        seasonId.isAcceptableOrUnknown(data['season_id']!, _seasonIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seasonIdMeta);
+    }
+    if (data.containsKey('club_id')) {
+      context.handle(
+        _clubIdMeta,
+        clubId.isAcceptableOrUnknown(data['club_id']!, _clubIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clubIdMeta);
+    }
+    if (data.containsKey('player_id')) {
+      context.handle(
+        _playerIdMeta,
+        playerId.isAcceptableOrUnknown(data['player_id']!, _playerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_playerIdMeta);
+    }
+    if (data.containsKey('player_name')) {
+      context.handle(
+        _playerNameMeta,
+        playerName.isAcceptableOrUnknown(data['player_name']!, _playerNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_playerNameMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('goals')) {
+      context.handle(
+        _goalsMeta,
+        goals.isAcceptableOrUnknown(data['goals']!, _goalsMeta),
+      );
+    }
+    if (data.containsKey('assists')) {
+      context.handle(
+        _assistsMeta,
+        assists.isAcceptableOrUnknown(data['assists']!, _assistsMeta),
+      );
+    }
+    if (data.containsKey('shots')) {
+      context.handle(
+        _shotsMeta,
+        shots.isAcceptableOrUnknown(data['shots']!, _shotsMeta),
+      );
+    }
+    if (data.containsKey('saves')) {
+      context.handle(
+        _savesMeta,
+        saves.isAcceptableOrUnknown(data['saves']!, _savesMeta),
+      );
+    }
+    if (data.containsKey('clean_sheets')) {
+      context.handle(
+        _cleanSheetsMeta,
+        cleanSheets.isAcceptableOrUnknown(
+          data['clean_sheets']!,
+          _cleanSheetsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('goals_conceded')) {
+      context.handle(
+        _goalsConcededMeta,
+        goalsConceded.isAcceptableOrUnknown(
+          data['goals_conceded']!,
+          _goalsConcededMeta,
+        ),
+      );
+    }
+    if (data.containsKey('appearances')) {
+      context.handle(
+        _appearancesMeta,
+        appearances.isAcceptableOrUnknown(
+          data['appearances']!,
+          _appearancesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('minutes_played')) {
+      context.handle(
+        _minutesPlayedMeta,
+        minutesPlayed.isAcceptableOrUnknown(
+          data['minutes_played']!,
+          _minutesPlayedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rating_sum')) {
+      context.handle(
+        _ratingSumMeta,
+        ratingSum.isAcceptableOrUnknown(data['rating_sum']!, _ratingSumMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlayerSeasonStat map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlayerSeasonStat(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      seasonId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}season_id'],
+      )!,
+      clubId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}club_id'],
+      )!,
+      playerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}player_id'],
+      )!,
+      playerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}player_name'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}position'],
+      )!,
+      goals: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goals'],
+      )!,
+      assists: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}assists'],
+      )!,
+      shots: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}shots'],
+      )!,
+      saves: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}saves'],
+      )!,
+      cleanSheets: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}clean_sheets'],
+      )!,
+      goalsConceded: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goals_conceded'],
+      )!,
+      appearances: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}appearances'],
+      )!,
+      minutesPlayed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minutes_played'],
+      )!,
+      ratingSum: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}rating_sum'],
+      )!,
+    );
+  }
+
+  @override
+  $PlayerSeasonStatsTable createAlias(String alias) {
+    return $PlayerSeasonStatsTable(attachedDatabase, alias);
+  }
+}
+
+class PlayerSeasonStat extends DataClass
+    implements Insertable<PlayerSeasonStat> {
+  final int id;
+  final int seasonId;
+  final int clubId;
+  final int playerId;
+  final String playerName;
+
+  /// 'ST', 'GK'… — the player's natural position (goalkeeper clean
+  /// sheets read it).
+  final String position;
+
+  /// Team goals scored/against while this player was on the pitch,
+  /// minute-weighted from the event timeline.
+  final int goals;
+  final int assists;
+  final int shots;
+  final int saves;
+  final int cleanSheets;
+  final int goalsConceded;
+  final int appearances;
+  final int minutesPlayed;
+
+  /// Sum of the player's per-match ratings (computePlayerRatings), so
+  /// the average needs no second pass: ratingSum / appearances.
+  final double ratingSum;
+  const PlayerSeasonStat({
+    required this.id,
+    required this.seasonId,
+    required this.clubId,
+    required this.playerId,
+    required this.playerName,
+    required this.position,
+    required this.goals,
+    required this.assists,
+    required this.shots,
+    required this.saves,
+    required this.cleanSheets,
+    required this.goalsConceded,
+    required this.appearances,
+    required this.minutesPlayed,
+    required this.ratingSum,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['season_id'] = Variable<int>(seasonId);
+    map['club_id'] = Variable<int>(clubId);
+    map['player_id'] = Variable<int>(playerId);
+    map['player_name'] = Variable<String>(playerName);
+    map['position'] = Variable<String>(position);
+    map['goals'] = Variable<int>(goals);
+    map['assists'] = Variable<int>(assists);
+    map['shots'] = Variable<int>(shots);
+    map['saves'] = Variable<int>(saves);
+    map['clean_sheets'] = Variable<int>(cleanSheets);
+    map['goals_conceded'] = Variable<int>(goalsConceded);
+    map['appearances'] = Variable<int>(appearances);
+    map['minutes_played'] = Variable<int>(minutesPlayed);
+    map['rating_sum'] = Variable<double>(ratingSum);
+    return map;
+  }
+
+  PlayerSeasonStatsCompanion toCompanion(bool nullToAbsent) {
+    return PlayerSeasonStatsCompanion(
+      id: Value(id),
+      seasonId: Value(seasonId),
+      clubId: Value(clubId),
+      playerId: Value(playerId),
+      playerName: Value(playerName),
+      position: Value(position),
+      goals: Value(goals),
+      assists: Value(assists),
+      shots: Value(shots),
+      saves: Value(saves),
+      cleanSheets: Value(cleanSheets),
+      goalsConceded: Value(goalsConceded),
+      appearances: Value(appearances),
+      minutesPlayed: Value(minutesPlayed),
+      ratingSum: Value(ratingSum),
+    );
+  }
+
+  factory PlayerSeasonStat.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlayerSeasonStat(
+      id: serializer.fromJson<int>(json['id']),
+      seasonId: serializer.fromJson<int>(json['seasonId']),
+      clubId: serializer.fromJson<int>(json['clubId']),
+      playerId: serializer.fromJson<int>(json['playerId']),
+      playerName: serializer.fromJson<String>(json['playerName']),
+      position: serializer.fromJson<String>(json['position']),
+      goals: serializer.fromJson<int>(json['goals']),
+      assists: serializer.fromJson<int>(json['assists']),
+      shots: serializer.fromJson<int>(json['shots']),
+      saves: serializer.fromJson<int>(json['saves']),
+      cleanSheets: serializer.fromJson<int>(json['cleanSheets']),
+      goalsConceded: serializer.fromJson<int>(json['goalsConceded']),
+      appearances: serializer.fromJson<int>(json['appearances']),
+      minutesPlayed: serializer.fromJson<int>(json['minutesPlayed']),
+      ratingSum: serializer.fromJson<double>(json['ratingSum']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'seasonId': serializer.toJson<int>(seasonId),
+      'clubId': serializer.toJson<int>(clubId),
+      'playerId': serializer.toJson<int>(playerId),
+      'playerName': serializer.toJson<String>(playerName),
+      'position': serializer.toJson<String>(position),
+      'goals': serializer.toJson<int>(goals),
+      'assists': serializer.toJson<int>(assists),
+      'shots': serializer.toJson<int>(shots),
+      'saves': serializer.toJson<int>(saves),
+      'cleanSheets': serializer.toJson<int>(cleanSheets),
+      'goalsConceded': serializer.toJson<int>(goalsConceded),
+      'appearances': serializer.toJson<int>(appearances),
+      'minutesPlayed': serializer.toJson<int>(minutesPlayed),
+      'ratingSum': serializer.toJson<double>(ratingSum),
+    };
+  }
+
+  PlayerSeasonStat copyWith({
+    int? id,
+    int? seasonId,
+    int? clubId,
+    int? playerId,
+    String? playerName,
+    String? position,
+    int? goals,
+    int? assists,
+    int? shots,
+    int? saves,
+    int? cleanSheets,
+    int? goalsConceded,
+    int? appearances,
+    int? minutesPlayed,
+    double? ratingSum,
+  }) => PlayerSeasonStat(
+    id: id ?? this.id,
+    seasonId: seasonId ?? this.seasonId,
+    clubId: clubId ?? this.clubId,
+    playerId: playerId ?? this.playerId,
+    playerName: playerName ?? this.playerName,
+    position: position ?? this.position,
+    goals: goals ?? this.goals,
+    assists: assists ?? this.assists,
+    shots: shots ?? this.shots,
+    saves: saves ?? this.saves,
+    cleanSheets: cleanSheets ?? this.cleanSheets,
+    goalsConceded: goalsConceded ?? this.goalsConceded,
+    appearances: appearances ?? this.appearances,
+    minutesPlayed: minutesPlayed ?? this.minutesPlayed,
+    ratingSum: ratingSum ?? this.ratingSum,
+  );
+  PlayerSeasonStat copyWithCompanion(PlayerSeasonStatsCompanion data) {
+    return PlayerSeasonStat(
+      id: data.id.present ? data.id.value : this.id,
+      seasonId: data.seasonId.present ? data.seasonId.value : this.seasonId,
+      clubId: data.clubId.present ? data.clubId.value : this.clubId,
+      playerId: data.playerId.present ? data.playerId.value : this.playerId,
+      playerName: data.playerName.present
+          ? data.playerName.value
+          : this.playerName,
+      position: data.position.present ? data.position.value : this.position,
+      goals: data.goals.present ? data.goals.value : this.goals,
+      assists: data.assists.present ? data.assists.value : this.assists,
+      shots: data.shots.present ? data.shots.value : this.shots,
+      saves: data.saves.present ? data.saves.value : this.saves,
+      cleanSheets: data.cleanSheets.present
+          ? data.cleanSheets.value
+          : this.cleanSheets,
+      goalsConceded: data.goalsConceded.present
+          ? data.goalsConceded.value
+          : this.goalsConceded,
+      appearances: data.appearances.present
+          ? data.appearances.value
+          : this.appearances,
+      minutesPlayed: data.minutesPlayed.present
+          ? data.minutesPlayed.value
+          : this.minutesPlayed,
+      ratingSum: data.ratingSum.present ? data.ratingSum.value : this.ratingSum,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlayerSeasonStat(')
+          ..write('id: $id, ')
+          ..write('seasonId: $seasonId, ')
+          ..write('clubId: $clubId, ')
+          ..write('playerId: $playerId, ')
+          ..write('playerName: $playerName, ')
+          ..write('position: $position, ')
+          ..write('goals: $goals, ')
+          ..write('assists: $assists, ')
+          ..write('shots: $shots, ')
+          ..write('saves: $saves, ')
+          ..write('cleanSheets: $cleanSheets, ')
+          ..write('goalsConceded: $goalsConceded, ')
+          ..write('appearances: $appearances, ')
+          ..write('minutesPlayed: $minutesPlayed, ')
+          ..write('ratingSum: $ratingSum')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    seasonId,
+    clubId,
+    playerId,
+    playerName,
+    position,
+    goals,
+    assists,
+    shots,
+    saves,
+    cleanSheets,
+    goalsConceded,
+    appearances,
+    minutesPlayed,
+    ratingSum,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlayerSeasonStat &&
+          other.id == this.id &&
+          other.seasonId == this.seasonId &&
+          other.clubId == this.clubId &&
+          other.playerId == this.playerId &&
+          other.playerName == this.playerName &&
+          other.position == this.position &&
+          other.goals == this.goals &&
+          other.assists == this.assists &&
+          other.shots == this.shots &&
+          other.saves == this.saves &&
+          other.cleanSheets == this.cleanSheets &&
+          other.goalsConceded == this.goalsConceded &&
+          other.appearances == this.appearances &&
+          other.minutesPlayed == this.minutesPlayed &&
+          other.ratingSum == this.ratingSum);
+}
+
+class PlayerSeasonStatsCompanion extends UpdateCompanion<PlayerSeasonStat> {
+  final Value<int> id;
+  final Value<int> seasonId;
+  final Value<int> clubId;
+  final Value<int> playerId;
+  final Value<String> playerName;
+  final Value<String> position;
+  final Value<int> goals;
+  final Value<int> assists;
+  final Value<int> shots;
+  final Value<int> saves;
+  final Value<int> cleanSheets;
+  final Value<int> goalsConceded;
+  final Value<int> appearances;
+  final Value<int> minutesPlayed;
+  final Value<double> ratingSum;
+  const PlayerSeasonStatsCompanion({
+    this.id = const Value.absent(),
+    this.seasonId = const Value.absent(),
+    this.clubId = const Value.absent(),
+    this.playerId = const Value.absent(),
+    this.playerName = const Value.absent(),
+    this.position = const Value.absent(),
+    this.goals = const Value.absent(),
+    this.assists = const Value.absent(),
+    this.shots = const Value.absent(),
+    this.saves = const Value.absent(),
+    this.cleanSheets = const Value.absent(),
+    this.goalsConceded = const Value.absent(),
+    this.appearances = const Value.absent(),
+    this.minutesPlayed = const Value.absent(),
+    this.ratingSum = const Value.absent(),
+  });
+  PlayerSeasonStatsCompanion.insert({
+    this.id = const Value.absent(),
+    required int seasonId,
+    required int clubId,
+    required int playerId,
+    required String playerName,
+    required String position,
+    this.goals = const Value.absent(),
+    this.assists = const Value.absent(),
+    this.shots = const Value.absent(),
+    this.saves = const Value.absent(),
+    this.cleanSheets = const Value.absent(),
+    this.goalsConceded = const Value.absent(),
+    this.appearances = const Value.absent(),
+    this.minutesPlayed = const Value.absent(),
+    this.ratingSum = const Value.absent(),
+  }) : seasonId = Value(seasonId),
+       clubId = Value(clubId),
+       playerId = Value(playerId),
+       playerName = Value(playerName),
+       position = Value(position);
+  static Insertable<PlayerSeasonStat> custom({
+    Expression<int>? id,
+    Expression<int>? seasonId,
+    Expression<int>? clubId,
+    Expression<int>? playerId,
+    Expression<String>? playerName,
+    Expression<String>? position,
+    Expression<int>? goals,
+    Expression<int>? assists,
+    Expression<int>? shots,
+    Expression<int>? saves,
+    Expression<int>? cleanSheets,
+    Expression<int>? goalsConceded,
+    Expression<int>? appearances,
+    Expression<int>? minutesPlayed,
+    Expression<double>? ratingSum,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (seasonId != null) 'season_id': seasonId,
+      if (clubId != null) 'club_id': clubId,
+      if (playerId != null) 'player_id': playerId,
+      if (playerName != null) 'player_name': playerName,
+      if (position != null) 'position': position,
+      if (goals != null) 'goals': goals,
+      if (assists != null) 'assists': assists,
+      if (shots != null) 'shots': shots,
+      if (saves != null) 'saves': saves,
+      if (cleanSheets != null) 'clean_sheets': cleanSheets,
+      if (goalsConceded != null) 'goals_conceded': goalsConceded,
+      if (appearances != null) 'appearances': appearances,
+      if (minutesPlayed != null) 'minutes_played': minutesPlayed,
+      if (ratingSum != null) 'rating_sum': ratingSum,
+    });
+  }
+
+  PlayerSeasonStatsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? seasonId,
+    Value<int>? clubId,
+    Value<int>? playerId,
+    Value<String>? playerName,
+    Value<String>? position,
+    Value<int>? goals,
+    Value<int>? assists,
+    Value<int>? shots,
+    Value<int>? saves,
+    Value<int>? cleanSheets,
+    Value<int>? goalsConceded,
+    Value<int>? appearances,
+    Value<int>? minutesPlayed,
+    Value<double>? ratingSum,
+  }) {
+    return PlayerSeasonStatsCompanion(
+      id: id ?? this.id,
+      seasonId: seasonId ?? this.seasonId,
+      clubId: clubId ?? this.clubId,
+      playerId: playerId ?? this.playerId,
+      playerName: playerName ?? this.playerName,
+      position: position ?? this.position,
+      goals: goals ?? this.goals,
+      assists: assists ?? this.assists,
+      shots: shots ?? this.shots,
+      saves: saves ?? this.saves,
+      cleanSheets: cleanSheets ?? this.cleanSheets,
+      goalsConceded: goalsConceded ?? this.goalsConceded,
+      appearances: appearances ?? this.appearances,
+      minutesPlayed: minutesPlayed ?? this.minutesPlayed,
+      ratingSum: ratingSum ?? this.ratingSum,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (seasonId.present) {
+      map['season_id'] = Variable<int>(seasonId.value);
+    }
+    if (clubId.present) {
+      map['club_id'] = Variable<int>(clubId.value);
+    }
+    if (playerId.present) {
+      map['player_id'] = Variable<int>(playerId.value);
+    }
+    if (playerName.present) {
+      map['player_name'] = Variable<String>(playerName.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<String>(position.value);
+    }
+    if (goals.present) {
+      map['goals'] = Variable<int>(goals.value);
+    }
+    if (assists.present) {
+      map['assists'] = Variable<int>(assists.value);
+    }
+    if (shots.present) {
+      map['shots'] = Variable<int>(shots.value);
+    }
+    if (saves.present) {
+      map['saves'] = Variable<int>(saves.value);
+    }
+    if (cleanSheets.present) {
+      map['clean_sheets'] = Variable<int>(cleanSheets.value);
+    }
+    if (goalsConceded.present) {
+      map['goals_conceded'] = Variable<int>(goalsConceded.value);
+    }
+    if (appearances.present) {
+      map['appearances'] = Variable<int>(appearances.value);
+    }
+    if (minutesPlayed.present) {
+      map['minutes_played'] = Variable<int>(minutesPlayed.value);
+    }
+    if (ratingSum.present) {
+      map['rating_sum'] = Variable<double>(ratingSum.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlayerSeasonStatsCompanion(')
+          ..write('id: $id, ')
+          ..write('seasonId: $seasonId, ')
+          ..write('clubId: $clubId, ')
+          ..write('playerId: $playerId, ')
+          ..write('playerName: $playerName, ')
+          ..write('position: $position, ')
+          ..write('goals: $goals, ')
+          ..write('assists: $assists, ')
+          ..write('shots: $shots, ')
+          ..write('saves: $saves, ')
+          ..write('cleanSheets: $cleanSheets, ')
+          ..write('goalsConceded: $goalsConceded, ')
+          ..write('appearances: $appearances, ')
+          ..write('minutesPlayed: $minutesPlayed, ')
+          ..write('ratingSum: $ratingSum')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $FacilityLevelsTable extends FacilityLevels
     with TableInfo<$FacilityLevelsTable, FacilityLevel> {
   @override
@@ -8594,752 +9438,6 @@ class DailyStreakClaimsCompanion extends UpdateCompanion<DailyStreakClaim> {
   }
 }
 
-
-class $PlayerSeasonStatsTable extends PlayerSeasonStats
-    with TableInfo<$PlayerSeasonStatsTable, PlayerSeasonStat> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $PlayerSeasonStatsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
-    aliasedName,
-    false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
-  );
-  static const VerificationMeta _seasonIdMeta = const VerificationMeta(
-    'seasonId',
-  );
-  @override
-  late final GeneratedColumn<int> seasonId = GeneratedColumn<int>(
-    'season_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _clubIdMeta = const VerificationMeta(
-    'clubId',
-  );
-  @override
-  late final GeneratedColumn<int> clubId = GeneratedColumn<int>(
-    'club_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _playerIdMeta = const VerificationMeta(
-    'playerId',
-  );
-  @override
-  late final GeneratedColumn<int> playerId = GeneratedColumn<int>(
-    'player_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _playerNameMeta = const VerificationMeta(
-    'playerName',
-  );
-  @override
-  late final GeneratedColumn<String> playerName = GeneratedColumn<String>(
-    'player_name',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _positionMeta = const VerificationMeta(
-    'position',
-  );
-  @override
-  late final GeneratedColumn<String> position = GeneratedColumn<String>(
-    'position',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _goalsMeta = const VerificationMeta('goals');
-  @override
-  late final GeneratedColumn<int> goals = GeneratedColumn<int>(
-    'goals',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0',
-    ),
-  );
-  static const VerificationMeta _assistsMeta = const VerificationMeta(
-    'assists',
-  );
-  @override
-  late final GeneratedColumn<int> assists = GeneratedColumn<int>(
-    'assists',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0',
-    ),
-  );
-  static const VerificationMeta _shotsMeta = const VerificationMeta('shots');
-  @override
-  late final GeneratedColumn<int> shots = GeneratedColumn<int>(
-    'shots',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0',
-    ),
-  );
-  static const VerificationMeta _savesMeta = const VerificationMeta('saves');
-  @override
-  late final GeneratedColumn<int> saves = GeneratedColumn<int>(
-    'saves',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0',
-    ),
-  );
-  static const VerificationMeta _cleanSheetsMeta = const VerificationMeta(
-    'cleanSheets',
-  );
-  @override
-  late final GeneratedColumn<int> cleanSheets = GeneratedColumn<int>(
-    'clean_sheets',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0',
-    ),
-  );
-  static const VerificationMeta _goalsConcededMeta = const VerificationMeta(
-    'goalsConceded',
-  );
-  @override
-  late final GeneratedColumn<int> goalsConceded = GeneratedColumn<int>(
-    'goals_conceded',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0',
-    ),
-  );
-  static const VerificationMeta _appearancesMeta = const VerificationMeta(
-    'appearances',
-  );
-  @override
-  late final GeneratedColumn<int> appearances = GeneratedColumn<int>(
-    'appearances',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0',
-    ),
-  );
-  static const VerificationMeta _minutesPlayedMeta = const VerificationMeta(
-    'minutesPlayed',
-  );
-  @override
-  late final GeneratedColumn<int> minutesPlayed = GeneratedColumn<int>(
-    'minutes_played',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0',
-    ),
-  );
-  static const VerificationMeta _ratingSumMeta = const VerificationMeta(
-    'ratingSum',
-  );
-  @override
-  late final GeneratedColumn<double> ratingSum = GeneratedColumn<double>(
-    'rating_sum',
-    aliasedName,
-    false,
-    type: DriftSqlType.real,
-    requiredDuringInsert: false,
-    hasDefault: true,
-    defaultAndCheckConstraints: GeneratedColumn.constraintIsAlways(
-      'DEFAULT 0.0',
-    ),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    seasonId,
-    clubId,
-    playerId,
-    playerName,
-    position,
-    goals,
-    assists,
-    shots,
-    saves,
-    cleanSheets,
-    goalsConceded,
-    appearances,
-    minutesPlayed,
-    ratingSum,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'player_season_stats';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<PlayerSeasonStat> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('season_id')) {
-      context.handle(
-        _seasonIdMeta,
-        seasonId.isAcceptableOrUnknown(data['season_id']!, _seasonIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_seasonIdMeta);
-    }
-    if (data.containsKey('club_id')) {
-      context.handle(
-        _clubIdMeta,
-        clubId.isAcceptableOrUnknown(data['club_id']!, _clubIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_clubIdMeta);
-    }
-    if (data.containsKey('player_id')) {
-      context.handle(
-        _playerIdMeta,
-        playerId.isAcceptableOrUnknown(data['player_id']!, _playerIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_playerIdMeta);
-    }
-    if (data.containsKey('player_name')) {
-      context.handle(
-        _playerNameMeta,
-        playerName.isAcceptableOrUnknown(
-          data['player_name']!,
-          _playerNameMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_playerNameMeta);
-    }
-    if (data.containsKey('position')) {
-      context.handle(
-        _positionMeta,
-        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_positionMeta);
-    }
-    if (data.containsKey('goals')) {
-      context.handle(
-        _goalsMeta,
-        goals.isAcceptableOrUnknown(data['goals']!, _goalsMeta),
-      );
-    }
-    if (data.containsKey('assists')) {
-      context.handle(
-        _assistsMeta,
-        assists.isAcceptableOrUnknown(data['assists']!, _assistsMeta),
-      );
-    }
-    if (data.containsKey('shots')) {
-      context.handle(
-        _shotsMeta,
-        shots.isAcceptableOrUnknown(data['shots']!, _shotsMeta),
-      );
-    }
-    if (data.containsKey('saves')) {
-      context.handle(
-        _savesMeta,
-        saves.isAcceptableOrUnknown(data['saves']!, _savesMeta),
-      );
-    }
-    if (data.containsKey('clean_sheets')) {
-      context.handle(
-        _cleanSheetsMeta,
-        cleanSheets.isAcceptableOrUnknown(
-          data['clean_sheets']!,
-          _cleanSheetsMeta,
-        ),
-      );
-    }
-    if (data.containsKey('goals_conceded')) {
-      context.handle(
-        _goalsConcededMeta,
-        goalsConceded.isAcceptableOrUnknown(
-          data['goals_conceded']!,
-          _goalsConcededMeta,
-        ),
-      );
-    }
-    if (data.containsKey('appearances')) {
-      context.handle(
-        _appearancesMeta,
-        appearances.isAcceptableOrUnknown(
-          data['appearances']!,
-          _appearancesMeta,
-        ),
-      );
-    }
-    if (data.containsKey('minutes_played')) {
-      context.handle(
-        _minutesPlayedMeta,
-        minutesPlayed.isAcceptableOrUnknown(
-          data['minutes_played']!,
-          _minutesPlayedMeta,
-        ),
-      );
-    }
-    if (data.containsKey('rating_sum')) {
-      context.handle(
-        _ratingSumMeta,
-        ratingSum.isAcceptableOrUnknown(data['rating_sum']!, _ratingSumMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  PlayerSeasonStat map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return PlayerSeasonStat(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
-      seasonId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}season_id'],
-      )!,
-      clubId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}club_id'],
-      )!,
-      playerId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}player_id'],
-      )!,
-      playerName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}player_name'],
-      )!,
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}position'],
-      )!,
-      goals: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}goals'],
-      )!,
-      assists: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}assists'],
-      )!,
-      shots: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}shots'],
-      )!,
-      saves: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}saves'],
-      )!,
-      cleanSheets: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}clean_sheets'],
-      )!,
-      goalsConceded: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}goals_conceded'],
-      )!,
-      appearances: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}appearances'],
-      )!,
-      minutesPlayed: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}minutes_played'],
-      )!,
-      ratingSum: attachedDatabase.typeMapping.read(
-        DriftSqlType.real,
-        data['${effectivePrefix}rating_sum'],
-      )!,
-    );
-  }
-
-  @override
-  $PlayerSeasonStatsTable createAlias(String alias) {
-    return $PlayerSeasonStatsTable(attachedDatabase, alias);
-  }
-}
-
-class PlayerSeasonStat extends DataClass
-    implements Insertable<PlayerSeasonStat> {
-  final int id;
-  final int seasonId;
-  final int clubId;
-  final int playerId;
-  final String playerName;
-  final String position;
-  final int goals;
-  final int assists;
-  final int shots;
-  final int saves;
-  final int cleanSheets;
-  final int goalsConceded;
-  final int appearances;
-  final int minutesPlayed;
-  final double ratingSum;
-  const PlayerSeasonStat({
-    required this.id,
-    required this.seasonId,
-    required this.clubId,
-    required this.playerId,
-    required this.playerName,
-    required this.position,
-    required this.goals,
-    required this.assists,
-    required this.shots,
-    required this.saves,
-    required this.cleanSheets,
-    required this.goalsConceded,
-    required this.appearances,
-    required this.minutesPlayed,
-    required this.ratingSum,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['season_id'] = Variable<int>(seasonId);
-    map['club_id'] = Variable<int>(clubId);
-    map['player_id'] = Variable<int>(playerId);
-    map['player_name'] = Variable<String>(playerName);
-    map['position'] = Variable<String>(position);
-    map['goals'] = Variable<int>(goals);
-    map['assists'] = Variable<int>(assists);
-    map['shots'] = Variable<int>(shots);
-    map['saves'] = Variable<int>(saves);
-    map['clean_sheets'] = Variable<int>(cleanSheets);
-    map['goals_conceded'] = Variable<int>(goalsConceded);
-    map['appearances'] = Variable<int>(appearances);
-    map['minutes_played'] = Variable<int>(minutesPlayed);
-    map['rating_sum'] = Variable<double>(ratingSum);
-    return map;
-  }
-
-  PlayerSeasonStatsCompanion toCompanion(bool nullToAbsent) {
-    return PlayerSeasonStatsCompanion(
-      id: Value(id),
-      seasonId: Value(seasonId),
-      clubId: Value(clubId),
-      playerId: Value(playerId),
-      playerName: Value(playerName),
-      position: Value(position),
-      goals: Value(goals),
-      assists: Value(assists),
-      shots: Value(shots),
-      saves: Value(saves),
-      cleanSheets: Value(cleanSheets),
-      goalsConceded: Value(goalsConceded),
-      appearances: Value(appearances),
-      minutesPlayed: Value(minutesPlayed),
-      ratingSum: Value(ratingSum),
-    );
-  }
-
-  factory PlayerSeasonStat.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return PlayerSeasonStat(
-      id: serializer.fromJson<int>(json['id']),
-      seasonId: serializer.fromJson<int>(json['seasonId']),
-      clubId: serializer.fromJson<int>(json['clubId']),
-      playerId: serializer.fromJson<int>(json['playerId']),
-      playerName: serializer.fromJson<String>(json['playerName']),
-      position: serializer.fromJson<String>(json['position']),
-      goals: serializer.fromJson<int>(json['goals']),
-      assists: serializer.fromJson<int>(json['assists']),
-      shots: serializer.fromJson<int>(json['shots']),
-      saves: serializer.fromJson<int>(json['saves']),
-      cleanSheets: serializer.fromJson<int>(json['cleanSheets']),
-      goalsConceded: serializer.fromJson<int>(json['goalsConceded']),
-      appearances: serializer.fromJson<int>(json['appearances']),
-      minutesPlayed: serializer.fromJson<int>(json['minutesPlayed']),
-      ratingSum: serializer.fromJson<double>(json['ratingSum']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'seasonId': serializer.toJson<int>(seasonId),
-      'clubId': serializer.toJson<int>(clubId),
-      'playerId': serializer.toJson<int>(playerId),
-      'playerName': serializer.toJson<String>(playerName),
-      'position': serializer.toJson<String>(position),
-      'goals': serializer.toJson<int>(goals),
-      'assists': serializer.toJson<int>(assists),
-      'shots': serializer.toJson<int>(shots),
-      'saves': serializer.toJson<int>(saves),
-      'cleanSheets': serializer.toJson<int>(cleanSheets),
-      'goalsConceded': serializer.toJson<int>(goalsConceded),
-      'appearances': serializer.toJson<int>(appearances),
-      'minutesPlayed': serializer.toJson<int>(minutesPlayed),
-      'ratingSum': serializer.toJson<double>(ratingSum),
-    };
-  }
-}
-
-class PlayerSeasonStatsCompanion
-    extends UpdateCompanion<PlayerSeasonStat> {
-  final Value<int> id;
-  final Value<int> seasonId;
-  final Value<int> clubId;
-  final Value<int> playerId;
-  final Value<String> playerName;
-  final Value<String> position;
-  final Value<int> goals;
-  final Value<int> assists;
-  final Value<int> shots;
-  final Value<int> saves;
-  final Value<int> cleanSheets;
-  final Value<int> goalsConceded;
-  final Value<int> appearances;
-  final Value<int> minutesPlayed;
-  final Value<double> ratingSum;
-  const PlayerSeasonStatsCompanion({
-    this.id = const Value.absent(),
-    this.seasonId = const Value.absent(),
-    this.clubId = const Value.absent(),
-    this.playerId = const Value.absent(),
-    this.playerName = const Value.absent(),
-    this.position = const Value.absent(),
-    this.goals = const Value.absent(),
-    this.assists = const Value.absent(),
-    this.shots = const Value.absent(),
-    this.saves = const Value.absent(),
-    this.cleanSheets = const Value.absent(),
-    this.goalsConceded = const Value.absent(),
-    this.appearances = const Value.absent(),
-    this.minutesPlayed = const Value.absent(),
-    this.ratingSum = const Value.absent(),
-  });
-  PlayerSeasonStatsCompanion.insert({
-    this.id = const Value.absent(),
-    required int seasonId,
-    required int clubId,
-    required int playerId,
-    required String playerName,
-    required String position,
-    this.goals = const Value.absent(),
-    this.assists = const Value.absent(),
-    this.shots = const Value.absent(),
-    this.saves = const Value.absent(),
-    this.cleanSheets = const Value.absent(),
-    this.goalsConceded = const Value.absent(),
-    this.appearances = const Value.absent(),
-    this.minutesPlayed = const Value.absent(),
-    this.ratingSum = const Value.absent(),
-  }) : seasonId = Value(seasonId),
-       clubId = Value(clubId),
-       playerId = Value(playerId),
-       playerName = Value(playerName),
-       position = Value(position);
-  static Insertable<PlayerSeasonStat> custom({
-    Expression<int>? id,
-    Expression<int>? seasonId,
-    Expression<int>? clubId,
-    Expression<int>? playerId,
-    Expression<String>? playerName,
-    Expression<String>? position,
-    Expression<int>? goals,
-    Expression<int>? assists,
-    Expression<int>? shots,
-    Expression<int>? saves,
-    Expression<int>? cleanSheets,
-    Expression<int>? goalsConceded,
-    Expression<int>? appearances,
-    Expression<int>? minutesPlayed,
-    Expression<double>? ratingSum,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (seasonId != null) 'season_id': seasonId,
-      if (clubId != null) 'club_id': clubId,
-      if (playerId != null) 'player_id': playerId,
-      if (playerName != null) 'player_name': playerName,
-      if (position != null) 'position': position,
-      if (goals != null) 'goals': goals,
-      if (assists != null) 'assists': assists,
-      if (shots != null) 'shots': shots,
-      if (saves != null) 'saves': saves,
-      if (cleanSheets != null) 'clean_sheets': cleanSheets,
-      if (goalsConceded != null) 'goals_conceded': goalsConceded,
-      if (appearances != null) 'appearances': appearances,
-      if (minutesPlayed != null) 'minutes_played': minutesPlayed,
-      if (ratingSum != null) 'rating_sum': ratingSum,
-    });
-  }
-
-  PlayerSeasonStatsCompanion copyWith({
-    Value<int>? id,
-    Value<int>? seasonId,
-    Value<int>? clubId,
-    Value<int>? playerId,
-    Value<String>? playerName,
-    Value<String>? position,
-    Value<int>? goals,
-    Value<int>? assists,
-    Value<int>? shots,
-    Value<int>? saves,
-    Value<int>? cleanSheets,
-    Value<int>? goalsConceded,
-    Value<int>? appearances,
-    Value<int>? minutesPlayed,
-    Value<double>? ratingSum,
-  }) {
-    return PlayerSeasonStatsCompanion(
-      id: id ?? this.id,
-      seasonId: seasonId ?? this.seasonId,
-      clubId: clubId ?? this.clubId,
-      playerId: playerId ?? this.playerId,
-      playerName: playerName ?? this.playerName,
-      position: position ?? this.position,
-      goals: goals ?? this.goals,
-      assists: assists ?? this.assists,
-      shots: shots ?? this.shots,
-      saves: saves ?? this.saves,
-      cleanSheets: cleanSheets ?? this.cleanSheets,
-      goalsConceded: goalsConceded ?? this.goalsConceded,
-      appearances: appearances ?? this.appearances,
-      minutesPlayed: minutesPlayed ?? this.minutesPlayed,
-      ratingSum: ratingSum ?? this.ratingSum,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (seasonId.present) {
-      map['season_id'] = Variable<int>(seasonId.value);
-    }
-    if (clubId.present) {
-      map['club_id'] = Variable<int>(clubId.value);
-    }
-    if (playerId.present) {
-      map['player_id'] = Variable<int>(playerId.value);
-    }
-    if (playerName.present) {
-      map['player_name'] = Variable<String>(playerName.value);
-    }
-    if (position.present) {
-      map['position'] = Variable<String>(position.value);
-    }
-    if (goals.present) {
-      map['goals'] = Variable<int>(goals.value);
-    }
-    if (assists.present) {
-      map['assists'] = Variable<int>(assists.value);
-    }
-    if (shots.present) {
-      map['shots'] = Variable<int>(shots.value);
-    }
-    if (saves.present) {
-      map['saves'] = Variable<int>(saves.value);
-    }
-    if (cleanSheets.present) {
-      map['clean_sheets'] = Variable<int>(cleanSheets.value);
-    }
-    if (goalsConceded.present) {
-      map['goals_conceded'] = Variable<int>(goalsConceded.value);
-    }
-    if (appearances.present) {
-      map['appearances'] = Variable<int>(appearances.value);
-    }
-    if (minutesPlayed.present) {
-      map['minutes_played'] = Variable<int>(minutesPlayed.value);
-    }
-    if (ratingSum.present) {
-      map['rating_sum'] = Variable<double>(ratingSum.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('PlayerSeasonStatsCompanion(')
-          ..write('id: $id, ')
-          ..write('seasonId: $seasonId, ')
-          ..write('clubId: $clubId, ')
-          ..write('playerId: $playerId, ')
-          ..write('playerName: $playerName, ')
-          ..write('position: $position, ')
-          ..write('goals: $goals, ')
-          ..write('assists: $assists, ')
-          ..write('shots: $shots, ')
-          ..write('saves: $saves, ')
-          ..write('cleanSheets: $cleanSheets, ')
-          ..write('goalsConceded: $goalsConceded, ')
-          ..write('appearances: $appearances, ')
-          ..write('minutesPlayed: $minutesPlayed, ')
-          ..write('ratingSum: $ratingSum')
-          ..write(')'))
-        .toString();
-  }
-}
-
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -9359,14 +9457,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MatchResultsTable matchResults = $MatchResultsTable(this);
   late final $AiPlayersTable aiPlayers = $AiPlayersTable(this);
   late final $AdUsagesTable adUsages = $AdUsagesTable(this);
+  late final $PlayerSeasonStatsTable playerSeasonStats =
+      $PlayerSeasonStatsTable(this);
   late final $FacilityLevelsTable facilityLevels = $FacilityLevelsTable(this);
   late final $UserSettingsTable userSettings = $UserSettingsTable(this);
   late final $AchievementClaimsTable achievementClaims =
       $AchievementClaimsTable(this);
   late final $DailyStreakClaimsTable dailyStreakClaims =
       $DailyStreakClaimsTable(this);
-  late final $PlayerSeasonStatsTable playerSeasonStats =
-      $PlayerSeasonStatsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9384,11 +9482,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     matchResults,
     aiPlayers,
     adUsages,
+    playerSeasonStats,
     facilityLevels,
     userSettings,
     achievementClaims,
     dailyStreakClaims,
-    playerSeasonStats,
   ];
 }
 
@@ -12794,6 +12892,413 @@ typedef $$AdUsagesTableProcessedTableManager =
       AdUsage,
       PrefetchHooks Function()
     >;
+typedef $$PlayerSeasonStatsTableCreateCompanionBuilder =
+    PlayerSeasonStatsCompanion Function({
+      Value<int> id,
+      required int seasonId,
+      required int clubId,
+      required int playerId,
+      required String playerName,
+      required String position,
+      Value<int> goals,
+      Value<int> assists,
+      Value<int> shots,
+      Value<int> saves,
+      Value<int> cleanSheets,
+      Value<int> goalsConceded,
+      Value<int> appearances,
+      Value<int> minutesPlayed,
+      Value<double> ratingSum,
+    });
+typedef $$PlayerSeasonStatsTableUpdateCompanionBuilder =
+    PlayerSeasonStatsCompanion Function({
+      Value<int> id,
+      Value<int> seasonId,
+      Value<int> clubId,
+      Value<int> playerId,
+      Value<String> playerName,
+      Value<String> position,
+      Value<int> goals,
+      Value<int> assists,
+      Value<int> shots,
+      Value<int> saves,
+      Value<int> cleanSheets,
+      Value<int> goalsConceded,
+      Value<int> appearances,
+      Value<int> minutesPlayed,
+      Value<double> ratingSum,
+    });
+
+class $$PlayerSeasonStatsTableFilterComposer
+    extends Composer<_$AppDatabase, $PlayerSeasonStatsTable> {
+  $$PlayerSeasonStatsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seasonId => $composableBuilder(
+    column: $table.seasonId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playerId => $composableBuilder(
+    column: $table.playerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playerName => $composableBuilder(
+    column: $table.playerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get goals => $composableBuilder(
+    column: $table.goals,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get assists => $composableBuilder(
+    column: $table.assists,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get shots => $composableBuilder(
+    column: $table.shots,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get saves => $composableBuilder(
+    column: $table.saves,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cleanSheets => $composableBuilder(
+    column: $table.cleanSheets,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get goalsConceded => $composableBuilder(
+    column: $table.goalsConceded,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get appearances => $composableBuilder(
+    column: $table.appearances,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minutesPlayed => $composableBuilder(
+    column: $table.minutesPlayed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get ratingSum => $composableBuilder(
+    column: $table.ratingSum,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PlayerSeasonStatsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PlayerSeasonStatsTable> {
+  $$PlayerSeasonStatsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seasonId => $composableBuilder(
+    column: $table.seasonId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get clubId => $composableBuilder(
+    column: $table.clubId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get playerId => $composableBuilder(
+    column: $table.playerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get playerName => $composableBuilder(
+    column: $table.playerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get goals => $composableBuilder(
+    column: $table.goals,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get assists => $composableBuilder(
+    column: $table.assists,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get shots => $composableBuilder(
+    column: $table.shots,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get saves => $composableBuilder(
+    column: $table.saves,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cleanSheets => $composableBuilder(
+    column: $table.cleanSheets,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get goalsConceded => $composableBuilder(
+    column: $table.goalsConceded,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get appearances => $composableBuilder(
+    column: $table.appearances,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minutesPlayed => $composableBuilder(
+    column: $table.minutesPlayed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get ratingSum => $composableBuilder(
+    column: $table.ratingSum,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PlayerSeasonStatsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PlayerSeasonStatsTable> {
+  $$PlayerSeasonStatsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get seasonId =>
+      $composableBuilder(column: $table.seasonId, builder: (column) => column);
+
+  GeneratedColumn<int> get clubId =>
+      $composableBuilder(column: $table.clubId, builder: (column) => column);
+
+  GeneratedColumn<int> get playerId =>
+      $composableBuilder(column: $table.playerId, builder: (column) => column);
+
+  GeneratedColumn<String> get playerName => $composableBuilder(
+    column: $table.playerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<int> get goals =>
+      $composableBuilder(column: $table.goals, builder: (column) => column);
+
+  GeneratedColumn<int> get assists =>
+      $composableBuilder(column: $table.assists, builder: (column) => column);
+
+  GeneratedColumn<int> get shots =>
+      $composableBuilder(column: $table.shots, builder: (column) => column);
+
+  GeneratedColumn<int> get saves =>
+      $composableBuilder(column: $table.saves, builder: (column) => column);
+
+  GeneratedColumn<int> get cleanSheets => $composableBuilder(
+    column: $table.cleanSheets,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get goalsConceded => $composableBuilder(
+    column: $table.goalsConceded,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get appearances => $composableBuilder(
+    column: $table.appearances,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get minutesPlayed => $composableBuilder(
+    column: $table.minutesPlayed,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get ratingSum =>
+      $composableBuilder(column: $table.ratingSum, builder: (column) => column);
+}
+
+class $$PlayerSeasonStatsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PlayerSeasonStatsTable,
+          PlayerSeasonStat,
+          $$PlayerSeasonStatsTableFilterComposer,
+          $$PlayerSeasonStatsTableOrderingComposer,
+          $$PlayerSeasonStatsTableAnnotationComposer,
+          $$PlayerSeasonStatsTableCreateCompanionBuilder,
+          $$PlayerSeasonStatsTableUpdateCompanionBuilder,
+          (
+            PlayerSeasonStat,
+            BaseReferences<
+              _$AppDatabase,
+              $PlayerSeasonStatsTable,
+              PlayerSeasonStat
+            >,
+          ),
+          PlayerSeasonStat,
+          PrefetchHooks Function()
+        > {
+  $$PlayerSeasonStatsTableTableManager(
+    _$AppDatabase db,
+    $PlayerSeasonStatsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlayerSeasonStatsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PlayerSeasonStatsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PlayerSeasonStatsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> seasonId = const Value.absent(),
+                Value<int> clubId = const Value.absent(),
+                Value<int> playerId = const Value.absent(),
+                Value<String> playerName = const Value.absent(),
+                Value<String> position = const Value.absent(),
+                Value<int> goals = const Value.absent(),
+                Value<int> assists = const Value.absent(),
+                Value<int> shots = const Value.absent(),
+                Value<int> saves = const Value.absent(),
+                Value<int> cleanSheets = const Value.absent(),
+                Value<int> goalsConceded = const Value.absent(),
+                Value<int> appearances = const Value.absent(),
+                Value<int> minutesPlayed = const Value.absent(),
+                Value<double> ratingSum = const Value.absent(),
+              }) => PlayerSeasonStatsCompanion(
+                id: id,
+                seasonId: seasonId,
+                clubId: clubId,
+                playerId: playerId,
+                playerName: playerName,
+                position: position,
+                goals: goals,
+                assists: assists,
+                shots: shots,
+                saves: saves,
+                cleanSheets: cleanSheets,
+                goalsConceded: goalsConceded,
+                appearances: appearances,
+                minutesPlayed: minutesPlayed,
+                ratingSum: ratingSum,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int seasonId,
+                required int clubId,
+                required int playerId,
+                required String playerName,
+                required String position,
+                Value<int> goals = const Value.absent(),
+                Value<int> assists = const Value.absent(),
+                Value<int> shots = const Value.absent(),
+                Value<int> saves = const Value.absent(),
+                Value<int> cleanSheets = const Value.absent(),
+                Value<int> goalsConceded = const Value.absent(),
+                Value<int> appearances = const Value.absent(),
+                Value<int> minutesPlayed = const Value.absent(),
+                Value<double> ratingSum = const Value.absent(),
+              }) => PlayerSeasonStatsCompanion.insert(
+                id: id,
+                seasonId: seasonId,
+                clubId: clubId,
+                playerId: playerId,
+                playerName: playerName,
+                position: position,
+                goals: goals,
+                assists: assists,
+                shots: shots,
+                saves: saves,
+                cleanSheets: cleanSheets,
+                goalsConceded: goalsConceded,
+                appearances: appearances,
+                minutesPlayed: minutesPlayed,
+                ratingSum: ratingSum,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PlayerSeasonStatsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PlayerSeasonStatsTable,
+      PlayerSeasonStat,
+      $$PlayerSeasonStatsTableFilterComposer,
+      $$PlayerSeasonStatsTableOrderingComposer,
+      $$PlayerSeasonStatsTableAnnotationComposer,
+      $$PlayerSeasonStatsTableCreateCompanionBuilder,
+      $$PlayerSeasonStatsTableUpdateCompanionBuilder,
+      (
+        PlayerSeasonStat,
+        BaseReferences<
+          _$AppDatabase,
+          $PlayerSeasonStatsTable,
+          PlayerSeasonStat
+        >,
+      ),
+      PlayerSeasonStat,
+      PrefetchHooks Function()
+    >;
 typedef $$FacilityLevelsTableCreateCompanionBuilder =
     FacilityLevelsCompanion Function({
       Value<int> id,
@@ -13684,6 +14189,8 @@ class $AppDatabaseManager {
       $$AiPlayersTableTableManager(_db, _db.aiPlayers);
   $$AdUsagesTableTableManager get adUsages =>
       $$AdUsagesTableTableManager(_db, _db.adUsages);
+  $$PlayerSeasonStatsTableTableManager get playerSeasonStats =>
+      $$PlayerSeasonStatsTableTableManager(_db, _db.playerSeasonStats);
   $$FacilityLevelsTableTableManager get facilityLevels =>
       $$FacilityLevelsTableTableManager(_db, _db.facilityLevels);
   $$UserSettingsTableTableManager get userSettings =>

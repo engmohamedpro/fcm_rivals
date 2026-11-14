@@ -72,7 +72,10 @@ extension SeasonFixturePlayOps on SeasonStore {
       contributions: contributionsOf(
         events: session.engine.events,
         players: session.engine.playersOf(MatchSide.home),
-        teamId: session.userClubId,
+        // Engine events carry the real club ids and the engine's home
+        // side follows the fixture (user home = MatchSide.home), so the
+        // home block filters by the fixture's home club id.
+        teamId: fixture.isHome ? season.userClubId : fixture.opponentClubId,
         teamGoalsConceded: state.scoreAway,
       ),
     );
@@ -83,7 +86,7 @@ extension SeasonFixturePlayOps on SeasonStore {
       contributions: contributionsOf(
         events: session.engine.events,
         players: session.engine.playersOf(MatchSide.away),
-        teamId: fixture.opponentClubId,
+        teamId: fixture.isHome ? fixture.opponentClubId : season.userClubId,
         teamGoalsConceded: state.scoreHome,
       ),
     );
