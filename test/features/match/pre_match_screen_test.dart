@@ -406,7 +406,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('تشكيل الخصم'), findsOneWidget);
+    // T-0131: the "تشكيل الخصم" label is gone — the opponent's crest
+    // and name lead their starting XI card in the RTL layout too.
+    expect(find.text('Al Ahly'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

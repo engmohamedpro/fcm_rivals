@@ -163,13 +163,14 @@ void main() {
       expect(find.text('WIN'), findsOneWidget);
       expect(find.text('STRENGTH'), findsNothing);
       // The formation section sits below the fold: scroll the analysis.
+      // T-0131: the "Their starting XI" label is gone — the opponent's
+      // crest + name lead the card now, so scroll to the pitch itself.
       await tester.dragUntilVisible(
-        find.text('Their starting XI'),
+        find.byType(SquadPitch),
         find.byType(Scrollable).first,
         const Offset(0, -120),
       );
       await _flush(tester, wait: const Duration(milliseconds: 200));
-      expect(find.text('Their starting XI'), findsOneWidget);
       // All eleven opponent starters stand on the pitch surface.
       expect(find.byType(SquadPitch), findsOneWidget);
       expect(
@@ -180,16 +181,17 @@ void main() {
         11,
       );
 
-      // Continue into the tactics phase (GDD 10.4): the SAME screen as the
-      // Tactics tab — a compact control card (team rating + TACTICS button)
-      // over the pitch with per-player stats and stamina bars, then bench
-      // and reserves — but match-only.
+      // Continue into the tactics phase (GDD 10.4): the SAME screen as
+      // the Tactics tab — a compact control card (team rating + TACTICS
+      // button) over the pitch with per-player stats and stamina bars,
+      // then bench and reserves — but match-only. T-0132: the intro
+      // title block is gone; the phase opens straight onto the surface.
       await tester.tap(find.text('CONTINUE'));
       await _flush(tester, wait: const Duration(milliseconds: 600));
-      expect(find.text('Set up for this match'), findsOneWidget);
       expect(find.text('TEAM RATING'), findsOneWidget);
-      // The setup label and the control card's TACTICS button.
-      expect(find.text('TACTICS'), findsNWidgets(2));
+      // The control card's TACTICS button — the setup summary row is
+      // gone on match surfaces (T-0092), so the word appears once.
+      expect(find.text('TACTICS'), findsOneWidget);
 
       // The tactic options live in a bottom sheet behind the TACTICS
       // button; the label and the button share the word, so tap the
@@ -214,7 +216,10 @@ void main() {
       // copy table's naming pass) and the default mid-slider band
       // pills read '3 stay back' (rest defence) — the slider bands
       // come from the axis copy table, not the enum display names.
-      // No placeholder state line remains.
+      // T-0128: the sheet is tabbed — those rows live on the
+      // Transitions tab, not the opening In-Possession page.
+      await tester.tap(find.text('Transitions'));
+      await _flush(tester, wait: const Duration(milliseconds: 400));
       expect(find.text('COUNTER-PRESS'), findsOneWidget);
       expect(find.text('ON RECOVERY'), findsOneWidget);
       expect(find.text('REST DEFENCE'), findsOneWidget);
