@@ -634,7 +634,14 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 
         // T-0130: the season's statistical leaders under the table —
         // the golden boot, playmaker, best-rated and clean-sheet races.
-        _SeasonLeaderboards(clubName: clubName),
+        // T-0148: each row also carries the player's club crest and
+        // name, resolved from the same standings/crest maps the table
+        // above already watches.
+        _SeasonLeaderboards(
+          clubName: clubName,
+          standings: standings ?? const <StandingEntry>[],
+          crests: crests,
+        ),
       ],
     );
   }
@@ -644,18 +651,41 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
 /// under the standings table, every number accumulated from the SAME
 /// MatchEvents the ratings derive from (schema v18, GDD 26.4 — never
 /// side calculations). Hidden entirely until the first match commits
-/// stats (no empty placeholders).
+/// stats (no empty placeholders). T-0148: every row shows the player's
+/// club crest and name next to the player name (owner request
+/// 2026-11-14) — the club maps come from the standings the table above
+/// already loaded, so no extra queries.
 class _SeasonLeaderboards extends ConsumerWidget {
-  const _SeasonLeaderboards({this.clubName});
+  const _SeasonLeaderboards({
+    this.clubName,
+    this.standings = const <StandingEntry>[],
+    this.crests = const <int, CrestSpec>{},
+  });
 
   /// The user's club name — kept for the follow-up that marks the
   /// user's own players in gold (needs the club-id mapping).
   final String? clubName;
 
+  /// The season's standings — club names by [StandingEntry.clubId].
+  final List<StandingEntry> standings;
+
+  /// Club crests by club id (null while loading; the row keeps a fixed
+  /// slot so nothing shifts when they land).
+  final Map<int, CrestSpec> crests;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(playerSeasonStatsProvider).valueOrNull;
     if (stats == null || stats.isEmpty) return const SizedBox.shrink();
+
+    // Club identity by club id (T-0148): name from the standings, crest
+    // from the shared map. A club missing from both falls back to a
+    // bare dash so the row still renders aligned.
+    final clubNames = {
+      for (final e in standings) e.clubId: e.name,
+    };
+    (String, CrestSpec?) clubOf(int clubId) =>
+        (clubNames[clubId] ?? '-', crests[clubId]);
 
     // Player boards — the standard award set. Minimum appearances gate
     // the average-rating board so one great match cannot top it.
@@ -697,7 +727,8 @@ class _SeasonLeaderboards extends ConsumerWidget {
           icon: Icons.sports_soccer_rounded,
           title: 'Goals',
           rows: [
-            for (final s in scorers) (s.playerName, '${s.goals}'),
+            for (final s in scorers)
+              (s.playerName, '${s.goals}', clubOf(s.clubId)),
           ],
         ),
         if (playmakers.isNotEmpty) ...[
@@ -706,7 +737,8 @@ class _SeasonLeaderboards extends ConsumerWidget {
             icon: Icons.auto_awesome_rounded,
             title: 'Assists',
             rows: [
-              for (final s in playmakers) (s.playerName, '${s.assists}'),
+              for (final s in playmakers)
+                (s.playerName, '${s.assists}', clubOf(s.clubId)),
             ],
           ),
         ],
@@ -720,6 +752,7 @@ class _SeasonLeaderboards extends ConsumerWidget {
                 (
                   s.playerName,
                   (s.ratingSum / s.appearances).toStringAsFixed(2),
+                  clubOf(s.clubId),
                 ),
             ],
           ),
@@ -731,7 +764,7 @@ class _SeasonLeaderboards extends ConsumerWidget {
             title: 'Clean Sheets',
             rows: [
               for (final s in keepers)
-                (s.playerName, '${s.cleanSheets}'),
+                (s.playerName, '${s.cleanSheets}', clubOf(s.clubId)),
             ],
           ),
         ],
@@ -740,7 +773,9 @@ class _SeasonLeaderboards extends ConsumerWidget {
   }
 }
 
-/// One leaderboard panel: icon + title header, top-3 rows.
+/// One leaderboard panel: icon + title header, top-3 rows. Each row
+/// (T-0148): rank, player name with the club crest and club name
+/// beneath it, then the stat value.
 class _LeaderboardPanel extends StatelessWidget {
   const _LeaderboardPanel({
     required this.icon,
@@ -751,8 +786,8 @@ class _LeaderboardPanel extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  /// (name, value) pairs.
-  final List<(String, String)> rows;
+  /// (name, value, (clubName, crest)) triples.
+  final List<(String, String, (String, CrestSpec?))> rows;
 
   @override
   Widget build(BuildContext context) {
@@ -777,7 +812,7 @@ class _LeaderboardPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          for (final (i, (name, value)) in rows.indexed)
+          for (final (i, (name, value, club)) in rows.indexed)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(
@@ -793,16 +828,42 @@ class _LeaderboardPanel extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 4),
+                  // Fixed crest slot: an empty SizedBox while the crest
+                  // map loads so rows never shift when it lands.
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: club.$2 == null
+                        ? null
+                        : FcmCrest(spec: club.$2!, width: 20),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          club.$1,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: FcmColors.textDim,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Text(
