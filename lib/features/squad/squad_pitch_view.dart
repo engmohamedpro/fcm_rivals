@@ -711,3 +711,242 @@ class _GridCellTile extends StatelessWidget {
     );
   }
 }
+
+/// Placeholder for an unassigned bench / reserves slot: a ghost mini
+/// card — same footprint and style as the real ones beside it, dimmed
+/// and wordless (no overall, position or name).
+class _EmptyBenchCard extends StatelessWidget {
+  const _EmptyBenchCard();
+
+  static const double width = SquadCardRow.cardWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: 0.45,
+      child: FcmMiniCard(
+        overall: 0,
+        position: '',
+        name: '',
+        rarity: CardRarity.rare,
+        width: width,
+        ghost: true,
+      ),
+    );
+  }
+}
+
+/// Palette for the chemistry lines (owner request 2026-11-11): a pair
+/// sharing ONE chemistry type (nationality or club) is joined by a
+/// white line, a pair sharing BOTH by a golden line. The dark grass
+/// bands keep both readable with the shared dark under-stroke.
+const Color _kSingleTypeLinkColor = Color(0xFFFFFFFF);
+const Color _kDoubleTypeLinkColor = Color(0xFFFFD54F);
+
+/// Draws the chemistry lines (same-nationality / same-club links) under
+/// the cards. When the formation changes the cards glide to their new
+/// spots, and the line ends follow them with the same curve and
+/// duration.
+class _ChemistryLinksLayer extends StatefulWidget {
+  const _ChemistryLinksLayer({
+    required this.nationalities,
+    required this.clubs,
+    required this.centres,
+    this.icons = const {},
+  });
+
+  final Map<int, String?> nationalities;
+  final Map<int, String?> clubs;
+  final Map<int, Offset> centres;
+
+  /// Icon-player slots (owner request 2026-11-12): wildcards linking to
+  /// every other slot in BOTH chemistry kinds.
+  final Map<int, bool> icons;
+
+  @override
+  State<_ChemistryLinksLayer> createState() => _ChemistryLinksLayerState();
+}
+
+class _ChemistryLinksLayerState extends State<_ChemistryLinksLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glide = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  );
+  late Map<int, Offset> _from = widget.centres;
+  late Map<int, Offset> _to = widget.centres;
+
+  static bool _sameCentres(Map<int, Offset> a, Map<int, Offset> b) {
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      if (b[e.key] != e.value) return false;
+    }
+    return true;
+  }
+
+  Map<int, Offset> _current() {
+    final t = Curves.easeOutCubic.transform(_glide.value);
+    return {
+      for (final e in _to.entries)
+        e.key: Offset.lerp(_from[e.key] ?? e.value, e.value, t)!,
+    };
+  }
+
+  @override
+  void didUpdateWidget(_ChemistryLinksLayer old) {
+    super.didUpdateWidget(old);
+    if (!_sameCentres(_to, widget.centres)) {
+      _from = _current();
+      _to = widget.centres;
+      _glide.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _glide.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final links = chemistryLinks(
+      nationalities: widget.nationalities,
+      clubs: widget.clubs,
+      centres: {
+        for (final e in _to.entries) e.key: (x: e.value.dx, y: e.value.dy),
+      },
+      icons: widget.icons,
+    );
+    return AnimatedBuilder(
+      animation: _glide,
+      builder: (context, _) => CustomPaint(
+        painter: _ChemistryLinksPainter(
+          links: links,
+          centres: _current(),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChemistryLinksPainter extends CustomPainter {
+  const _ChemistryLinksPainter({required this.links, required this.centres});
+
+  final List<ChemistryLink> links;
+  final Map<int, Offset> centres;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final link in links) {
+      final a = centres[link.a];
+      final b = centres[link.b];
+      if (a == null || b == null) continue;
+      // Owner request 2026-11-11: one shared chemistry type → white,
+      // both types (nationality AND club) → golden. The kind set is
+      // the pair's relationship, so the colour is stable even when
+      // only one dimension's tree drew the edge.
+      final baseColor = link.kinds.length >= 2
+          ? _kDoubleTypeLinkColor
+          : _kSingleTypeLinkColor;
+      final color = baseColor.withValues(alpha: 0.7);
+      // A dark under-stroke keeps the colour legible on the grass bands.
+      canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..strokeWidth = 5.5
+          ..strokeCap = StrokeCap.round
+          ..color = Colors.black.withValues(alpha: 0.35),
+      );
+      canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round
+          ..color = color,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ChemistryLinksPainter old) => true;
+}
+
+class _PitchPainter extends CustomPainter {
+  const _PitchPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final rect = Offset.zero & size;
+
+    // Grass with alternating mown bands.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF41502F), Color(0xFF57683F)],
+        ).createShader(rect),
+    );
+    const bands = 10;
+    for (var i = 0; i < bands; i += 2) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, h / bands * i, w, h / bands),
+        Paint()..color = Colors.white.withValues(alpha: 0.045),
+      );
+    }
+
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = Colors.white.withValues(alpha: 0.6);
+    final m = w * 0.05;
+    final field = Rect.fromLTRB(m, m, w - m, h - m);
+    canvas.drawRect(field, line);
+    canvas.drawLine(Offset(m, h / 2), Offset(w - m, h / 2), line);
+    canvas.drawCircle(Offset(w / 2, h / 2), w * 0.14, line);
+    canvas.drawCircle(Offset(w / 2, h / 2), 3, Paint()..color = line.color);
+
+    // Penalty and goal areas, top and bottom.
+    final boxW = w * 0.56, boxH = h * 0.14;
+    final goalW = w * 0.28, goalH = h * 0.055;
+    for (final top in [true, false]) {
+      final y0 = top ? m : h - m - boxH;
+      canvas.drawRect(Rect.fromLTWH((w - boxW) / 2, y0, boxW, boxH), line);
+      final gy = top ? m : h - m - goalH;
+      canvas.drawRect(Rect.fromLTWH((w - goalW) / 2, gy, goalW, goalH), line);
+      // penalty arc
+      final arcCenter = Offset(
+        w / 2,
+        top ? m + boxH * 0.72 : h - m - boxH * 0.72,
+      );
+      final arcRect = Rect.fromCircle(center: arcCenter, radius: w * 0.11);
+      canvas.drawArc(
+        arcRect,
+        top ? 0.45 : math.pi + 0.45,
+        math.pi - 0.9,
+        false,
+        line,
+      );
+    }
+
+    // Floodlight vignette.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: Alignment.center,
+          radius: 0.95,
+          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.35)],
+          stops: const [0.55, 1.0],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PitchPainter old) => false;
+}
