@@ -155,14 +155,19 @@ void main() {
 
     expect(find.text('TEAM RATING'), findsOneWidget);
     // The formation picker sits DIRECTLY on the control card as a
-    // dropdown showing the live shape — no 'FORMATION' info label
-    // anymore, and no formation inside the tactic options sheet.
+    // dropdown showing the live shape. With the setup-summary row on
+    // (this host's default — the pre-match/live surface) the shape
+    // reads TWICE: the summary's FORMATION block and the dropdown's
+    // live value. The Team tab passes showSetupSummary:false and sees
+    // only the dropdown's read.
     expect(find.byType(FcmDropdown<String>), findsOneWidget);
-    expect(find.text('4-3-3'), findsOneWidget);
-    expect(find.text('FORMATION'), findsNothing);
-    // The setup label and the control card's TACTICS button.
+    expect(find.text('4-3-3'), findsNWidgets(2));
+    expect(find.text('FORMATION'), findsOneWidget);
+    // The setup label and the control card's TACTICS button. The
+    // MENTALITY chip is gone from the setup card (owner request
+    // 2026-11-13 — mentality stays a live-match concern only).
     expect(find.text('TACTICS'), findsNWidgets(2));
-    expect(find.text('MENTALITY'), findsOneWidget);
+    expect(find.text('MENTALITY'), findsNothing);
     expect(find.text('Auto Pick'), findsOneWidget);
 
     // The scoreboard row opens with the rating and closes with the
@@ -174,13 +179,14 @@ void main() {
     expect((chem.dy - rating.dy).abs(), lessThan(6));
     expect(rating.dy, lessThan(tacticsLabel.dy));
 
-    // The formation dropdown sits under the setup row, and the action
-    // buttons on the full-width row under it.
+    // The formation dropdown sits under the setup row, with the
+    // TACTICS button BESIDE it (same row, post-2026-11-13 layout); the
+    // Auto Pick action (with Clear) is the row under that.
     final ratingBottom = tester.getBottomLeft(find.text('TEAM RATING'));
-    final formation = tester.getTopLeft(find.text('4-3-3'));
+    final formation = tester.getBottomLeft(find.text('4-3-3').last);
     final autoPick = tester.getTopLeft(find.text('Auto Pick'));
     // The TACTICS action button (the 14pt one) shares its row with
-    // Auto Pick.
+    // the formation dropdown.
     final tacticsButton = tester.getTopLeft(
       find
           .descendant(
@@ -190,8 +196,10 @@ void main() {
           .first,
     );
     expect(formation.dy, greaterThan(ratingBottom.dy));
+    // Same row: the dropdown's taller body centers against the button
+    // (~17px top-edge offset at this text scale).
+    expect((tacticsButton.dy - formation.dy).abs(), lessThan(20));
     expect(autoPick.dy, greaterThan(formation.dy));
-    expect((tacticsButton.dy - autoPick.dy).abs(), lessThan(8));
   });
 
   testWidgets('bench and reserves always show their full quota of slots', (
@@ -210,8 +218,9 @@ void main() {
     expect(find.byType(FcmMiniCard), findsNWidgets(1 + 11 + 6 + 5));
 
     // The bench placeholders sit after the real bench card in the bench
-    // strip: its surname reads '1' (from 'Player 1').
-    final cardLeft = tester.getTopLeft(find.text('1'));
+    // strip: the mini card shows the SURNAME with the leading initial
+    // ('P. 1' from 'Player 1' — formatMiniCardName).
+    final cardLeft = tester.getTopLeft(find.text('P. 1'));
     final firstEmpty = tester.getTopLeft(find.byType(FcmMiniCard).at(1 + 11));
     expect(firstEmpty.dx, greaterThan(cardLeft.dx));
 
@@ -250,21 +259,26 @@ void main() {
   testWidgets('stat rows render only when shown', (WidgetTester tester) async {
     final bench = [_card(1, Position.st)];
 
+    // The card redesign (7c40e86, owner-approved) OMITS attribute stat
+    // rows from mini cards — ATT/SUP/DEF never render on the card face
+    // whatever showStats says. The flag still rides along for the
+    // pitch footprint math (pitch_layout.dart) and the API contract;
+    // the card simply draws the shield + formatted name (+ stamina).
     await tester.pumpWidget(_host(bench: bench));
     await tester.pumpAndSettle();
-    expect(find.text('ATT'), findsOneWidget);
-    expect(find.text('SUP'), findsOneWidget);
-    expect(find.text('DEF'), findsOneWidget);
+    expect(find.text('ATT'), findsNothing);
+    expect(find.text('SUP'), findsNothing);
+    expect(find.text('DEF'), findsNothing);
+    // The card still renders its identity: the formatted name.
+    expect(find.text('P. 1'), findsOneWidget);
 
-    // The Tactics tab's shape: no stats, no stamina — just the shield
-    // and the surname.
+    // And hiding the flags changes nothing the card draws.
     await tester.pumpWidget(
       _host(bench: bench, showStamina: false, showStats: false),
     );
     await tester.pumpAndSettle();
     expect(find.text('ATT'), findsNothing);
-    expect(find.text('SUP'), findsNothing);
-    expect(find.text('DEF'), findsNothing);
+    expect(find.text('P. 1'), findsOneWidget);
   });
 
   testWidgets('tactic options sheet: three tabs, no mentality, one '
@@ -442,18 +456,27 @@ void main() {
     // Tabbed (owner request 2026-11-13): only the FIRST tab's five
     // sliders render at once; the sheet lives inside its height cap
     // with every row expanded (no overflow exception escapes the
-    // pump).
+    // pump). Every instruction is a continuous slider now — the old
+    // final-third chips and the offside toggle chip became slider
+    // bands (Shot Selection / Crossing axes on the later tabs).
     expect(find.byType(FcmScaleSlider), findsNWidgets(5));
     expect(tester.takeException(), isNull);
 
-    // The final third stays a categorical CHIP row: all four styles
-    // render as chips, not a slider.
-    expect(find.text('Work Ball into Box'), findsOneWidget);
-    expect(find.text('Early Crosses'), findsOneWidget);
-    expect(find.text('Shoot on Sight'), findsOneWidget);
+    // The five axes of the In Possession pane, by their slider names
+    // (the row label renders uppercased by _TacticSliderRowState).
+    expect(find.text('BUILD-UP'), findsOneWidget);
+    expect(find.text('TEMPO'), findsOneWidget);
+    expect(find.text('WIDTH'), findsOneWidget);
+    expect(find.text('FINAL THIRD'), findsOneWidget);
+    expect(find.text('CROSSING'), findsOneWidget);
 
-    // The offside-trap toggle chip stays (Off at the default).
-    expect(find.text('Off'), findsOneWidget);
+    // The default readouts: every axis sits at its centre band —
+    // 'Mixed' (build-up), 'Standard' (tempo, width, crossing) and
+    // 'Balanced' (final third; a second 'Balanced' chip comes from the
+    // preset row, so at-least checks keep this about the sliders).
+    expect(find.text('Mixed'), findsAtLeastNWidgets(1));
+    expect(find.text('Standard'), findsAtLeastNWidgets(3));
+    expect(find.text('Balanced'), findsAtLeastNWidgets(1));
 
     // T-0079 (owner decision 2026-11-09): names only — the possession
     // estimate and the rest-defence hint are GONE from the sheet.
@@ -508,21 +531,25 @@ void main() {
     final pressing = find.byType(FcmScaleSlider).at(1);
     await tester.ensureVisible(pressing);
     await tester.pumpAndSettle();
-    final track = tester.getRect(pressing);
+    final sliderRect = tester.getRect(pressing);
+    // The gesture surface is the TRACK band (the slider's bottom
+    // quarter) — the slider's centre lands in the empty pill band and
+    // misses it.
     final centre = Offset(
-      track.left + track.width / 2,
-      track.top + track.height / 2,
+      sliderRect.left + sliderRect.width / 2,
+      sliderRect.top + sliderRect.height * 0.75,
     );
 
-    // Default: the pill reads the localized 'Mid' (pressMid).
+    // Default: the pill reads the centre band ('Mid press' — the
+    // five-band copy of the pressing axis).
     expect(
-      find.descendant(of: pressing, matching: find.text('Mid')),
+      find.descendant(of: pressing, matching: find.text('Mid press')),
       findsOneWidget,
     );
 
     // Drag to the max (aggressive) end: ONE commit for the whole
     // gesture — never per intermediate tick.
-    await tester.dragFrom(centre, Offset(track.width / 2, 0));
+    await tester.dragFrom(centre, Offset(sliderRect.width / 2, 0));
     await tester.pumpAndSettle();
 
     expect(committed, hasLength(1));
@@ -530,15 +557,19 @@ void main() {
       committed.last.outOfPossession.pressing,
       PressingIntensity.high,
     );
-    // The pill names the snapped step ('High' — pressHigh) and the
-    // visible summary is the High Press bundle (GDD 10.3), in both the
-    // row and the section header.
+    // The pill names the MAX band the finger landed on
+    // ('Relentless press' — the 80-99 fifth band of the axis); the
+    // centre band is gone. The committed enum still snaps to High
+    // (the four-step engine scale reads the slider's top zone).
     expect(
-      find.descendant(of: pressing, matching: find.text('High')),
-      findsNWidgets(2), // the pill + the scale's aggressive-end label
+      find.descendant(
+        of: pressing,
+        matching: find.text('Relentless press'),
+      ),
+      findsOneWidget,
     );
     expect(
-      find.descendant(of: pressing, matching: find.text('Mid')),
+      find.descendant(of: pressing, matching: find.text('Mid press')),
       findsNothing,
     );
     // T-0079: per-row effect summaries are gone (names only).
@@ -587,18 +618,21 @@ void main() {
     final buildUp = find.byType(FcmScaleSlider).at(0);
     await tester.ensureVisible(buildUp);
     await tester.pumpAndSettle();
-    final track = tester.getRect(buildUp);
+    final sliderRect = tester.getRect(buildUp);
     await tester.dragFrom(
-      Offset(track.left + track.width / 2, track.top + track.height / 2),
-      Offset(track.width / 2, 0),
+      Offset(
+        sliderRect.left + sliderRect.width / 2,
+        sliderRect.top + sliderRect.height * 0.75,
+      ),
+      Offset(sliderRect.width / 2, 0),
     );
     await tester.pumpAndSettle();
 
     expect(committed, hasLength(1));
     expect(committed.last.inPossession.buildUp, BuildUpStyle.longBall);
     expect(
-      find.descendant(of: buildUp, matching: find.text('Long Ball')),
-      findsNWidgets(2), // the pill + the scale's aggressive-end label
+      find.descendant(of: buildUp, matching: find.text('Long ball')),
+      findsOneWidget, // the pill reads the axis band word
     );
     // T-0079: per-row effect summaries are gone (names only).
     expect(find.textContaining('Passing -9%'), findsNothing);
@@ -641,13 +675,21 @@ void main() {
     await tester.tap(find.text('TACTICS'));
     await tester.pumpAndSettle();
 
-    final counterPress = find.byType(FcmScaleSlider).at(6);
+    // Tabbed sheet: the counter-press axis lives on the TRANSITIONS
+    // tab, first slider (counter-press, attack on recovery, rest
+    // defence) — switch there first.
+    await tester.tap(find.text('Transitions'));
+    await tester.pumpAndSettle();
+    final counterPress = find.byType(FcmScaleSlider).at(0);
     await tester.ensureVisible(counterPress);
     await tester.pumpAndSettle();
-    final track = tester.getRect(counterPress);
+    final sliderRect = tester.getRect(counterPress);
     await tester.dragFrom(
-      Offset(track.left + track.width / 2, track.top + track.height / 2),
-      Offset(track.width / 2, 0),
+      Offset(
+        sliderRect.left + sliderRect.width / 2,
+        sliderRect.top + sliderRect.height * 0.75,
+      ),
+      Offset(sliderRect.width / 2, 0),
     );
     await tester.pumpAndSettle();
 
@@ -656,9 +698,9 @@ void main() {
     expect(
       find.descendant(
         of: counterPress,
-        matching: find.text('Immediate Counter-Press'),
+        matching: find.text('Instant counter-press'),
       ),
-      findsNWidgets(2), // the pill + the scale's aggressive-end label
+      findsOneWidget, // the pill reads the axis band word
     );
     // T-0079: per-row effect summaries are gone (names only).
     expect(find.textContaining('Stamina use +14%'), findsNothing);
@@ -705,24 +747,22 @@ void main() {
     await tester.pumpAndSettle();
 
     // Arabic ambient direction, tabbed sheet (owner request
-    // 2026-11-13): the first tab's sliders read their localized pills
-    // — 'متوازن' names the shot-selection pill at its default — and
-    // the localized band extremes render on every scale.
+    // 2026-11-13): the first tab's five sliders render, every pill on
+    // its default centre band — 'متوازن' names the Final Third pill
+    // (slider index 3 of the In Possession pane).
     expect(
       find.descendant(of: find.byType(FcmScaleSlider).at(3),
           matching: find.text('متوازن')),
       findsOneWidget,
     );
 
-    // T-0065: the nine axis labels read Arabic in the sheet — the
-    // pressing row's label (uppercased by _SliderRow).
-    expect(find.text('الضغط'), findsOneWidget);
-    // The final-third categorical chips read Arabic.
-    expect(find.text('تمريرات داخل المنطقة'), findsOneWidget);
-    expect(find.text('عرضيات مبكرة'), findsOneWidget);
-    expect(find.text('التسديد عند أول فرصة'), findsOneWidget);
-    // The offside-trap toggle reads إيقاف at the default (off).
-    expect(find.text('إيقاف'), findsOneWidget);
+    // T-0065: the axis labels read Arabic in the sheet — the Final
+    // Third row's label on this pane.
+    expect(find.text('الثلث الأخير'), findsOneWidget);
+    // The old categorical chips and the offside toggle are sliders on
+    // the later tabs now — nothing of them renders on this pane.
+    expect(find.text('تمريرات داخل المنطقة'), findsNothing);
+    expect(find.text('إيقاف'), findsNothing);
     // T-0079: the readouts are gone in Arabic too (names only).
     expect(find.textContaining('الاستحواذ المتوقع'), findsNothing);
     expect(
@@ -734,20 +774,24 @@ void main() {
     // there first; it is the tab's second slider. It mirrors: the
     // aggressive (max) end sits at the LEFT, so dragging LEFT from the
     // centre commits the same High Press enum as the LTR drag to the
-    // right. Its default pill reads the localized 'متوسط' (T-0065).
+    // right. Its default pill reads the localized centre band
+    // 'ضغط متوسط' (T-0065).
     await tester.tap(find.text('بدون الاستحواذ'));
     await tester.pumpAndSettle();
     final pressing = find.byType(FcmScaleSlider).at(1);
     await tester.ensureVisible(pressing);
     await tester.pumpAndSettle();
     expect(
-      find.descendant(of: pressing, matching: find.text('متوسط')),
+      find.descendant(of: pressing, matching: find.text('ضغط متوسط')),
       findsOneWidget,
     );
-    final track = tester.getRect(pressing);
+    final sliderRect = tester.getRect(pressing);
     await tester.dragFrom(
-      Offset(track.left + track.width / 2, track.top + track.height / 2),
-      Offset(-track.width / 2, 0),
+      Offset(
+        sliderRect.left + sliderRect.width / 2,
+        sliderRect.top + sliderRect.height * 0.75,
+      ),
+      Offset(-sliderRect.width / 2, 0),
     );
     await tester.pumpAndSettle();
 
@@ -758,10 +802,10 @@ void main() {
       reason: 'the RTL mirrored drag commits the same enum as LTR',
     );
     expect(
-      find.descendant(of: pressing, matching: find.text('مرتفع')),
-      findsNWidgets(2), // the pill + the mirrored aggressive-end label
+      find.descendant(of: pressing, matching: find.text('ضغط شرس')),
+      findsOneWidget, // the pill reads the max Arabic band (80-99)
     );
-    expect(find.descendant(of: pressing, matching: find.text('متوسط')),
+    expect(find.descendant(of: pressing, matching: find.text('ضغط متوسط')),
         findsNothing);
     // T-0079: per-row effect summaries are gone in Arabic too.
     expect(find.textContaining('Defence +34%'), findsNothing);
@@ -923,10 +967,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('TEAM RATING'), findsOneWidget);
-      expect(find.text('MENTALITY'), findsOneWidget);
-      // 'Balanced' twice: the TACTICS info block's value (the default
-      // style's own label) and the MENTALITY block's value.
-      expect(find.text('Balanced'), findsNWidgets(2));
+      // The MENTALITY chip is gone from the setup summary (owner
+      // request 2026-11-13): the row carries the tactics only.
+      expect(find.text('MENTALITY'), findsNothing);
+      // The summary's one 'Balanced': the default tactics label.
+      expect(find.text('Balanced'), findsOneWidget);
       expect(find.text('TACTICS'), findsNWidgets(2));
     },
   );
@@ -1009,22 +1054,19 @@ void main() {
       await tester.pumpWidget(_host(xi: xi));
       await tester.pumpAndSettle();
 
-      // The capsule container: dark translucent surface + thin gold
-      // border, 28px tall — the premium pill the owner asked for.
+      // The chemistry reading sits on the CONTROL CARD (T-0080 moved
+      // it off the pitch): the gold link icon + dim uppercase label
+      // over the big count-up value — a plain column, no pill
+      // decoration (the old glass capsule went with the pitch badge).
       final pitch = find.byType(SquadPitch);
-      final capsule = find.ancestor(
-        of: find.text('CHEMISTRY'),
-        matching: find.byType(Container),
-      );
       expect(
-        find.descendant(of: pitch, matching: capsule),
-        findsOneWidget,
+        find.descendant(of: pitch, matching: find.text('CHEMISTRY')),
+        findsNothing,
       );
-      final container = tester.widget<Container>(capsule.first);
-      final decoration = container.decoration as BoxDecoration;
-      expect(decoration.border?.top.color, FcmColors.gold.withValues(alpha: 0.35));
-      expect(decoration.color, FcmColors.surface.withValues(alpha: 0.85));
-      expect(container.constraints?.maxHeight, lessThanOrEqualTo(30));
+      expect(find.text('CHEMISTRY'), findsOneWidget);
+      expect(find.byIcon(Icons.link_rounded), findsOneWidget);
+      // +4%: 1% (2 Egypt) + 3% (4 Brazil) — the owner's own example.
+      expect(find.text('+4%'), findsOneWidget);
     },
   );
 }

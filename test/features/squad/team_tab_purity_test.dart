@@ -139,8 +139,10 @@ void main() {
     await pumpSquad(tester);
 
     // THE purity contract: no injury badge renders anywhere on the
-    // management surface.
+    // management surface (the pool strip included — fixed 2026-11-14:
+    // the pool SquadCardRow missed showCondition).
     expect(find.byType(InjuryBadge), findsNothing);
+
     // And no inertness: the injured player is wrapped in a normal
     // SquadDraggable — the manager can pick him up like anyone else
     // (the squad-save backstop still refuses an injured STARTER at

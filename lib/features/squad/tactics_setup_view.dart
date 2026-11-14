@@ -258,6 +258,11 @@ class TacticsSetupView extends StatelessWidget {
                     selectedIds: poolSelectedIds,
                     showStamina: showStamina,
                     showStats: showStats,
+                    // T-0117 closes here too: the pool strip showed
+                    // injury badges on the Team tab because this call
+                    // missed the flag (the pitch and bench already
+                    // passed it) — caught by the purity test.
+                    showCondition: showCondition,
                     onPlayerTap: onPlayerTap,
                     upgradable: upgradable,
                   ),
@@ -752,8 +757,16 @@ class _TacticsTabPages extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Swiping between tabs is LOCKED: every pane's tactic rows are
+    // horizontal sliders, and a swipeable TabBarView would compete for
+    // the same horizontal drag — on a real device the user could not
+    // move a slider without dragging the tab page sideways (the drag
+    // test caught exactly this: the hit landed on the TabBarView's
+    // viewport, not the slider). Tab switching stays on the tab bar
+    // itself, which is how this sheet is meant to be driven.
     return TabBarView(
       controller: controller,
+      physics: const NeverScrollableScrollPhysics(),
       children: [
         // T-0128: no title header inside the panes — the tab itself
         // names the group now.
