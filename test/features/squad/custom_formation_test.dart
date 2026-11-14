@@ -685,6 +685,78 @@ void main() {
       expect(out.rejection, contains('injured'));
     });
 
+    test('an EMPTY place dragged to a free cell reshapes the formation; '
+        'the men stay where they are', () {
+      final s = squad(without: {9});
+      final cell = freeCell(f433, Position.cam);
+      final out = planSlotMove(
+        formation: f433,
+        squad: s,
+        slot: 9,
+        cell: cell,
+      );
+      expect(out.isAccepted, isTrue, reason: out.rejection);
+      expect(out.assignment, {
+        for (final e in s.entries) e.key: e.value.ownedId,
+      });
+      final nf = out.formation!;
+      expect(gridCellsOf(nf)[9], cell);
+      expect(nf.slots[9].position, Position.cam);
+      expect(formationOfCode(nf.code).code, nf.code);
+      // A man dropped on that moved (still empty) place now fills a CAM
+      // place.
+      final fill = planSquadDrop(
+        formation: nf,
+        squad: s,
+        dragged: s[13]!,
+        target: SquadDropTarget.cell(cell),
+      );
+      expect(fill.isAccepted, isTrue, reason: fill.rejection);
+      expect(fill.assignment![9], 13);
+    });
+
+    test('an empty place can not go to a taken cell, off the pitch, nor '
+        'break a cap; the keeper place never moves', () {
+      final s = squad(without: {9});
+      final taken = gridCellsOf(f433)[6];
+      expect(
+        planSlotMove(formation: f433, squad: s, slot: 9, cell: taken)
+            .isAccepted,
+        isFalse,
+      );
+      expect(
+        planSlotMove(
+          formation: f433,
+          squad: s,
+          slot: 9,
+          cell: const GridCell(0, 0),
+        ).isAccepted,
+        isFalse,
+      );
+      expect(
+        planSlotMove(
+          formation: f433,
+          squad: s,
+          slot: 0,
+          cell: freeCell(f433, Position.cam),
+        ).isAccepted,
+        isFalse,
+      );
+      final f442 = formationByCode('4-4-2');
+      final s442 = {
+        for (var i = 0; i < 11; i++)
+          if (i != 6) i: _card(i, f442.slots[i].position),
+      };
+      final cap = planSlotMove(
+        formation: f442,
+        squad: s442,
+        slot: 6,
+        cell: freeCell(f442, Position.st),
+      );
+      expect(cap.isAccepted, isFalse);
+      expect(cap.rejection, contains('ST'));
+    });
+
     test('dropping on an OCCUPIED slot is still a plain swap (shape '
         'unchanged)', () {
       final s = squad();

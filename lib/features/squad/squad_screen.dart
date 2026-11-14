@@ -199,6 +199,22 @@ class SquadScreen extends ConsumerWidget {
                   dragged: dragged,
                   target: target,
                 ),
+                // Drag an EMPTY place to a free cell to reshape the
+                // formation (owner request 2026-11-14).
+                slotRejection: (slot, cell) => planSlotMove(
+                  formation: formationOfCode(club?.formationCode ?? '4-3-3'),
+                  squad: squad,
+                  slot: slot,
+                  cell: cell,
+                ).rejection,
+                onMoveSlot: (slot, cell) => _moveSlot(
+                  context,
+                  ref,
+                  formationCode: club?.formationCode ?? '4-3-3',
+                  squad: squad,
+                  slot: slot,
+                  cell: cell,
+                ),
               ),
             ),
           ],
@@ -273,6 +289,44 @@ class SquadScreen extends ConsumerWidget {
       await store.saveSquadAndFormation(
         outcome.assignment!,
         formationCode: outcome.formation?.code,
+      );
+      ref.invalidate(squadProvider);
+    } catch (e) {
+      say('$e'.replaceFirst('CollectionException: ', ''));
+    }
+  }
+
+  /// Moves an empty formation place to a free cell and saves the new
+  /// formation (the squad itself is unchanged). A refused move explains
+  /// itself in a snackbar and changes nothing.
+  Future<void> _moveSlot(
+    BuildContext context,
+    WidgetRef ref, {
+    required String formationCode,
+    required Map<int, PlayerCard> squad,
+    required int slot,
+    required GridCell cell,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    void say(String message) => messenger
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
+
+    final outcome = planSlotMove(
+      formation: formationOfCode(formationCode),
+      squad: squad,
+      slot: slot,
+      cell: cell,
+    );
+    if (!outcome.isAccepted) {
+      say(outcome.rejection!);
+      return;
+    }
+    try {
+      final store = await ref.read(collectionStoreProvider.future);
+      await store.saveSquadAndFormation(
+        outcome.assignment!,
+        formationCode: outcome.formation!.code,
       );
       ref.invalidate(squadProvider);
     } catch (e) {

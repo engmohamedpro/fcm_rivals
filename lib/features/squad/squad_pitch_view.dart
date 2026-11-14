@@ -101,9 +101,17 @@ class SquadPitch extends StatelessWidget {
     // solved formation layout.
     final dragScope = SquadDragScope.maybeOf(context);
     final grid = dragScope != null;
-    return ValueListenableBuilder<PlayerCard?>(
-      valueListenable: dragScope?.dragging ?? _noDrag,
-      builder: (context, held, _) => AspectRatio(
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        dragScope?.dragging ?? _noDrag,
+        dragScope?.slotDragging ?? _noSlotDrag,
+      ]),
+      builder: (context, _) {
+        // A player OR an empty place is held: the chess boxes show.
+        final held = dragScope?.dragging.value;
+        final slotHeld = dragScope?.slotDragging.value;
+        final dragActive = held != null || slotHeld != null;
+        return AspectRatio(
         aspectRatio: 0.66,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(22),
@@ -202,14 +210,18 @@ class SquadPitch extends StatelessWidget {
                             final cell = GridCell(col, row);
                             final b = gridCellBox(col, row, pw, ph);
                             final slotHere = cells.indexOf(cell);
-                            final occupied =
+                            final hasCard =
                                 slotHere >= 0 && assignments[slotHere] != null;
+                            final emptySlot = slotHere >= 0 && !hasCard;
                             final tile = _GridCellTile(
                               // The chess boxes show ONLY while a player
-                              // is held (owner request 2026-11-14).
-                              visible: held != null,
+                              // (or an empty place) is held (owner request
+                              // 2026-11-14).
+                              visible: dragActive,
                               shade: (col + row).isEven,
-                              role: held != null && !occupied
+                              // A free cell names what a drop would ask
+                              // for; an empty place shows its own ghost.
+                              role: dragActive && slotHere < 0
                                   ? positionOfCell(col, row)
                                   : null,
                             );
@@ -219,12 +231,37 @@ class SquadPitch extends StatelessWidget {
                               top: b.top,
                               width: b.width,
                               height: b.height,
-                              child: occupied
+                              child: hasCard
                                   ? tile
                                   : SquadDropZone(
                                       target: SquadDropTarget.cell(cell),
                                       radius: 8,
-                                      child: tile,
+                                      // An EMPTY place can be held and
+                                      // dragged to a FREE cell to
+                                      // reshape the formation; a free
+                                      // cell accepts such a place.
+                                      child: emptySlot
+                                          ? SquadSlotDraggable(
+                                              slot: slotHere,
+                                              feedbackSize: Size(
+                                                layout.slotWidth,
+                                                layout.slotHeight,
+                                              ),
+                                              feedback: SizedBox(
+                                                width: layout.slotWidth,
+                                                child: _EmptySlot(
+                                                  position: formation
+                                                      .slots[slotHere]
+                                                      .position,
+                                                  width: cardW,
+                                                ),
+                                              ),
+                                              child: tile,
+                                            )
+                                          : SquadSlotDropZone(
+                                              cell: cell,
+                                              child: tile,
+                                            ),
                                     ),
                             );
                           }(),
@@ -246,9 +283,14 @@ class SquadPitch extends StatelessWidget {
                         // IgnorePointer).
                         child: !showCard
                             ? IgnorePointer(
-                                child: _EmptySlot(
-                                  position: fs.position,
-                                  width: cardW,
+                                child: Opacity(
+                                  // The held empty place leaves a faint
+                                  // trace where it came from.
+                                  opacity: slotHeld == slot ? 0.25 : 1,
+                                  child: _EmptySlot(
+                                    position: fs.position,
+                                    width: cardW,
+                                  ),
                                 ),
                               )
                             : showCondition && card.injuryMatchesRemaining > 0
@@ -335,7 +377,8 @@ class SquadPitch extends StatelessWidget {
             ),
           ),
         ),
-      ),
+        );
+      },
     );
   }
 }
@@ -344,6 +387,7 @@ class SquadPitch extends StatelessWidget {
 /// [SquadDragHost] (pre-match, live tactics): the pitch then renders no
 /// drag preview at all.
 final ValueNotifier<PlayerCard?> _noDrag = ValueNotifier<PlayerCard?>(null);
+final ValueNotifier<int?> _noSlotDrag = ValueNotifier<int?>(null);
 
 /// Horizontal strip of mini cards (bench / reserves): the surname under
 /// each shield, the stat row and — when [showStamina] is set — the

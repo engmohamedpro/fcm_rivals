@@ -280,6 +280,39 @@ SquadSwapOutcome _planCellDrop({
   return SquadSwapOutcome.accepted(assignment, formation: moved.formation);
 }
 
+/// Moves the formation place [slot] (a ghost standing empty, or a card's
+/// own place) to the FREE cell [cell] — how an empty position is dragged
+/// to reshape the formation (owner request 2026-11-14). The men stay on
+/// their slots; only the slot's cell, and so what it asks for
+/// ([positionOfCell]), changes. Refused with the reason when the cell is
+/// off the pitch or taken, the keeper's slot is involved, or the move
+/// breaks the per-position maximums.
+SquadSwapOutcome planSlotMove({
+  required Formation formation,
+  required Map<int, PlayerCard> squad,
+  required int slot,
+  required GridCell cell,
+}) {
+  if (slot <= 0 || slot >= Formation.startingXiSize) {
+    return const SquadSwapOutcome.rejected(
+      'The goalkeeper keeps his slot — only a goalkeeper stands in goal.',
+    );
+  }
+  if (!isGridCellAllowed(cell.col, cell.row)) {
+    return const SquadSwapOutcome.rejected('That is not a place on the pitch.');
+  }
+  if (gridCellsOf(formation).contains(cell)) {
+    return const SquadSwapOutcome.rejected('That place is taken.');
+  }
+  final moved = _formationWithSlotAt(formation, slot, cell);
+  if (moved.formation == null) {
+    return SquadSwapOutcome.rejected(moved.problem!);
+  }
+  return SquadSwapOutcome.accepted({
+    for (final e in squad.entries) e.key: e.value.ownedId,
+  }, formation: moved.formation);
+}
+
 /// Resolves a UI drop ([dragged] onto [target]) into the new squad.
 /// [squad] is the persisted slot → card map.
 ///

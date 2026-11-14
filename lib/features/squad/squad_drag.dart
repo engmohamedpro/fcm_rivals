@@ -16,12 +16,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/ui/fcm_style.dart';
+import 'formations.dart' show GridCell;
 import 'squad_engine.dart' show PlayerCard;
 import 'squad_swap.dart';
 
 /// What the owner of the squad supplies to enable swapping.
 class SquadSwapping {
-  const SquadSwapping({required this.rejection, required this.onSwap});
+  const SquadSwapping({
+    required this.rejection,
+    required this.onSwap,
+    this.slotRejection,
+    this.onMoveSlot,
+  });
 
   /// Null when dropping [dragged] on [target] is allowed, otherwise the
   /// reason it is not (drives the green / red hover feedback).
@@ -29,6 +35,15 @@ class SquadSwapping {
 
   /// Performs the drop (validates again, persists, explains refusals).
   final void Function(PlayerCard dragged, SquadDropTarget target) onSwap;
+
+  /// Null when moving the empty formation place [slot] to [cell] is
+  /// allowed, otherwise the reason. Null callback: empty places are not
+  /// draggable.
+  final String? Function(int slot, GridCell cell)? slotRejection;
+
+  /// Performs the move of the empty place [slot] to [cell] (validates
+  /// again, persists the new formation, explains refusals).
+  final void Function(int slot, GridCell cell)? onMoveSlot;
 }
 
 /// Published by [SquadDragHost] to the draggable cards and drop zones
@@ -38,7 +53,9 @@ class SquadDragScope extends InheritedWidget {
     super.key,
     required this.swapping,
     required this.dragging,
+    required this.slotDragging,
     required this.begin,
+    required this.beginSlot,
     required this.update,
     required this.end,
     required super.child,
@@ -49,7 +66,11 @@ class SquadDragScope extends InheritedWidget {
   /// The player currently held, or null.
   final ValueNotifier<PlayerCard?> dragging;
 
+  /// The empty formation place currently held (its slot index), or null.
+  final ValueNotifier<int?> slotDragging;
+
   final void Function(PlayerCard card) begin;
+  final void Function(int slot) beginSlot;
   final void Function(Offset globalPosition) update;
   final VoidCallback end;
 
@@ -77,6 +98,7 @@ class SquadDragHost extends StatefulWidget {
 
 class _SquadDragHostState extends State<SquadDragHost> {
   final ValueNotifier<PlayerCard?> _dragging = ValueNotifier(null);
+  final ValueNotifier<int?> _slotDragging = ValueNotifier(null);
   Offset? _pointer;
   Timer? _scrollTimer;
 
@@ -90,6 +112,10 @@ class _SquadDragHostState extends State<SquadDragHost> {
     _dragging.value = card;
   }
 
+  void _beginSlot(int slot) {
+    _slotDragging.value = slot;
+  }
+
   void _update(Offset globalPosition) {
     _pointer = globalPosition;
     _scrollTimer ??= Timer.periodic(
@@ -100,6 +126,7 @@ class _SquadDragHostState extends State<SquadDragHost> {
 
   void _end() {
     _dragging.value = null;
+    _slotDragging.value = null;
     _pointer = null;
     _scrollTimer?.cancel();
     _scrollTimer = null;
@@ -131,6 +158,7 @@ class _SquadDragHostState extends State<SquadDragHost> {
   void dispose() {
     _scrollTimer?.cancel();
     _dragging.dispose();
+    _slotDragging.dispose();
     super.dispose();
   }
 
@@ -139,7 +167,9 @@ class _SquadDragHostState extends State<SquadDragHost> {
     return SquadDragScope(
       swapping: widget.swapping,
       dragging: _dragging,
+      slotDragging: _slotDragging,
       begin: _begin,
+      beginSlot: _beginSlot,
       update: _update,
       end: _end,
       child: widget.child,
@@ -263,6 +293,84 @@ class SquadDropZone extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Makes [child] (an EMPTY formation place's cell) hold-and-drag-able: drag
+/// it onto a free cell to move the place and reshape the formation. A plain
+/// pass-through when no [SquadDragScope] is above or the owner did not
+/// enable slot moves.
+class SquadSlotDraggable extends StatelessWidget {
+  const SquadSlotDraggable({
+    super.key,
+    required this.slot,
+    required this.feedback,
+    required this.feedbackSize,
+    required this.child,
+  });
+
+  final int slot;
+
+  /// What follows the finger (the ghost card).
+  final Widget feedback;
+  final Size feedbackSize;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = SquadDragScope.maybeOf(context);
+    if (scope == null || scope.swapping.onMoveSlot == null) return child;
+    return LongPressDraggable<int>(
+      data: slot,
+      maxSimultaneousDrags: 1,
+      dragAnchorStrategy: (draggable, context, position) =>
+          Offset(feedbackSize.width / 2, feedbackSize.height * 0.55),
+      onDragStarted: () => scope.beginSlot(slot),
+      onDragUpdate: (details) => scope.update(details.globalPosition),
+      onDragEnd: (_) => scope.end(),
+      feedback: Material(
+        type: MaterialType.transparency,
+        child: Transform.scale(scale: 1.15, child: feedback),
+      ),
+      childWhenDragging: Opacity(opacity: 0.25, child: child),
+      child: child,
+    );
+  }
+}
+
+/// Makes [child] a FREE cell an empty formation place can be dropped on
+/// (see [SquadSlotDraggable]). Gold ring under the finger when allowed.
+class SquadSlotDropZone extends StatelessWidget {
+  const SquadSlotDropZone({
+    super.key,
+    required this.cell,
+    required this.child,
+    this.radius = 8,
+  });
+
+  final GridCell cell;
+  final Widget child;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = SquadDragScope.maybeOf(context);
+    final move = scope?.swapping.onMoveSlot;
+    if (scope == null || move == null) return child;
+    return DragTarget<int>(
+      onWillAcceptWithDetails: (details) =>
+          scope.swapping.slotRejection?.call(details.data, cell) == null,
+      onAcceptWithDetails: (details) => move(details.data, cell),
+      builder: (context, candidates, _) => Container(
+        foregroundDecoration: candidates.isEmpty
+            ? null
+            : BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(color: FcmColors.gold, width: 2.5),
+              ),
+        child: child,
       ),
     );
   }
