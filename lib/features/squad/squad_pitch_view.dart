@@ -625,28 +625,36 @@ class _EmptySlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.55,
-      child: Stack(
+    return Stack(
         clipBehavior: Clip.none,
         children: [
-          FcmMiniCard(
-            overall: 0,
-            position: '',
-            name: '',
-            rarity: CardRarity.rare,
-            width: width,
-            ghost: true,
+          Opacity(
+            opacity: 0.55,
+            child: FcmMiniCard(
+              overall: 0,
+              position: '',
+              name: '',
+              rarity: CardRarity.rare,
+              width: width,
+              ghost: true,
+            ),
           ),
-          Positioned.fill(
+          // The position label sits just ABOVE the ghost card (owner
+          // request 2026-11-14), not in its middle: a held player's card
+          // covers the middle, so the label would vanish exactly when the
+          // user needs it.
+          Positioned(
+            top: -17,
+            left: -8,
+            right: -8,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
+                  color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25),
+                    color: FcmColors.gold.withValues(alpha: 0.6),
                   ),
                 ),
                 child: Text(
@@ -663,7 +671,6 @@ class _EmptySlot extends StatelessWidget {
             ),
           ),
         ],
-      ),
     );
   }
 }
