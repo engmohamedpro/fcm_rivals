@@ -15,7 +15,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/l10n/app_localizations.dart';
-import 'package:fcm_rivals/core/ui/fcm_style.dart' show FcmColors;
 import 'package:fcm_rivals/core/ui/fcm_widgets.dart'
     show FcmButton, FcmDropdown, FcmScaleSlider;
 import 'package:fcm_rivals/core/ui/player_card.dart' show FcmMiniCard;
