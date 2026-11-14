@@ -64,8 +64,12 @@ part 'match_engine_events.dart';
 /// injuries join the match — the same seed now also produces the same
 /// injuries, drawn from the derived injury stream (see
 /// [MatchEngine.injuryStreamOffset]) so the football stream itself stays
-/// byte-identical per seed.
-const int matchEngineVersion = 4;
+/// byte-identical per seed. Bumped 4 → 5 (T-0143, ADR-014): grid-row
+/// tactical bonuses join computeTotals — the same seed with a shifted
+/// grid formation now produces different totals (presets move within
+/// ±1 point, effectively neutral), so pre-ADR-014 replay records must
+/// be labeled with version 4.
+const int matchEngineVersion = 5;
 
 /// Derives the injury stream from the match seed (T-0054): every seeded
 /// engine gets a second [MatchRandom] at `seed + injuryStreamOffset` so

@@ -176,6 +176,17 @@ class _TeamRuntime {
     double attackSum = 0, supportSum = 0, defenceSum = 0;
     var attackW = 0.0, supportW = 0.0, defenceW = 0.0;
     double gkEff = 0;
+    // Grid-row tactical bonuses (ADR-014): the row each slot stands on
+    // multiplies that slot's attack/defence weights — same layer as the
+    // compatibility factor, BEFORE the role weights aggregate, so a man
+    // pushed up a row reads stronger in attack and weaker in defence
+    // whatever position the cell asks for. A pure function of the
+    // formation (the cells derive from the code), so determinism holds.
+    // Built once per call — an 11-element list, and this runs 2x/minute
+    // per team.
+    final rowBonuses = [
+      for (final cell in gridCellsOf(formation)) gridRowBonus(cell.row),
+    ];
     for (var slot = 0; slot < onPitch.length; slot++) {
       final player = onPitch[slot];
       if (player == null) continue;
@@ -190,11 +201,26 @@ class _TeamRuntime {
       final aw = _MatchEngineRole.attack[slotPosition]! * compat;
       final sw = _MatchEngineRole.support[slotPosition]! * compat;
       final dw = _MatchEngineRole.defence[slotPosition]! * compat;
-      attackSum += player.attack * aw;
+      // The row bonus multiplies the ATTRIBUTE (ADR-014): a man on row 5
+      // reads 3% stronger in attack and 3% weaker in defence whatever
+      // position the cell asks for — at OVR 80 that is ±2.4 points, and
+      // the tilt is identical for a 60-OVR XI and a 95-OVR XI in
+      // percentage terms. Multiplying the WEIGHT instead would only
+      // re-weight the average (with flat attributes it would cancel
+      // exactly — caught by the flat-XI unit test). The keeper is
+      // excluded by contract: his row is fixed and his goalkeeping is
+      // untouched. Out-of-range slots (never happens for a legal XI)
+      // read neutral.
+      final (rowAtt, rowDef) = slotPosition == Position.gk
+          ? (1.0, 1.0)
+          : slot < rowBonuses.length
+          ? rowBonuses[slot]
+          : gridRowBonus(kGridNeutralRow);
+      attackSum += player.attack * rowAtt * aw;
       attackW += aw;
       supportSum += player.support * sw;
       supportW += sw;
-      defenceSum += player.defence * dw;
+      defenceSum += player.defence * rowDef * dw;
       defenceW += dw;
       if (slotPosition == Position.gk) gkEff = player.goalkeeping.toDouble();
     }

@@ -647,8 +647,7 @@ Formation? customGridFormation(List<Position> positions, List<GridCell> cells) {
 /// coordinates to the nearest free cell — the snap keeps the keeper on his
 /// cell, rows ordered back to front, and resolves two slots that land on
 /// one cell by moving the later one to the nearest free cell. Deterministic.
-List<GridCell> gridCellsOf(Formation formation) {
-  final slots = formation.slots;
+List<GridCell> gridCellsOf(Formation formation) {  final slots = formation.slots;
   if (isGridFormationCode(formation.code)) {
     return [
       for (final s in slots)
@@ -713,4 +712,41 @@ GridCell _nearestFreeCell(GridCell from, Set<GridCell> taken) {
     }
   }
   return best ?? const GridCell(0, 1);
+}
+
+// ---------------------------------------------------------------------------
+// Grid-row tactical bonuses (ADR-014, owner request 2026-11-14)
+// ---------------------------------------------------------------------------
+//
+// WHERE a man stands on the grid now carries engine weight: a player
+// pushed up a row attacks better and defends worse, one dropped a row
+// defends better and attacks worse — the LB of the old grid moved from
+// row 1 to row 2 with ZERO effect (both rows ask for LB), which wasted
+// the grid's most interesting promise.
+//
+// The curve (see docs/adr-014-grid-row-bonuses.md): linear in the row
+// index, zero-sum around the midfield row 3, 1.5 engine points per
+// row-step on each axis. The keeper's row never moves and never
+// applies. A realistic extreme (the front men pushed two rows up)
+// swings the weighted XI by about ONE mentality step — the grid is
+// fine-tuning, mentality stays the big lever, and default presets
+// (weighted row mean ≈ 2.6) read effectively neutral so the engine's
+// calibration bands hold without re-anchoring.
+
+/// The midfield row: the zero point of the row bonus. Rows 1-2 (back
+/// line and deep midfield) sit below it, rows 4-5 above it.
+const int kGridNeutralRow = 3;
+
+/// Engine points of row-step on the attack and defence axes (ADR-014:
+/// 1.5 pts/row, symmetric — moving up trades defence for attack at the
+/// same absolute rate, so an all-out tilt never out-shouts the
+/// mentality ladder).
+const double kGridRowStep = 1.5;
+
+/// The attack/defence multipliers a grid row earns (ADR-014). The
+/// keeper's row is excluded by contract — [computeTotals] never asks
+/// for it and the keeper's cell is fixed anyway.
+(double, double) gridRowBonus(int row) {
+  final d = row - kGridNeutralRow;
+  return (1 + d * kGridRowStep / 100, 1 - d * kGridRowStep / 100);
 }
