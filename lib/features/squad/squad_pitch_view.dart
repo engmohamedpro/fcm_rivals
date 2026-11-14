@@ -257,12 +257,7 @@ class SquadPitch extends StatelessWidget {
                                               ),
                                               feedback: SizedBox(
                                                 width: layout.slotWidth,
-                                                child: _EmptySlot(
-                                                  position: formation
-                                                      .slots[slotHere]
-                                                      .position,
-                                                  width: cardW,
-                                                ),
+                                                child: _EmptySlot(width: cardW),
                                               ),
                                               child: tile,
                                             )
@@ -297,10 +292,7 @@ class SquadPitch extends StatelessWidget {
                                   // The held empty place leaves a faint
                                   // trace where it came from.
                                   opacity: slotHeld == slot ? 0.25 : 1,
-                                  child: _EmptySlot(
-                                    position: fs.position,
-                                    width: cardW,
-                                  ),
+                                  child: _EmptySlot(width: cardW),
                                 ),
                               )
                             : showCondition && card.injuryMatchesRemaining > 0
@@ -381,6 +373,30 @@ class SquadPitch extends StatelessWidget {
                               ),
                       );
                     }(),
+                  // The position every starting place asks for, ALWAYS
+                  // above its card (owner request 2026-11-14) — filled or
+                  // empty, held or not. A top-most layer so no card (or
+                  // neighbour) ever covers it.
+                  if (grid)
+                    for (var slot = 0; slot < formation.slots.length; slot++)
+                      () {
+                        final box = layout.boxes[slot];
+                        return AnimatedPositioned(
+                          key: ValueKey('pos-$slot'),
+                          duration: const Duration(milliseconds: 650),
+                          curve: Curves.easeOutCubic,
+                          left: box.left,
+                          width: box.width,
+                          top: box.top < 16 ? 1.0 : box.top - 15,
+                          child: IgnorePointer(
+                            child: Center(
+                              child: _PositionTag(
+                                formation.slots[slot].position.code,
+                              ),
+                            ),
+                          ),
+                        );
+                      }(),
                 ],
               );
               },
@@ -626,61 +642,52 @@ Widget _dragFeedback(PlayerCard card, double width) => FcmMiniCard(
 /// reads as a full formation with the empty places still holding
 /// their card footprints.
 class _EmptySlot extends StatelessWidget {
-  const _EmptySlot({required this.position, required this.width});
-
-  /// What the place asks for.
-  final Position position;
+  const _EmptySlot({required this.width});
 
   final double width;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Opacity(
-            opacity: 0.55,
-            child: FcmMiniCard(
-              overall: 0,
-              position: '',
-              name: '',
-              rarity: CardRarity.rare,
-              width: width,
-              ghost: true,
-            ),
-          ),
-          // The position label sits just ABOVE the ghost card (owner
-          // request 2026-11-14), not in its middle: a held player's card
-          // covers the middle, so the label would vanish exactly when the
-          // user needs it.
-          Positioned(
-            top: -17,
-            left: -8,
-            right: -8,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: FcmColors.gold.withValues(alpha: 0.6),
-                  ),
-                ),
-                child: Text(
-                  position.code,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: FcmColors.gold,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return Opacity(
+      opacity: 0.55,
+      child: FcmMiniCard(
+        overall: 0,
+        position: '',
+        name: '',
+        rarity: CardRarity.rare,
+        width: width,
+        ghost: true,
+      ),
+    );
+  }
+}
+
+/// The small gold tag above a starting place: what the place asks for.
+class _PositionTag extends StatelessWidget {
+  const _PositionTag(this.code);
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: FcmColors.gold.withValues(alpha: 0.6)),
+      ),
+      child: Text(
+        code,
+        maxLines: 1,
+        style: const TextStyle(
+          color: FcmColors.gold,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+          height: 1.1,
+        ),
+      ),
     );
   }
 }
