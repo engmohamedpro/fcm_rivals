@@ -416,6 +416,21 @@ Formation definitions must be data-driven.
 
 Changing formation must update player positions and tactical calculations.
 
+#### Grid rows
+
+The Team-tab pitch is a fixed chess grid — 5 columns × 6 rows, row 0 the keeper (bottom) and row 5 the most advanced line (top). Each cell asks for one position (`positionOfCell`), and the row a player stands on carries tactical depth: a man pushed higher attacks better and defends worse, a man dropped deeper defends better and attacks worse. The per-row attack/defence multipliers are linear in the row index, zero-sum around the midfield row:
+
+| Row (0 = GK, bottom) | Attack mult | Defence mult |
+|---|---|---|
+| 0 — keeper | excluded, GK row never moves | — |
+| 1 — back line | ×0.970 | ×1.030 |
+| 2 — deep mid | ×0.985 | ×1.015 |
+| 3 — midfield | ×1.000 | ×1.000 (anchor) |
+| 4 — advanced | ×1.015 | ×0.985 |
+| 5 — front | ×1.030 | ×0.970 |
+
+Step size is 1.5 engine points per row on each axis. The bonus is hidden — no number on the card — but the pre-match forecast's team totals reflect it. Decision record and balance reasoning: [ADR-014](adr-014-grid-row-bonuses.md).
+
 ---
 
 ## 7. Player Attributes & Ratings
@@ -864,6 +879,7 @@ Calculate team totals:
 
 Apply modifiers in this order:
 
+0. Per-player grid-row multipliers (ADR-014): each outfield player's attack and defence contributions are scaled by his grid row's multiplier (the table in 6.4), applied with the compatibility factor — per player, before any team-wide modifier. Support and goalkeeping are untouched.
 1. Mentality modifiers.
 2. Custom tactics modifiers.
 3. Live action modifiers.
