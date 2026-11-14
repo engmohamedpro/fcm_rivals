@@ -337,6 +337,10 @@ void main() {
       final session = _FakeSession(engine);
       engine.simulateToEnd();
 
+      // T-0141: the 600px test surface the overflow was flagged on.
+      tester.view.physicalSize = const Size(800, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(
         MaterialApp(
           home: LiveTacticsScreen(session: session, minuteQueuedFrom: 46),
@@ -365,10 +369,9 @@ void main() {
       // (MENTALITY is gone from every setup surface — 2026-11-13.)
       expect(find.text('TACTICS'), findsNWidgets(2));
       expect(find.text('MENTALITY'), findsNothing);
-      // The bench strip and its surname chips sit below the fold on the
-      // 600px test surface, and scrolling them in trips a layout
-      // overflow in the live editor (flagged to the owner as T-0141);
-      // assert the scroll-independent contract instead: the reserves
+      // T-0141 restored: the bench strip scrolls cleanly into view on
+      // the 600px surface (the overflow that once tripped here is
+      // gone — the scroll assertions below prove it), the reserves
       // section is NOT part of the live editor at all.
       expect(find.textContaining('Reserves'), findsNothing);
 
@@ -389,6 +392,29 @@ void main() {
       expect(find.text('ATT'), findsNothing);
       expect(find.text('SUP'), findsNothing);
       expect(find.text('DEF'), findsNothing);
+
+      // T-0141: the bench strip scrolls into view with no layout
+      // overflow, and the strip renders its quota title plus the two
+      // bench cards' formatted surnames.
+      final benchTitle = find.textContaining('Bench (2/');
+      await tester.scrollUntilVisible(
+        benchTitle,
+        400,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      for (var i = 0; i < 6; i++) {
+        await tester.drag(
+          find.byType(Scrollable).first,
+          const Offset(0, -300),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Bench (2/7)'), findsOneWidget);
+      expect(find.text('S. One'), findsOneWidget);
+      expect(find.text('S. Two'), findsOneWidget);
     });
   });
 
