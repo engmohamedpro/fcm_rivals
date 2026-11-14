@@ -236,6 +236,14 @@ class SquadPitch extends StatelessWidget {
                                   : SquadDropZone(
                                       target: SquadDropTarget.cell(cell),
                                       radius: 8,
+                                      // What a drop here asks for — shown
+                                      // above the held card.
+                                      label: (emptySlot
+                                              ? formation
+                                                    .slots[slotHere]
+                                                    .position
+                                              : positionOfCell(col, row))
+                                          .code,
                                       // An EMPTY place can be held and
                                       // dragged to a FREE cell to
                                       // reshape the formation; a free
@@ -260,6 +268,8 @@ class SquadPitch extends StatelessWidget {
                                             )
                                           : SquadSlotDropZone(
                                               cell: cell,
+                                              label: positionOfCell(col, row)
+                                                  .code,
                                               child: tile,
                                             ),
                                     ),

@@ -54,6 +54,7 @@ class SquadDragScope extends InheritedWidget {
     required this.swapping,
     required this.dragging,
     required this.slotDragging,
+    required this.hoverLabel,
     required this.begin,
     required this.beginSlot,
     required this.update,
@@ -68,6 +69,11 @@ class SquadDragScope extends InheritedWidget {
 
   /// The empty formation place currently held (its slot index), or null.
   final ValueNotifier<int?> slotDragging;
+
+  /// The position label of the place the held card is over (CAM, ST...), or
+  /// null. Shown above the held card itself, so it is visible even though
+  /// the card covers the place.
+  final ValueNotifier<String?> hoverLabel;
 
   final void Function(PlayerCard card) begin;
   final void Function(int slot) beginSlot;
@@ -99,6 +105,7 @@ class SquadDragHost extends StatefulWidget {
 class _SquadDragHostState extends State<SquadDragHost> {
   final ValueNotifier<PlayerCard?> _dragging = ValueNotifier(null);
   final ValueNotifier<int?> _slotDragging = ValueNotifier(null);
+  final ValueNotifier<String?> _hoverLabel = ValueNotifier(null);
   Offset? _pointer;
   Timer? _scrollTimer;
 
@@ -127,6 +134,7 @@ class _SquadDragHostState extends State<SquadDragHost> {
   void _end() {
     _dragging.value = null;
     _slotDragging.value = null;
+    _hoverLabel.value = null;
     _pointer = null;
     _scrollTimer?.cancel();
     _scrollTimer = null;
@@ -159,6 +167,7 @@ class _SquadDragHostState extends State<SquadDragHost> {
     _scrollTimer?.cancel();
     _dragging.dispose();
     _slotDragging.dispose();
+    _hoverLabel.dispose();
     super.dispose();
   }
 
@@ -168,6 +177,7 @@ class _SquadDragHostState extends State<SquadDragHost> {
       swapping: widget.swapping,
       dragging: _dragging,
       slotDragging: _slotDragging,
+      hoverLabel: _hoverLabel,
       begin: _begin,
       beginSlot: _beginSlot,
       update: _update,
@@ -213,10 +223,68 @@ class SquadDraggable extends StatelessWidget {
         // Perf pass 2026-11-12: the 0.95 Opacity forced a saveLayer every
         // drag frame for an imperceptible tint; the scale reads the same
         // without it.
-        child: Transform.scale(scale: 1.15, child: feedback),
+        child: Transform.scale(
+          scale: 1.15,
+          child: _FeedbackWithLabel(
+            hoverLabel: scope.hoverLabel,
+            child: feedback,
+          ),
+        ),
       ),
       childWhenDragging: Opacity(opacity: 0.25, child: child),
       child: child,
+    );
+  }
+}
+
+/// The held card plus, above it, the position label of the place it is over
+/// — the card covers that place, so the label rides on the card instead.
+class _FeedbackWithLabel extends StatelessWidget {
+  const _FeedbackWithLabel({required this.hoverLabel, required this.child});
+
+  final ValueNotifier<String?> hoverLabel;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          top: -22,
+          left: -12,
+          right: -12,
+          child: ValueListenableBuilder<String?>(
+            valueListenable: hoverLabel,
+            builder: (context, label, _) => label == null
+                ? const SizedBox.shrink()
+                : Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(color: FcmColors.gold),
+                      ),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: FcmColors.gold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -232,14 +300,28 @@ class SquadDropZone extends StatelessWidget {
     required this.target,
     required this.child,
     this.radius = 12,
+    this.label,
   });
 
   final SquadDropTarget target;
   final Widget child;
   final double radius;
 
+  /// The position label (CAM, ST...) shown above the held card while it is
+  /// over this place and may be dropped here.
+  final String? label;
+
   bool _isSelf(PlayerCard dragged) =>
       target.card != null && target.card!.ownedId == dragged.ownedId;
+
+  /// Names the place on the held card — only when the drop here would be
+  /// accepted (a refused place must not advertise a position).
+  void _showLabel(SquadDragScope scope, PlayerCard dragged) {
+    final text = label;
+    if (text == null) return;
+    scope.hoverLabel.value =
+        scope.swapping.rejection(dragged, target) == null ? text : null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -249,9 +331,23 @@ class SquadDropZone extends StatelessWidget {
       valueListenable: scope.dragging,
       child: child,
       builder: (context, dragged, child) => DragTarget<PlayerCard>(
-        onWillAcceptWithDetails: (details) => !_isSelf(details.data),
+        onWillAcceptWithDetails: (details) {
+          final accept = !_isSelf(details.data);
+          if (accept) _showLabel(scope, details.data);
+          return accept;
+        },
         onAcceptWithDetails: (details) =>
             scope.swapping.onSwap(details.data, target),
+        onMove: label == null
+            ? null
+            : (details) => _showLabel(scope, details.data),
+        onLeave: label == null
+            ? null
+            : (_) {
+                if (scope.hoverLabel.value == label) {
+                  scope.hoverLabel.value = null;
+                }
+              },
         builder: (context, candidates, _) {
           final hovering = candidates.isNotEmpty;
           Color? ring;
@@ -332,7 +428,13 @@ class SquadSlotDraggable extends StatelessWidget {
       onDragEnd: (_) => scope.end(),
       feedback: Material(
         type: MaterialType.transparency,
-        child: Transform.scale(scale: 1.15, child: feedback),
+        child: Transform.scale(
+          scale: 1.15,
+          child: _FeedbackWithLabel(
+            hoverLabel: scope.hoverLabel,
+            child: feedback,
+          ),
+        ),
       ),
       childWhenDragging: Opacity(opacity: 0.25, child: child),
       child: child,
@@ -348,11 +450,16 @@ class SquadSlotDropZone extends StatelessWidget {
     required this.cell,
     required this.child,
     this.radius = 8,
+    this.label,
   });
 
   final GridCell cell;
   final Widget child;
   final double radius;
+
+  /// The position label shown above the held place while it is over this
+  /// cell and may be dropped here.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -360,9 +467,21 @@ class SquadSlotDropZone extends StatelessWidget {
     final move = scope?.swapping.onMoveSlot;
     if (scope == null || move == null) return child;
     return DragTarget<int>(
-      onWillAcceptWithDetails: (details) =>
-          scope.swapping.slotRejection?.call(details.data, cell) == null,
+      onWillAcceptWithDetails: (details) {
+        final ok =
+            scope.swapping.slotRejection?.call(details.data, cell) == null;
+        if (ok && label != null) scope.hoverLabel.value = label;
+        return ok;
+      },
       onAcceptWithDetails: (details) => move(details.data, cell),
+      onMove: label == null ? null : (_) => scope.hoverLabel.value = label,
+      onLeave: label == null
+          ? null
+          : (_) {
+              if (scope.hoverLabel.value == label) {
+                scope.hoverLabel.value = null;
+              }
+            },
       builder: (context, candidates, _) => Container(
         foregroundDecoration: candidates.isEmpty
             ? null
