@@ -77,7 +77,10 @@ void main() {
     final byId = {for (final c in contributions) c.playerId: c};
 
     expect(byId[10]!.goals, 2);
-    expect(byId[10]!.shots, 2);
+    // Shots count ONLY explicit shot events — goals are a separate
+    // tally, matching the post-match report's definition exactly.
+    expect(byId[10]!.shots, 1);
+    expect(byId[7]!.shots, 1);
     expect(byId[7]!.assists, 1);
     expect(byId[1]!.saves, 2);
     // Clean sheet with a full match played (the rating's own rule).
