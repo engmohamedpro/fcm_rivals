@@ -198,10 +198,11 @@ void main() {
           .first['injury_matches_remaining'],
       2,
     );
-    // The upgrade lands on the CURRENT schema version (17 since the
-    // 2026-11-12 icon column) — the injury columns this fixture
-    // exercises are untouched by every later step.
-    expect(reopened.select('PRAGMA user_version').first['user_version'], 17);
+    // The upgrade lands on the CURRENT schema version (18 since the
+    // T-0130 PlayerSeasonStats table; 17 was the 2026-11-12 icon
+    // column) — the injury columns this fixture exercises are
+    // untouched by every later step.
+    expect(reopened.select('PRAGMA user_version').first['user_version'], 18);
     reopened.dispose();
   });
 }

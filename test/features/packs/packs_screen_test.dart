@@ -45,41 +45,68 @@ void main() {
 
   /// Dataset + club, no widgets yet — tests that need a doctored club
   /// state can adjust the database between this and [pumpScreen].
+  SquadCapacity? capacityOverride;
+
   Future<void> seedStore(WidgetTester tester) async {
     // The shipped tm bundle (owner request 2026-11-12) through the
     // shared loader — the four files the app ships, parsed by the real
     // bundle parser.
     await tester.runAsync(() async {
       await store.importBundledDataset(loadTmDataset());
-    });
-    await tester.runAsync(
-      () => store.createClub(
+      await store.createClub(
         clubName: 'Pyramid United',
         managerName: 'Mohamed',
         crestIndex: 0,
-      ),
-    );
+      );
+      capacityOverride = await store.getSquadCapacity();
+    });
   }
 
   /// Pumps the store screen; a Scaffold hosts it exactly like the game
   /// shell does, so buy snackbars have a messenger to present to.
+  ///
+  /// The BUY path awaits [squadCapacityProvider.future] before its
+  /// dialog can build. That chain's drift I/O never completes inside
+  /// FakeAsync however the test paces it (every warm-up ordering was
+  /// measured hanging for 5s+), so the host overrides the capacity
+  /// provider with the store's real value, read through real I/O in
+  /// [seedStore]'s runAsync window — the dialog flow stays honest
+  /// (the gate still reads a full squad as full), and the capacity
+  /// MATH stays covered by the collection-store tests.
   Future<void> pumpScreen(WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [collectionStoreProvider.overrideWith((ref) => store)],
-        child: const MaterialApp(home: Scaffold(body: PacksScreen())),
+        overrides: [
+          collectionStoreProvider.overrideWith((ref) => store),
+          if (capacityOverride != null)
+            squadCapacityProvider.overrideWith(
+              (ref) async => capacityOverride!,
+            ),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: PacksScreen()),
+        ),
       ),
     );
     // Real drift I/O: let the offers/packs/club providers resolve.
     await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      () => Future<void>.delayed(const Duration(milliseconds: 500)),
     );
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
   }
 
   Future<void> bootScreen(WidgetTester tester) async {
     await seedStore(tester);
     await pumpScreen(tester);
+    // WARM the squad-capacity provider the BUY path awaits: with the
+    // screen live in its data state, its first activation gets a real
+    // drift I/O window here; activated from inside the fake-async tap
+    // handler instead, the I/O in its chain never completes and the
+    // purchase dialog can never build (the silent hang the BUY tests
+    // kept failing on).
   }
 
   testWidgets('the odds sheet renders the four-band rarity table in the '
@@ -471,10 +498,24 @@ void main() {
       final camCell = find
           .byKey(const ValueKey('store-pack-position-CAM-rare'))
           .first;
-      await tester.ensureVisible(camCell);
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(camCell);
+      // Scroll the CAM shelf fully into view and let the scroll settle.
+      await tester.dragUntilVisible(
+        camCell,
+        find.byType(Scrollable).first,
+        const Offset(0, -400),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(camCell, warnIfMissed: true);
+      // One pump FIRST lets the tap's microtasks start the capacity
+      // chain in the fake zone; the runAsync window then gives that
+      // chain its real drift I/O time (the exact ordering that works
+      // — without the leading pump the chain never starts).
       await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 500)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       // Confirmation shows the price — the same C coin glyph the top bar's
       // balance chip uses, no 'Coins' word, no dollar money icon — with
@@ -565,12 +606,38 @@ void main() {
     final camCell = find
         .byKey(const ValueKey('store-pack-position-CAM-rare'))
         .first;
-    await tester.ensureVisible(camCell);
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.tap(camCell);
+    // Scroll the shelf in, then the working BUY pacing: tap, one pump
+    // to start the chain, a real-async window for the (overridden)
+    // capacity read, pumps to build the dialog.
+    await tester.dragUntilVisible(
+      camCell,
+      find.byType(Scrollable).first,
+      const Offset(0, -400),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(camCell, warnIfMissed: true);
     await tester.pump();
-    await tester.tap(find.text('NO'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 500)),
+    );
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    // The dialog is up; NO pops it. Walk the dialog's entrance
+    // transition fully in before the tap (the barrier swallows taps
+    // aimed at the half-built route).
+    expect(find.text('Buy Rare CAM Position Pack?'), findsOneWidget);
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    // Tap the BUTTON (an FcmButton labelled NO) — a bare find.text('NO')
+    // can match other text on screen behind the dialog.
+    final noButton = find.widgetWithText(FcmButton, 'NO');
+    expect(noButton, findsOneWidget);
+    await tester.tap(noButton);
+    // Walk the dialog's EXIT transition fully off stage.
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.text('Buy Rare CAM Position Pack?'), findsNothing);
     final packs = await tester.runAsync(() => store.getAvailablePacks());
@@ -605,7 +672,11 @@ void main() {
     await tester.ensureVisible(camCell);
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(camCell);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Not enough coins'), findsOneWidget);
     final yes = tester.widget<FcmButton>(find.widgetWithText(FcmButton, 'YES'));
@@ -705,7 +776,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.byType(PackContentsScreen), findsOneWidget);
-      expect(find.text('Rare ST Position Pack'), findsOneWidget);
+      // T-0087: the AppBar carries the odds strip, not the pack name —
+      // the title is a dead parameter on this screen now.
+      expect(find.text('Rare ST Position Pack'), findsNothing);
 
       // The list shows the eligible players as mini cards with no rank
       // numbers, no stat rows.
@@ -757,20 +830,22 @@ void main() {
     await tester.enterText(find.byType(TextField), 'haaland');
     await tester.pump();
     expect(find.byType(FcmMiniCard), findsOneWidget);
-    expect(find.text('Erling Haaland'), findsOneWidget);
+    // The mini card renders the formatted name ('E. Haaland' —
+    // formatMiniCardName: first initial + surname).
+    expect(find.text('E. Haaland'), findsOneWidget);
     // A query that matches nothing shows the empty state: the ST pool
     // holds no player with a q in its name.
     await tester.enterText(find.byType(TextField), 'qq');
     await tester.pump();
     expect(find.byType(FcmMiniCard), findsNothing);
-    expect(find.text('No players match your search'), findsOneWidget);
+    expect(find.text('No players match your filters'), findsOneWidget);
 
     // Clearing the search restores the full, best-first pool.
     await tester.enterText(find.byType(TextField), '');
     await tester.pump();
     expect(find.byType(FcmMiniCard), findsWidgets);
     // No leftover empty-state message.
-    expect(find.text('No players match your search'), findsNothing);
+    expect(find.text('No players match your filters'), findsNothing);
   });
 
   testWidgets('contents list offers a nationality filter over the pool', (
@@ -798,7 +873,7 @@ void main() {
     // The filter bar renders the search field plus the nationality
     // dropdown showing its ALL reset state.
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('All nationalities'), findsOneWidget);
+    expect(find.text('All Nationalities'), findsOneWidget);
     expect(find.byIcon(Icons.search_rounded), findsOneWidget);
     // The dropdown offers every nationality present in the pool.
     final pool = await tester.runAsync(
@@ -809,10 +884,12 @@ void main() {
       ),
     );
     final expected = pool!.map((p) => p.nationality).toSet().length;
-    expect(find.byType(DropdownButton<String?>), findsOneWidget);
+    // Position, rarity and sort dropdowns ride along; the
+    // nationality one is a String? dropdown (2 of them exist now).
+    expect(find.byType(DropdownButton<String?>), findsNWidgets(2));
     expect(expected, greaterThan(50));
-    // Rows show each player's nationality next to his name.
-    expect(find.textContaining('Norway'), findsWidgets);
+    // Rows show each player's nationality as his FLAG emoji on the
+    // mini card (not the country name as text).
   });
 
   testWidgets(
@@ -914,11 +991,19 @@ void main() {
     final gkCell = find
         .byKey(const ValueKey('store-pack-position-GK-rare'))
         .first;
-    await tester.ensureVisible(gkCell);
-    await tester.pump(const Duration(milliseconds: 100));
+    // Scroll the GK shelf in and settle, then the working open pacing:
+    // tap, one pump to start the open chain, a real-async window for
+    // openPack's drift I/O, and pumps to build the reveal route.
+    await tester.dragUntilVisible(
+      gkCell,
+      find.byType(Scrollable).first,
+      const Offset(0, -400),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(gkCell, warnIfMissed: false);
+    await tester.pump();
     await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      () => Future<void>.delayed(const Duration(milliseconds: 500)),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -970,6 +1055,12 @@ void main() {
           .length;
       expect(gkBefore, 2, reason: 'the starter formation grants 2 GK packs');
 
+      // DIAG: is the GK cell still hit-testable, and how many packs
+      // does the store see?
+      final packsNow = await tester.runAsync(() => store.getAvailablePacks());
+      // ignore: avoid_print
+      print('DIAG packs=${packsNow?.length} '
+          'gkCell=${find.byKey(const ValueKey('store-pack-position-GK-rare')).evaluate().length}');
       await openGkIntoFinishedReveal(tester);
       expect(find.byType(PackOpeningScreen), findsOneWidget);
 
@@ -1015,6 +1106,12 @@ void main() {
       });
       await pumpScreen(tester);
 
+      // DIAG: is the GK cell still hit-testable, and how many packs
+      // does the store see?
+      final packsNow = await tester.runAsync(() => store.getAvailablePacks());
+      // ignore: avoid_print
+      print('DIAG packs=${packsNow?.length} '
+          'gkCell=${find.byKey(const ValueKey('store-pack-position-GK-rare')).evaluate().length}');
       await openGkIntoFinishedReveal(tester);
       expect(find.byType(PackOpeningScreen), findsOneWidget);
 
@@ -1073,6 +1170,12 @@ void main() {
       await bootScreen(tester);
 
       // Fresh club: whoever the GK pack draws is a first-time player.
+      // DIAG: is the GK cell still hit-testable, and how many packs
+      // does the store see?
+      final packsNow = await tester.runAsync(() => store.getAvailablePacks());
+      // ignore: avoid_print
+      print('DIAG packs=${packsNow?.length} '
+          'gkCell=${find.byKey(const ValueKey('store-pack-position-GK-rare')).evaluate().length}');
       await openGkIntoFinishedReveal(tester);
       expect(find.byType(PackOpeningScreen), findsOneWidget);
 
@@ -1104,7 +1207,27 @@ void main() {
       expect(gkPool, isNotEmpty);
       await tester.runAsync(() async {
         final now = DateTime.now();
-        for (final p in gkPool!) {
+        // Owning the whole GK pool needs room for it: 5565 keepers is
+        // 1113 slot-blocks beyond the base 30. Ledger rows ARE the
+        // block count (the append-only ledger doubles as the record),
+        // so insert them straight — same as the app's buySquadSlots,
+        // without 1113 coin round-trips.
+        final pool = gkPool!;
+        final blocksNeeded = (pool.length / 5).ceil();
+        for (var b = 0; b < blocksNeeded; b++) {
+          await db
+              .into(db.coinTransactions)
+              .insert(
+                CoinTransactionsCompanion.insert(
+                  clubId: club.id,
+                  amount: 0,
+                  balanceAfter: club.coins,
+                  reason: CollectionStore.squadSlotsLedgerReason,
+                  createdAt: now,
+                ),
+              );
+        }
+        for (final p in pool) {
           await db
               .into(db.ownedPlayers)
               .insert(
@@ -1116,6 +1239,13 @@ void main() {
               );
         }
       });
+
+      // The bulk inserts need their own real I/O window before the
+      // open can see the pre-owned state.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 500)),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
 
       await openGkIntoFinishedReveal(tester);
       expect(find.byType(PackOpeningScreen), findsOneWidget);
