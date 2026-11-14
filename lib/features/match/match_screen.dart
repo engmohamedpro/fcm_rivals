@@ -23,7 +23,6 @@ import 'match_engine.dart';
 import 'match_report.dart';
 import 'match_report_view.dart';
 import 'match_session.dart';
-import 'tactics.dart';
 
 /// Everything the live GOAL moment needs (T-0116): the scorer's small
 /// card (the only thing it draws besides the wordmark) plus the goal's
@@ -114,14 +113,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   MatchReportResult? _report;
 
   String? _error;
-  bool _halfTimeOffered = false;
 
-  /// True while the half-time card is up OVER the frozen match (the
-  /// auto-play clock stops for it). Separate from [_sheetOpen], which
-  /// the tactics editor toggles: editing tactics at half time must NOT
-  /// dismiss the pep-talk choice — the card comes back when the editor
-  /// closes, until the manager talks or skips.
-  bool _halfTimeCardUp = false;
   bool _finishing = false;
 
   /// True while the post-match recovery card is up over the full-time
@@ -351,12 +343,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         _lines.addAll(lines);
         // The GOAL announcement (T-0116): the loudest moment gets the
         // loudest channel — a screen-level banner, not a quiet card
-        // glow. Only while the live view owns the screen (no
-        // half-time/recovery card up, match not finished); a second
-        // goal restarts the banner from the top.
+        // glow. Only while the live view owns the screen (match not
+        // finished); a second goal restarts the banner from the top.
         for (final event in events) {
           if (event.type == MatchEventType.goal &&
-              !_halfTimeCardUp &&
               !session.isFinished) {
             final names = session.allPlayerNames;
             final live = session.engine.state;
@@ -414,7 +404,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         }
       });
     }
-    _maybeOfferHalfTimeTalk();
     if (session.isFinished) {
       // Full time: the whistle ends the ambience too ("first-half
       // kick-off to second-half end"), before the report flow starts.
@@ -422,40 +411,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       // — the crowd does not stop mid-roar.
       unawaited(_audio.stop());
       _finishMatch();
-    }
-  }
-
-  void _maybeOfferHalfTimeTalk() {
-    final session = widget.session;
-    if (_halfTimeOffered) return;
-    final state = session.engine.state;
-    // Offer once when the clock first reaches/reaches past half time.
-    if (state.minute >= 45 && !state.isFinished) {
-      _halfTimeOffered = true;
-      _showHalfTimeTalk();
-    }
-  }
-
-  /// Half-time pep talk (GDD 15.2) as a touchline card ON the match —
-  /// not a modal sheet. The auto-play clock is held while the card is
-  /// up, so the match waits for the decision; effects apply from the
-  /// second-half kick-off, ad-free like every pep talk (FR-043).
-  void _showHalfTimeTalk() {
-    unawaited(_audio.halfTimeBreak());
-    setState(() {
-      _sheetOpen = true;
-      _halfTimeCardUp = true;
-    });
-  }
-
-  void _hideHalfTimeTalk({MatchPepTalk? talk}) {
-    final session = widget.session;
-    setState(() {
-      _sheetOpen = false;
-      _halfTimeCardUp = false;
-    });
-    if (talk != null && !session.isFinished) {
-      session.queueHalfTimeTalk(talk);
     }
   }
 
@@ -493,25 +448,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
       _finishing = false;
       scene?.end();
     }
-  }
-
-  /// The half-time touchline card, shown over the frozen match.
-  Widget _buildHalfTimeCard() {
-    final session = widget.session;
-    final state = session.engine.state;
-    return TouchlinePepTalkCard(
-      title: 'HALF TIME',
-      scoreHeader:
-          '${session.homeTeamName} ${state.scoreHome} – ${state.scoreAway} '
-          '${session.awayTeamName}',
-      subtitle:
-          'Pep talk for the second half — applies from kick-off. The match '
-          'waits. You can also edit tactics before the restart.',
-      talks: halfTimePepTalks,
-      onChoose: (talk) => _hideHalfTimeTalk(talk: talk),
-      onSkip: _hideHalfTimeTalk,
-      onEditTactics: () => _openLiveTactics(context),
-    );
   }
 
   @override
@@ -661,7 +597,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                               child: LiveTacticsPanel(
                                 session: session,
                                 minute: state.minute,
-                                enabled: !_halfTimeCardUp && !_sheetOpen,
+                                enabled: !_sheetOpen,
                                 onOpenEditor: () => _openLiveTactics(context),
                               ),
                             ),
@@ -669,9 +605,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                       ),
                       // The GOAL announcement (T-0116): the banner bursts
                       // over the pitch while the match keeps playing —
-                      // celebration, not interruption. Never mounted
-                      // while the half-time card holds the screen.
-                      if (_goalFlash != null && !_halfTimeCardUp)
+                      // celebration, not interruption.
+                      if (_goalFlash != null)
                         Positioned.fill(
                           child: Center(
                             child: Padding(
@@ -688,9 +623,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                                 // clears itself and the screen rebuilds
                                 // without it.
                                 onFinished: () {
-                                  if (mounted &&
-                                      _goalFlash != null &&
-                                      !_halfTimeCardUp) {
+                                  if (mounted && _goalFlash != null) {
                                     setState(() => _goalFlash = null);
                                   }
                                 },
@@ -698,9 +631,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
                             ),
                           ),
                         ),
-                      // Half-time touchline card over the frozen match.
-                      if (!_finished && _halfTimeCardUp)
-                        _buildHalfTimeCard(),
                     ],
                   ),
           ),
@@ -728,9 +658,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     } finally {
       if (mounted) {
         setState(() {
-          // Back from the editor: the clock stays held while the
-          // half-time card is still pending its decision.
-          _sheetOpen = _halfTimeCardUp;
+          // Back from the editor: the clock resumes.
+          _sheetOpen = false;
         });
       }
     }

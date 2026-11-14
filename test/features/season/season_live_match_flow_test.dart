@@ -73,21 +73,13 @@ Future<void> _flush(
   }
 }
 
-/// Pumps the auto-play ticker until the match reaches full time (at 3x:
-/// 267ms pumped time per match minute), dismissing the half-time pep-talk
-/// sheet with the default 'no talk' choice when it appears so the clock
-/// resumes. Bounded to ~150 match minutes of pumping so a broken ticker
+/// Pumps the auto-play ticker until the match reaches full time (at 2x:
+/// 400ms pumped time per match minute; no half-time card since the pep
+/// talk removal, owner request 2026-11-14). Bounded so a broken ticker
 /// fails fast instead of hanging.
 Future<void> _playToFullTime(WidgetTester tester) async {
-  for (var i = 0; i < 300; i++) {
+  for (var i = 0; i < 450; i++) {
     await tester.pump(const Duration(milliseconds: 200));
-    // The half-time touchline card holds the clock — its title is the
-    // unmistakable HALF TIME banner. 'Say nothing' skips the talk and
-    // resumes play.
-    if (find.text('HALF TIME').evaluate().isNotEmpty) {
-      await tester.tap(find.text('Say nothing — back to the match'));
-      await tester.pump(const Duration(milliseconds: 400));
-    }
     if (find.text('Post-match recovery').evaluate().isNotEmpty) return;
   }
 }
@@ -155,7 +147,8 @@ void main() {
       // opponent analysis (header with position and form, loss/draw/win
       // row, then the opponent's starting XI on the Team tab's pitch —
       // 2026-11-13 replaced the strength bars and top-player cards),
-      // then the dressing-room pep talk.
+      // then the tactics phase (the dressing-room pep talk is gone,
+      // owner request 2026-11-14).
       await tester.tap(find.text('Play match'));
       await _flush(tester, wait: const Duration(milliseconds: 900));
       expect(find.text(opponent.opponentName), findsOneWidget);
@@ -234,11 +227,9 @@ void main() {
       await tester.tap(find.text('DONE'));
       await _flush(tester, wait: const Duration(milliseconds: 600));
 
-      // On to the dressing room (GDD 15.1 pre-match pep talk).
-      await tester.tap(find.text('TO DRESSING ROOM'));
-      await _flush(tester, wait: const Duration(milliseconds: 600));
-      expect(find.text('DRESSING ROOM'), findsOneWidget);
-      expect(find.text('Deliver your team talk'), findsOneWidget);
+      // The dressing-room phase is gone (owner request 2026-11-14:
+      // no pep talks) — the tactics phase's DONE lands straight on
+      // the kick-off button.
 
       // The tactic selection did NOT touch the club's saved default setup:
       // match-only semantics (GDD 10.4) — persistence happens nowhere before
@@ -251,7 +242,7 @@ void main() {
       await _flush(tester, wait: const Duration(milliseconds: 900));
 
       // The live match screen is pushed over the shell: real club names on
-      // the scoreboard, the auto-play controls (pause + 1x–3x speed; no
+      // the scoreboard, the auto-play controls (pause + 1x–2x speed; no
       // skip-to-end exists anywhere) and the tactics entry point.
       expect(find.text('D1'), findsOneWidget);
       expect(find.text('Round 1'), findsOneWidget);
@@ -261,15 +252,16 @@ void main() {
       expect(find.text(opponent.opponentName), findsNothing,
           reason: 'the scoreline abbreviates, full names are gone');
       expect(find.text('1x'), findsOneWidget);
-      expect(find.text('3x'), findsOneWidget);
+      expect(find.text('2x'), findsOneWidget);
+      expect(find.text('3x'), findsNothing);
       expect(find.text('4x'), findsNothing);
       expect(find.text('Next minute'), findsNothing);
       expect(find.text('Sim to end'), findsNothing);
 
       // The match plays itself: pump real time and the ticker advances
-      // match minutes. Flip to 3x first (267ms per match minute), handle
-      // the half-time talk when the clock holds, then play to full time.
-      await tester.tap(find.text('3x'));
+      // match minutes. Flip to 2x first (400ms per match minute), then
+      // play to full time (no half-time talk since 2026-11-14).
+      await tester.tap(find.text('2x'));
       await tester.pump(const Duration(milliseconds: 50));
       await _playToFullTime(tester);
 

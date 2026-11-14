@@ -156,14 +156,6 @@ class _TeamRuntime {
   int lastAiSubMinute = 0;
   bool aiChaseSubDone = false;
 
-  /// Active pep talk (GDD 15): persistent multipliers, at most one at a
-  /// time — a later talk replaces the earlier one.
-  ActionModifiers pepTalkModifiers = const ActionModifiers(
-    attack: 1,
-    defence: 1,
-    stamina: 1,
-  );
-
   /// Team totals (GDD 12.2): raw attributes per player (no stamina term —
   /// a 40% starter performs exactly like a fresh one), then 1. mentality,
   /// 2. custom tactics, 3. live actions, 4. pep talk, 5. home advantage,
@@ -233,15 +225,13 @@ class _TeamRuntime {
         (attackW > 0 ? attackSum / attackW : 0) *
         mFx.attack *
         tFx.attack *
-        actionModifiers.attack *
-        pepTalkModifiers.attack;
+        actionModifiers.attack;
     final support = supportW > 0 ? supportSum / supportW : 0;
     final defence =
         (defenceW > 0 ? defenceSum / defenceW : 0) *
         mFx.defence *
         tFx.defence *
-        actionModifiers.defence *
-        pepTalkModifiers.defence;
+        actionModifiers.defence;
     final goalkeeping = gkEff * mFx.defence * tFx.defence;
     // Chemistry (owner spec 2026-11-09, club half added 2026-11-11):
     // every shared nationality group AND every shared club group of

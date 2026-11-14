@@ -1,5 +1,6 @@
-/// FCM Rivals — pre-match tactics, pep-talk and bottom-bar phases
-/// (GDD 10.4 match-only setup + 15.1 pep talk).
+/// FCM Rivals — pre-match tactics and bottom-bar phases
+/// (GDD 10.4 match-only setup; the 15.1 pep-talk phase was removed —
+/// owner request 2026-11-14: no pep talks anywhere in the game).
 ///
 /// Split out of `pre_match_screen.dart` (task
 /// `2026-11-05_app-structure_split-pre-match-screen`); the screen
@@ -132,238 +133,22 @@ class TacticsPhase extends StatelessWidget {
   return (xi, bench, reserves);
 }
 
-/// One motivational choice (GDD 15.1) with its visible percentage
-/// effects; selecting one plays a short confirm burst handled by the
-/// screen's callback.
-class PepTalkPhase extends StatelessWidget {
-  const PepTalkPhase({
-    super.key,
-    required this.selected,
-    required this.onSelect,
-  });
-
-  final MatchPepTalk? selected;
-  final ValueChanged<MatchPepTalk?> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-      children: [
-        FcmEntrance(
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              const FcmIconBadge(
-                icon: Icons.record_voice_over_rounded,
-                size: 76,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'DRESSING ROOM',
-                style: TextStyle(
-                  color: FcmColors.gold,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Deliver your team talk',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'One motivational choice — its effects last the whole match '
-                'and are shown as percentages (GDD 15.1).',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: FcmColors.textDim,
-                  fontSize: 12,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        for (var i = 0; i < preMatchPepTalks.length; i++)
-          FcmEntrance(
-            index: i,
-            duration: const Duration(milliseconds: 420),
-            child: _PepTalkTile(
-              talk: preMatchPepTalks[i],
-              selected: selected?.id == preMatchPepTalks[i].id,
-              onTap: () => onSelect(preMatchPepTalks[i]),
-            ),
-          ),
-        const SizedBox(height: 8),
-        FcmEntrance(
-          index: preMatchPepTalks.length,
-          duration: const Duration(milliseconds: 420),
-          child: _PepTalkTile(
-            talk: null,
-            selected: selected == null,
-            onTap: () => onSelect(null),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// One selectable talk tile, or the "no talk" tile when [talk] is null.
-class _PepTalkTile extends StatelessWidget {
-  const _PepTalkTile({
-    required this.talk,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final MatchPepTalk? talk;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = talk;
-    final effects = t == null ? 'No modifiers' : t.effectSummary;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: FcmPressable(
-        onTap: onTap,
-        scale: 0.98,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: selected
-                  ? [
-                      Color.lerp(FcmColors.surfaceHigh, FcmColors.gold, 0.22)!,
-                      FcmColors.surface,
-                    ]
-                  : [FcmColors.surfaceHigh, FcmColors.surface],
-            ),
-            border: Border.all(
-              color: selected
-                  ? FcmColors.gold.withValues(alpha: 0.8)
-                  : FcmColors.bronze.withValues(alpha: 0.3),
-              width: selected ? 1.6 : 1,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: FcmColors.gold.withValues(alpha: 0.28),
-                      blurRadius: 20,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 240),
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: selected
-                      ? FcmColors.gold
-                      : Colors.white.withValues(alpha: 0.06),
-                  border: Border.all(
-                    color: selected
-                        ? FcmColors.goldSoft
-                        : FcmColors.bronze.withValues(alpha: 0.5),
-                  ),
-                ),
-                child: selected
-                    ? const Icon(
-                        Icons.check_rounded,
-                        color: FcmColors.ink,
-                        size: 20,
-                      )
-                    : const Icon(
-                        Icons.record_voice_over_rounded,
-                        color: FcmColors.textDim,
-                        size: 17,
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t?.label ?? 'No team talk',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      effects,
-                      style: TextStyle(
-                        color: t == null
-                            ? FcmColors.textDim
-                            : FcmColors.goldSoft,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                    if (t != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        t.description,
-                        style: const TextStyle(
-                          color: FcmColors.textDim,
-                          fontSize: 11,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// The matchday build-up's bottom bar: phase-aware primary action
-/// (CONTINUE / TO DRESSING ROOM / KICK OFF), the BACK affordance and the
+/// (CONTINUE / KICK OFF), the BACK affordance and the
 /// inline session-preparation error.
 class BottomBar extends StatelessWidget {
   const BottomBar({
     super.key,
     required this.phase,
-    required this.selectedTalk,
     required this.loading,
     required this.error,
     required this.onPrimary,
     this.onBack,
   });
 
-  /// 0 analysis, 1 tactics, 2 pep talk.
+  /// 0 analysis, 1 tactics (the dressing-room pep-talk phase is gone —
+  /// owner request 2026-11-14).
   final int phase;
-  final MatchPepTalk? selectedTalk;
   final bool loading;
   final String? error;
   final VoidCallback onPrimary;
@@ -376,12 +161,10 @@ class BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final primaryLabel = switch (phase) {
       0 => 'CONTINUE',
-      1 => 'TO DRESSING ROOM',
       _ => 'KICK OFF',
     };
     final primaryIcon = switch (phase) {
       0 => Icons.groups_rounded,
-      1 => Icons.record_voice_over_rounded,
       _ => Icons.play_circle_fill_rounded,
     };
     return Padding(

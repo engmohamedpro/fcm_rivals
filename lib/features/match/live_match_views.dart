@@ -8,9 +8,11 @@
 /// - `match_header.dart` — the compact scoreboard header and its
 ///   play/pause + speed + tactics controls;
 /// - `momentum_bar.dart` — the live momentum meter (tug-of-war bar,
-///   plain-words status and trend wave);
-/// - `touchline_pep_talk.dart` — the half-time touchline talk card,
-///   its chooser sheet and the shared `SheetOption` row.
+///   plain-words status and trend wave).
+///
+/// (The half-time touchline talk card lived in
+/// `touchline_pep_talk.dart` — removed with all pep talks, owner
+/// request 2026-11-14.)
 ///
 /// The live commentary feed lives in `live_commentary_feed.dart` (the
 /// featured moment + fading timeline) and the in-match tactics panel in
@@ -20,4 +22,3 @@ library;
 export 'injury_live_banner.dart';
 export 'match_header.dart';
 export 'momentum_bar.dart';
-export 'touchline_pep_talk.dart';

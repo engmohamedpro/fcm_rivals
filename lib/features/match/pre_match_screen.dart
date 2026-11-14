@@ -1,4 +1,4 @@
-/// FCM Rivals — matchday build-up screen (GDD 13 pre-match + 15.1 pep talk).
+/// FCM Rivals — matchday build-up screen (GDD 13 pre-match).
 ///
 /// The full-screen experience before a fixture:
 ///
@@ -16,14 +16,12 @@
 ///      setup is never touched (GDD 10.4 match-specific setup). The
 ///      mentality is not edited here (owner request 2026-11-13) — the
 ///      club's saved value kicks off and the live panel may change it.
-///   4. Pep talk phase — one motivational choice (GDD 15.1) with its
-///      visible percentage effects; selecting one plays a short confirm
-///      burst. Phase widgets live in `pre_match_phases.dart`
-///      (task `2026-11-05_app-structure_split-pre-match-screen`).
-///   5. Kick-off       — hands the prepared selection to the caller.
+///   4. Kick-off       — hands the prepared selection to the caller.
+///      (The dressing-room pep-talk phase is gone — owner request
+///      2026-11-14: no pep talks anywhere in the game.)
 ///
-/// The screen owns no session data: [onKickOff] receives the chosen talk
-/// and the match-only tactic selection so the caller builds the session
+/// The screen owns no session data: [onKickOff] receives the
+/// match-only tactic selection so the caller builds the session
 /// exactly as before (FR-043: no ads).
 library;
 
@@ -39,7 +37,7 @@ import 'pre_match_tactics_selection.dart';
 export 'pre_match_tactics_selection.dart' show PreMatchTacticSelection;
 import 'tactics.dart';
 
-/// Full-screen matchday build-up: analysis → tactics → pep talk → kick-off.
+/// Full-screen matchday build-up: analysis → tactics → kick-off.
 class PreMatchScreen extends StatefulWidget {
   const PreMatchScreen({
     super.key,
@@ -53,9 +51,9 @@ class PreMatchScreen extends StatefulWidget {
 
   final PreMatchData data;
 
-  /// Receives the match-only tactic selection and the chosen pep talk
-  /// (null = no talk), then pops.
-  final void Function(MatchPepTalk? talk) onKickOff;
+  /// Receives the match-only tactic selection, then pops. (The pep-talk
+  /// parameter is gone — owner request 2026-11-14: no pep talks.)
+  final VoidCallback onKickOff;
 
   /// True while the caller prepares the session (kick-off pressed).
   final bool loading;
@@ -78,19 +76,14 @@ class PreMatchScreen extends StatefulWidget {
 }
 
 class _PreMatchScreenState extends State<PreMatchScreen> {
-  int _phase = 0; // 0 analysis, 1 tactics, 2 pep talk
-  MatchPepTalk? _selectedTalk;
+  int _phase = 0; // 0 analysis, 1 tactics (owner request 2026-11-14:
+  // the dressing-room pep-talk phase is gone — no pre-match talks)
   late String _formationCode = widget.data.userFormationCode;
   late TeamTactics _tactics = widget.data.userTactics;
 
   void _nextPhase() {
     HapticFeedback.selectionClick();
     setState(() => _phase++);
-  }
-
-  void _selectTalk(MatchPepTalk? talk) {
-    HapticFeedback.mediumImpact();
-    setState(() => _selectedTalk = talk);
   }
 
   void _kickOff() {
@@ -101,7 +94,7 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
         tactics: _tactics,
       ),
     );
-    widget.onKickOff(_selectedTalk);
+    widget.onKickOff();
   }
 
   @override
@@ -154,20 +147,30 @@ class _PreMatchScreenState extends State<PreMatchScreen> {
                         setState(() {});
                       },
                     ),
-                    _ => PepTalkPhase(
-                      key: const ValueKey('pep'),
-                      selected: _selectedTalk,
-                      onSelect: _selectTalk,
+                    // The dressing-room phase is gone (owner request
+                    // 2026-11-14: no pep talks anywhere) — the tactics
+                    // phase's primary button is now KICK OFF.
+                    _ => TacticsPhase(
+                      key: const ValueKey('tactics'),
+                      data: d,
+                      formationCode: _formationCode,
+                      tactics: _tactics,
+                      onFormation: (code) =>
+                          setState(() => _formationCode = code),
+                      onTactics: (t) => setState(() => _tactics = t),
+                      onAutoPick: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {});
+                      },
                     ),
                   },
                 ),
               ),
               BottomBar(
                 phase: phase,
-                selectedTalk: _selectedTalk,
                 loading: widget.loading,
                 error: widget.error,
-                onPrimary: phase == 2 ? _kickOff : _nextPhase,
+                onPrimary: phase == 1 ? _kickOff : _nextPhase,
                 // Later phases step back through the build-up; the
                 // analysis phase's BACK leaves the matchday (and the
                 // fixture unplayed) via onExit — defaulting to a plain

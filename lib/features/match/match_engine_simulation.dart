@@ -352,8 +352,7 @@ extension _MatchEngineSim on MatchEngine {
         defMentalityFx.stamina *
         _activeActionModifiersOf(
           attackerSide == MatchSide.home ? MatchSide.away : MatchSide.home,
-        ).stamina *
-        def.pepTalkModifiers.stamina;
+        ).stamina;
     final pressBill = styleDrain > 1.0
         ? (styleDrain - 1.0) * TuningOverrides.current.pressBillSlope
         : 0.0;

@@ -10,13 +10,13 @@ part of 'season_store.dart';
 extension SeasonFixturePlayOps on SeasonStore {
   /// Creates a live match session for the user's next fixture. The UI
   /// drives it; call [commitFixtureResult] with the finished session.
-  /// [preMatchTalk] applies its multipliers from kick-off (GDD 15.1).
   /// [tactics] carries the MATCH-ONLY setup chosen on the pre-match
   /// screen (formation, custom tactics, mentality — GDD 10.4): the session is
   /// built from it and the club's saved default setup stays untouched.
+  /// (The pre-match pep talk parameter is gone — owner request
+  /// 2026-11-14: no pep talks.)
   Future<MatchSession> startNextFixture(
     CollectionStore store, {
-    MatchPepTalk? preMatchTalk,
     PreMatchTacticSelection? tactics,
   }) async {
     final next = await getNextFixture();
@@ -31,7 +31,6 @@ extension SeasonFixturePlayOps on SeasonStore {
       opponentStarters: opponent.starters,
       opponentBench: opponent.bench,
       userAtHome: next.isHome,
-      preMatchTalk: preMatchTalk,
       tactics: tactics,
     );
   }

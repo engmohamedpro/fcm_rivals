@@ -12,7 +12,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
 import '../match/match_forecast.dart' show PreMatchData;
-import '../match/tactics.dart' show MatchPepTalk;
 import '../match/pre_match_screen.dart' show PreMatchScreen, PreMatchTacticSelection;
 
 /// Route body for the matchday build-up: loads the pre-match analysis
@@ -30,10 +29,9 @@ class PreMatchRoute extends ConsumerStatefulWidget {
 
   final Future<PreMatchData> Function() loadData;
 
-  /// Receives the chosen pep talk (null = none) and the match-only tactic
-  /// selection made in the tactics phase.
-  final void Function(MatchPepTalk? talk, PreMatchTacticSelection? tactics)
-  onKickOff;
+  /// Receives the match-only tactic selection made in the tactics phase
+  /// (the pep talk is gone — owner request 2026-11-14).
+  final void Function(PreMatchTacticSelection? tactics) onKickOff;
 
   @override
   ConsumerState<PreMatchRoute> createState() => PreMatchRouteState();
@@ -48,13 +46,13 @@ class PreMatchRouteState extends ConsumerState<PreMatchRoute> {
     _future = widget.loadData();
   }
 
-  void _kickOff(MatchPepTalk? talk) {
-    widget.onKickOff(talk, _lastTactics);
+  void _kickOff() {
+    widget.onKickOff(_lastTactics);
     Navigator.of(context).pop(true);
   }
 
   /// The most recent tactic selection reported by the pre-match screen
-  /// (delivered at kick-off alongside the pep talk).
+  /// (delivered at kick-off).
   PreMatchTacticSelection? _lastTactics;
 
   @override

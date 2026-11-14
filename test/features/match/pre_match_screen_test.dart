@@ -22,7 +22,6 @@ import 'package:fcm_rivals/features/match/match_engine.dart' show TeamTotals;
 import 'package:fcm_rivals/features/match/match_event.dart' show MatchPlayer;
 import 'package:fcm_rivals/features/match/match_forecast.dart';
 import 'package:fcm_rivals/features/match/pre_match_screen.dart';
-import 'package:fcm_rivals/features/match/tactics.dart';
 import 'package:fcm_rivals/features/squad/squad_engine.dart' show PlayerCard;
 import 'package:fcm_rivals/features/squad/squad_pitch_view.dart' show SquadPitch;
 
@@ -148,7 +147,7 @@ Future<void> _settle(WidgetTester tester, {int frames = 14}) async {
 Future<void> _openPreMatch(
   WidgetTester tester, {
   VoidCallback? onExit,
-  void Function(MatchPepTalk?)? onKickOff,
+  VoidCallback? onKickOff,
 }) async {
   // A tall surface so the whole analysis fits on screen at once (the
   // default 800x600 test viewport cuts the lower cards off).
@@ -165,7 +164,7 @@ Future<void> _openPreMatch(
       MaterialPageRoute<void>(
         builder: (_) => PreMatchScreen(
           data: _data,
-          onKickOff: onKickOff ?? (_) {},
+          onKickOff: onKickOff ?? () {},
           onExit: onExit,
         ),
       ),
@@ -419,7 +418,7 @@ void main() {
     var kicked = false;
     await _openPreMatch(
       tester,
-      onKickOff: (_) => kicked = true,
+      onKickOff: () => kicked = true,
     );
     await tester.tap(find.text('CONTINUE'));
     await _settle(tester, frames: 12);

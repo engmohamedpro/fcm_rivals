@@ -18,11 +18,12 @@ class UserSettingsStore {
 
   static const int _rowId = 1;
 
-  /// Highest supported playback speed (1x–3x: 1x reads the match,
-  /// 2x plays it, 3x races through it).
-  static const int maxMatchSpeed = 3;
+  /// Highest supported playback speed (1x–2x: 1x reads the match,
+  /// 2x plays it — owner request 2026-11-14: 3x is removed). A
+  /// persisted 3 from the old build reads back as the 1x fallback.
+  static const int maxMatchSpeed = 2;
 
-  /// The persisted match playback speed (1–3). Returns [fallback] when
+  /// The persisted match playback speed (1–2). Returns [fallback] when
   /// no row exists yet (first launch) — the caller treats that as the
   /// default speed, and the row is created on the first write.
   Future<int> matchSpeed({int fallback = 1}) async {
@@ -32,7 +33,7 @@ class UserSettingsStore {
     return speed >= 1 && speed <= maxMatchSpeed ? speed : fallback;
   }
 
-  /// Persists the chosen playback speed (1–3, anything else is ignored).
+  /// Persists the chosen playback speed (1–2, anything else is ignored).
   Future<void> setMatchSpeed(int speed) async {
     if (speed < 1 || speed > maxMatchSpeed) return;
     final row = await _row();

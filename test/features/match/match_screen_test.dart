@@ -162,8 +162,8 @@ void main() {
     expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
     expect(find.text('1x'), findsOneWidget);
     expect(find.text('2x'), findsOneWidget);
-    expect(find.text('3x'), findsOneWidget);
-    // 4x is gone — the ladder stops at 3x.
+    // 3x is gone — the ladder stops at 2x (owner request 2026-11-14).
+    expect(find.text('3x'), findsNothing);
     expect(find.text('4x'), findsNothing);
     expect(find.byIcon(Icons.tune_rounded), findsNothing);
 
@@ -301,17 +301,13 @@ void main() {
     );
     await tester.pump();
 
-    // Race to full time at 3x (267ms per match minute).
-    await tester.tap(find.text('3x'));
+    // Race to full time at 2x (400ms per match minute).
+    await tester.tap(find.text('2x'));
     await tester.pump(const Duration(milliseconds: 50));
     // T-0100: full time goes straight to the report — no recovery
     // card to dismiss anymore.
-    for (var i = 0; i < 400; i++) {
+    for (var i = 0; i < 600; i++) {
       await tester.pump(const Duration(milliseconds: 200));
-      if (find.text('HALF TIME').evaluate().isNotEmpty) {
-        await tester.tap(find.text('Say nothing — back to the match'));
-        await tester.pump(const Duration(milliseconds: 400));
-      }
       if (find.textContaining('Full time:').evaluate().isNotEmpty) break;
     }
     await flush();
@@ -453,14 +449,14 @@ void main() {
       ),
     );
     await tester.pump();
-    // Race to full time at 3x (267ms per match minute).
-    await tester.tap(find.text('3x'));
+    // Race to full time at 2x (400ms per match minute).
+    await tester.tap(find.text('2x'));
     await tester.pump(const Duration(milliseconds: 50));
   }
 
-  /// Bounded pump loop until the full-time report is up, dismissing
-  /// the half-time talk on the way (T-0100: full time lands on the
-  /// report directly — there is no recovery card anymore).
+  /// Bounded pump loop until the full-time report is up (T-0100: full
+  /// time lands on the report directly — there is no recovery card
+  /// anymore, and no half-time talk since 2026-11-14).
   Future<void> driveToFullTimeReport(
     WidgetTester tester, {
     String marker = 'Full time:',

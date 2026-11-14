@@ -78,15 +78,14 @@ class MatchSession {
 
   /// Creates a session from the user's current squad (FR-025: player
   /// attributes and stamina feed the engine, GDD 12.2) against a synthetic
-  /// friendly opponent. [preMatchTalk] applies its multipliers from
-  /// kick-off (GDD 15.1) — it never requires an ad (FR-043). [tactics]
-  /// optionally overrides the club's saved setup for this match only.
+  /// friendly opponent. [tactics] optionally overrides the club's saved
+  /// setup for this match only. (The pre-match pep talk parameter is
+  /// gone — owner request 2026-11-14: no pep talks.)
   static Future<MatchSession> create({
     required CollectionStore store,
     required int seed,
     required String opponentName,
     required int opponentAverageOverall,
-    MatchPepTalk? preMatchTalk,
     PreMatchTacticSelection? tactics,
     MatchEngineConfig config = defaultMatchEngineConfig,
   }) async {
@@ -113,11 +112,6 @@ class MatchSession {
         aiControlled: true,
       ),
     );
-    if (preMatchTalk != null) {
-      engine.queueCommand(
-        PepTalkCommand(atMinute: 0, side: MatchSide.home, talk: preMatchTalk),
-      );
-    }
     return MatchSession._(
       engine,
       store,
@@ -135,8 +129,9 @@ class MatchSession {
 
   /// Creates a session against a persisted AI club (season fixtures): the
   /// opponent's squad, formation and tactics come from the database, and
-  /// statistics/ratings carry the real club ids. [preMatchTalk] applies
-  /// from kick-off (GDD 15.1). [tactics] carries the MATCH-ONLY setup
+  /// statistics/ratings carry the real club ids. (The pre-match pep
+  /// talk parameter is gone — owner request 2026-11-14: no pep talks.)
+  /// [tactics] carries the MATCH-ONLY setup
   /// chosen on the pre-match screen (GDD 10.4): the engine's formation,
   /// custom tactics and mentality come from it instead of the club's
   /// saved defaults, and when the formation differs the starting XI is
@@ -148,7 +143,6 @@ class MatchSession {
     required List<MatchPlayer> opponentStarters,
     required List<MatchPlayer> opponentBench,
     bool userAtHome = true,
-    MatchPepTalk? preMatchTalk,
     PreMatchTacticSelection? tactics,
     MatchEngineConfig config = defaultMatchEngineConfig,
   }) async {
@@ -176,15 +170,6 @@ class MatchSession {
       home: userAtHome ? inputs.$1 : opponentTeam,
       away: userAtHome ? opponentTeam : inputs.$1,
     );
-    if (preMatchTalk != null) {
-      engine.queueCommand(
-        PepTalkCommand(
-          atMinute: 0,
-          side: userAtHome ? MatchSide.home : MatchSide.away,
-          talk: preMatchTalk,
-        ),
-      );
-    }
     return MatchSession._(
       engine,
       store,
@@ -472,14 +457,6 @@ class MatchSession {
 
   /// Queues a live tactical change (GDD 10.4/16).
   void queueCommand(MatchCommand command) => engine.queueCommand(command);
-
-  /// Queues the half-time pep talk (GDD 15.2): applied at the first
-  /// minute of the second half, affecting future events only.
-  void queueHalfTimeTalk(MatchPepTalk talk) {
-    engine.queueCommand(
-      PepTalkCommand(atMinute: 46, side: userSide, talk: talk),
-    );
-  }
 
   /// The engine side carrying the user's club.
   MatchSide get userSide =>

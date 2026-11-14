@@ -70,17 +70,5 @@ class LiveActionCommand extends MatchCommand {
   final LiveMatchAction action;
 }
 
-/// A pre-match or half-time pep talk (GDD 15): team-wide multipliers that
-/// never expire — a pre-match talk runs from kick-off, a half-time talk
-/// from the second half. Replaces any earlier talk (no stacking), and
-/// like every command it affects future events only.
-class PepTalkCommand extends MatchCommand {
-  const PepTalkCommand({
-    required super.atMinute,
-    required super.side,
-    required this.talk,
-  });
 
-  final MatchPepTalk talk;
-}
 

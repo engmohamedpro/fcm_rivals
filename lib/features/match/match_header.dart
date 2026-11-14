@@ -127,8 +127,9 @@ class MatchHeader extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             // Controls fused into the same panel: play/pause and the
-            // 1x–3x speed selector — nothing else (owner request
-            // 2026-11-13: the tactics button left the header card).
+            // 1x–2x speed selector — nothing else (owner request
+            // 2026-11-13: the tactics button left the header card;
+            // 2026-11-14: 3x removed — 1x and 2x only).
             Row(
               children: [
                 _HeaderIconButton(
@@ -418,12 +419,12 @@ class _LiveTagState extends State<_LiveTag>
   }
 }
 
-/// Segmented 1x / 2x / 3x speed selector, compressed to sit inside the
+/// Segmented 1x / 2x speed selector, compressed to sit inside the
 /// header panel. The selected segment is gold with ink text.
 class _SpeedSelector extends StatelessWidget {
   const _SpeedSelector({required this.speed, required this.onSelect});
 
-  static const speeds = [1, 2, 3];
+  static const speeds = [1, 2];
 
   final int speed;
   final ValueChanged<int> onSelect;

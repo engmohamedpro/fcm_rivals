@@ -424,8 +424,7 @@ extension _MatchEngineAi on MatchEngine {
       final styleStamina =
           rt.tactics.modifiers.stamina *
           rt.mentalityFx.stamina *
-          _activeActionModifiersOf(side).stamina *
-          rt.pepTalkModifiers.stamina;
+          _activeActionModifiersOf(side).stamina;
       for (final p in rt.onPitch.whereType<MatchPlayer>()) {
         final drain = staminaDrainForMinute(
           config: config.staminaConfig,

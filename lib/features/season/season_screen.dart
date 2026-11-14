@@ -10,7 +10,6 @@ import '../../core/domain/crest.dart';
 import '../../core/ui/fcm_crest.dart';
 import '../../core/ui/fcm_style.dart';
 import '../../core/ui/fcm_widgets.dart';
-import '../match/tactics.dart' show MatchPepTalk;
 import '../squad/formations.dart' show Formation;
 import '../match/pre_match_tactics_selection.dart';
 import 'season_engine.dart' show StandingEntry;
@@ -105,19 +104,18 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
         ref.read(shellTabRequestProvider.notifier).state = 1;
         return;
       }
-      // The matchday build-up: analysis + match-only tactics + dressing
-      // room, then the chosen pep talk (null = no talk). Ad-free by design
-      // (FR-043). The tactic selection is handed back at kick-off and used
-      // for this match only — the saved default setup is never touched.
-      MatchPepTalk? talk;
+      // The matchday build-up: analysis + match-only tactics (the
+      // dressing-room pep talk is gone — owner request 2026-11-14).
+      // Ad-free by design (FR-043). The tactic selection is handed back
+      // at kick-off and used for this match only — the saved default
+      // setup is never touched.
       PreMatchTacticSelection? tactics;
       final kickedOff = await AppRoutes.preMatch(
         context,
         loadData: () => store.loadPreMatchData(
           ref.read(collectionStoreProvider).value!,
         ),
-        onKickOff: (t, selection) {
-          talk = t;
+        onKickOff: (selection) {
           tactics = selection;
         },
       );
@@ -125,7 +123,6 @@ class _SeasonScreenState extends ConsumerState<SeasonScreen> {
       final collection = await ref.read(collectionStoreProvider.future);
       final session = await store.startNextFixture(
         collection,
-        preMatchTalk: talk,
         tactics: tactics,
       );
       if (!mounted) return;

@@ -63,14 +63,6 @@ extension _MatchEngineEvents on MatchEngine {
           side: command.side,
           metadata: {'action': action.name},
         );
-      case PepTalkCommand(:final talk):
-        rt.pepTalkModifiers = talk.modifiers;
-        event = _event(
-          minute: minute,
-          type: MatchEventType.tacticalChange,
-          side: command.side,
-          metadata: {'change': 'pepTalk', 'value': talk.id},
-        );
     }
     if (event != null) _events.add(event);
     _eventsView = null;

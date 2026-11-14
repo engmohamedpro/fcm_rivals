@@ -23,7 +23,7 @@ import '../match/match_session.dart';
 import '../match/pre_match_tactics_selection.dart';
 import '../match/stamina.dart' show StaminaConfig, recoverStamina;
 import '../match/tactics.dart'
-    show Mentality, MatchPepTalk, tacticsFromDbPayload;
+    show Mentality, tacticsFromDbPayload;
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart' show PlayerCard;
 import 'season_engine.dart';

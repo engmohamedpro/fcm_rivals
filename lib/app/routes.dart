@@ -22,7 +22,6 @@ import '../features/match/match_screen.dart';
 import '../features/match/match_session.dart';
 import '../features/match/pre_match_screen.dart'
     show PreMatchTacticSelection;
-import '../features/match/tactics.dart' show MatchPepTalk;
 import '../features/packs/pack_contents_screen.dart';
 import '../features/packs/pack_opening_screen.dart';
 import '../features/packs/pack_engine.dart';
@@ -34,15 +33,14 @@ import '../features/match/match_forecast.dart' show PreMatchData;
 class AppRoutes {
   AppRoutes._();
 
-  /// The pre-match room: squad review, tactics phase and the pep-talk
-  /// choice. Pops with `true` at kick-off, handing the chosen talk
-  /// (null = none) and the match-only tactic selection back through
-  /// [onKickOff] before the route closes.
+  /// The pre-match room: squad review and the tactics phase (the
+  /// pep-talk choice is gone — owner request 2026-11-14). Pops with
+  /// `true` at kick-off, handing the match-only tactic selection back
+  /// through [onKickOff] before the route closes.
   static Future<bool?> preMatch(
     BuildContext context, {
     required Future<PreMatchData> Function() loadData,
-    required void Function(MatchPepTalk? talk, PreMatchTacticSelection? tactics)
-        onKickOff,
+    required void Function(PreMatchTacticSelection? tactics) onKickOff,
   }) {
     return Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(

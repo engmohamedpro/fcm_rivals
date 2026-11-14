@@ -233,26 +233,27 @@ void main() {
     });
 
     test('the written speed reads back from a fresh store', () async {
-      await UserSettingsStore(database: db).setMatchSpeed(3);
+      await UserSettingsStore(database: db).setMatchSpeed(2);
       // A NEW store over the SAME database — i.e. the next match after
       // an app restart: the choice sticks.
       final store = UserSettingsStore(database: db);
-      expect(await store.matchSpeed(), 3);
+      expect(await store.matchSpeed(), 2);
     });
 
     test('updating the speed overwrites the row (not duplicated)', () async {
       final store = UserSettingsStore(database: db);
+      await store.setMatchSpeed(1);
       await store.setMatchSpeed(2);
-      await store.setMatchSpeed(3);
-      expect(await store.matchSpeed(), 3);
+      expect(await store.matchSpeed(), 2);
       final rows = await db.select(db.userSettings).get();
       expect(rows.length, 1);
     });
 
     test('out-of-range speeds are ignored, corrupt rows fall back', () async {
       final store = UserSettingsStore(database: db);
-      // 4x no longer exists — the ladder stops at 3x.
-      await store.setMatchSpeed(4);
+      // 3x no longer exists — the ladder stops at 2x (owner request
+      // 2026-11-14), and a persisted 3 falls back to 1x.
+      await store.setMatchSpeed(3);
       expect(await store.matchSpeed(), 1);
       await store.setMatchSpeed(9);
       expect(await store.matchSpeed(), 1);
@@ -589,107 +590,6 @@ void main() {
         expect(share, greaterThan(0.10));
         expect(share, lessThan(1.0));
       }
-    });
-  });
-
-  group('the half-time card reads as half time (GDD 15.2)', () {
-    testWidgets('score banner + edit-tactics entry are present', (
-      tester,
-    ) async {
-      MatchPepTalk? chosen;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Stack(
-              children: [
-                TouchlinePepTalkCard(
-                  title: 'HALF TIME',
-                  scoreHeader: 'Home FC 1 – 0 Away FC',
-                  subtitle: 'Pep talk for the second half.',
-                  talks: halfTimePepTalks,
-                  onChoose: (t) => chosen = t,
-                  onSkip: () {},
-                  onEditTactics: () {},
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('HALF TIME'), findsOneWidget);
-      expect(find.text('Home FC 1 – 0 Away FC'), findsOneWidget);
-      expect(find.text('EDIT TACTICS'), findsOneWidget);
-      // The pep-talk options still render next to the banner.
-      expect(find.byType(TextButton), findsOneWidget);
-      expect(chosen, isNull); // nothing chosen yet
-    });
-
-    testWidgets('no score banner on non-half-time uses (post-match)', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Stack(
-              children: [
-                TouchlinePepTalkCard(
-                  title: 'Post-match talk',
-                  subtitle: 'Recovery choice.',
-                  talks: halfTimePepTalks,
-                  onChoose: (_) {},
-                  onSkip: () {},
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.text('Post-match talk'), findsOneWidget);
-      expect(find.text('EDIT TACTICS'), findsNothing);
-    });
-
-    testWidgets('the card is NOT dismissible by tapping outside it', (
-      tester,
-    ) async {
-      var skipped = false;
-      MatchPepTalk? chosen;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Stack(
-              children: [
-                TouchlinePepTalkCard(
-                  title: 'HALF TIME',
-                  scoreHeader: 'Home FC 1 – 0 Away FC',
-                  subtitle: 'Pep talk for the second half.',
-                  talks: halfTimePepTalks,
-                  onChoose: (t) => chosen = t,
-                  onSkip: () => skipped = true,
-                  onEditTactics: () {},
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      // Tapping the scrim around the card does nothing — the manager
-      // must pick a talk or 'say nothing'; no accidental dismissal.
-      await tester.tapAt(const Offset(20, 40));
-      await tester.pump();
-      expect(skipped, isFalse);
-      expect(chosen, isNull);
-      // The card is still up.
-      expect(find.text('HALF TIME'), findsOneWidget);
-
-      // 'Say nothing' is the explicit escape — that still works.
-      await tester.tap(find.text('Say nothing — back to the match'));
-      await tester.pump();
-      expect(skipped, isTrue);
     });
   });
 
