@@ -138,7 +138,25 @@ void main() {
     installMocks();
   });
 
-  tearDown(() {
+  tearDown(() async {
+    // Retire every player this test created BEFORE the mocks go away.
+    // MatchAudio's one-shots retire on the platform's onComplete event;
+    // under the mock that event never fires on its own, so a player
+    // left ringing keeps its FramePositionUpdater polling
+    // getCurrentPosition — and once the handler below is removed the
+    // NEXT test's zone absorbs the MissingPluginException and fails.
+    // Retiring here mirrors production exactly: the cheer finishes,
+    // the player disposes, nothing leaks across tests.
+    for (final record in playerCalls) {
+      if (record.method == 'create') {
+        sendCompleteEvent(record.playerId);
+      }
+    }
+    // Let the retirement (dispose) round-trips land.
+    for (var i = 0; i < 10; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(playerChannel, null);
@@ -179,6 +197,7 @@ void main() {
         playerCalls.clear();
 
         await audio.goalCheer(isHome: true);
+        await _settle();
 
         expect(
           calls,
@@ -209,6 +228,7 @@ void main() {
       playerCalls.clear();
 
       await audio.goalCheer(isHome: false);
+      await _settle();
 
       expect(
         calls,
@@ -235,6 +255,7 @@ void main() {
       // each volume, neither cutting the other.
       await audio.goalCheer(isHome: false);
       await audio.goalCheer(isHome: true);
+      await _settle();
 
       final cheerVolumes = playerCalls
           .where(
@@ -262,6 +283,7 @@ void main() {
       // two home goals, the loudest case.
       await audio.goalCheer(isHome: true);
       await audio.goalCheer(isHome: true);
+      await _settle();
 
       // Two distinct one-shot players, each with its own full source
       // setup: the second play never restarts or cuts the first.
@@ -291,6 +313,7 @@ void main() {
         await audio.start();
         final ambienceId = _idOfFirst('setSourceUrl', 'live_match');
         await audio.goalCheer(isHome: true);
+        await _settle();
         final cheerId = _idOfFirst('setSourceUrl', 'goal_cheers');
         expect(cheerId, isNotNull);
         calls.clear();
@@ -327,6 +350,7 @@ void main() {
         playerCalls.clear();
 
         await audio.halfTimeBreak();
+        await _settle();
 
         final stoppedIds = playerCalls
             .where((c) => c.method == 'stop')
@@ -361,12 +385,19 @@ void main() {
 
     test('stop before kick-off still consumes player errors', () async {
       final audio = MatchAudio();
-      // A stop before start: the phase stays idle, so a later start is
-      // still possible — the back-navigation-before-kick-off corner.
+      // A stop before any start: the back-navigation-before-kick-off
+      // corner. The stop must complete quietly (every player error
+      // consumed) and a FRESH MatchAudio must then be able to start —
+      // that is how the match screen uses it: full time / back
+      // navigation tears the screen down, and the next match builds a
+      // new MatchAudio. A same-instance restart after stop() is not a
+      // production path (stop is final: _finished latches).
       await audio.stop();
       calls.clear();
 
-      await audio.start();
+      final next = MatchAudio();
+      await next.start();
+      await _settle();
       expect(
         calls,
         containsAllInOrder([
@@ -374,8 +405,11 @@ void main() {
           matches(RegExp(r'setSourceUrl:.*live_match\.mp3')),
           matches(RegExp(r'resume:')),
         ]),
-        reason: 'a stop before kick-off does not block a later start',
+        reason:
+            'a stop before kick-off leaves the class able to serve a '
+            'fresh match-day (new instance)',
       );
+      await next.dispose();
       await audio.dispose();
     });
 
@@ -384,6 +418,7 @@ void main() {
       await audio.start();
       final ambienceId = _idOfFirst('setSourceUrl', 'live_match');
       await audio.goalCheer(isHome: true);
+      await _settle();
       final cheerId = _idOfFirst('setSourceUrl', 'goal_cheers');
       calls.clear();
       playerCalls.clear();
@@ -419,6 +454,7 @@ void main() {
       playerCalls.clear();
 
       await audio.goalCheer(isHome: true);
+      await _settle();
       final cheerId = _idOfFirst('setSourceUrl', 'goal_cheers');
       expect(cheerId, isNotNull);
 
@@ -469,6 +505,7 @@ void main() {
       await audio.start();
       final ambienceId = _idOfFirst('setSourceUrl', 'live_match');
       await audio.goalCheer(isHome: true);
+      await _settle();
       calls.clear();
       playerCalls.clear();
 
@@ -548,4 +585,32 @@ String? _idOfFirst(String method, String needle) {
     }
   }
   return null;
+}
+
+/// Lets the one-shot players' fire-and-forget setup (asset-cache file
+/// write + channel round-trips — all microtask/Future-turn work) land
+/// before the asserts read [playerCalls]/[calls]. The cheer/whistle
+/// entry points are `unawaited(...)` by design — a goal never blocks
+/// the match loop — so the tests pump the queue instead of expecting
+/// synchronous completion.
+///
+/// The wait is bounded by WORK, not by a fixed turn count: a one-shot
+/// is fully set up once its player has issued `resume`, which happens
+/// only after create → setReleaseMode → setVolume → setSourceUrl →
+/// (prepared event) → getCurrentPosition. Measured worst case is ~14
+/// turns (asset-cache write); 15 with early exit once every created
+/// player has resumed keeps the common case fast.
+Future<void> _settle() async {
+  for (var i = 0; i < 15; i++) {
+    await Future<void>.delayed(Duration.zero);
+    final created = playerCalls
+        .where((c) => c.method == 'create')
+        .map((c) => c.playerId)
+        .toSet();
+    final resumed = playerCalls
+        .where((c) => c.method == 'resume')
+        .map((c) => c.playerId)
+        .toSet();
+    if (created.isNotEmpty && created.difference(resumed).isEmpty) return;
+  }
 }
