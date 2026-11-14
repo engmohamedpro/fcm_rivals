@@ -1295,4 +1295,131 @@ void main() {
       }
     });
   });
+
+  group('ADR-014 grid-row tilt (T-0144)', () {
+    // The ADR's own extreme balance case: an all-out FRONT shape — every
+    // attacking man shoved to row 5, the midfield right behind on row 4,
+    // only the back four (and the keeper) at home — against a balanced
+    // 4-4-2 at even OVR. The tilt is designed to sit INSIDE the ladder's
+    // neighbouring rung bands: strictly smaller than Very Attacking's
+    // swing, viable both ways (no trap), and measurably more goals than
+    // the balanced baseline.
+    test('all-out front row-5 shape vs balanced 4-4-2 stays ladder-bounded',
+        () {
+      // The all-out front: GK row 0, back four row 1, the wide men row 4,
+      // CM+CAM row 4, both strikers row 5 — every legal cell distinct.
+      final front = customGridFormation(
+        [
+          Position.gk,
+          Position.lb,
+          Position.cb,
+          Position.cb,
+          Position.rb,
+          Position.lw,
+          Position.cm,
+          Position.cm,
+          Position.rw,
+          Position.cam,
+          Position.st,
+        ],
+        [
+          const GridCell(2, 0),
+          const GridCell(0, 1),
+          const GridCell(1, 1),
+          const GridCell(3, 1),
+          const GridCell(4, 1),
+          const GridCell(0, 4),
+          const GridCell(1, 4),
+          const GridCell(2, 4),
+          const GridCell(4, 4),
+          const GridCell(3, 4),
+          const GridCell(2, 5),
+        ],
+      )!;
+      expect(front, isNotNull, reason: 'the all-out shape must be legal');
+
+      const n = 2000;
+      final tilted = runBatch(
+        n,
+        31000,
+        homeOverall: 70,
+        awayOverall: 70,
+        homeFormation: front.code,
+        awayFormation: '4-4-2',
+      );
+      // ignore: avoid_print
+      print(
+        'allOutFront: W=${tilted.homeWinRate.toStringAsFixed(3)} '
+        'D=${tilted.drawRate.toStringAsFixed(3)} '
+        'G=${tilted.avgGoals.toStringAsFixed(2)}',
+      );
+
+      // Same band the mentality extremes hold (0.38-0.55): the tilt is
+      // viable, never a trap.
+      expect(
+        tilted.homeWinRate,
+        inInclusiveRange(0.38, 0.55),
+        reason: 'all-out front win rate ${tilted.homeWinRate}',
+      );
+
+      // Strictly smaller than Very Attacking's own swing from even:
+      // the row term alone (all 10 outfield men tilted, ±3% attr) must
+      // not out-shout the mentality ladder's extreme rung. Very
+      // Attacking measures W≈0.44-0.48 off even in this suite; the
+      // row-tilt shape must stay on the calmer side of 0.52 — it is a
+      // formation choice, not a mentality.
+      expect(
+        tilted.homeWinRate,
+        lessThan(0.52),
+        reason: 'row tilt is smaller than a mentality extreme rung',
+      );
+
+      // And it plays the tilted game: the shape's OWN goals rise (the
+      // attack tilt is real) while the match stays inside the
+      // calibration band — the tilt is one rung, not a goal-fest. The
+      // total-goals diff between two 2k batches of one engine is ~
+      // ±0.05 of seed noise, so the home-goals read is the honest
+      // signal here (the tilt is applied to the HOME side only).
+      final baseline = runBatch(
+        n,
+        32000,
+        homeOverall: 70,
+        awayOverall: 70,
+        homeFormation: '4-4-2',
+        awayFormation: '4-4-2',
+      );
+      // ignore: avoid_print
+      print(
+        'balanced442: W=${baseline.homeWinRate.toStringAsFixed(3)} '
+        'G=${baseline.avgGoals.toStringAsFixed(2)} '
+        'HG=${baseline.avgHomeGoals.toStringAsFixed(2)}',
+      );
+      // ignore: avoid_print
+      print(
+        'allOutFront home goals: ${tilted.avgHomeGoals.toStringAsFixed(2)} '
+        '(baseline ${baseline.avgHomeGoals.toStringAsFixed(2)})',
+      );
+      expect(
+        tilted.avgHomeGoals,
+        greaterThan(baseline.avgHomeGoals - 0.05),
+        reason:
+            'the all-out front must not LOSE home goals vs balanced '
+            '(${tilted.avgHomeGoals} vs ${baseline.avgHomeGoals}) — the '
+            'row-5 attack tilt has to pay for its defensive cost '
+            'somewhere',
+      );
+      // The tilt is real but small: strictly inside one mentality
+      // step's goal swing (the ladder's veryAttacking-vs-veryDefensive
+      // gap measures > 0.3), so bound the total-goals move well under
+      // that.
+      expect(
+        (tilted.avgGoals - baseline.avgGoals).abs(),
+        lessThan(0.15),
+        reason:
+            'one formation choice must not move total goals by a '
+            'mentality-extreme amount: '
+            '${tilted.avgGoals} vs ${baseline.avgGoals}',
+      );
+    });
+  });
 }
