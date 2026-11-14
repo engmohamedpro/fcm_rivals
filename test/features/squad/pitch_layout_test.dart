@@ -443,4 +443,52 @@ void main() {
       }
     });
   });
+
+  group('computeGridLayout spreadRows (the grid is hidden)', () {
+    test('every row is spread evenly and centred, depth unchanged', () {
+      for (final w in _widths) {
+        final h = w / 0.66;
+        for (final f in formations) {
+          final cells = gridCellsOf(f);
+          final grid = computeGridLayout(cells: cells, width: w, height: h);
+          final even = computeGridLayout(
+            cells: cells,
+            width: w,
+            height: h,
+            spreadRows: true,
+          );
+          final byRow = <int, List<int>>{};
+          for (var i = 0; i < cells.length; i++) {
+            byRow.putIfAbsent(cells[i].row, () => []).add(i);
+          }
+          for (final row in byRow.values) {
+            row.sort((a, b) => cells[a].col.compareTo(cells[b].col));
+            final centres = [
+              for (final i in row) even.boxes[i].left + even.boxes[i].width / 2,
+            ];
+            for (final i in row) {
+              expect(even.boxes[i].top, grid.boxes[i].top,
+                  reason: '${f.code} w=$w depth must not change');
+            }
+            // Equal gaps between neighbours and from the pitch edges.
+            final usable = w - 2 * kPitchMargin;
+            final gap = usable / (row.length + 1);
+            for (var k = 0; k < centres.length; k++) {
+              expect(centres[k], closeTo(kPitchMargin + (k + 1) * gap, 1e-6),
+                  reason: '${f.code} w=$w row slot $k');
+            }
+            // A row is centred on the pitch.
+            final mid = (centres.first + centres.last) / 2;
+            expect(mid, closeTo(w / 2, 1e-6), reason: '${f.code} w=$w');
+            // Neighbours never touch.
+            for (var k = 1; k < centres.length; k++) {
+              expect(centres[k] - centres[k - 1],
+                  greaterThanOrEqualTo(even.slotWidth - 0.01),
+                  reason: '${f.code} w=$w cards overlap in a row');
+            }
+          }
+        }
+      }
+    });
+  });
 }

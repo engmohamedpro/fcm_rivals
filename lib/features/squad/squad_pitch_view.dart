@@ -137,6 +137,11 @@ class SquadPitch extends StatelessWidget {
                         height: ph,
                         showStats: showStats,
                         showStamina: showStamina,
+                        // Idle: every row spread evenly and centred. While a
+                        // player (or an empty place) is held the cards
+                        // stand on their grid cells, which the visible
+                        // chess boxes match.
+                        spreadRows: !dragActive,
                       )
                     : computePitchLayout(
                         formation: formation,
@@ -278,7 +283,7 @@ class SquadPitch extends StatelessWidget {
                       final showCard = card != null;
                       return AnimatedPositioned(
                         key: ValueKey('slot-$slot'),
-                        duration: const Duration(milliseconds: 650),
+                        duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOutCubic,
                         left: box.left,
                         top: box.top,

@@ -349,12 +349,19 @@ PitchBox gridCellBox(int col, int row, double width, double height) {
 /// centred in its own cell, the cards as big as the cell allows. Unlike
 /// [computePitchLayout] nothing is solved or pushed — a card never moves
 /// unless its slot's cell does.
+///
+/// With [spreadRows] (the grid is hidden — nobody is dragging) each row
+/// keeps its depth but its cards are spread EVENLY across the pitch width,
+/// centred (owner request 2026-11-14): n cards stand at 1/(n+1), 2/(n+1)…
+/// of the usable width, in column order. The grid cells (drag time) are
+/// the exact positions the cards had before this spreading.
 PitchLayout computeGridLayout({
   required List<GridCell> cells,
   required double width,
   required double height,
   bool showStats = false,
   bool showStamina = false,
+  bool spreadRows = false,
 }) {
   final cell = gridCellBox(0, 1, width, height);
   bool fits(double w) =>
@@ -370,22 +377,38 @@ PitchLayout computeGridLayout({
     showStats: showStats,
     showStamina: showStamina,
   );
+  final boxes = <PitchBox>[
+    for (final c in cells)
+      () {
+        final b = gridCellBox(c.col, c.row, width, height);
+        return PitchBox(
+          b.left + (b.width - sw) / 2,
+          b.top + (b.height - sh) / 2,
+          sw,
+          sh,
+        );
+      }(),
+  ];
+  if (spreadRows) {
+    final byRow = <int, List<int>>{};
+    for (var i = 0; i < cells.length; i++) {
+      byRow.putIfAbsent(cells[i].row, () => []).add(i);
+    }
+    final usable = width - 2 * kPitchMargin;
+    for (final row in byRow.values) {
+      row.sort((a, b) => cells[a].col.compareTo(cells[b].col));
+      for (var k = 0; k < row.length; k++) {
+        final centre = kPitchMargin + (k + 1) / (row.length + 1) * usable;
+        final old = boxes[row[k]];
+        boxes[row[k]] = PitchBox(centre - sw / 2, old.top, sw, sh);
+      }
+    }
+  }
   return PitchLayout(
     cardWidth: w,
     slotWidth: sw,
     slotHeight: sh,
-    boxes: [
-      for (final c in cells)
-        () {
-          final b = gridCellBox(c.col, c.row, width, height);
-          return PitchBox(
-            b.left + (b.width - sw) / 2,
-            b.top + (b.height - sh) / 2,
-            sw,
-            sh,
-          );
-        }(),
-    ],
+    boxes: boxes,
     rows: const [],
   );
 }
