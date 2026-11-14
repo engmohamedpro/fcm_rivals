@@ -119,11 +119,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // No specs supplied → the letters fallback owns both chips (the
-    // documented compatibility path for hand-built data).
+    // No specs supplied → the letters fallback owns the ONE badge
+    // (T-0131: the team-vs-team card is gone; the opponent's badge
+    // leads THEIR starting XI card, the user side is not rendered).
     expect(find.byType(FcmCrest), findsNothing);
-    expect(find.text('FR'), findsOneWidget);
     expect(find.text('AA'), findsOneWidget);
+    expect(find.text('FR'), findsNothing);
   });
 
   testWidgets(
@@ -182,11 +183,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Two crests on the team-vs-team header, and no initials text.
-      expect(find.byType(FcmCrest), findsNWidgets(2));
+      // T-0131: the team-vs-team card is gone — ONE crest on the
+      // opponent's starting XI card, no initials, and the user club
+      // name no longer renders anywhere in the analysis phase.
+      expect(find.byType(FcmCrest), findsOneWidget);
       expect(find.text('FR'), findsNothing);
       expect(find.text('AA'), findsNothing);
-      expect(find.text('FC Rivals'), findsOneWidget);
+      expect(find.text('FC Rivals'), findsNothing);
       expect(find.text('Al Ahly'), findsOneWidget);
     },
   );
