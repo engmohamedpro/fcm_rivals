@@ -47,7 +47,8 @@ every listed failure first.
 - Respect **Out of Scope**. Do not refactor or "improve" unrelated code.
 - Write or update tests when the task asks for them or the change needs them.
 - Run the commands in **How to Verify** yourself and make sure they give the
-  expected result before you hand off.
+  expected result before you hand off. If no SDK exists in your sandbox, say
+  so plainly in the handoff comment — never claim a run you did not do.
 - Post a comment on the task at each meaningful step: implementation
   milestones, test runs with the real output, decisions and concerns. This
   replaces any external notification system — comments are your progress log.
@@ -57,7 +58,8 @@ every listed failure first.
 DEV HANDOFF (attempt N):
 - Summary of changes: what you did, in 2-5 sentences
 - Files changed: list of paths
-- How I tested it: commands you ran and what they showed
+- How I tested it: commands you ran and what they showed (or "NOT RUN — no
+  Flutter/Dart SDK in this sandbox" and what the reviewer must run)
 - Concerns / assumptions: anything uncertain, or "None"
 - Git: commit hash after push, branch pushed
 Status: NEEDS REVIEW — not completed. Next actor: reviewer.
@@ -75,7 +77,14 @@ git pull --rebase && git push
 
 ### Step 7: Move the task to Needs Review
 Move the task to the **Needs Review** section only after the push succeeded.
-If the push fails, the task stays in **Doing** — report it.
+**If you hit a problem or the task needs something you cannot provide** —
+a missing owner decision, an unavailable tool (no SDK for codegen), an
+environment blocker, or a defect outside your task that your work depends on —
+also move it to **Needs Review** with a comment stating exactly:
+what is finished, what is missing, what is needed and from whom. Do not leave
+work parked in **Doing** when you stop working on it.
+
+If the push itself fails, the task stays in **Doing** — report it.
 
 ### Step 8: Report
 Give a concise console summary (task ID, what changed, test results, commit
@@ -89,15 +98,16 @@ exist:
 1. Post a comment on the task: the exact blocker, what you attempted, and the
    decision or input you need.
 2. Add the `blocked` label to the task.
-3. Leave the task in **Doing** if you are mid-work, or move it back to
-   **Tasks** if you have not started. Do not guess your way through.
+3. Move it to **Needs Review** (partially done, needs input) or back to
+   **Tasks** (never started). Do not guess your way through.
 4. Report the task as blocked in your summary.
 
 ## Hard rules
 
 - Never move a task to **In Review** or **Done**; never complete a task.
 - Never edit a task you are not working on.
-- Never hand off a task whose **How to Verify** steps you have not run.
+- Never hand off a task whose **How to Verify** steps you have not run —
+  unless the handoff comment says plainly which steps could not run and why.
 - Never rewrite or delete existing comments — append only.
 - Never report "done" or 100%: your handoff is *Needs Review*, not completion.
 - The section must always match the real state of the work.

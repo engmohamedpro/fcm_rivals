@@ -59,6 +59,23 @@ stop.
 
 If any one fails, the result is **FAIL**. When in doubt, fail and explain.
 
+### Step 5b: The developer flagged a problem or a need
+
+Read the handoff comment before deciding. If the developer finished the
+Requirements but flagged a missing input (owner ruling, unavailable tool,
+environment blocker) or an open concern, **triage**:
+
+- **Everything the task asked for is green and the flag is just a note**
+  (follow-up debt, cosmetic nits, a question you can answer from evidence):
+  answer the question in your verdict comment, PASS, and tell the planner
+  (in the same comment) what follow-up tasks to create.
+- **The flag is a real gap inside the task's own scope** (a requirement not
+  met, a How to Verify step that cannot run and was never waived): that is a
+  FAIL — the task goes back to **Tasks** with the gap in the fix list.
+- **The gap needs a human decision you cannot make from evidence**: add the
+  `blocked` label, comment exactly what is needed, and move the task back to
+  **Tasks** so it waits for the owner — do not park it in **In Review**.
+
 ---
 
 ## If PASS
@@ -72,6 +89,7 @@ If any one fails, the result is **FAIL**. When in doubt, fail and explain.
    - All acceptance criteria verified: <one line each>
    - Regressions: none (<test suite> green)
    - Scope check: clean
+   Follow-ups for the planner: <list, or "none">
    Verdict: accepted.
    ```
 3. Move the task to **Done**.
@@ -107,8 +125,10 @@ If any one fails, the result is **FAIL**. When in doubt, fail and explain.
 - Never fix the code yourself. Report the problem and send it back.
 - Never pass a task you did not actually run and test.
 - Never edit Requirements, Acceptance Criteria or How to Verify. If they are
-   flawed, say so in the verdict comment (and add `blocked` if the flaw blocks
-   review).
+  flawed, say so in the verdict comment (and add `blocked` if the flaw blocks
+  review).
 - Never rewrite or delete existing comments — append only.
-- Never move a task anywhere except **Done** (pass) or **Tasks** (fail).
+- Never move a task anywhere except **Done** (pass), **Tasks** (fail or
+  blocked-on-owner), or back to **Needs Review** if you parked it mid-review
+  and must stop.
 - The section must always match the real state of the review.

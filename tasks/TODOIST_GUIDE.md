@@ -30,6 +30,13 @@ messages or task descriptions.
 | In Review | `6j28hCQ8CgvxH6J3` |
 | Done | `6j28hGRq3mqqmPF3` |
 
+The **planner** creates tasks (always in *Tasks*), the **developer** moves
+them Tasks → Doing → Needs Review (also when blocked with a partial result
+or a needed input), and the **reviewer** moves them Needs Review → In
+Review → Done (pass) or back to Tasks (fail / needs owner). Per-role rules
+live in `agents/PLANNER_AGENT.md`, `agents/DEVELOPER_AGENT.md` and
+`agents/REVIEWER_AGENT.md`.
+
 **Labels:** `blocked` — label ID `2186362765` (red). Apply it to any task that
 needs an owner decision or is otherwise stuck; remove it when unblocked.
 
@@ -119,7 +126,10 @@ curl -s -X POST -H "Authorization: Bearer $TODOIST_TOKEN" \
   "https://api.todoist.com/api/v1/tasks/<task_id>/move"
 ```
 
-Only ever move one step along the lifecycle; never jump columns.
+Only ever move one step along the lifecycle; never jump columns. The one
+exception is the developer's blocked handoff: a task with partial work plus
+a stated need (owner input, missing tool) goes Doing → Needs Review so the
+reviewer can triage it — never park work in Doing.
 
 ### Update a task (title, description, priority, labels)
 
@@ -165,12 +175,14 @@ that has history — correct it with a comment instead.
 1. **One task at a time.** Never have two tasks in *Doing* (developer) or
    *In Review* (reviewer) at once.
 2. **The section reflects verified reality.** A task moves to *Needs Review*
-   only after the code is committed and pushed; to *Done* only after QA
-   verified every acceptance criterion.
+   only after the code is committed and pushed — or with a plain statement of
+   what is missing and needed, if the developer is blocked; to *Done* only
+   after QA verified every acceptance criterion.
 3. **Rework goes back to Tasks**, with a comment listing the exact failed
    criteria and how to reproduce them.
 4. **Blocked ≠ failed.** Blocked needs a human; it gets the `blocked` label,
-   a comment with what is needed, and the task stays where it is.
+   a comment with what is needed, and the task stays where it is (or moves
+   back to *Tasks* when the reviewer sends it to the owner).
 5. **Comments are append-only history.** A reviewer verdict never edits a dev
    comment; it adds its own.
 6. **Completed tasks keep their ID retired.** Numbers never get reused, even

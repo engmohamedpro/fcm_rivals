@@ -2,7 +2,7 @@
 
 This project no longer uses file-based task boards. **All task tracking lives in
 Todoist** (project *Inbox*, five sections). The agent instructions in this folder
-tell developer and reviewer agents exactly how to use it.
+tell planner, developer and reviewer agents exactly how to use it.
 
 ## Layout
 
@@ -11,6 +11,7 @@ tasks/
 ├── README.md                    ← you are here (system overview)
 ├── TODOIST_GUIDE.md             ← the agent manual: auth, API calls, task format, workflow
 └── agents/
+    ├── PLANNER_AGENT.md         ← instructions for the planner (creates tasks)
     ├── DEVELOPER_AGENT.md       ← instructions for the developer agent
     └── REVIEWER_AGENT.md        ← instructions for the reviewer (QA) agent
 ```
@@ -20,21 +21,28 @@ tasks/
 | Todoist section | Meaning | Who moves a task **out** |
 |---|---|---|
 | **Tasks** | Backlog: new work, rework sent back by QA, owner-decision items | Developer → moves to *Doing* when starting |
-| **Doing** | The developer is actively working on it | Developer → moves to *Needs Review* when done |
-| **Needs Review** | Implementation finished, waiting for QA to pick it up | Reviewer → moves to *In Review* when starting |
-| **In Review** | QA is actively verifying | Reviewer → *Done* (pass) or *Tasks* (fail) |
+| **Doing** | The developer is actively working on it | Developer → moves to *Needs Review* when done, **or when blocked with a partial result / a needed input** |
+| **Needs Review** | Implementation finished (or flagged by the dev), waiting for QA to pick it up | Reviewer → moves to *In Review* when starting |
+| **In Review** | QA is actively verifying | Reviewer → *Done* (pass) or *Tasks* (fail, or blocked on the owner) |
 | **Done** | QA passed and the task is completed/closed | Nobody. Final. |
 
 Lifecycle (one task, one ticket — moves happen **only** in this order):
 
 ```
-Tasks ──(dev starts)──► Doing ──(dev done)──► Needs Review ──(QA picks up)──► In Review
-  ▲                                                                        │
-  └────────────────────────── QA: FAIL ────────────────────────────────────┤
-                                                                           │ QA: PASS
-                                                                           ▼
-                                                                         Done
+Tasks ──(dev starts)──► Doing ──(dev done / dev blocked-with-input)──► Needs Review
+  ▲                                                                     │
+  │                                                             (QA picks up)
+  └────────────────────── QA: FAIL / needs owner ──────► In Review ◄───┘
+                                                               │ QA: PASS
+                                                               ▼
+                                                             Done
 ```
+
+Roles: the **planner** creates and sizes tasks (from owner requests, QA
+findings and owner rulings); the **developer** implements exactly one task at
+a time and hands off with an honest handoff comment (work is never left
+parked in *Doing*); the **reviewer** independently verifies, triages flagged
+problems, and owns the PASS/FAIL decision. See [`agents/`](agents/).
 
 ## Task format
 
@@ -68,5 +76,6 @@ migrated into Todoist on 2026-11-13 with their full context in the description.
 ## Where to start
 
 - Agent manual: [`TODOIST_GUIDE.md`](TODOIST_GUIDE.md)
+- Planner agent: [`agents/PLANNER_AGENT.md`](agents/PLANNER_AGENT.md)
 - Developer agent: [`agents/DEVELOPER_AGENT.md`](agents/DEVELOPER_AGENT.md)
 - Reviewer agent: [`agents/REVIEWER_AGENT.md`](agents/REVIEWER_AGENT.md)
