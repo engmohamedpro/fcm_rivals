@@ -364,6 +364,37 @@ void main() {
       }
     });
 
+    test('LB / RB stand on the FIRST line in a back four and on the '
+        'SECOND in a back five', () {
+      for (final f in formations) {
+        final cells = gridCellsOf(f);
+        final back = [
+          for (final s in f.slots)
+            if (s.position == Position.cb ||
+                s.position == Position.lb ||
+                s.position == Position.rb)
+              s,
+        ].length;
+        for (var i = 1; i < 11; i++) {
+          final p = f.slots[i].position;
+          if (p == Position.lb || p == Position.rb) {
+            expect(cells[i].row, back >= 5 ? 2 : 1, reason: f.code);
+          }
+          if (p == Position.cb) {
+            expect(cells[i].row, 1, reason: '${f.code}: centre backs');
+          }
+        }
+      }
+      expect(
+        [
+          for (final f in formations)
+            if (f.code == '5-3-2' || f.code == '5-4-1') f.code,
+        ],
+        hasLength(2),
+        reason: 'the back-five presets exist',
+      );
+    });
+
     test('a grid formation round-trips through its code', () {
       final f433 = formationByCode('4-3-3');
       final positions = [for (final s in f433.slots) s.position];

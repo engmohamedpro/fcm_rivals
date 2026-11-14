@@ -658,11 +658,30 @@ List<GridCell> gridCellsOf(Formation formation) {
         ),
     ];
   }
+  // The back line decides where the full backs stand (owner request
+  // 2026-11-14): a back FOUR keeps LB / RB on the first line beside the
+  // centre backs; a back FIVE pushes them (the wing backs) to the second.
+  final backLine = slots
+      .where(
+        (s) =>
+            s.position == Position.cb ||
+            s.position == Position.lb ||
+            s.position == Position.rb,
+      )
+      .length;
+  final fullBackRow = backLine >= 5 ? 2 : 1;
   final taken = <GridCell>{};
   final out = <GridCell>[];
   for (var i = 0; i < slots.length; i++) {
+    final isFullBack =
+        slots[i].position == Position.lb || slots[i].position == Position.rb;
     var want = i == 0
         ? const GridCell(kGridKeeperCol, 0)
+        : isFullBack
+        ? GridCell(
+            (slots[i].x / 100 * kGridCols).floor().clamp(0, kGridCols - 1),
+            fullBackRow,
+          )
         : GridCell(
             (slots[i].x / 100 * kGridCols).floor().clamp(0, kGridCols - 1),
             ((slots[i].y - _gkY) / (_stY - _gkY) * (kGridRows - 1))
