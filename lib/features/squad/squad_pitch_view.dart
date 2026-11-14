@@ -865,7 +865,11 @@ class _ChemistryLinksPainter extends CustomPainter {
       final baseColor = link.kinds.length >= 2
           ? _kDoubleTypeLinkColor
           : _kSingleTypeLinkColor;
-      final color = baseColor.withValues(alpha: 0.7);
+      // Owner request 2026-11-14: soften the lines a touch so the
+      // player names under the cards read clearly through them. 0.7
+      // was solid enough to fight the name labels; 0.45 keeps the
+      // link visible on the grass without covering anything.
+      final color = baseColor.withValues(alpha: 0.45);
       // A dark under-stroke keeps the colour legible on the grass bands.
       canvas.drawLine(
         a,
@@ -873,7 +877,7 @@ class _ChemistryLinksPainter extends CustomPainter {
         Paint()
           ..strokeWidth = 5.5
           ..strokeCap = StrokeCap.round
-          ..color = Colors.black.withValues(alpha: 0.35),
+          ..color = Colors.black.withValues(alpha: 0.2),
       );
       canvas.drawLine(
         a,
