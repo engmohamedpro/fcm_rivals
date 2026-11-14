@@ -4,7 +4,6 @@
 /// the real CollectionStore (in-memory Drift):
 ///  * per-match income ladder (win/draw/loss × goals) vs pack prices
 ///  * season income (38 matches + season reward ladder by position)
-///  * sinks: pack tiers, upgrade curve, facility curve
 ///  * grind time — how many matches each purchase actually costs
 ///  * sell-back: when selling beats keeping, dupes vs singles
 ///  * ad economy: every ad surface's coin value per watch
@@ -25,7 +24,6 @@ import 'package:fcm_rivals/core/domain/players.dart';
 import 'package:fcm_rivals/features/ads/ad_engine.dart';
 import 'package:fcm_rivals/features/collection/collection_store.dart';
 import 'package:fcm_rivals/features/economy/economy_engine.dart';
-import 'package:fcm_rivals/features/facilities/facilities.dart';
 import 'package:fcm_rivals/features/packs/pack_engine.dart';
 import 'package:fcm_rivals/features/season/season_engine.dart';
 import '../tm_bundle_io.dart' show loadTmDataset;
@@ -283,44 +281,6 @@ void main() {
         (ev * 1.5 * economy.config.sellingPercentage).round(),
       );
       expect(sellAt5, greaterThan(sellAt0));
-    });
-
-    test(
-      'facility curve: first level cheap, full building a season project',
-      () {
-        const costs = defaultFacilitiesCosts;
-        final level1 = costs.upgradeCost(0);
-        final level10 = costs.upgradeCost(9);
-        expect(level1, 4_000); // ~2 match rewards
-        expect(level10, greaterThan(80_000));
-        final full = costs.investedAt(10);
-        // Rebalanced (Ch.8): the final three levels taper (1.22 instead of
-        // 1.55), so one building's full 10 levels ≈ 400k and the whole
-        // 6-building campus ≈ 2.4M — at ~90k net season income that's a
-        // 20+ season project: still the deepest sink in the game, but a
-        // finishable one. Was ~575k/3.45M (~38 seasons) before the taper.
-        expect(full, inInclusiveRange(380_000, 440_000));
-        expect(full * 6, inInclusiveRange(2_280_000, 2_640_000));
-      },
-    );
-
-    test('facility payoff is slight by design: level 5 ≈ +4.5% attribute', () {
-      const costs = defaultFacilitiesCosts;
-      final invested5 = costs.investedAt(5);
-      expect(invested5, inInclusiveRange(15_000, 60_000));
-    });
-
-    test('regression lock: campus stays a deep but finishable sink', () {
-      // The Ch.8 rebalance bands, as hard numbers: a full building
-      // within ±10% of 400k, the campus within ±10% of 2.4M. Failing
-      // this means the facility curve regressed to the unreachable
-      // ~575k-per-building (or collapsed to a shallow sink).
-      const costs = defaultFacilitiesCosts;
-      expect(costs.investedAt(10), inInclusiveRange(360_000, 440_000));
-      expect(costs.investedAt(10) * 6, inInclusiveRange(2_160_000, 2_640_000));
-      // Levels 1-7 unchanged from the original curve.
-      expect(costs.upgradeCost(0), 4_000);
-      expect(costs.upgradeCost(6), 55_500);
     });
   });
 

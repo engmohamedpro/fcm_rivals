@@ -16,9 +16,10 @@ void main() {
   final definitions = AchievementCatalog.definitions;
 
   group('catalog shape', () {
-    test('10 categories, 42 definitions, 16+5 titles', () {
-      expect(AchievementCatalog.categories.length, greaterThanOrEqualTo(10));
-      expect(definitions.length, greaterThanOrEqualTo(40));
+    test('9 categories, 39 definitions, 16+5 titles (campus gone '
+        '2026-11-14)', () {
+      expect(AchievementCatalog.categories.length, greaterThanOrEqualTo(9));
+      expect(definitions.length, greaterThanOrEqualTo(39));
       final ladders = definitions
           .where((d) => d.kind == AchievementKind.endlessLadder)
           .length;
@@ -26,7 +27,7 @@ void main() {
           .where((d) => d.kind == AchievementKind.milestone)
           .length;
       expect(ladders, greaterThanOrEqualTo(30));
-      expect(milestones, greaterThanOrEqualTo(8));
+      expect(milestones, greaterThanOrEqualTo(7));
       expect(
         AchievementCatalog.achievementTitles.length,
         greaterThanOrEqualTo(12),

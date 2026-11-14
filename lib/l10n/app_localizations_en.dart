@@ -22,9 +22,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navCollection => 'Collection';
 
   @override
-  String get navCampus => 'Campus';
-
-  @override
   String get navStore => 'Store';
 
   @override
@@ -536,12 +533,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get achEconomySubtitle => 'The coin ledger';
 
   @override
-  String get achCampusTitle => 'Campus';
-
-  @override
-  String get achCampusSubtitle => 'Built brick by brick';
-
-  @override
   String get achLoyaltyTitle => 'Loyalty';
 
   @override
@@ -693,13 +684,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Coins poured into upgrades and facilities.';
 
   @override
-  String get achCampusFacilityLevels => 'Facility Levels';
-
-  @override
-  String get achCampusFacilityLevelsDesc =>
-      'The sum of every level across your campus.';
-
-  @override
   String get achLoyaltySeasons => 'Seasons Completed';
 
   @override
@@ -756,13 +740,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get achMilestoneFirstSeasonDesc => 'Complete your first full season.';
-
-  @override
-  String get achMilestoneFirstFacilityMax => 'Campus Landmark';
-
-  @override
-  String get achMilestoneFirstFacilityMaxDesc =>
-      'Take one facility to its maximum level.';
 
   @override
   String get achTitleCareerWins1 => 'The Winner';
@@ -877,13 +854,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get achCareerHomeMatchesDesc =>
       'Matches managed in front of your own crowd.';
-
-  @override
-  String get achCampusRecoveryLevel => 'The Recovery Room';
-
-  @override
-  String get achCampusRecoveryLevelDesc =>
-      'The Recovery Centre\'s level — where tired legs come back.';
 
   @override
   String get achTitlePacks2 => 'Market Mogul';

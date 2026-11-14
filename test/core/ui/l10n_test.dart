@@ -23,7 +23,6 @@ void main() {
     expect(ar.navSeason, 'الموسم');
     expect(ar.navTeam, 'الفريق');
     expect(ar.navCollection, 'المجموعة');
-    expect(ar.navCampus, 'الحرم');
     expect(ar.navStore, 'المتجر');
     expect(ar.createYourClub, 'أنشئ ناديك');
     expect(ar.playMatch, 'العب المباراة');

@@ -23,7 +23,6 @@ import '../../core/domain/players.dart';
 import '../ads/ad_engine.dart';
 import '../ads/ad_store.dart';
 import '../economy/economy_engine.dart';
-import '../facilities/facilities.dart';
 import '../match/tactics.dart' show TeamTactics;
 import '../packs/pack_engine.dart';
 import 'collection_results.dart';
@@ -33,7 +32,6 @@ export 'collection_results.dart';
 import '../player_database/player_database.dart';
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
-import 'campus_store.dart';
 import 'club_store.dart';
 import 'squad_store.dart';
 import '../upgrades/upgrade_engine.dart';
@@ -51,8 +49,7 @@ class CollectionStore {
     this.adStore,
     this.enforceSquadCapacity = true,
   })  : _club = ClubStore(db: db),
-        _squadStore = SquadStore(db: db, squad: squad),
-        _campus = CampusStore(db: db);
+        _squadStore = SquadStore(db: db, squad: squad);
 
   final AppDatabase db;
   final EconomyEngine economy;
@@ -61,10 +58,10 @@ class CollectionStore {
 
   /// Focused stores this facade composes (app-structure review Task 2):
   /// same database instance, same engines — single-purpose homes for
-  /// club, squad and campus concerns.
+  /// club and squad concerns. (The campus store is gone with the
+  /// campus itself — owner request 2026-11-14.)
   final ClubStore _club;
   final SquadStore _squadStore;
-  final CampusStore _campus;
 
   /// Rewarded-ad store for the economy ad surfaces (GDD 19.3 'Other
   /// Proposed'): upgrade discount, selling bonus, daily reward
@@ -984,10 +981,4 @@ class CollectionStore {
         mentality: mentality,
       );
 
-  Future<CampusLevels> getCampus() => _campus.getCampus();
-  Future<int> upgradeFacility(
-    Facility facility, {
-    FacilitiesCosts costs = defaultFacilitiesCosts,
-  }) =>
-      _campus.upgradeFacility(facility, costs: costs);
 }

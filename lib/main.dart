@@ -17,7 +17,6 @@ import 'features/achievements/achievements_providers.dart';
 import 'features/achievements/achievement_progress.dart';
 import 'features/achievements/achievements_screen.dart';
 import 'features/profile/profile_screen.dart';
-import 'features/facilities/campus_screen.dart';
 import 'features/onboarding/club_creation_screen.dart';
 import 'features/packs/pack_effects.dart' show precachePackLogo;
 import 'features/packs/packs_screen.dart';
@@ -144,10 +143,10 @@ class _EntryGateState extends ConsumerState<_EntryGate> {
   }
 }
 
-/// Bottom-navigation shell over season, team, collection, campus and
+/// Bottom-navigation shell over season, team, achievements, packs and
 /// store. League matches are played live from the Season tab (GDD
 /// 13/16); the Team tab holds the squad, formation and tactical setup;
-/// the Campus tab is the club's facility upgrade project (GDD 3.5).
+/// (The Campus tab is gone — owner request 2026-11-14.)
 ///
 int _countClaimable(CareerMetrics metrics, Set<String> claimedKeys) {
   var count = 0;
@@ -187,7 +186,6 @@ class GameShell extends ConsumerWidget {
         Icons.military_tech_rounded,
         badge: claimableCount > 0 ? claimableCount : null,
       ),
-      FcmNavItem(l10n.navCampus, Icons.apartment_rounded),
       FcmNavItem(l10n.navStore, Icons.storefront_rounded, badge: packs),
       // T-0111: the self destination closes the row — the mid-session
       // tabs (Season/Team) stay adjacent on the hot path.
@@ -246,8 +244,7 @@ class _GameShellBodyState extends ConsumerState<_GameShellBody> {
     0 => const SeasonScreen(),
     1 => const SquadScreen(),
     2 => const AchievementsScreen(),
-    3 => const CampusScreen(),
-    4 => const PacksScreen(),
+    3 => const PacksScreen(),
     _ => const ProfileScreen(),
   };
 

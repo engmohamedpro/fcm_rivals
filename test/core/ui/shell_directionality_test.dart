@@ -26,7 +26,6 @@ Future<void> pumpShell(WidgetTester tester, TextDirection direction) async {
         seasonSummaryProvider.overrideWith((ref) async => null),
         standingsProvider.overrideWith((ref) async => []),
         nextFixtureProvider.overrideWith((ref) async => null),
-        campusProvider.overrideWith((ref) async => throw StateError('stub')),
         squadProvider.overrideWith((ref) async => {}),
         collectionProvider.overrideWith((ref) async => []),
         storeOffersProvider.overrideWith((ref) async => []),

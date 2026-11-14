@@ -82,9 +82,6 @@ class ExpectedCareer {
   static const coinsSpentOnPacks = 500;
   static const coinsSpentOnUpgrades = 900;
 
-  // Facilities: attack 2, recovery 1 → total 3, recovery 1.
-  static const facilityLevelTotal = 3;
-  static const recoveryCentreLevel = 1;
 
   // Not derivable today (documented in the engine).
   static const legendaryPulls = 0;
@@ -289,24 +286,6 @@ Future<db.AppDatabase> buildSyntheticCareer() async {
   await addLedger(-500, 'pack_purchase');
   await addLedger(-900, 'facility_upgrade');
 
-  // Facilities: attack 2, recovery 1.
-  Future<void> addFacility(String facility, int level) async {
-    await database
-        .into(database.facilityLevels)
-        .insert(
-          db.FacilityLevelsCompanion.insert(
-            clubId: ExpectedCareer.clubId,
-            facility: facility,
-            level: Value(level),
-            upgradedAt: Value(DateTime.fromMillisecondsSinceEpoch(
-              1_700_000_400_000,
-            )),
-          ),
-        );
-  }
-
-  await addFacility('attack', 2);
-  await addFacility('recovery', 1);
 
   return database;
 }

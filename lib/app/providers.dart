@@ -16,11 +16,9 @@ import 'package:flutter/services.dart' show rootBundle;
 import '../core/database/app_database.dart';
 import '../core/domain/crest.dart' show CrestSpec;
 import '../features/ads/ad_store.dart';
-import '../features/collection/campus_store.dart';
 import '../features/collection/club_store.dart';
 import '../features/collection/collection_store.dart';
 import '../features/collection/squad_store.dart';
-import '../features/facilities/facilities.dart';
 import '../features/player_database/player_database.dart';
 import '../features/settings/user_settings_store.dart';
 import '../features/season/season_engine.dart' show StandingEntry;
@@ -137,11 +135,6 @@ final squadStoreProvider = FutureProvider<SquadStore>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   await ref.watch(datasetBootstrapProvider.future);
   return SquadStore(db: db, squad: ref.watch(squadEngineProvider));
-});
-
-final campusStoreProvider = FutureProvider<CampusStore>((ref) async {
-  final db = await ref.watch(databaseProvider.future);
-  return CampusStore(db: db);
 });
 
 /// Random source for pack draws and merges; seedable in tests.
@@ -267,10 +260,4 @@ final standingCrestsProvider = FutureProvider<Map<int, CrestSpec>>((ref) async {
 final nextFixtureProvider = FutureProvider<NextFixture?>((ref) async {
   final store = await ref.watch(seasonStoreProvider.future);
   return store.getNextFixture();
-});
-
-/// Club campus facility levels (GDD 3.5).
-final campusProvider = FutureProvider<CampusLevels>((ref) async {
-  final store = await ref.watch(collectionStoreProvider.future);
-  return store.getCampus();
 });

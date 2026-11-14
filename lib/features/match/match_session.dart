@@ -12,7 +12,6 @@ import '../../core/domain/crest.dart' show CrestSpec;
 import '../collection/collection_store.dart';
 import '../economy/economy_engine.dart';
 import '../../core/domain/players.dart';
-import '../facilities/facilities.dart' show Facility;
 import '../squad/formations.dart';
 import '../squad/squad_engine.dart';
 import 'match_engine.dart';
@@ -189,10 +188,9 @@ class MatchSession {
   /// formation re-picks the whole squad in memory (same Auto Pick rules
   /// as the Team tab) so the exact shape the user previewed kicks off.
   ///
-  /// Campus training facilities (GDD 3.5) add their small permanent
-  /// attribute fractions on top of every player's card values here —
-  /// campus fractions simply add to the card values (fatigue decoupling,
-  /// owner decision 2026-11-07: attributes are never stamina-scaled).
+  /// (The campus training-facility attribute fractions are gone —
+  /// owner request 2026-11-14: no campus anywhere. Card values reach
+  /// the engine exactly as stored.)
   static Future<(MatchTeamInput, db.Club)> _userTeamInputs(
     CollectionStore store, {
     PreMatchTacticSelection? tactics,
@@ -201,11 +199,6 @@ class MatchSession {
     if (club == null) {
       throw const CollectionException('No club');
     }
-    final campus = await store.getCampus();
-    final fractions = campus.attributeFractions;
-    // The Medical Centre's risk reduction reaches the engine through the
-    // team input (T-0055, GDD 3.5/11.7).
-    final medicalCentreLevel = campus.levelOf(Facility.medical);
     final formationCode = tactics?.formationCode ?? club.formationCode;
     final teamTactics = tactics?.tactics ?? tacticsFromDbPayload(club.tactics);
     final mentality =
@@ -293,7 +286,7 @@ class MatchSession {
     }
     final starters = <MatchPlayer>[
       for (var slot = 0; slot < Formation.startingXiSize; slot++)
-        _toMatchPlayer(assignment[slot]!, fractions),
+        _toMatchPlayer(assignment[slot]!),
     ];
     final bench = <MatchPlayer>[
       for (
@@ -301,7 +294,7 @@ class MatchSession {
         slot < Formation.squadSize && assignment.containsKey(slot);
         slot++
       )
-        _toMatchPlayer(assignment[slot]!, fractions),
+        _toMatchPlayer(assignment[slot]!),
     ];
     return (
       MatchTeamInput(
@@ -312,33 +305,21 @@ class MatchSession {
         mentality: mentality,
         starters: starters,
         bench: bench,
-        medicalCentreLevel: medicalCentreLevel,
       ),
       club,
     );
   }
 
-  /// Card → engine player, with the campus training-facility fractions
-  /// (GDD 3.5) added to each attribute. The boost is small by design —
-  /// it nudges totals, it never replaces squad quality.
-  static MatchPlayer _toMatchPlayer(
-    PlayerCard card,
-    ({double attack, double support, double defence, double goalkeeping})
-    fractions,
-  ) => MatchPlayer(
+  /// Card → engine player, raw card values (the campus fractions are
+  /// gone — owner request 2026-11-14: no campus anywhere).
+  static MatchPlayer _toMatchPlayer(PlayerCard card) => MatchPlayer(
     playerId: card.ownedId,
     name: card.base.name,
     position: card.position,
-    attack: (card.attribute(PlayerAttribute.attack) * (1 + fractions.attack))
-        .round(),
-    support: (card.attribute(PlayerAttribute.support) * (1 + fractions.support))
-        .round(),
-    defence: (card.attribute(PlayerAttribute.defence) * (1 + fractions.defence))
-        .round(),
-    goalkeeping:
-        (card.attribute(PlayerAttribute.goalkeeping) *
-                (1 + fractions.goalkeeping))
-            .round(),
+    attack: card.attribute(PlayerAttribute.attack),
+    support: card.attribute(PlayerAttribute.support),
+    defence: card.attribute(PlayerAttribute.defence),
+    goalkeeping: card.attribute(PlayerAttribute.goalkeeping),
     nationality: card.base.nationality,
     clubId: card.base.clubId,
     clubName: card.base.clubName,
@@ -474,9 +455,8 @@ class MatchSession {
 
   /// Full-time processing: builds the report, persists stamina (GDD 11)
   /// and credits match rewards with a ledger row (GDD 17.6) in one
-  /// transaction. T-0100: the post-match pep-talk / boosted-recovery
-  /// choice is gone — every match settles with the default recovery
-  /// (natural + campus bonus, [restDays] rest).
+  /// transaction. (The campus recovery bonus is gone with the campus
+  /// itself — owner request 2026-11-14.)
   Future<MatchReportResult> finish({int restDays = 3}) async {
     if (!engine.isFinished) {
       engine.simulateToEnd();

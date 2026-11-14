@@ -440,7 +440,6 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
         });
         ref.invalidate(collectionProvider);
         ref.invalidate(squadProvider);
-        ref.invalidate(campusProvider);
       }
     } catch (e) {
       if (mounted) setState(() => _error = '$e');

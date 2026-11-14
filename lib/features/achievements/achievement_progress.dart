@@ -90,8 +90,6 @@ class CareerMetrics {
     required this.lifetimeCoinsEarned,
     required this.coinsSpentOnPacks,
     required this.coinsSpentOnUpgrades,
-    required this.facilityLevelTotal,
-    required this.recoveryCentreLevel,
     required this.joinedAt,
     required this.tacticsInstructionsChanged,
   });
@@ -148,9 +146,6 @@ class CareerMetrics {
   final int coinsSpentOnPacks;
   final int coinsSpentOnUpgrades;
 
-  // -- Campus (FacilityLevels) ---------------------------------------
-  final int facilityLevelTotal;
-  final int recoveryCentreLevel;
 
   // -- Career identity -----------------------------------------------
   final DateTime? joinedAt;
@@ -176,7 +171,7 @@ class CareerMetrics {
     cardsOwned: 0, legendaryCardsOwned: 0, epicCardsOwned: 0,
     highestUpgradeLevel: 0, upgradesCompleted: 0, legendaryPulls: 0,
     playerSalesCompleted: 0, lifetimeCoinsEarned: 0, coinsSpentOnPacks: 0,
-    coinsSpentOnUpgrades: 0, facilityLevelTotal: 0, recoveryCentreLevel: 0,
+    coinsSpentOnUpgrades: 0,
     joinedAt: null, tacticsInstructionsChanged: 0,
   );
 
@@ -215,8 +210,6 @@ class CareerMetrics {
     'lifetimeCoinsEarned' => lifetimeCoinsEarned,
     'coinsSpentOnPacks' => coinsSpentOnPacks,
     'coinsSpentOnUpgrades' => coinsSpentOnUpgrades,
-    'facilityLevelTotal' => facilityLevelTotal,
-    'recoveryCentreLevel' => recoveryCentreLevel,
     'tacticsInstructionsChanged' => tacticsInstructionsChanged,
     _ => null,
   };
@@ -398,16 +391,6 @@ Future<CareerMetrics> deriveCareerMetrics(
     }
   }
 
-  // ---- Campus --------------------------------------------------------
-  final facilityRows = await (database.select(database.facilityLevels)
-        ..where((t) => t.clubId.equals(clubId)))
-      .get();
-  var facilityLevelTotal = 0, recoveryLevel = 0;
-  for (final f in facilityRows) {
-    facilityLevelTotal += f.level;
-    if (f.facility == 'recovery') recoveryLevel = f.level;
-  }
-
   return CareerMetrics(
     matchesManaged: results.length,
     homeMatches: homeMatches,
@@ -442,8 +425,6 @@ Future<CareerMetrics> deriveCareerMetrics(
     lifetimeCoinsEarned: earned,
     coinsSpentOnPacks: packSpend,
     coinsSpentOnUpgrades: upgradeSpend,
-    facilityLevelTotal: facilityLevelTotal,
-    recoveryCentreLevel: recoveryLevel,
     joinedAt: joinedAt,
     tacticsInstructionsChanged: 0,
   );

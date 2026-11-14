@@ -82,11 +82,6 @@ class AchievementCatalog {
     iconName: 'coins',
     l10nPrefix: 'achEconomy',
   );
-  static const campus = AchievementCategory(
-    id: 'campus',
-    iconName: 'campus',
-    l10nPrefix: 'achCampus',
-  );
   static const loyalty = AchievementCategory(
     id: 'loyalty',
     iconName: 'heart',
@@ -107,7 +102,6 @@ class AchievementCatalog {
     squad,
     packs,
     economyCat,
-    campus,
     loyalty,
     mastermind,
   ];
@@ -356,16 +350,6 @@ class AchievementCatalog {
       ladder: _mk(baseThreshold: 1_000, thresholdRatio: 2),
     ),
     AchievementDefinition(
-      id: 'campus_facility_levels',
-      category: 'campus',
-      metricId: 'facilityLevelTotal',
-      titleKey: 'achCampusFacilityLevels',
-      descriptionKey: 'achCampusFacilityLevelsDesc',
-      hint: 'Sum of all facility levels.',
-      kind: AchievementKind.endlessLadder,
-      ladder: _mk(baseThreshold: 1, thresholdRatio: 2),
-    ),
-    AchievementDefinition(
       id: 'loyalty_seasons',
       confersTitles: true,
       category: 'loyalty',
@@ -468,16 +452,6 @@ class AchievementCatalog {
       ladder: _mk(baseThreshold: 1, thresholdRatio: 2),
     ),
     AchievementDefinition(
-      id: 'campus_recovery_level',
-      category: 'campus',
-      metricId: 'recoveryCentreLevel',
-      titleKey: 'achCampusRecoveryLevel',
-      descriptionKey: 'achCampusRecoveryLevelDesc',
-      hint: 'The Recovery Centre\'s level alone (stamina pipeline).',
-      kind: AchievementKind.endlessLadder,
-      ladder: _mk(baseThreshold: 1, thresholdRatio: 2),
-    ),
-    AchievementDefinition(
       id: 'mastermind_tactics_changed',
       confersTitles: true,
       category: 'mastermind',
@@ -569,17 +543,6 @@ class AchievementCatalog {
       kind: AchievementKind.milestone,
       ladder: _mk(baseThreshold: 1, thresholdRatio: 2, tierCount: 1),
       milestoneReward: economy.milestoneLoyaltyFirstSeason,
-    ),
-    AchievementDefinition(
-      id: 'milestone_first_facility_max',
-      category: 'campus',
-      metricId: 'facilityLevelsAtMax',
-      titleKey: 'achMilestoneFirstFacilityMax',
-      descriptionKey: 'achMilestoneFirstFacilityMaxDesc',
-      hint: 'One facility reaches its maximum level.',
-      kind: AchievementKind.milestone,
-      ladder: _mk(baseThreshold: 1, thresholdRatio: 2, tierCount: 1),
-      milestoneReward: economy.milestoneCampusFirstFacilityMax,
     ),
   ];
 

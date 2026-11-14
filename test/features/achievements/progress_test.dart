@@ -43,8 +43,6 @@ void main() {
     expect(metrics.lifetimeCoinsEarned, 0);
     expect(metrics.coinsSpentOnPacks, 0);
     expect(metrics.coinsSpentOnUpgrades, 0);
-    expect(metrics.facilityLevelTotal, 0);
-    expect(metrics.recoveryCentreLevel, 0);
     expect(metrics.joinedAt, isNull);
     expect(metrics.legendaryPulls, 0);
     expect(metrics.tacticsInstructionsChanged, 0);
@@ -105,9 +103,6 @@ void main() {
         reason: 'positive rows only: grant + match + season + sale');
     expect(m.coinsSpentOnPacks, ExpectedCareer.coinsSpentOnPacks);
     expect(m.coinsSpentOnUpgrades, ExpectedCareer.coinsSpentOnUpgrades);
-    // Campus.
-    expect(m.facilityLevelTotal, ExpectedCareer.facilityLevelTotal);
-    expect(m.recoveryCentreLevel, ExpectedCareer.recoveryCentreLevel);
     // Identity.
     expect(m.joinedAt, DateTime.fromMillisecondsSinceEpoch(1_700_000_050_000));
   });
@@ -166,8 +161,8 @@ void main() {
       'cardsOwned', 'legendaryCardsOwned', 'epicCardsOwned',
       'highestUpgradeLevel', 'upgradesCompleted', 'legendaryPulls',
       'playerSalesCompleted', 'lifetimeCoinsEarned',
-      'coinsSpentOnPacks', 'coinsSpentOnUpgrades', 'facilityLevelTotal',
-      'recoveryCentreLevel', 'tacticsInstructionsChanged',
+      'coinsSpentOnPacks', 'coinsSpentOnUpgrades',
+      'tacticsInstructionsChanged',
     };
     for (final id in known) {
       expect(m.progressFor(id), isNotNull, reason: 'metric $id unresolved');

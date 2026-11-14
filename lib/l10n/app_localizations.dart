@@ -122,12 +122,6 @@ abstract class AppLocalizations {
   /// **'Collection'**
   String get navCollection;
 
-  /// No description provided for @navCampus.
-  ///
-  /// In en, this message translates to:
-  /// **'Campus'**
-  String get navCampus;
-
   /// No description provided for @navStore.
   ///
   /// In en, this message translates to:
@@ -1076,18 +1070,6 @@ abstract class AppLocalizations {
   /// **'The coin ledger'**
   String get achEconomySubtitle;
 
-  /// No description provided for @achCampusTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Campus'**
-  String get achCampusTitle;
-
-  /// No description provided for @achCampusSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Built brick by brick'**
-  String get achCampusSubtitle;
-
   /// No description provided for @achLoyaltyTitle.
   ///
   /// In en, this message translates to:
@@ -1364,18 +1346,6 @@ abstract class AppLocalizations {
   /// **'Coins poured into upgrades and facilities.'**
   String get achEconomyUpgradeSpendDesc;
 
-  /// No description provided for @achCampusFacilityLevels.
-  ///
-  /// In en, this message translates to:
-  /// **'Facility Levels'**
-  String get achCampusFacilityLevels;
-
-  /// No description provided for @achCampusFacilityLevelsDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'The sum of every level across your campus.'**
-  String get achCampusFacilityLevelsDesc;
-
   /// No description provided for @achLoyaltySeasons.
   ///
   /// In en, this message translates to:
@@ -1483,18 +1453,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Complete your first full season.'**
   String get achMilestoneFirstSeasonDesc;
-
-  /// No description provided for @achMilestoneFirstFacilityMax.
-  ///
-  /// In en, this message translates to:
-  /// **'Campus Landmark'**
-  String get achMilestoneFirstFacilityMax;
-
-  /// No description provided for @achMilestoneFirstFacilityMaxDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'Take one facility to its maximum level.'**
-  String get achMilestoneFirstFacilityMaxDesc;
 
   /// No description provided for @achTitleCareerWins1.
   ///
@@ -1705,18 +1663,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Matches managed in front of your own crowd.'**
   String get achCareerHomeMatchesDesc;
-
-  /// No description provided for @achCampusRecoveryLevel.
-  ///
-  /// In en, this message translates to:
-  /// **'The Recovery Room'**
-  String get achCampusRecoveryLevel;
-
-  /// No description provided for @achCampusRecoveryLevelDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'The Recovery Centre\'s level — where tired legs come back.'**
-  String get achCampusRecoveryLevelDesc;
 
   /// No description provided for @achTitlePacks2.
   ///

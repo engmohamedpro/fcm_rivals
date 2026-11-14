@@ -84,7 +84,6 @@ class _ClubCreationScreenState extends ConsumerState<ClubCreationScreen> {
         crest: _crestSpec,
       );
       ref.invalidate(availablePacksProvider);
-      ref.invalidate(campusProvider);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)

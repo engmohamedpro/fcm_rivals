@@ -22,9 +22,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get navCollection => 'المجموعة';
 
   @override
-  String get navCampus => 'الحرم';
-
-  @override
   String get navStore => 'المتجر';
 
   @override
@@ -536,12 +533,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get achEconomySubtitle => 'دفتر العملات';
 
   @override
-  String get achCampusTitle => 'الحي الجامعي';
-
-  @override
-  String get achCampusSubtitle => 'بُنى طوبًا طوبًا';
-
-  @override
   String get achLoyaltyTitle => 'الوفاء';
 
   @override
@@ -691,13 +682,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'العملات التي ضخختها في الترقيات والمرافق.';
 
   @override
-  String get achCampusFacilityLevels => 'مستويات المرافق';
-
-  @override
-  String get achCampusFacilityLevelsDesc =>
-      'مجموع مستويات مرافق حيك الجامعي كلها.';
-
-  @override
   String get achLoyaltySeasons => 'مواسم أكملتها';
 
   @override
@@ -752,13 +736,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get achMilestoneFirstSeasonDesc => 'أكمل أول موسم كامل لك.';
-
-  @override
-  String get achMilestoneFirstFacilityMax => 'معلم الحي الجامعي';
-
-  @override
-  String get achMilestoneFirstFacilityMaxDesc =>
-      'أوصل أحد المرافق إلى مستواه الأقصى.';
 
   @override
   String get achTitleCareerWins1 => 'الفائز';
@@ -870,13 +847,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get achCareerHomeMatchesDesc => 'مباريات أدرتها أمام جمهورك.';
-
-  @override
-  String get achCampusRecoveryLevel => 'غرفة الاستشفاء';
-
-  @override
-  String get achCampusRecoveryLevelDesc =>
-      'مستوى مركز الاستشفاء — حيث تعود الأرجل المتعبة.';
 
   @override
   String get achTitlePacks2 => 'أمير الأسواق';
