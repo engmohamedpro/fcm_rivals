@@ -107,7 +107,7 @@ void main() {
       opponentForm: ['W', 'D', 'L', 'W', 'D'],
       opponentPosition: 5,
       userPosition: 12,
-      opponentSquad: const [],
+      opponentSquad: [],
     );
     await tester.pumpWidget(
       const MaterialApp(
@@ -159,7 +159,7 @@ void main() {
         opponentForm: ['W', 'D', 'L', 'W', 'D'],
         opponentPosition: 5,
         userPosition: 12,
-        opponentSquad: const [],
+        opponentSquad: [],
         userCrest: CrestSpec(
           shape: CrestShape.shield,
           primaryIndex: 0,

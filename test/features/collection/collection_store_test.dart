@@ -1254,14 +1254,14 @@ void main() {
       /// The draw pool, rebuilt through PlayerDatabase.importDataset —
       /// the exact pipeline the store's registry uses, so stats and
       /// icon flags match what openPack would draw against.
-      List<BasePlayer> _pool() {
+      List<BasePlayer> buildPool() {
         final registry = PlayerDatabase();
         registry.importDataset(PlayerDataset.fromJson(datasetJson(seedRows)));
         return registry.all.toList(growable: false);
       }
 
       test('a scoped draw only yields players the scope matches', () {
-        final pool = _pool();
+        final pool = buildPool();
         final engine = PackEngine();
         final scope = PackScope(
           category: PackCategory.position,
@@ -1280,7 +1280,7 @@ void main() {
 
       test('draws are deterministic for a seeded Random (regression guard)',
           () {
-        final pool = _pool();
+        final pool = buildPool();
         final engine = PackEngine();
         final scope = PackScope(
           category: PackCategory.position,
@@ -1298,7 +1298,7 @@ void main() {
       });
 
       test('the icon band draws icons at kIconBandIndex', () {
-        final pool = _pool();
+        final pool = buildPool();
         final icon = pool.firstWhere((p) => p.playerId == 1000);
         expect(icon.isIcon, isTrue);
         final engine = PackEngine();

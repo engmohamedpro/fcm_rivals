@@ -25,7 +25,6 @@ import 'package:fcm_rivals/features/match/live_tactics_screen.dart';
 import 'package:fcm_rivals/features/match/match_engine.dart';
 import 'package:fcm_rivals/features/match/match_report.dart';
 import 'package:fcm_rivals/features/match/match_session.dart';
-import 'package:fcm_rivals/features/squad/formations.dart';
 import 'package:fcm_rivals/features/settings/user_settings_store.dart';
 import 'package:fcm_rivals/features/match/tactics.dart';
 
