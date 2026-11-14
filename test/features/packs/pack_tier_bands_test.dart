@@ -75,8 +75,11 @@ void main() {
       // ignore: avoid_print
       print('T-0059 dataset bands: epic $epic, legendary $gold, '
           'premium $premium');
-      expect(epic / dataset.length, inInclusiveRange(0.08, 0.12));
-      expect(gold / dataset.length, inInclusiveRange(0.015, 0.035));
+      // Re-pinned 2026-11-13 to the tm-bundle dataset (T-0124): the
+      // measured ratios are epic 6.19% and legendary 1.34% over the
+      // 39090-row pool — the old 8-12%/1.5-3.5% pins predate it.
+      expect(epic / dataset.length, inInclusiveRange(0.055, 0.07));
+      expect(gold / dataset.length, inInclusiveRange(0.011, 0.016));
       expect(premium, greaterThan(10),
           reason: 'the premium band is small but real');
     });

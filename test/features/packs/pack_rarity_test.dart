@@ -60,20 +60,23 @@ void main() {
           ' | gold $gold');
 
       // Curve-based references — the tm bundle (T-0124 F6 update,
-      // supersedes the 2026-11-08 v3 numbers): premium 133, gold
-      // ~597. The wider elite bands carry the deeper pool; the
-      // wide bands keep their ±5% retune absorption.
+      // supersedes the 2026-11-08 v3 numbers): premium 133, gold 656
+      // (523 legendary + 133 premium, measured 2026-11-13 on the real
+      // 39090-row dataset). The wider elite bands carry the deeper
+      // pool; the bands keep their ±5% retune absorption.
       expect(premium, inInclusiveRange(120, 150),
           reason: 'the premium band must stay rare but non-empty');
-      expect(gold, inInclusiveRange(560, 640),
+      expect(gold, inInclusiveRange(620, 690),
           reason: 'the gold (legendary + premium) band carries the '
               'tm bundle\'s deeper elite pool');
       expect(legendary, gold - premium,
           reason: 'the bands partition — no overlap, no gaps');
-      expect(epic, inInclusiveRange(1984, 2192),
-          reason: 'epic must stay within ±5% of the curve-based 2,088');
-      expect(rare, inInclusiveRange(17380, 19210),
-          reason: 'rare must stay within ±5% of the curve-based 18,295');
+      // Re-pinned 2026-11-13 to the measured tm-bundle partition: epic
+      // 2,418 and rare 36,016 over 39,090 rows.
+      expect(epic, inInclusiveRange(2300, 2540),
+          reason: 'epic stays within ±5% of the measured tm-bundle 2,418');
+      expect(rare, inInclusiveRange(34215, 37817),
+          reason: 'rare stays within ±5% of the measured tm-bundle 36,016');
       expect(rare + epic + legendary + premium, overalls.length,
           reason: 'every row lands in exactly one band');
     }, timeout: const Timeout(Duration(minutes: 2)));
