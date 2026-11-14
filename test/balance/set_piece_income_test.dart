@@ -259,8 +259,16 @@ void main() {
 
 /// The pre-layer battery (measured on the untouched tree, T-0114's
 /// landing session): seed → [homeGoals, awayGoals, totalShots].
+/// Re-pinned 2026-11-14 (T-0116 rework): the pins dated from the
+/// T-0116 landing; the T-0117 realism re-anchor (income 0.045→0.07,
+/// territory threshold, normal-only carrier) moved seed 42 — its own
+/// commit noted "the layer-off battery is byte-identical" while the
+/// guard here ran the DEFAULT config (0.07) — and the 2026-11-12 perf
+/// pass + ADR-014 kept the new readings. Verified deterministic
+/// (identical across repeat runs) before pinning: the drift is a
+/// documented engine evolution, not flakiness.
 const _battery = {
   7: [0, 2, 30],
-  42: [0, 1, 33],
+  42: [0, 0, 29],
   991: [0, 2, 21],
 };
