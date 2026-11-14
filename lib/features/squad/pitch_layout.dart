@@ -351,10 +351,123 @@ PitchBox gridCellBox(int col, int row, double width, double height) {
 /// unless its slot's cell does.
 ///
 /// With [spreadRows] (the grid is hidden — nobody is dragging) each row
-/// keeps its depth but its cards are spread EVENLY across the pitch width,
-/// centred (owner request 2026-11-14): n cards stand at 1/(n+1), 2/(n+1)…
-/// of the usable width, in column order. The grid cells (drag time) are
-/// the exact positions the cards had before this spreading.
+/// keeps its depth; its CENTRAL cards are spread evenly and centred
+/// (owner request 2026-11-14): n cards stand at 1/(n+1), 2/(n+1)… of the
+/// span between the wings, in column order. The WIDE cards (outer columns:
+/// LB LM LW / RB RM RW) stay on their sides, on their grid cells.
+PitchLayout computeGridLayout({
+  required List<GridCell> cells,
+  required double width,
+  required double height,
+  bool showStats = false,
+  bool showStamina = false,
+  bool spreadRows = false,
+}) {
+  final cell = gridCellBox(0, 1, width, height);
+  bool fits(double w) =>
+      pitchFootprintHeight(w, showStats: showStats, showStamina: showStamina) <=
+      cell.height - 2;
+  var w = math.min(kPitchCardMaxWidth, cell.width - kPitchSlotPad);
+  while (w > 24 && !fits(w)) {
+    w -= 0.25;
+  }
+  final sw = w + kPitchSlotPad;
+  final sh = pitchFootprintHeight(
+    w,
+    showStats: showStats,
+    showStamina: showStamina,
+  );
+  final boxes = <PitchBox>[
+    for (final c in cells)
+      () {
+        final b = gridCellBox(c.col, c.row, width, height);
+        return PitchBox(
+          b.left + (b.width - sw) / 2,
+          b.top + (b.height - sh) / 2,
+          sw,
+          sh,
+        );
+      }(),
+  ];
+  if (spreadRows) {
+    final byRow = <int, List<int>>{};
+    for (var i = 0; i < cells.length; i++) {
+      byRow.putIfAbsent(cells[i].row, () => []).add(i);
+    }
+    final centreX = width / 2;
+    for (final row in byRow.values) {
+      // The WIDE men (outer columns: LB / LM / LW and RB / RM / RW) stay on
+      // their sides — only the central men are spread.
+      int? left;
+      int? right;
+      final central = <int>[];
+      for (final i in row) {
+        if (cells[i].col == 0) {
+          left = i;
+        } else if (cells[i].col == kGridCols - 1) {
+          right = i;
+        } else {
+          central.add(i);
+        }
+      }
+      if (central.isEmpty) continue;
+      central.sort((a, b) => cells[a].col.compareTo(cells[b].col));
+      // The central men share the span between the wings (or the pitch
+      // edges), kept symmetric about the pitch centre so the row reads
+      // centred: n men stand at 1/(n+1), 2/(n+1)… of that span.
+      final leftBound = left == null
+          ? kPitchMargin
+          : boxes[left].right;
+      final rightBound = right == null
+          ? width - kPitchMargin
+          : boxes[right].left;
+      final half = math.min(centreX - leftBound, rightBound - centreX);
+      final start = centreX - half;
+      final span = 2 * half;
+      for (var k = 0; k < central.length; k++) {
+        final centre = start + (k + 1) / (central.length + 1) * span;
+        boxes[central[k]] = PitchBox(
+          centre - sw / 2,
+          boxes[central[k]].top,
+          sw,
+          sh,
+        );
+      }
+    }
+  }
+  return PitchLayout(
+    cardWidth: w,
+    slotWidth: sw,
+    slotHeight: sh,
+    boxes: boxes,
+    rows: rows,
+  );
+}
+
+/// The footprint of the grid cell ([col], [row]) on a pitch of [width] ×
+/// [height]: the pitch minus [kPitchMargin] split into [kGridCols] ×
+/// [kGridRows] equal cells, row 0 (the keeper's) at the BOTTOM.
+PitchBox gridCellBox(int col, int row, double width, double height) {
+  final cw = (width - 2 * kPitchMargin) / kGridCols;
+  final ch = (height - 2 * kPitchMargin) / kGridRows;
+  return PitchBox(
+    kPitchMargin + col * cw,
+    kPitchMargin + (kGridRows - 1 - row) * ch,
+    cw,
+    ch,
+  );
+}
+
+/// Lays a formation out on the chess GRID (Team tab): every slot sits
+/// centred in its own cell, the cards as big as the cell allows. Unlike
+/// [computePitchLayout] nothing is solved or pushed — a card never moves
+/// unless its slot's cell does.
+///
+/// With [spreadRows] (the grid is hidden — nobody is dragging) each row
+/// keeps its depth; its CENTRAL cards are spread evenly and centred
+/// (owner request 2026-11-14): n cards stand at 1/(n+1), 2/(n+1)… of the
+/// span between the wings, in column order. The WIDE cards (outer columns:
+/// LB LM LW / RB RM RW) stay on their sides, on their grid cells.
 PitchLayout computeGridLayout({
   required List<GridCell> cells,
   required double width,

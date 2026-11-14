@@ -445,7 +445,8 @@ void main() {
   });
 
   group('computeGridLayout spreadRows (the grid is hidden)', () {
-    test('every row is spread evenly and centred, depth unchanged', () {
+    test('wide men stay on their sides; the central men of each row are '
+        'spread evenly and centred between them', () {
       for (final w in _widths) {
         final h = w / 0.66;
         for (final f in formations) {
@@ -457,34 +458,46 @@ void main() {
             height: h,
             spreadRows: true,
           );
+          for (var i = 0; i < cells.length; i++) {
+            expect(even.boxes[i].top, grid.boxes[i].top,
+                reason: '${f.code} w=$w depth must not change');
+            if (cells[i].col == 0 || cells[i].col == kGridCols - 1) {
+              expect(even.boxes[i].left, grid.boxes[i].left,
+                  reason: '${f.code} w=$w a wide man stays on his side');
+            }
+          }
           final byRow = <int, List<int>>{};
           for (var i = 0; i < cells.length; i++) {
             byRow.putIfAbsent(cells[i].row, () => []).add(i);
           }
           for (final row in byRow.values) {
-            row.sort((a, b) => cells[a].col.compareTo(cells[b].col));
+            final central = [
+              for (final i in row)
+                if (cells[i].col > 0 && cells[i].col < kGridCols - 1) i,
+            ]..sort((a, b) => cells[a].col.compareTo(cells[b].col));
+            if (central.isEmpty) continue;
             final centres = [
-              for (final i in row) even.boxes[i].left + even.boxes[i].width / 2,
+              for (final i in central)
+                even.boxes[i].left + even.boxes[i].width / 2,
             ];
-            for (final i in row) {
-              expect(even.boxes[i].top, grid.boxes[i].top,
-                  reason: '${f.code} w=$w depth must not change');
-            }
-            // Equal gaps between neighbours and from the pitch edges.
-            final usable = w - 2 * kPitchMargin;
-            final gap = usable / (row.length + 1);
-            for (var k = 0; k < centres.length; k++) {
-              expect(centres[k], closeTo(kPitchMargin + (k + 1) * gap, 1e-6),
-                  reason: '${f.code} w=$w row slot $k');
-            }
-            // A row is centred on the pitch.
-            final mid = (centres.first + centres.last) / 2;
-            expect(mid, closeTo(w / 2, 1e-6), reason: '${f.code} w=$w');
-            // Neighbours never touch.
-            for (var k = 1; k < centres.length; k++) {
+            // Centred on the pitch.
+            expect((centres.first + centres.last) / 2, closeTo(w / 2, 1e-6),
+                reason: '${f.code} w=$w central men centred');
+            // Equal gaps between neighbours.
+            for (var k = 2; k < centres.length; k++) {
               expect(centres[k] - centres[k - 1],
-                  greaterThanOrEqualTo(even.slotWidth - 0.01),
-                  reason: '${f.code} w=$w cards overlap in a row');
+                  closeTo(centres[1] - centres[0], 1e-6),
+                  reason: '${f.code} w=$w equal spacing');
+            }
+            // Nobody touches a neighbour or a wing.
+            final all = [...row]
+              ..sort((a, b) => even.boxes[a].left.compareTo(even.boxes[b].left));
+            for (var k = 1; k < all.length; k++) {
+              expect(
+                even.boxes[all[k]].left - even.boxes[all[k - 1]].right,
+                greaterThanOrEqualTo(-0.01),
+                reason: '${f.code} w=$w cards overlap in a row',
+              );
             }
           }
         }
